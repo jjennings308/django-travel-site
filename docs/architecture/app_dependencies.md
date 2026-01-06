@@ -10,6 +10,8 @@ graph TD
 
     trips["trips<br/>(itineraries, travel days, bookings)"]
 
+    events["events<br/>(date, time, place)"]
+
     bucketlists["bucketlists<br/>(user bucket list items)"]
 
     reviews["reviews<br/>(ratings, comments)"]
@@ -22,29 +24,52 @@ graph TD
 
     admin_tools["admin_tools<br/>(reports, moderation)"]
 
-    core --> accounts
+    activities["activities<br/>(skill level, goal, resources, style, time needed)"]
 
+    core --> accounts
     core --> locations
+    core --> activities
 
     accounts --> bucketlists
     accounts --> trips
-    accounts --> reviews
+    accounts --> admin_tools
+    accounts --> recommendations
 
     locations --> vendors
     locations --> trips
     locations --> bucketlists
+    locations --> media
 
+    activities --> bucketlists
+    activities --> media  
+     
     vendors --> trips
-    vendors --> reviews
+    vendors --> media
 
-    trips --> media
-    bucketlists --> media
-
-    trips --> notifications
-    reviews --> notifications
-
-    bucketlists --> recommendations
+    trips --> events
+    trips --> locations
+    trips --> activities
+    trips --> vendors
     trips --> recommendations
+    trips --> notifications
+    trips --> media
 
-    accounts --> admin_tools
+    bucketlists --> media
+    bucketlists --> recommendations
+    bucketlists --> notifications
+
+    events --> locations
+    events --> activities
+    events --> bucketlists
+    events --> media   
+    events --> notifications 
+
     reviews --> admin_tools
+    reviews --> notifications
+    reviews --> vendors
+    reviews --> accounts
+    reviews --> vendors    
+    reviews --> activities 
+    reviews --> events     
+    reviews --> locations  
+    reviews --> trips      

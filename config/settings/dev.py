@@ -1,6 +1,8 @@
 from .base import *
 
-DEBUG = True
-ALLOWED_HOSTS = ['*']
 
-INSTALLED_APPS += ['django_extensions']
+try:
+    import django_extensions  # noqa: F401
+    INSTALLED_APPS += ["django_extensions"]
+except ImportError:
+    pass

@@ -26,13 +26,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECERT_KEY", 'django-insecure-goess*l(+m4(pf(@99$2s*-nz6%n((&206@iw@rk=d!kfkgtq(')
+SECRET_KEY = os.environ.get("DJANGO_SECERT_KEY", 'django-insecure-goess*l(+m4(pf(@99$2s*-nz6%n((&206@iw@rk=d!kfkgtq(')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
-
 # ALLOWED_HOSTS = []
 
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # Application definition
 
@@ -47,6 +48,8 @@ INSTALLED_APPS = [
     # local apps 
     'core',
     'accounts',
+    'locations',
+    'activities',
 ]
 
 MIDDLEWARE = [
