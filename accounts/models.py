@@ -232,6 +232,12 @@ class UserPreferences(TimeStampedModel):
         default='USD'
     )
     
+    timezone = models.CharField(
+        max_length=50,
+        default="UTC",
+        help_text="IANA timezone (e.g. America/New_York)"
+    )
+
     class Meta:
         db_table = 'user_preferences'
         verbose_name = 'User Preference'

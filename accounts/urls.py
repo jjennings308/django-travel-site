@@ -15,4 +15,7 @@ urlpatterns = [
     # self signup + activation
     path("signup/", views.signup, name="signup"),
     path("activate/<uidb64>/<token>/", views.activate, name="activate"),
-]
+    
+    path("tz/set/", views.set_timezone, name="set-timezone"),
+]  
+

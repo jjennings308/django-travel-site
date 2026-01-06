@@ -25,5 +25,40 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 {% block extra_js %}{% endblock %}
+
+<script>
+(function () {
+  // Only run for logged-in pages where CSRF cookie exists
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!tz) return;
+
+  // Simple CSRF cookie reader
+  function getCookie(name) {
+    const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+    return m ? m.pop() : "";
+  }
+
+  // Avoid POSTing repeatedly (localStorage cache)
+  const key = "user_tz_last_sent";
+  if (localStorage.getItem(key) === tz) return;
+
+  fetch("/accounts/tz/set/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify({ timezone: tz })
+  })
+  .then(r => r.ok ? r.json() : Promise.reject(r))
+  .then(data => {
+    if (data && data.ok) localStorage.setItem(key, tz);
+  })
+  .catch(() => {
+    // Silently ignore; we’ll retry on next page load
+  });
+})();
+</script>
+
 </body>
 </html>

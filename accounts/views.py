@@ -1,5 +1,7 @@
 # accounts/view.py
-from django.contrib.auth.decorators import user_passes_test
+import json
+
+from django.contrib.auth.decorators import user_passes_test, login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -10,8 +12,11 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 from .forms import AdminUserCreateForm, SignUpForm
+from .models import UserPreferences
 
 User = get_user_model()
 
@@ -94,3 +99,27 @@ def activate(request, uidb64, token):
 
     messages.error(request, "Activation link is invalid or expired.")
     return redirect("signup")
+
+@login_required
+@require_POST
+def set_timezone(request):
+    """
+    Receives {"timezone": "America/New_York"} and stores it on UserPreferences.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    tz = (payload.get("timezone") or "").strip()
+    if not tz or len(tz) > 50:
+        return JsonResponse({"ok": False, "error": "Invalid timezone"}, status=400)
+
+    prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
+
+    # Only write when it actually changes
+    if prefs.timezone != tz:
+        prefs.timezone = tz
+        prefs.save(update_fields=["timezone", "updated_at"])
+
+    return JsonResponse({"ok": True, "timezone": prefs.timezone})
