@@ -5,7 +5,26 @@ from django.contrib.auth.forms import UserCreationForm
 
 User = get_user_model()
 
+class SignUpForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("email", "username", "first_name", "last_name")
 
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("That email is already in use.")
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = user.email.strip().lower()
+        user.is_active = False          # IMPORTANT: require email verification
+        user.is_verified = False
+        if commit:
+            user.save()
+        return user
+    
 class AdminUserCreateForm(UserCreationForm):
     """
     Admin-only 'Add User' form.

@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     'accounts',
     'locations',
     'activities',
+    'vendors',
+    'events',
+    'media',
 ]
 
 MIDDLEWARE = [
@@ -145,3 +148,5 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "home"
+
+DEFAULT_FROM_EMAIL = "no-reply@sharebucketlist.com"
