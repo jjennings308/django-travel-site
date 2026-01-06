@@ -52,6 +52,9 @@ INSTALLED_APPS = [
     'vendors',
     'events',
     'media',
+    'bucketlists',
+    'trips',
+    'reviews',
 ]
 
 MIDDLEWARE = [
