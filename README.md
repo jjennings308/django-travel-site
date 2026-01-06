@@ -1,3 +1,3 @@
-This is my start on ny travel web site
+This is my start on my travel web site
 
 James Jennings
