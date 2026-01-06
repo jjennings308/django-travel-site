@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Add User{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <h1 class="h4 mb-4">Add User</h1>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          <!-- Identity -->
+          <fieldset class="mb-4">
+            <legend class="h6">Identity</legend>
+
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              {{ form.email|add_class:"form-control" }}
+              {% for error in form.email.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Username</label>
+              {{ form.username|add_class:"form-control" }}
+              {% for error in form.username.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">First name</label>
+                {{ form.first_name|add_class:"form-control" }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Last name</label>
+                {{ form.last_name|add_class:"form-control" }}
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Contact -->
+          <fieldset class="mb-4">
+            <legend class="h6">Contact</legend>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Phone number</label>
+                {{ form.phone_number|add_class:"form-control" }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date of birth</label>
+                {{ form.date_of_birth|add_class:"form-control" }}
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Password -->
+          <fieldset class="mb-4">
+            <legend class="h6">Password</legend>
+
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              {{ form.password1|add_class:"form-control" }}
+              {% for error in form.password1.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Confirm password</label>
+              {{ form.password2|add_class:"form-control" }}
+              {% for error in form.password2.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </fieldset>
+
+          <!-- Status / Permissions -->
+          <fieldset class="mb-4">
+            <legend class="h6">Status & Permissions</legend>
+
+            <div class="row">
+              <div class="col-md-4">
+                <div class="form-check mb-2">
+                  {{ form.is_active|add_class:"form-check-input" }}
+                  <label class="form-check-label">Active</label>
+                </div>
+                <div class="form-check mb-2">
+                  {{ form.is_verified|add_class:"form-check-input" }}
+                  <label class="form-check-label">Verified</label>
+                </div>
+                <div class="form-check mb-2">
+                  {{ form.is_premium|add_class:"form-check-input" }}
+                  <label class="form-check-label">Premium</label>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="form-check mb-2">
+                  {{ form.is_staff|add_class:"form-check-input" }}
+                  <label class="form-check-label">Staff</label>
+                </div>
+                <div class="form-check mb-2">
+                  {{ form.is_superuser|add_class:"form-check-input" }}
+                  <label class="form-check-label">Superuser</label>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Profile visibility</label>
+                {{ form.profile_visibility|add_class:"form-select" }}
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Actions -->
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+            <button type="submit" class="btn btn-success">
+              Create User
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
