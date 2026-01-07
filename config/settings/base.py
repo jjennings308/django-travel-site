@@ -55,6 +55,9 @@ INSTALLED_APPS = [
     'bucketlists',
     'trips',
     'reviews',
+    'notifications',
+    'recommendations',
+    'admin_tools',
 ]
 
 MIDDLEWARE = [
