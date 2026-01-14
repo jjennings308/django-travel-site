@@ -8,6 +8,8 @@ except ImportError:
 
 DEBUG = True
 
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "web-dev", "192.168.10.150"]
+
 SITE_URL = "http://127.0.0.1:8000"
 
 #EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
