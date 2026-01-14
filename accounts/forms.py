@@ -1,54 +1,155 @@
 # accounts/forms.py
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import ValidationError
+from .models import User, Profile, UserPreferences
 
-User = get_user_model()
 
-class SignUpForm(UserCreationForm):
-    class Meta(UserCreationForm.Meta):
+class UserRegistrationForm(UserCreationForm):
+    """Form for user registration using email as username"""
+    
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email address'
+        })
+    )
+    
+    first_name = forms.CharField(
+        required=True,
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'First name'
+        })
+    )
+    
+    last_name = forms.CharField(
+        required=True,
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Last name'
+        })
+    )
+    
+    password1 = forms.CharField(
+        label='Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Password'
+        })
+    )
+    
+    password2 = forms.CharField(
+        label='Confirm Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm password'
+        })
+    )
+    
+    terms_accepted = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        error_messages={
+            'required': 'You must accept the terms and conditions to register.'
+        }
+    )
+    
+    class Meta:
         model = User
-        fields = ("email", "username", "first_name", "last_name")
-
+        fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+    
     def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip().lower()
+        """Validate that email is unique"""
+        email = self.cleaned_data.get('email')
         if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("That email is already in use.")
-        return email
-
+            raise ValidationError('An account with this email already exists.')
+        return email.lower()
+    
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.email = user.email.strip().lower()
-        user.is_active = False          # IMPORTANT: require email verification
-        user.is_verified = False
+        user.email = self.cleaned_data['email']
+        # Username will be set to email in the view
         if commit:
             user.save()
         return user
-    
-class AdminUserCreateForm(UserCreationForm):
-    """
-    Admin-only 'Add User' form.
-    Uses your custom User model (email is unique/required).
-    """
-    class Meta(UserCreationForm.Meta):
-        model = User
-        fields = (
-            "email",
-            "username",
-            "first_name",
-            "last_name",
-            "phone_number",
-            "date_of_birth",
-            "is_staff",
-            "is_superuser",
-            "is_active",
-            "is_verified",
-            "is_premium",
-            "profile_visibility",
-        )
 
-    def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip().lower()
-        if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("That email is already in use.")
-        return email
+
+class ProfileForm(forms.ModelForm):
+    """Form for editing user profile"""
+    
+    class Meta:
+        model = Profile
+        fields = [
+            'bio', 'avatar', 'cover_photo',
+            'home_country', 'home_city', 'current_location',
+            'website', 'instagram', 'twitter'
+        ]
+        widgets = {
+            'bio': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Tell us about yourself...'
+            }),
+            'home_country': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., United States'
+            }),
+            'home_city': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., New York'
+            }),
+            'current_location': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Where are you now?'
+            }),
+            'website': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://...'
+            }),
+            'instagram': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '@username'
+            }),
+            'twitter': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '@username'
+            }),
+        }
+
+
+class UserPreferencesForm(forms.ModelForm):
+    """Form for editing user preferences"""
+    
+    class Meta:
+        model = UserPreferences
+        fields = [
+            'budget_preference', 'travel_styles', 'travel_pace',
+            'fitness_level', 'mobility_restrictions',
+            'email_notifications', 'push_notifications', 'marketing_emails',
+            'notify_bucket_list_reminders', 'notify_trip_updates',
+            'notify_event_reminders', 'notify_friend_activity',
+            'notify_recommendations',
+            'language', 'units', 'preferred_currency', 'timezone'
+        ]
+        widgets = {
+            'budget_preference': forms.Select(attrs={'class': 'form-control'}),
+            'travel_pace': forms.Select(attrs={'class': 'form-control'}),
+            'fitness_level': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1,
+                'max': 5
+            }),
+            'language': forms.Select(attrs={'class': 'form-control'}),
+            'units': forms.Select(attrs={'class': 'form-control'}),
+            'preferred_currency': forms.Select(attrs={'class': 'form-control'}),
+            'timezone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., America/New_York'
+            }),
+        }

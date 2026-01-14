@@ -1,0 +1,189 @@
+<!-- templates/accounts/admin_account_detail.html -->
+{% extends 'base.html' %}
+
+{% block title %}Account Details - {{ account_user.email }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Account Details</h2>
+            <a href="{% url 'admin_account_list' %}" class="btn btn-secondary mb-3">← Back to List</a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Basic Information -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ account_user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Full Name:</th>
+                            <td>{{ account_user.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date of Birth:</th>
+                            <td>{{ account_user.date_of_birth|default:"Not set" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Phone:</th>
+                            <td>{{ account_user.phone_number|default:"Not set" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Profile Information -->
+            {% if profile %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Profile</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Bio:</th>
+                            <td>{{ profile.bio|default:"No bio" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Location:</th>
+                            <td>{{ profile.home_city }}, {{ profile.home_country }}</td>
+                        </tr>
+                        <tr>
+                            <th>Countries Visited:</th>
+                            <td>{{ profile.countries_visited_count }}</td>
+                        </tr>
+                        <tr>
+                            <th>Trips Completed:</th>
+                            <td>{{ profile.trips_completed_count }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Account Status -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Account Status</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Active:</th>
+                            <td>
+                                <span class="badge bg-{{ stats.is_active|yesno:'success,danger' }}">
+                                    {{ stats.is_active|yesno:"Yes,No" }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Verified:</th>
+                            <td>
+                                <span class="badge bg-{{ stats.is_verified|yesno:'success,warning' }}">
+                                    {{ stats.is_verified|yesno:"Yes,No" }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Premium:</th>
+                            <td>
+                                <span class="badge bg-{{ stats.is_premium|yesno:'primary,secondary' }}">
+                                    {{ stats.is_premium|yesno:"Yes,No" }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% if stats.premium_expires %}
+                        <tr>
+                            <th>Premium Expires:</th>
+                            <td>{{ stats.premium_expires }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Staff:</th>
+                            <td>{{ stats.is_staff|yesno:"Yes,No" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date Joined:</th>
+                            <td>{{ stats.date_joined|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Login:</th>
+                            <td>{{ stats.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
+                        </tr>
+                    </table>
+                    
+                    <hr>
+                    
+                    <h6>Actions</h6>
+                    <form method="post" action="{% url 'admin_toggle_user_status' account_user.id %}">
+                        {% csrf_token %}
+                        {% if stats.is_active %}
+                            <button type="submit" name="action" value="deactivate" 
+                                    class="btn btn-warning btn-sm"
+                                    onclick="return confirm('Deactivate this user?')">
+                                Deactivate Account
+                            </button>
+                        {% else %}
+                            <button type="submit" name="action" value="activate" 
+                                    class="btn btn-success btn-sm">
+                                Activate Account
+                            </button>
+                        {% endif %}
+                        
+                        {% if not stats.is_verified %}
+                            <button type="submit" name="action" value="verify" 
+                                    class="btn btn-info btn-sm">
+                                Verify Email
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Preferences -->
+            {% if preferences %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Preferences</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <th>Budget:</th>
+                            <td>{{ preferences.get_budget_preference_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Travel Pace:</th>
+                            <td>{{ preferences.get_travel_pace_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fitness Level:</th>
+                            <td>{{ preferences.fitness_level }}/5</td>
+                        </tr>
+                        <tr>
+                            <th>Language:</th>
+                            <td>{{ preferences.get_language_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Currency:</th>
+                            <td>{{ preferences.preferred_currency }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

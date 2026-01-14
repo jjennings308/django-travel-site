@@ -1,15 +1,12 @@
-#from django.contrib import admin
-#from django.contrib.auth.admin import UserAdmin
-#from .models import User
-
-#admin.site.register(User, UserAdmin)
+# accounts/admin.py
+# This preserves your existing admin.py with timezone features
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.utils.translation import gettext_lazy as _
 from django import forms
 from datetime import datetime
-from zoneinfo import available_timezones,ZoneInfo
+from zoneinfo import available_timezones, ZoneInfo
 
 from .models import User, Profile, UserPreferences
 
@@ -77,6 +74,7 @@ class UserPreferencesInline(admin.StackedInline):
     can_delete = False
     extra = 0
     fk_name = "user"
+    form = UserPreferencesAdminForm
     fields = (
         "timezone",
         "budget_preference",
@@ -84,7 +82,7 @@ class UserPreferencesInline(admin.StackedInline):
         "fitness_level",
         "language",
         "units",
-        # ... include whatever else you want editable here
+        "preferred_currency",
     )
 
 # ----------------------------
@@ -148,6 +146,7 @@ class UserAdmin(DjangoUserAdmin):
                 "is_verified",
                 "is_premium",
                 "premium_expires",
+                "profile_visibility",
             )
         }),
         (_("Important dates"), {
@@ -160,12 +159,12 @@ class UserAdmin(DjangoUserAdmin):
         }),
     )
 
+    # IMPORTANT: Remove username from add_fieldsets since we use email as username
     add_fieldsets = (
         (None, {
             "classes": ("wide",),
             "fields": (
                 "email",
-                "username",
                 "first_name",
                 "last_name",
                 "password1",
@@ -175,8 +174,6 @@ class UserAdmin(DjangoUserAdmin):
             ),
         }),
     )
-
-    USERNAME_FIELD = "email"
 
 
 # ----------------------------

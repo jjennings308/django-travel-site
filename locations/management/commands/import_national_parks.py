@@ -220,6 +220,22 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR('USA country not found. Please create it first.'))
             return
 
+        # State abbreviations mapping
+        state_codes = {
+            'Wyoming': 'WY',
+            'Arizona': 'AZ',
+            'California': 'CA',
+            'Utah': 'UT',
+            'Colorado': 'CO',
+            'Maine': 'ME',
+            'Tennessee': 'TN',
+            'Montana': 'MT',
+            'Washington': 'WA',
+            'Florida': 'FL',
+            'Alaska': 'AK',
+            'Virginia': 'VA',
+        }
+        
         created_count = 0
         updated_count = 0
         skipped_count = 0
@@ -227,10 +243,11 @@ class Command(BaseCommand):
         for park_data in parks_data:
             try:
                 # Get or create region (state)
+                state_code = state_codes.get(park_data['state'], park_data['state'][:2].upper())
                 region, _ = Region.objects.get_or_create(
                     country=usa,
                     name=park_data['state'],
-                    defaults={'code': park_data['state'][:2].upper()}
+                    defaults={'code': state_code}
                 )
 
                 # Get or create city

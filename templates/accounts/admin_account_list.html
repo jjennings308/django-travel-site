@@ -1,0 +1,110 @@
+<!-- templates/accounts/admin_account_list.html -->
+{% extends 'base.html' %}
+
+{% block title %}Manage Accounts{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>User Account Management</h2>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" 
+                           name="search" 
+                           class="form-control" 
+                           placeholder="Search by email or name..."
+                           value="{{ search_query }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <select name="verified" class="form-control">
+                        <option value="">All Users</option>
+                        <option value="yes" {% if verified_filter == 'yes' %}selected{% endif %}>Verified</option>
+                        <option value="no" {% if verified_filter == 'no' %}selected{% endif %}>Unverified</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <select name="active" class="form-control">
+                        <option value="">All Status</option>
+                        <option value="yes" {% if active_filter == 'yes' %}selected{% endif %}>Active</option>
+                        <option value="no" {% if active_filter == 'no' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <select name="premium" class="form-control">
+                        <option value="">All Tiers</option>
+                        <option value="yes" {% if premium_filter == 'yes' %}selected{% endif %}>Premium</option>
+                        <option value="no" {% if premium_filter == 'no' %}selected{% endif %}>Free</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User List -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Verified</th>
+                            <th>Premium</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.get_full_name }}</td>
+                            <td>
+                                <span class="badge bg-{{ user.is_active|yesno:'success,danger' }}">
+                                    {{ user.is_active|yesno:"Active,Inactive" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ user.is_verified|yesno:'success,warning' }}">
+                                    {{ user.is_verified|yesno:"✓,✗" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ user.is_premium|yesno:'primary,secondary' }}">
+                                    {{ user.is_premium|yesno:"Premium,Free" }}
+                                </span>
+                            </td>
+                            <td>{{ user.date_created|date:"Y-m-d" }}</td>
+                            <td>
+                                <a href="{% url 'admin_account_detail' user.id %}" 
+                                   class="btn btn-sm btn-info">View</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No users found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

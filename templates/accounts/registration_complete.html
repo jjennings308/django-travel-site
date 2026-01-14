@@ -1,0 +1,30 @@
+<!-- templates/accounts/registration_complete.html -->
+{% extends 'base.html' %}
+
+{% block title %}Registration Complete{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card">
+                <div class="card-body">
+                    <h2>Check Your Email!</h2>
+                    <p class="lead mt-3">
+                        We've sent a verification link to your email address.
+                    </p>
+                    <p>
+                        Please click the link in the email to activate your account.
+                        If you don't see the email, check your spam folder.
+                    </p>
+                    <hr>
+                    <p class="text-muted">
+                        Didn't receive the email? 
+                        <a href="{% url 'resend_verification' %}">Resend verification email</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
