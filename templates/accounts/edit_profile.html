@@ -1,0 +1,85 @@
+<!-- templates/accounts/edit_profile.html -->
+{% extends 'base.html' %}
+
+{% block title %}Edit Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Edit Profile</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.avatar.id_for_label }}" class="form-label">Profile Picture</label>
+                            {{ form.avatar }}
+                            {% if form.avatar.errors %}
+                                <div class="text-danger">{{ form.avatar.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.cover_photo.id_for_label }}" class="form-label">Cover Photo</label>
+                            {{ form.cover_photo }}
+                            {% if form.cover_photo.errors %}
+                                <div class="text-danger">{{ form.cover_photo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.bio.id_for_label }}" class="form-label">Bio</label>
+                            {{ form.bio }}
+                            {% if form.bio.errors %}
+                                <div class="text-danger">{{ form.bio.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.home_country.id_for_label }}" class="form-label">Home Country</label>
+                                {{ form.home_country }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.home_city.id_for_label }}" class="form-label">Home City</label>
+                                {{ form.home_city }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.current_location.id_for_label }}" class="form-label">Current Location</label>
+                            {{ form.current_location }}
+                        </div>
+                        
+                        <h5 class="mt-4">Social Links</h5>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.website.id_for_label }}" class="form-label">Website</label>
+                            {{ form.website }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.instagram.id_for_label }}" class="form-label">Instagram</label>
+                            {{ form.instagram }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.twitter.id_for_label }}" class="form-label">Twitter</label>
+                            {{ form.twitter }}
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

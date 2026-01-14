@@ -3,6 +3,28 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from .models import User, Profile, UserPreferences
+from datetime import datetime
+from zoneinfo import available_timezones, ZoneInfo
+
+COMMON_TIMEZONES = [
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "UTC",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+]
+
+def timezone_choices_grouped():
+    all_tzs = sorted(available_timezones())
+    common = [(tz, tz) for tz in COMMON_TIMEZONES if tz in all_tzs]
+    remaining = [(tz, tz) for tz in all_tzs if tz not in COMMON_TIMEZONES]
+    return [
+        ("Common Timezones", common),
+        ("All Timezones", remaining),
+    ]
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -124,32 +146,91 @@ class ProfileForm(forms.ModelForm):
 
 
 class UserPreferencesForm(forms.ModelForm):
-    """Form for editing user preferences"""
-    
+    """
+    Form for editing user preferences.
+    travel_styles is stored as a JSON list but edited as a multi-select checkbox list.
+    """
+
+    travel_styles = forms.MultipleChoiceField(
+        choices=UserPreferences.TRAVEL_STYLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select all that apply.",
+    )
+
+    timezone = forms.ChoiceField(
+        choices=[],
+        required=True,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
     class Meta:
         model = UserPreferences
         fields = [
-            'budget_preference', 'travel_styles', 'travel_pace',
-            'fitness_level', 'mobility_restrictions',
-            'email_notifications', 'push_notifications', 'marketing_emails',
-            'notify_bucket_list_reminders', 'notify_trip_updates',
-            'notify_event_reminders', 'notify_friend_activity',
-            'notify_recommendations',
-            'language', 'units', 'preferred_currency', 'timezone'
+            "budget_preference",
+            "travel_styles",
+            "travel_pace",
+            "fitness_level",
+            "mobility_restrictions",
+            "email_notifications",
+            "push_notifications",
+            "marketing_emails",
+            "notify_bucket_list_reminders",
+            "notify_trip_updates",
+            "notify_event_reminders",
+            "notify_friend_activity",
+            "notify_recommendations",
+            "language",
+            "units",
+            "preferred_currency",
+            "timezone",
         ]
         widgets = {
-            'budget_preference': forms.Select(attrs={'class': 'form-control'}),
-            'travel_pace': forms.Select(attrs={'class': 'form-control'}),
-            'fitness_level': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'min': 1,
-                'max': 5
-            }),
-            'language': forms.Select(attrs={'class': 'form-control'}),
-            'units': forms.Select(attrs={'class': 'form-control'}),
-            'preferred_currency': forms.Select(attrs={'class': 'form-control'}),
-            'timezone': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., America/New_York'
-            }),
+            "budget_preference": forms.Select(attrs={"class": "form-control"}),
+            "travel_pace": forms.Select(attrs={"class": "form-control"}),
+            "fitness_level": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 5}),
+            "language": forms.Select(attrs={"class": "form-control"}),
+            "units": forms.Select(attrs={"class": "form-control"}),
+            "preferred_currency": forms.Select(attrs={"class": "form-control"}),
+            # IMPORTANT: do NOT put travel_styles or timezone in widgets here
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # --- Timezone dropdown ---
+        self.fields["timezone"].choices = timezone_choices_grouped()
+        current_tz = (getattr(self.instance, "timezone", None) or "UTC")
+        self.initial.setdefault("timezone", current_tz)
+        try:
+            now_local = datetime.now(ZoneInfo(current_tz)).strftime("%a %b %d, %Y %I:%M %p")
+            self.fields["timezone"].help_text = f"Current local time: {now_local}"
+        except Exception:
+            pass
+
+        # --- Travel styles initial from JSON list ---
+        existing = getattr(self.instance, "travel_styles", None) or []
+        if isinstance(existing, str):
+            # if something ever wrote a string, avoid breaking the form
+            existing = [existing]
+        self.initial.setdefault("travel_styles", existing)
+
+    def clean_travel_styles(self):
+        values = self.cleaned_data.get("travel_styles") or []
+        # Validate against allowed keys (defensive)
+        allowed = {k for k, _ in UserPreferences.TRAVEL_STYLE_CHOICES}
+        bad = [v for v in values if v not in allowed]
+        if bad:
+            raise ValidationError(f"Invalid travel style(s): {', '.join(bad)}")
+
+        # Normalize: dedupe + keep order as defined in choices
+        choice_order = [k for k, _ in UserPreferences.TRAVEL_STYLE_CHOICES]
+        values_set = set(values)
+        normalized = [k for k in choice_order if k in values_set]
+        return normalized
+
+    def save(self, commit=True):
+        # Force JSON list storage
+        self.instance.travel_styles = self.cleaned_data.get("travel_styles") or []
+        self.instance.timezone = self.cleaned_data["timezone"]
+        return super().save(commit=commit)

@@ -207,6 +207,83 @@ def resend_verification(request):
 
 
 # ============================================
+# PROFILE & PREFERENCES MANAGEMENT
+# ============================================
+
+@login_required
+def profile_view(request, username=None):
+    """View a user's profile"""
+    if username:
+        profile_user = get_object_or_404(User, username=username)
+    else:
+        profile_user = request.user
+    
+    # Check privacy settings
+    if profile_user != request.user:
+        if profile_user.profile_visibility == 'private':
+            messages.error(request, 'This profile is private.')
+            return redirect('home')
+        # Add friends-only check here if you have a friends system
+    
+    try:
+        profile = profile_user.profile
+    except Profile.DoesNotExist:
+        profile = Profile.objects.create(user=profile_user)
+    
+    context = {
+        'profile_user': profile_user,
+        'profile': profile,
+        'is_own_profile': profile_user == request.user,
+    }
+    
+    return render(request, 'accounts/profile.html', context)
+
+
+@login_required
+def edit_profile(request):
+    """Edit user profile"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        profile = Profile.objects.create(user=request.user)
+    
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile has been updated.')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ProfileForm(instance=profile)
+    
+    return render(request, 'accounts/edit_profile.html', {'form': form})
+
+
+@login_required
+def edit_preferences(request):
+    """Edit user preferences"""
+    try:
+        preferences = request.user.preferences
+    except UserPreferences.DoesNotExist:
+        preferences = UserPreferences.objects.create(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserPreferencesForm(request.POST, instance=preferences)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your preferences have been updated.')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = UserPreferencesForm(instance=preferences)
+    
+    return render(request, 'accounts/edit_preferences.html', {'form': form})
+
+
+# ============================================
 # ADMIN ACCOUNT MANAGEMENT
 # ============================================
 
@@ -241,7 +318,7 @@ def admin_account_detail(request, user_id):
         'profile': profile,
         'preferences': preferences,
         'stats': {
-            'date_joined': user.date_created,
+            'date_joined': user.created_at,
             'last_login': user.last_login,
             'is_verified': user.is_verified,
             'is_premium': user.is_premium,
@@ -295,7 +372,7 @@ def admin_account_list(request):
         users = users.filter(is_active=False)
     
     # Order by
-    order_by = request.GET.get('order_by', '-date_created')
+    order_by = request.GET.get('order_by', '-created_at')
     users = users.order_by(order_by)
     
     context = {

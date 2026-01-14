@@ -7,16 +7,10 @@ urlpatterns = [
     # Registration & Email Verification
     path('register/', views.register, name='register'),
     path('registration-complete/', views.registration_complete, name='registration_complete'),
-    # Use re_path to properly capture the token with special characters
     re_path(
-    r'^verify-email/(?P<uidb64>[0-9A-Za-z_\-=]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$',
-    views.verify_email,
-    name='verify_email'
-    ),
-    path(
-        'resend-verification/',
-        views.resend_verification,
-        name='resend_verification'
+        r'^verify-email/(?P<uidb64>[0-9A-Za-z_\-=]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$',
+        views.verify_email,
+        name='verify_email'
     ),
     path('resend-verification/', views.resend_verification, name='resend_verification'),
     
@@ -39,16 +33,21 @@ urlpatterns = [
         template_name='accounts/password_reset_done.html'
     ), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
-        template_name='accounts/password_reset_confirm.html'
+    template_name='accounts/password_reset_confirm.html',
+    success_url='/accounts/reset/done/'  # Add this explicit redirect
     ), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='accounts/password_reset_complete.html'
     ), name='password_reset_complete'),
     
+    # Profile Management
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),  # Must come before <username>
+    path('preferences/', views.edit_preferences, name='edit_preferences'),
+    path('profile/<str:username>/', views.profile_view, name='profile_view'),  # Must be last
+    
     # Admin Account Management
     path('admin/accounts/', views.admin_account_list, name='admin_account_list'),
     path('admin/accounts/<int:user_id>/', views.admin_account_detail, name='admin_account_detail'),
     path('admin/accounts/<int:user_id>/toggle-status/', views.admin_toggle_user_status, name='admin_toggle_user_status'),
-    #path("tz/set/", views.set_timezone, name="set-timezone"),
-]  
-
+]

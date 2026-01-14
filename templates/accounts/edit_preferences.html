@@ -1,0 +1,136 @@
+<!-- templates/accounts/edit_preferences.html -->
+{% extends 'base.html' %}
+
+{% block title %}Edit Preferences{% endblock %}
+
+{% block content %}
+{% if form.errors %}
+  <div class="alert alert-danger">
+    {{ form.errors }}
+  </div>
+{% endif %}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Preferences</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h5>Travel Preferences</h5>
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.budget_preference.id_for_label }}" class="form-label">Budget</label>
+                                {{ form.budget_preference }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.travel_pace.id_for_label }}" class="form-label">Travel Pace</label>
+                                {{ form.travel_pace }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.fitness_level.id_for_label }}" class="form-label">Fitness Level (1-5)</label>
+                            {{ form.fitness_level }}
+                            <small class="text-muted">1 = Low activity, 5 = Very active</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Travel Styles</label>
+                            <div class="border rounded p-2">
+                                {{ form.travel_styles }}
+                            </div>
+                            {% if form.travel_styles.help_text %}
+                                <div class="form-text">{{ form.travel_styles.help_text }}</div>
+                            {% endif %}
+                            {% for err in form.travel_styles.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.mobility_restrictions }}
+                            <label class="form-check-label" for="{{ form.mobility_restrictions.id_for_label }}">
+                                I have mobility restrictions
+                            </label>
+                        </div>
+                        
+                        <h5 class="mt-4">Notifications</h5>
+                        <hr>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.email_notifications }}
+                            <label class="form-check-label" for="{{ form.email_notifications.id_for_label }}">
+                                Email Notifications
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.push_notifications }}
+                            <label class="form-check-label" for="{{ form.push_notifications.id_for_label }}">
+                                Push Notifications
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.marketing_emails }}
+                            <label class="form-check-label" for="{{ form.marketing_emails.id_for_label }}">
+                                Marketing Emails
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.notify_bucket_list_reminders }}
+                            <label class="form-check-label" for="{{ form.notify_bucket_list_reminders.id_for_label }}">
+                                Bucket List Reminders
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.notify_trip_updates }}
+                            <label class="form-check-label" for="{{ form.notify_trip_updates.id_for_label }}">
+                                Trip Updates
+                            </label>
+                        </div>
+                        
+                        <h5 class="mt-4">Regional Settings</h5>
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.language.id_for_label }}" class="form-label">Language</label>
+                                {{ form.language }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.units.id_for_label }}" class="form-label">Units</label>
+                                {{ form.units }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.preferred_currency.id_for_label }}" class="form-label">Currency</label>
+                                {{ form.preferred_currency }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.timezone.id_for_label }}" class="form-label">Timezone</label>
+                            {{ form.timezone }}
+                            <small class="text-muted">e.g., America/New_York</small>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Save Preferences</button>
+                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
