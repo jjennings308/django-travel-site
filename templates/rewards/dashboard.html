@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Rewards Dashboard{% endblock %}
+{% block content %}
+<h1>Rewards Dashboard</h1>
+<p>Hi {{ user.get_full_name|default:user.email }}.</p>
+{% endblock %}

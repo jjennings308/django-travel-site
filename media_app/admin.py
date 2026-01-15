@@ -1,7 +1,7 @@
 # media/admin.py
 from django.contrib import admin
 from .models import MediaCategory, Media, MediaAlbum, AlbumMedia
-
+from django.utils.html import format_html
 
 @admin.register(MediaCategory)
 class MediaCategoryAdmin(admin.ModelAdmin):
@@ -12,7 +12,7 @@ class MediaCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ['id', 'get_filename', 'media_type', 'uploaded_by', 'privacy', 'is_approved', 'is_featured', 'created_at']
+    list_display = ['id', 'preview', 'get_filename', 'media_type', 'uploaded_by', 'privacy', 'is_approved', 'is_featured', 'created_at']
     list_filter = ['media_type', 'privacy', 'is_approved', 'is_flagged', 'is_featured', 'is_user_generated']
     search_fields = ['title', 'caption', 'uploaded_by__username', 'uploaded_by__email']
     readonly_fields = ['file_size', 'file_size_mb', 'mime_type', 'file_extension', 'width', 'height', 'duration', 'view_count', 'download_count', 'like_count', 'created_at', 'updated_at']
@@ -83,6 +83,13 @@ class MediaAdmin(admin.ModelAdmin):
         updated = queryset.update(is_featured=True)
         self.message_user(request, f'{updated} media item(s) featured.')
     feature_media.short_description = 'Feature selected media'
+
+
+    def preview(self, obj):
+        if obj.media_type == 'image' and obj.file:
+            return format_html('<img src="{}" style="max-height: 60px;" />', obj.file.url)
+        return "-"
+    preview.short_description = 'Preview'
 
 
 class AlbumMediaInline(admin.TabularInline):

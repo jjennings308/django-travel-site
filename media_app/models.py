@@ -4,7 +4,11 @@ from core.models import TimeStampedModel
 from accounts.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from taggit.managers import TaggableManager
+
 import os
+import uuid
+import mimetypes
 
 
 def user_media_upload_path(instance, filename):
@@ -13,7 +17,7 @@ def user_media_upload_path(instance, filename):
     from django.utils import timezone
     now = timezone.now()
     ext = filename.split('.')[-1]
-    filename = f"{instance.id or 'temp'}.{ext}"
+    filename = f"{uuid.uuid4().hex}.{ext}"
     return f"users/{instance.uploaded_by.id}/{now.year}/{now.month:02d}/{filename}"
 
 
@@ -67,6 +71,7 @@ class Media(TimeStampedModel):
     media_type = models.CharField(
         max_length=20,
         choices=MEDIA_TYPES,
+        blank=True,
         db_index=True
     )
     
@@ -176,11 +181,7 @@ class Media(TimeStampedModel):
     )
     
     # Tags
-    tags = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of tags for this media"
-    )
+    tags =TaggableManager(blank=True)
     
     # Privacy and moderation
     PRIVACY_CHOICES = [
@@ -250,25 +251,36 @@ class Media(TimeStampedModel):
             return round(self.file_size / (1024 * 1024), 2)
         return None
     
+    def is_attached(self):
+        return self.content_type_id is not None and self.object_id is not None
+
+    def attached_object_exists(self):
+        if not self.is_attached():
+            return False
+        return self.content_object is not None
+
     def save(self, *args, **kwargs):
         # Auto-detect file properties
         if self.file:
             self.file_size = self.file.size
-            self.file_extension = os.path.splitext(self.file.name)[1].lower()
-            
+            self.file_extension = os.path.splitext(self.file.name)[1].lower().lstrip('.')
+
+            mime, _ = mimetypes.guess_type(self.file.name)
+            self.mime_type = mime or ''
+
             # Detect media type from extension if not set
             if not self.media_type:
-                image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic']
-                video_exts = ['.mp4', '.mov', '.avi', '.mkv', '.webm']
-                doc_exts = ['.pdf', '.doc', '.docx', '.txt']
-                
+                image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic']
+                video_exts = ['mp4', 'mov', 'avi', 'mkv', 'webm']
+                doc_exts = ['pdf', 'doc', 'docx', 'txt']
+
                 if self.file_extension in image_exts:
                     self.media_type = 'image'
                 elif self.file_extension in video_exts:
                     self.media_type = 'video'
                 elif self.file_extension in doc_exts:
                     self.media_type = 'document'
-        
+
         super().save(*args, **kwargs)
 
 
@@ -306,7 +318,9 @@ class MediaAlbum(TimeStampedModel):
     )
     
     # Stats
-    media_count = models.IntegerField(default=0)
+    @property
+    def media_count(self):
+        return self.album_media_items.count()
     view_count = models.IntegerField(default=0)
     
     class Meta:

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'widget_tweaks',
+    'taggit',
     
     # local apps 
     'core',
@@ -51,7 +52,7 @@ INSTALLED_APPS = [
     'activities',
     'vendors',
     'events',
-    'media',
+    'media_app',
     'bucketlists',
     'trips',
     'reviews',
@@ -153,6 +154,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "uploads"
 
 AUTH_USER_MODEL = 'accounts.User'
 

@@ -4,3 +4,5 @@ __pycache__/
 *.py[cod]
 scripts/*.log
 *$py.class
+/uploads/*
+!/uploads/.gitkeep
