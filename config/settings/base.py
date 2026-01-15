@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'notifications',
     'recommendations',
     'admin_tools',
+    'rewards',
 ]
 
 MIDDLEWARE = [

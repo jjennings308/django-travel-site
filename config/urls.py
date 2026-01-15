@@ -21,5 +21,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include(("core.urls", "core"), namespace="core")),
     path("accounts/", include("accounts.urls")),
-    path("staff/", include("accounts.staff_urls")),  # staff dashboard urls here
+    path("rewards/", include(("rewards.urls"), namespace="rewards")),
+    path("staff/", include(("accounts.staff_urls", "staff"), namespace="staff")),  # staff dashboard urls here
 ]

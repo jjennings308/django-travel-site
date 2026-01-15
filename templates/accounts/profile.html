@@ -28,7 +28,7 @@
                         </div>
                         <div class="col-md-8">
                             <h2>{{ profile_user.get_full_name }}</h2>
-                            <p class="text-muted">@{{ profile_user.username }}</p>
+                            <p class="text-muted">{{ profile_user.username }}</p>
                             {% if profile.home_city or profile.home_country %}
                                 <p><i class="bi bi-geo-alt"></i> {{ profile.home_city }}{% if profile.home_city and profile.home_country %}, {% endif %}{{ profile.home_country }}</p>
                             {% endif %}
