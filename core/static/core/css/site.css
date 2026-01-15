@@ -1,0 +1,29 @@
+/* core/static/core/css/site.css */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030; /* above content */
+  background: var(--bs-body-bg);
+}
+
+.site-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #222;
+}
+
+.site-tagline {
+  font-size: 0.95rem;
+  color: #666;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.navbar {
+  background: #fafafa;
+  border-bottom: 1px solid #ddd;
+  margin-top: 0;
+}

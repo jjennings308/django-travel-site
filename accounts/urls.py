@@ -25,10 +25,11 @@ urlpatterns = [
     
     # Password Reset
     path('password-reset/', auth_views.PasswordResetView.as_view(
-        template_name='accounts/password_reset.html',
-        email_template_name='accounts/emails/password_reset_email.html',
-        subject_template_name='accounts/emails/password_reset_subject.txt'
-    ), name='password_reset'),
+        template_name="accounts/password_reset.html",
+        email_template_name="accounts/emails/password_reset_email.txt",   # TEXT
+        html_email_template_name="accounts/emails/password_reset_email.html",  # HTML
+        subject_template_name="accounts/emails/password_reset_subject.txt",
+    ), name="password_reset",),
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='accounts/password_reset_done.html'
     ), name='password_reset_done'),
@@ -41,6 +42,7 @@ urlpatterns = [
     ), name='password_reset_complete'),
     
     # Profile Management
+    path("theme/set/", views.set_theme, name="set_theme"),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),  # Must come before <username>
     path('preferences/', views.edit_preferences, name='edit_preferences'),

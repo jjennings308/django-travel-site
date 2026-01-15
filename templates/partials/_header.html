@@ -1,0 +1,97 @@
+{% load static %}
+{# templates/partials/_header.html #}
+<header class="site-header border-bottom">
+  <div class="container py-0">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+
+      {# Left: Sidebar toggle + Branding #}
+      <div class="d-flex align-items-center gap-3">
+        {# Sidebar toggle button (opens offcanvas) #}
+        <button class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#sidebarNav"
+                aria-controls="sidebarNav"
+                aria-label="Toggle navigation">
+          ☰
+        </button>
+
+        <div class="branding">
+            <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none">
+                <img 
+                    src="{% static 'core/images/logo/logo-320.webp' %}"
+                    srcset="
+                    {% static 'core/images/logo/logo-320.webp' %} 1x,
+                    {% static 'core/images/logo/logo-640.webp' %} 2x
+                    "
+                    alt="{{ SITE_NAME }}"
+                    height="40"
+                    class="me-2"
+                >
+                <span class="fw-bold fs-5">{{ SITE_NAME }}</span>
+            </a>
+          {% if SITE_TAGLINE %}
+            <div class="site-tagline text-muted small">
+              {{ SITE_TAGLINE }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Right: User/Admin/Login controls (moved from navbar) #}
+      <div class="d-flex align-items-center">
+        <ul class="nav">
+
+          {% if user.is_authenticated %}
+            {% if user.is_staff or user.is_superuser %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="adminDropdownTop"
+                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Admin
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdownTop">
+                  <li><a class="dropdown-item" href="{% url 'admin_account_list' %}">Manage Accounts</a></li>
+                  <li><a class="dropdown-item" href="{% url 'register' %}">Create New User</a></li>
+                </ul>
+              </li>
+            {% endif %}
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Theme
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button class="dropdown-item js-theme" data-theme="default">System Default</button></li>
+                    <li><button class="dropdown-item js-theme" data-theme="light">Light</button></li>
+                    <li><button class="dropdown-item js-theme" data-theme="dark">Dark</button></li>
+                </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="userDropdownTop"
+                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ user.get_full_name|default:user.username }}
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdownTop">
+                <li><a class="dropdown-item" href="{% url 'profile' %}">My Profile</a></li>
+                <li><a class="dropdown-item" href="#">Settings</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item">Logout</button>
+                  </form>
+                </li>
+              </ul>
+            </li>
+
+
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+            <li class="nav-item"><a class="btn btn-primary ms-2" href="{% url 'register' %}">Sign Up</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</header>

@@ -1,4 +1,7 @@
 # accounts/views.py
+import logging
+import json
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -11,10 +14,12 @@ from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
 from django.urls import reverse
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_POST
+
 from .models import User, Profile, UserPreferences
 from .forms import UserRegistrationForm, ProfileForm, UserPreferencesForm
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -415,3 +420,27 @@ def admin_toggle_user_status(request, user_id):
     user.save()
     
     return redirect('admin_account_detail', user_id=user_id)
+
+
+@require_POST
+def set_theme(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
+
+    theme = data.get("theme")
+    if theme not in ("default", "light", "dark"):
+        return JsonResponse({"ok": False, "error": "bad_theme"}, status=400)
+
+    # Save cookie for everyone
+    resp = JsonResponse({"ok": True, "theme": theme})
+    resp.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365)
+
+    # Persist to user prefs if logged in
+    if request.user.is_authenticated and hasattr(request.user, "preferences"):
+        prefs = request.user.preferences
+        prefs.theme = theme
+        prefs.save(update_fields=["theme"])
+
+    return resp

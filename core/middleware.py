@@ -34,3 +34,28 @@ class UserTimezoneMiddleware:
             timezone.deactivate()
 
         return self.get_response(request)
+
+class UserThemeMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        theme = "default"
+
+        if request.user.is_authenticated:
+            prefs = getattr(request.user, "preferences", None)
+            if prefs and getattr(prefs, "theme", None):
+                theme = prefs.theme
+
+        # Fallback for anonymous users (optional)
+        cookie_theme = request.COOKIES.get("ui_theme")
+        if cookie_theme in ("default", "light", "dark"):
+            theme = cookie_theme
+
+        request.theme = theme
+        response = self.get_response(request)
+
+        # keep cookie synced (helps fast load + anonymous users)
+        response.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365)
+
+        return response

@@ -237,6 +237,19 @@ class UserPreferences(TimeStampedModel):
         default="UTC",
         help_text="IANA timezone (e.g. America/New_York)"
     )
+    
+    THEME_CHOICES = [
+        ("default", "System Default"),
+        ("light", "Light"),
+        ("dark", "Dark"),
+    ]
+
+    theme = models.CharField(
+        max_length=10,
+        choices=THEME_CHOICES,
+        default="default",
+        help_text="UI theme preference"
+    )
 
     class Meta:
         db_table = 'user_preferences'
