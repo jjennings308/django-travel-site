@@ -1,0 +1,83 @@
+<!-- templates/accounts/edit_travel_preferences.html -->
+{% extends 'base.html' %}
+
+{% block title %}Travel Preferences{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="bi bi-airplane"></i> Travel Preferences</h3>
+                    <p class="text-muted mb-0">Tell us about your travel style (shown on your profile)</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.budget_preference.id_for_label }}" class="form-label">
+                                    <i class="bi bi-cash-stack"></i> Budget Preference
+                                </label>
+                                {{ form.budget_preference }}
+                                <small class="text-muted d-block">What's your typical travel budget?</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.travel_pace.id_for_label }}" class="form-label">
+                                    <i class="bi bi-speedometer"></i> Travel Pace
+                                </label>
+                                {{ form.travel_pace }}
+                                <small class="text-muted d-block">How do you like to travel?</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.fitness_level.id_for_label }}" class="form-label">
+                                <i class="bi bi-heart-pulse"></i> Fitness Level (1-5)
+                            </label>
+                            {{ form.fitness_level }}
+                            <small class="text-muted d-block">1 = Low activity, 5 = Very active</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-stars"></i> Travel Styles
+                            </label>
+                            <div class="border rounded p-3 bg-light">
+                                {{ form.travel_styles }}
+                            </div>
+                            {% if form.travel_styles.help_text %}
+                                <small class="text-muted d-block mt-1">{{ form.travel_styles.help_text }}</small>
+                            {% endif %}
+                            {% for err in form.travel_styles.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.mobility_restrictions }}
+                            <label class="form-check-label" for="{{ form.mobility_restrictions.id_for_label }}">
+                                I have mobility restrictions
+                            </label>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            <strong>Why we ask:</strong> These preferences help us recommend trips and activities that match your style!
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Preferences
+                            </button>
+                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

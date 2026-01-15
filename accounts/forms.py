@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import User, Profile, UserPreferences
+from .models import User, Profile, TravelPreferences, AccountSettings
 from datetime import datetime
 from zoneinfo import available_timezones, ZoneInfo
 
@@ -145,18 +145,61 @@ class ProfileForm(forms.ModelForm):
         }
 
 
-class UserPreferencesForm(forms.ModelForm):
-    """
-    Form for editing user preferences.
-    travel_styles is stored as a JSON list but edited as a multi-select checkbox list.
-    """
+class TravelPreferencesForm(forms.ModelForm):
+    """Form for editing travel preferences (shown on profile)"""
 
     travel_styles = forms.MultipleChoiceField(
-        choices=UserPreferences.TRAVEL_STYLE_CHOICES,
+        choices=TravelPreferences.TRAVEL_STYLE_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
         help_text="Select all that apply.",
     )
+
+    class Meta:
+        model = TravelPreferences
+        fields = [
+            "budget_preference",
+            "travel_styles",
+            "travel_pace",
+            "fitness_level",
+            "mobility_restrictions",
+        ]
+        widgets = {
+            "budget_preference": forms.Select(attrs={"class": "form-control"}),
+            "travel_pace": forms.Select(attrs={"class": "form-control"}),
+            "fitness_level": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 5}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Travel styles initial from JSON list
+        existing = getattr(self.instance, "travel_styles", None) or []
+        if isinstance(existing, str):
+            existing = [existing]
+        self.initial.setdefault("travel_styles", existing)
+
+    def clean_travel_styles(self):
+        values = self.cleaned_data.get("travel_styles") or []
+        # Validate against allowed keys
+        allowed = {k for k, _ in TravelPreferences.TRAVEL_STYLE_CHOICES}
+        bad = [v for v in values if v not in allowed]
+        if bad:
+            raise ValidationError(f"Invalid travel style(s): {', '.join(bad)}")
+
+        # Normalize: dedupe + keep order as defined in choices
+        choice_order = [k for k, _ in TravelPreferences.TRAVEL_STYLE_CHOICES]
+        values_set = set(values)
+        normalized = [k for k in choice_order if k in values_set]
+        return normalized
+
+    def save(self, commit=True):
+        self.instance.travel_styles = self.cleaned_data.get("travel_styles") or []
+        return super().save(commit=commit)
+
+
+class AccountSettingsForm(forms.ModelForm):
+    """Form for editing account settings (notifications, regional, privacy)"""
 
     timezone = forms.ChoiceField(
         choices=[],
@@ -165,13 +208,9 @@ class UserPreferencesForm(forms.ModelForm):
     )
 
     class Meta:
-        model = UserPreferences
+        model = AccountSettings
         fields = [
-            "budget_preference",
-            "travel_styles",
-            "travel_pace",
-            "fitness_level",
-            "mobility_restrictions",
+            # Notifications
             "email_notifications",
             "push_notifications",
             "marketing_emails",
@@ -180,25 +219,28 @@ class UserPreferencesForm(forms.ModelForm):
             "notify_event_reminders",
             "notify_friend_activity",
             "notify_recommendations",
+            # Regional
             "language",
             "units",
             "preferred_currency",
             "timezone",
+            "theme",
+            # Privacy
+            "show_email_on_profile",
+            "show_trips_publicly",
+            "allow_friend_requests",
         ]
         widgets = {
-            "budget_preference": forms.Select(attrs={"class": "form-control"}),
-            "travel_pace": forms.Select(attrs={"class": "form-control"}),
-            "fitness_level": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 5}),
             "language": forms.Select(attrs={"class": "form-control"}),
             "units": forms.Select(attrs={"class": "form-control"}),
             "preferred_currency": forms.Select(attrs={"class": "form-control"}),
-            # IMPORTANT: do NOT put travel_styles or timezone in widgets here
+            "theme": forms.Select(attrs={"class": "form-control"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # --- Timezone dropdown ---
+        # Timezone dropdown
         self.fields["timezone"].choices = timezone_choices_grouped()
         current_tz = (getattr(self.instance, "timezone", None) or "UTC")
         self.initial.setdefault("timezone", current_tz)
@@ -208,29 +250,6 @@ class UserPreferencesForm(forms.ModelForm):
         except Exception:
             pass
 
-        # --- Travel styles initial from JSON list ---
-        existing = getattr(self.instance, "travel_styles", None) or []
-        if isinstance(existing, str):
-            # if something ever wrote a string, avoid breaking the form
-            existing = [existing]
-        self.initial.setdefault("travel_styles", existing)
-
-    def clean_travel_styles(self):
-        values = self.cleaned_data.get("travel_styles") or []
-        # Validate against allowed keys (defensive)
-        allowed = {k for k, _ in UserPreferences.TRAVEL_STYLE_CHOICES}
-        bad = [v for v in values if v not in allowed]
-        if bad:
-            raise ValidationError(f"Invalid travel style(s): {', '.join(bad)}")
-
-        # Normalize: dedupe + keep order as defined in choices
-        choice_order = [k for k, _ in UserPreferences.TRAVEL_STYLE_CHOICES]
-        values_set = set(values)
-        normalized = [k for k in choice_order if k in values_set]
-        return normalized
-
     def save(self, commit=True):
-        # Force JSON list storage
-        self.instance.travel_styles = self.cleaned_data.get("travel_styles") or []
         self.instance.timezone = self.cleaned_data["timezone"]
         return super().save(commit=commit)

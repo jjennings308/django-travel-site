@@ -17,8 +17,13 @@ from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 
-from .models import User, Profile, UserPreferences
-from .forms import UserRegistrationForm, ProfileForm, UserPreferencesForm
+from .models import User, Profile, TravelPreferences, AccountSettings
+from .forms import (
+    UserRegistrationForm, 
+    ProfileForm, 
+    TravelPreferencesForm,
+    AccountSettingsForm
+)
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +43,6 @@ def register(request):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Create user but don't activate yet (unless created by staff)
                     user = form.save(commit=False)
                     
                     # If staff is creating the user, activate immediately
@@ -46,19 +50,17 @@ def register(request):
                         user.is_active = True
                         user.is_verified = True
                     else:
-                        user.is_active = False  # Inactive until email verification
+                        user.is_active = False
                     
-                    # Set username to email for uniqueness
                     user.username = user.email
-                    # Save first to get a valid password hash
                     user.save()
                     
-                    # Create related Profile and UserPreferences
+                    # Create related models
                     Profile.objects.create(user=user)
-                    UserPreferences.objects.create(user=user)
+                    TravelPreferences.objects.create(user=user)
+                    AccountSettings.objects.create(user=user)
                     
                     # Send verification email only if self-registering
-                    # Generate token AFTER user.save() so password hash is set
                     if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
                         send_verification_email(request, user)
                         messages.success(
@@ -82,7 +84,6 @@ def register(request):
                     f'An error occurred during registration: {str(e)}'
                 )
         else:
-            # Show form validation errors
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
@@ -106,7 +107,6 @@ def send_verification_email(request, user):
 
     subject = 'Verify Your Email Address'
     
-    # Simple text email if HTML template doesn't exist
     text_message = f"""
 Hi {user.first_name},
 
@@ -122,7 +122,6 @@ Thanks,
 The Travel Site Team
 """
     
-    # Try to use HTML template, fall back to text
     try:
         html_message = render_to_string('accounts/emails/verify_email.html', {
             'user': user,
@@ -152,37 +151,23 @@ def verify_email(request, uidb64, token):
         user = None
     
     if user is not None:
-        # Check if already verified
         if user.is_verified and user.is_active:
-            messages.info(
-                request,
-                'Your email is already verified! You can log in.'
-            )
+            messages.info(request, 'Your email is already verified! You can log in.')
             return redirect('login')
         
-        # Validate token
         if default_token_generator.check_token(user, token):
             user.is_active = True
             user.is_verified = True
             user.save()
             
-            messages.success(
-                request,
-                'Your email has been verified! You can now log in.'
-            )
+            messages.success(request, 'Your email has been verified! You can now log in.')
             return redirect('login')
         else:
             logger.warning(f"Invalid token for user {user.email}")
-            messages.error(
-                request,
-                'The verification link is invalid or has expired.'
-            )
+            messages.error(request, 'The verification link is invalid or has expired.')
             return redirect('resend_verification')
     else:
-        messages.error(
-            request,
-            'The verification link is invalid or has expired.'
-        )
+        messages.error(request, 'The verification link is invalid or has expired.')
         return redirect('resend_verification')
 
 
@@ -198,15 +183,9 @@ def resend_verification(request):
         try:
             user = User.objects.get(email=email, is_verified=False)
             send_verification_email(request, user)
-            messages.success(
-                request,
-                'Verification email has been resent. Please check your inbox.'
-            )
+            messages.success(request, 'Verification email has been resent. Please check your inbox.')
         except User.DoesNotExist:
-            messages.error(
-                request,
-                'No unverified account found with that email address.'
-            )
+            messages.error(request, 'No unverified account found with that email address.')
     
     return render(request, 'accounts/resend_verification.html')
 
@@ -228,16 +207,22 @@ def profile_view(request, username=None):
         if profile_user.profile_visibility == 'private':
             messages.error(request, 'This profile is private.')
             return redirect('home')
-        # Add friends-only check here if you have a friends system
     
     try:
         profile = profile_user.profile
     except Profile.DoesNotExist:
         profile = Profile.objects.create(user=profile_user)
     
+    # Get travel preferences for display
+    try:
+        travel_prefs = profile_user.travel_preferences
+    except TravelPreferences.DoesNotExist:
+        travel_prefs = None
+    
     context = {
         'profile_user': profile_user,
         'profile': profile,
+        'travel_preferences': travel_prefs,
         'is_own_profile': profile_user == request.user,
     }
     
@@ -267,25 +252,57 @@ def edit_profile(request):
 
 
 @login_required
-def edit_preferences(request):
-    """Edit user preferences"""
+def edit_travel_preferences(request):
+    """Edit travel preferences (shown on profile)"""
     try:
-        preferences = request.user.preferences
-    except UserPreferences.DoesNotExist:
-        preferences = UserPreferences.objects.create(user=request.user)
+        travel_prefs = request.user.travel_preferences
+    except TravelPreferences.DoesNotExist:
+        travel_prefs = TravelPreferences.objects.create(user=request.user)
     
     if request.method == 'POST':
-        form = UserPreferencesForm(request.POST, instance=preferences)
+        form = TravelPreferencesForm(request.POST, instance=travel_prefs)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your preferences have been updated.')
+            messages.success(request, 'Your travel preferences have been updated.')
             return redirect('profile')
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
-        form = UserPreferencesForm(instance=preferences)
+        form = TravelPreferencesForm(instance=travel_prefs)
     
-    return render(request, 'accounts/edit_preferences.html', {'form': form})
+    return render(request, 'accounts/edit_travel_preferences.html', {'form': form})
+
+
+@login_required
+def settings_view(request):
+    """Edit account settings (notifications, regional, privacy)"""
+    try:
+        account_settings = request.user.settings
+    except AccountSettings.DoesNotExist:
+        account_settings = AccountSettings.objects.create(user=request.user)
+
+    if request.method == 'POST':
+        form = AccountSettingsForm(request.POST, instance=account_settings)
+        if form.is_valid():
+            settings_obj = form.save()
+
+            # ✅ BELT & SUSPENDERS: keep cookie in sync with DB
+            response = redirect('settings')
+            response.set_cookie(
+                "ui_theme",
+                settings_obj.theme,
+                max_age=60 * 60 * 24 * 365,
+                samesite="Lax",
+            )
+
+            messages.success(request, 'Your settings have been updated.')
+            return response
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = AccountSettingsForm(instance=account_settings)
+
+    return render(request, 'accounts/settings.html', {'form': form})
 
 
 # ============================================
@@ -300,28 +317,29 @@ def is_staff_or_superuser(user):
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def admin_account_detail(request, user_id):
-    """
-    Admin view to see detailed account information
-    Accessible only to staff and superusers
-    """
+    """Admin view to see detailed account information"""
     user = get_object_or_404(User, id=user_id)
     
-    # Get related objects
     try:
         profile = user.profile
     except Profile.DoesNotExist:
         profile = None
         
     try:
-        preferences = user.preferences
-    except UserPreferences.DoesNotExist:
-        preferences = None
+        travel_prefs = user.travel_preferences
+    except TravelPreferences.DoesNotExist:
+        travel_prefs = None
     
-    # Gather account statistics
+    try:
+        settings_obj = user.settings
+    except AccountSettings.DoesNotExist:
+        settings_obj = None
+    
     context = {
-        'account_user': user,  # 'account_user' to avoid conflict with request.user
+        'account_user': user,
         'profile': profile,
-        'preferences': preferences,
+        'travel_preferences': travel_prefs,
+        'account_settings': settings_obj,
         'stats': {
             'date_joined': user.created_at,
             'last_login': user.last_login,
@@ -339,12 +357,9 @@ def admin_account_detail(request, user_id):
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def admin_account_list(request):
-    """
-    Admin view to list all user accounts with search and filters
-    """
-    users = User.objects.all().select_related('profile', 'preferences')
+    """Admin view to list all user accounts with search and filters"""
+    users = User.objects.all().select_related('profile')
     
-    # Search functionality
     search_query = request.GET.get('search', '')
     if search_query:
         users = users.filter(
@@ -355,28 +370,24 @@ def admin_account_list(request):
             last_name__icontains=search_query
         )
     
-    # Filter by verification status
     verified_filter = request.GET.get('verified', '')
     if verified_filter == 'yes':
         users = users.filter(is_verified=True)
     elif verified_filter == 'no':
         users = users.filter(is_verified=False)
     
-    # Filter by premium status
     premium_filter = request.GET.get('premium', '')
     if premium_filter == 'yes':
         users = users.filter(is_premium=True)
     elif premium_filter == 'no':
         users = users.filter(is_premium=False)
     
-    # Filter by active status
     active_filter = request.GET.get('active', '')
     if active_filter == 'yes':
         users = users.filter(is_active=True)
     elif active_filter == 'no':
         users = users.filter(is_active=False)
     
-    # Order by
     order_by = request.GET.get('order_by', '-created_at')
     users = users.order_by(order_by)
     
@@ -395,9 +406,7 @@ def admin_account_list(request):
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def admin_toggle_user_status(request, user_id):
-    """
-    Admin action to toggle user active status
-    """
+    """Admin action to toggle user active status"""
     if request.method != 'POST':
         return HttpResponse('Method not allowed', status=405)
     
@@ -424,23 +433,23 @@ def admin_toggle_user_status(request, user_id):
 
 @require_POST
 def set_theme(request):
+    """Set UI theme preference"""
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
         return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
 
     theme = data.get("theme")
-    if theme not in ("default", "light", "dark"):
+    if theme not in ("brand", "light", "dark"):
         return JsonResponse({"ok": False, "error": "bad_theme"}, status=400)
 
-    # Save cookie for everyone
     resp = JsonResponse({"ok": True, "theme": theme})
     resp.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365)
 
-    # Persist to user prefs if logged in
-    if request.user.is_authenticated and hasattr(request.user, "preferences"):
-        prefs = request.user.preferences
-        prefs.theme = theme
-        prefs.save(update_fields=["theme"])
+    # Persist to AccountSettings if logged in
+    if request.user.is_authenticated and hasattr(request.user, "settings"):
+        settings = request.user.settings
+        settings.theme = theme
+        settings.save(update_fields=["theme"])
 
     return resp

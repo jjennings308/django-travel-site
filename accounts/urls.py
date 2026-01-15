@@ -26,30 +26,26 @@ urlpatterns = [
     # Password Reset
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name="accounts/password_reset.html",
-        email_template_name="accounts/emails/password_reset_email.txt",   # TEXT
-        html_email_template_name="accounts/emails/password_reset_email.html",  # HTML
+        email_template_name="accounts/emails/password_reset_email.txt",
+        html_email_template_name="accounts/emails/password_reset_email.html",
         subject_template_name="accounts/emails/password_reset_subject.txt",
-    ), name="password_reset",),
+    ), name="password_reset"),
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='accounts/password_reset_done.html'
     ), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
-    template_name='accounts/password_reset_confirm.html',
-    success_url='/accounts/reset/done/'  # Add this explicit redirect
+        template_name='accounts/password_reset_confirm.html',
+        success_url='/accounts/reset/done/'
     ), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='accounts/password_reset_complete.html'
     ), name='password_reset_complete'),
     
-    # Profile Management
+    # Profile & Settings Management
     path("theme/set/", views.set_theme, name="set_theme"),
     path('profile/', views.profile_view, name='profile'),
-    path('profile/edit/', views.edit_profile, name='edit_profile'),  # Must come before <username>
-    path('preferences/', views.edit_preferences, name='edit_preferences'),
-    path('profile/<str:username>/', views.profile_view, name='profile_view'),  # Must be last
-    
-    # Admin Account Management
-    path('admin/accounts/', views.admin_account_list, name='admin_account_list'),
-    path('admin/accounts/<int:user_id>/', views.admin_account_detail, name='admin_account_detail'),
-    path('admin/accounts/<int:user_id>/toggle-status/', views.admin_toggle_user_status, name='admin_toggle_user_status'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
+    path('travel-preferences/', views.edit_travel_preferences, name='edit_travel_preferences'),
+    path('settings/', views.settings_view, name='settings'),  # NEW: Account Settings
+    path('profile/<str:username>/', views.profile_view, name='profile_view'),
 ]

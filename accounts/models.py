@@ -116,13 +116,13 @@ class Profile(TimeStampedModel):
         return f"Profile: {self.user.get_full_name()}"
 
 
-class UserPreferences(TimeStampedModel):
-    """User preferences for travel style and notifications"""
+class TravelPreferences(TimeStampedModel):
+    """Travel style preferences - shown on profile"""
     
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='preferences',
+        related_name='travel_preferences',
         primary_key=True
     )
     
@@ -182,6 +182,25 @@ class UserPreferences(TimeStampedModel):
         help_text="User has mobility restrictions"
     )
     
+    class Meta:
+        db_table = 'travel_preferences'
+        verbose_name = 'Travel Preference'
+        verbose_name_plural = 'Travel Preferences'
+    
+    def __str__(self):
+        return f"Travel Preferences: {self.user.email}"
+
+
+class AccountSettings(TimeStampedModel):
+    """Account settings - notifications, regional, privacy"""
+    
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='settings',
+        primary_key=True
+    )
+    
     # Notification preferences
     email_notifications = models.BooleanField(default=True)
     push_notifications = models.BooleanField(default=True)
@@ -239,22 +258,176 @@ class UserPreferences(TimeStampedModel):
     )
     
     THEME_CHOICES = [
-        ("default", "System Default"),
+        ("brand", "ShareBucketList Theme"),
         ("light", "Light"),
         ("dark", "Dark"),
     ]
-
     theme = models.CharField(
         max_length=10,
         choices=THEME_CHOICES,
-        default="default",
+        default="brand",
+        help_text="UI theme preference"
+    )
+    
+    # Privacy settings
+    show_email_on_profile = models.BooleanField(
+        default=False,
+        help_text="Display email address on public profile"
+    )
+    show_trips_publicly = models.BooleanField(
+        default=True,
+        help_text="Allow others to see your trips"
+    )
+    allow_friend_requests = models.BooleanField(
+        default=True,
+        help_text="Allow others to send friend requests"
+    )
+    
+    class Meta:
+        db_table = 'account_settings'
+        verbose_name = 'Account Settings'
+        verbose_name_plural = 'Account Settings'
+    
+    def __str__(self):
+        return f"Settings: {self.user.email}"
+
+
+# Keep old model for migration compatibility
+class UserPreferences(TimeStampedModel):
+    """DEPRECATED - Use TravelPreferences and AccountSettings instead"""
+    
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='preferences',
+        primary_key=True
+    )
+    
+    # Travel preferences
+    BUDGET_CHOICES = [
+        ('budget', 'Budget Traveler'),
+        ('moderate', 'Moderate'),
+        ('luxury', 'Luxury'),
+        ('mixed', 'Mixed / Flexible')
+    ]
+    budget_preference = models.CharField(
+        max_length=20,
+        choices=BUDGET_CHOICES,
+        default='moderate'
+    )
+    
+    TRAVEL_STYLE_CHOICES = [
+        ('adventure', 'Adventure'),
+        ('relaxation', 'Relaxation'),
+        ('cultural', 'Cultural Immersion'),
+        ('foodie', 'Food & Dining'),
+        ('nature', 'Nature & Wildlife'),
+        ('urban', 'City Explorer'),
+        ('backpacker', 'Backpacker'),
+        ('family', 'Family Friendly')
+    ]
+    travel_styles = models.JSONField(
+        default=list,
+        help_text="List of preferred travel styles"
+    )
+    
+    PACE_CHOICES = [
+        ('slow', 'Slow - Few activities, lots of relaxation'),
+        ('moderate', 'Moderate - Balanced itinerary'),
+        ('fast', 'Fast - Packed schedule, see everything')
+    ]
+    travel_pace = models.CharField(
+        max_length=20,
+        choices=PACE_CHOICES,
+        default='moderate'
+    )
+    
+    preferred_activities = models.JSONField(
+        default=list,
+        help_text="List of activity category IDs user prefers"
+    )
+    
+    fitness_level = models.IntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="1=Low, 5=Very High"
+    )
+    mobility_restrictions = models.BooleanField(
+        default=False,
+        help_text="User has mobility restrictions"
+    )
+    
+    # Notification preferences
+    email_notifications = models.BooleanField(default=True)
+    push_notifications = models.BooleanField(default=True)
+    marketing_emails = models.BooleanField(default=False)
+    
+    notify_bucket_list_reminders = models.BooleanField(default=True)
+    notify_trip_updates = models.BooleanField(default=True)
+    notify_event_reminders = models.BooleanField(default=True)
+    notify_friend_activity = models.BooleanField(default=True)
+    notify_recommendations = models.BooleanField(default=True)
+    
+    LANGUAGE_CHOICES = [
+        ('en', 'English'),
+        ('es', 'Spanish'),
+        ('fr', 'French'),
+        ('de', 'German'),
+        ('zh', 'Chinese'),
+        ('ja', 'Japanese')
+    ]
+    language = models.CharField(
+        max_length=5,
+        choices=LANGUAGE_CHOICES,
+        default='en'
+    )
+    
+    UNIT_CHOICES = [
+        ('metric', 'Metric (km, °C)'),
+        ('imperial', 'Imperial (miles, °F)')
+    ]
+    units = models.CharField(
+        max_length=10,
+        choices=UNIT_CHOICES,
+        default='imperial'
+    )
+    
+    CURRENCY_CHOICES = [
+        ('USD', 'US Dollar'),
+        ('EUR', 'Euro'),
+        ('GBP', 'British Pound'),
+        ('JPY', 'Japanese Yen'),
+        ('CAD', 'Canadian Dollar'),
+        ('AUD', 'Australian Dollar')
+    ]
+    preferred_currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default='USD'
+    )
+    
+    timezone = models.CharField(
+        max_length=50,
+        default="UTC",
+        help_text="IANA timezone (e.g. America/New_York)"
+    )
+    
+    THEME_CHOICES = [
+        ("brand", "ShareBucketList Theme"),
+        ("light", "Light"),
+        ("dark", "Dark"),
+    ]
+    theme = models.CharField(
+        max_length=10,
+        choices=THEME_CHOICES,
+        default="brand",
         help_text="UI theme preference"
     )
 
     class Meta:
         db_table = 'user_preferences'
-        verbose_name = 'User Preference'
-        verbose_name_plural = 'User Preferences'
+        verbose_name = 'User Preference (Deprecated)'
+        verbose_name_plural = 'User Preferences (Deprecated)'
     
     def __str__(self):
         return f"Preferences: {self.user.email}"

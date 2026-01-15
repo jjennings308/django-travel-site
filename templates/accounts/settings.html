@@ -1,0 +1,198 @@
+<!-- templates/accounts/settings.html -->
+{% extends 'base.html' %}
+
+{% block title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="bi bi-gear"></i> Account Settings</h3>
+                    <p class="text-muted mb-0">Manage your notifications, regional preferences, and privacy</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Notifications Section -->
+                        <h5 class="border-bottom pb-2"><i class="bi bi-bell"></i> Notifications</h5>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="mb-3 form-check">
+                                    {{ form.email_notifications }}
+                                    <label class="form-check-label" for="{{ form.email_notifications.id_for_label }}">
+                                        <strong>Email Notifications</strong>
+                                        <br><small class="text-muted">Receive updates via email</small>
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    {{ form.push_notifications }}
+                                    <label class="form-check-label" for="{{ form.push_notifications.id_for_label }}">
+                                        <strong>Push Notifications</strong>
+                                        <br><small class="text-muted">Browser notifications for updates</small>
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    {{ form.marketing_emails }}
+                                    <label class="form-check-label" for="{{ form.marketing_emails.id_for_label }}">
+                                        <strong>Marketing Emails</strong>
+                                        <br><small class="text-muted">Tips, offers, and travel inspiration</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <p class="text-muted small"><strong>Get notified about:</strong></p>
+                                
+                                <div class="mb-2 form-check">
+                                    {{ form.notify_bucket_list_reminders }}
+                                    <label class="form-check-label" for="{{ form.notify_bucket_list_reminders.id_for_label }}">
+                                        Bucket List Reminders
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2 form-check">
+                                    {{ form.notify_trip_updates }}
+                                    <label class="form-check-label" for="{{ form.notify_trip_updates.id_for_label }}">
+                                        Trip Updates
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2 form-check">
+                                    {{ form.notify_event_reminders }}
+                                    <label class="form-check-label" for="{{ form.notify_event_reminders.id_for_label }}">
+                                        Event Reminders
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2 form-check">
+                                    {{ form.notify_friend_activity }}
+                                    <label class="form-check-label" for="{{ form.notify_friend_activity.id_for_label }}">
+                                        Friend Activity
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2 form-check">
+                                    {{ form.notify_recommendations }}
+                                    <label class="form-check-label" for="{{ form.notify_recommendations.id_for_label }}">
+                                        Personalized Recommendations
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Regional Settings -->
+                        <h5 class="border-bottom pb-2 mt-4"><i class="bi bi-globe"></i> Regional Settings</h5>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.language.id_for_label }}" class="form-label">Language</label>
+                                {{ form.language }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.units.id_for_label }}" class="form-label">Units</label>
+                                {{ form.units }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.preferred_currency.id_for_label }}" class="form-label">Preferred Currency</label>
+                                {{ form.preferred_currency }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.theme.id_for_label }}" class="form-label">Theme</label>
+                                {{ form.theme }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.timezone.id_for_label }}" class="form-label">Timezone</label>
+                            {{ form.timezone }}
+                            {% if form.timezone.help_text %}
+                                <small class="text-muted d-block">{{ form.timezone.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Privacy Settings -->
+                        <h5 class="border-bottom pb-2 mt-4"><i class="bi bi-shield-lock"></i> Privacy</h5>
+                        
+                        <div class="mt-3">
+                            <div class="mb-3 form-check">
+                                {{ form.show_email_on_profile }}
+                                <label class="form-check-label" for="{{ form.show_email_on_profile.id_for_label }}">
+                                    <strong>Show email on public profile</strong>
+                                    <br><small class="text-muted">Let others see your email address</small>
+                                </label>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                {{ form.show_trips_publicly }}
+                                <label class="form-check-label" for="{{ form.show_trips_publicly.id_for_label }}">
+                                    <strong>Show trips publicly</strong>
+                                    <br><small class="text-muted">Allow others to see your trips</small>
+                                </label>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                {{ form.allow_friend_requests }}
+                                <label class="form-check-label" for="{{ form.allow_friend_requests.id_for_label }}">
+                                    <strong>Allow friend requests</strong>
+                                    <br><small class="text-muted">Let others send you friend requests</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Settings
+                            </button>
+                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Account Management Section -->
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-person-gear"></i> Account Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Change Email</h6>
+                            <p class="text-muted small">Update your email address</p>
+                            <button class="btn btn-outline-primary btn-sm" disabled>Coming Soon</button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>Change Password</h6>
+                            <p class="text-muted small">Update your password</p>
+                            <a href="{% url 'password_reset' %}" class="btn btn-outline-primary btn-sm">Change Password</a>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Download Your Data</h6>
+                            <p class="text-muted small">Export all your data</p>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>Coming Soon</button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-danger">Delete Account</h6>
+                            <p class="text-muted small">Permanently delete your account</p>
+                            <button class="btn btn-outline-danger btn-sm" disabled>Coming Soon</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

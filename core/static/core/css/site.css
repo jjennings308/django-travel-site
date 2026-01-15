@@ -1,5 +1,29 @@
 /* core/static/core/css/site.css */
 
+body[data-theme="brand"] {
+  /* Core */
+  --bs-body-bg: #f4f7fb;
+  --bs-body-color: #1f2937;
+
+  /* Cards / surfaces */
+  --bs-card-bg: #ffffff;
+  --bs-card-border-color: #e5e7eb;
+
+  /* Primary brand color */
+  --bs-primary: #2563eb;
+  --bs-primary-rgb: 37, 99, 235;
+
+  /* Links */
+  --bs-link-color: #2563eb;
+  --bs-link-hover-color: #1d4ed8;
+
+  /* Borders & muted text */
+  --bs-border-color: #e5e7eb;
+  --bs-secondary-color: #6b7280;
+
+}
+
+
 .site-header {
   position: sticky;
   top: 0;

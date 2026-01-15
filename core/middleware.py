@@ -40,22 +40,26 @@ class UserThemeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        theme = "default"
+        theme = "brand"
 
+        user_theme = None
         if request.user.is_authenticated:
-            prefs = getattr(request.user, "preferences", None)
-            if prefs and getattr(prefs, "theme", None):
-                theme = prefs.theme
+            s = getattr(request.user, "settings", None)
+            user_theme = getattr(s, "theme", None) if s else None
 
-        # Fallback for anonymous users (optional)
-        cookie_theme = request.COOKIES.get("ui_theme")
-        if cookie_theme in ("default", "light", "dark"):
-            theme = cookie_theme
+        # Prefer DB theme if valid
+        if user_theme in ("brand", "light", "dark"):
+            theme = user_theme
+        else:
+            # Only fall back to cookie for anonymous / missing prefs
+            cookie_theme = request.COOKIES.get("ui_theme")
+            if cookie_theme in ("brand", "light", "dark"):
+                theme = cookie_theme
 
         request.theme = theme
         response = self.get_response(request)
 
-        # keep cookie synced (helps fast load + anonymous users)
+        # keep cookie synced with resolved theme
         response.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365)
 
         return response

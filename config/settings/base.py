@@ -151,15 +151,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = 'accounts.User'
 
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "core:dashboard"
-LOGOUT_REDIRECT_URL = "core:home"
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'core:dashboard'
+LOGOUT_REDIRECT_URL = 'core:home'
 
-DEFAULT_FROM_EMAIL = "no-reply@sharebucketlist.com"
+DEFAULT_FROM_EMAIL = 'no-reply@sharebucketlist.com'
 
-SITE_NAME = "ShareBucketList"
-SITE_TAGLINE = "Plan trips. Share dreams. Travel better."
+SITE_NAME = 'ShareBucketList'
+SITE_TAGLINE = 'Plan it. Live it. Share it.'
