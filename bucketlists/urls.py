@@ -8,5 +8,5 @@ app_name = 'bucketlists'
 
 urlpatterns = [
     # Dashboard
-    path('', views.bucketlists_dashboard, name='dashboard'),
+    path('', views.dashboard, name='dashboard'),
 ]

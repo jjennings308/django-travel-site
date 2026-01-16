@@ -43,8 +43,8 @@
         <ul class="nav">
 
           {% if user.is_authenticated %}
+            {% if user.can_access_staff %}
             {# Admin Dropdown #}
-            {% if user.is_staff or user.is_superuser %}
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="adminDropdownTop"
                  role="button" data-bs-toggle="dropdown" aria-expanded="false">

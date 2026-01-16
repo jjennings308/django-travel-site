@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 def register(request):
     """Handle user registration"""
-    if request.user.is_authenticated and not (request.user.is_staff or request.user.is_superuser):
-        return redirect('home')
+    if request.user.is_authenticated and not request.user.can_access_staff:
+        return redirect('core:home')
     
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -46,7 +46,7 @@ def register(request):
                     user = form.save(commit=False)
                     
                     # If staff is creating the user, activate immediately
-                    if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
+                    if request.user.is_authenticated and request.user.can_access_staff:
                         user.is_active = True
                         user.is_verified = True
                     else:
@@ -61,7 +61,7 @@ def register(request):
                     AccountSettings.objects.create(user=user)
                     
                     # Send verification email only if self-registering
-                    if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
+                    if not (request.user.is_authenticated and request.user.can_access_staff):
                         send_verification_email(request, user)
                         messages.success(
                             request,
@@ -73,7 +73,7 @@ def register(request):
                             request,
                             f'User {user.email} has been created successfully and is immediately active.'
                         )
-                        return redirect('admin_account_list')
+                        return redirect('staff:admin_account_list')
                     
             except Exception as e:
                 import traceback
@@ -206,7 +206,7 @@ def profile_view(request, username=None):
     if profile_user != request.user:
         if profile_user.profile_visibility == 'private':
             messages.error(request, 'This profile is private.')
-            return redirect('home')
+            return redirect('core:home')
     
     try:
         profile = profile_user.profile
@@ -309,13 +309,11 @@ def settings_view(request):
 # ADMIN ACCOUNT MANAGEMENT
 # ============================================
 
-def is_staff_or_superuser(user):
-    """Check if user is staff or superuser"""
-    return user.is_staff or user.is_superuser
-
+def can_access_staff_dashboard(user):
+     return user.is_authenticated and getattr(user, "can_access_staff", False)
 
 @login_required
-@user_passes_test(is_staff_or_superuser)
+@user_passes_test(can_access_staff_dashboard)
 def admin_account_detail(request, user_id):
     """Admin view to see detailed account information"""
     user = get_object_or_404(User, id=user_id)
@@ -355,7 +353,7 @@ def admin_account_detail(request, user_id):
 
 
 @login_required
-@user_passes_test(is_staff_or_superuser)
+@user_passes_test(can_access_staff_dashboard)
 def admin_account_list(request):
     """Admin view to list all user accounts with search and filters"""
     users = User.objects.all().select_related('profile')
@@ -404,7 +402,7 @@ def admin_account_list(request):
 
 
 @login_required
-@user_passes_test(is_staff_or_superuser)
+@user_passes_test(can_access_staff_dashboard)
 def admin_toggle_user_status(request, user_id):
     """Admin action to toggle user active status"""
     if request.method != 'POST':

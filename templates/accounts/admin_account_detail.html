@@ -8,7 +8,7 @@
     <div class="row">
         <div class="col-md-12">
             <h2>Account Details</h2>
-            <a href="{% url 'admin_account_list' %}" class="btn btn-secondary mb-3">← Back to List</a>
+            <a href="{% url 'staff:admin_account_list' %}" class="btn btn-secondary mb-3">← Back to List</a>
         </div>
     </div>
     
@@ -126,7 +126,7 @@
                     <hr>
                     
                     <h6>Actions</h6>
-                    <form method="post" action="{% url 'admin_toggle_user_status' account_user.id %}">
+                    <form method="post" action="{% url 'staff:admin_toggle_user_status' account_user.id %}">
                         {% csrf_token %}
                         {% if stats.is_active %}
                             <button type="submit" name="action" value="deactivate" 

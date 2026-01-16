@@ -8,5 +8,5 @@ app_name = 'trips'
 
 urlpatterns = [
     # Dashboard
-    path('', views.trips_dashboard, name='dashboard'),
+    path('', views.dashboard, name='dashboard'),
 ]

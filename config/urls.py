@@ -1,4 +1,4 @@
-"""
+'''
 URL configuration for config project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -13,7 +13,7 @@ Class-based views
 Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+'''
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -21,16 +21,16 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", include(("core.urls", "core"), namespace="core")),
-    path("accounts/", include("accounts.urls")),
-    path("rewards/", include(("rewards.urls"), namespace="rewards")),
-    path("bucketlists/", include(("bucketlists.urls"), namespace="bucketlists")),
-    path("activities/", include(("activities.urls"), namespace="activities")),
-    path("events/", include(("events.urls"), namespace="events")),
-    path("locations/", include(("locations.urls"), namespace="locations")),
-    path("trips/", include(("trips.urls"), namespace="trips")),
-    path("staff/", include(("accounts.staff_urls", "staff"), namespace="staff")),  # staff dashboard urls here
+    path('admin/', admin.site.urls),
+    path('', include(('core.urls', 'core'), namespace='core')),
+    path('accounts/', include('accounts.urls')),
+    path('rewards/', include(('rewards.urls','rewards'), namespace='rewards')),
+    path('bucketlists/', include(('bucketlists.urls', 'bucketlists'), namespace='bucketlists')),
+    path('activities/', include(('activities.urls', 'activities'), namespace='activities')),
+    path('events/', include(('events.urls', 'events'), namespace='events')),
+    path('locations/', include(('locations.urls', 'locations'), namespace='locations')),
+    path('trips/', include(('trips.urls', 'trips'), namespace='trips')),
+    path('staff/', include(('accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
 ]
 
 if settings.DEBUG:

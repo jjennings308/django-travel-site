@@ -49,6 +49,10 @@ class User(AbstractUser, TimeStampedModel):
         db_table = 'users'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+        permissions = [
+            ("can_access_staff_dashboard", "Can access staff dashboard"),
+        ]
+
     
     def __str__(self):
         return f"{self.get_full_name()} ({self.email})"
@@ -60,6 +64,11 @@ class User(AbstractUser, TimeStampedModel):
             from core.utils import calculate_age
             return calculate_age(self.date_of_birth)
         return None
+    
+    @property
+    def can_access_staff(self):
+        return self.is_superuser or self.has_perm("accounts.can_access_staff_dashboard")
+
 
 
 class Profile(TimeStampedModel):
