@@ -1,0 +1,99 @@
+{# ============================================ #}
+{# rewards/templates/rewards/programs_browse.html #}
+{# ============================================ #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Browse Rewards Programs{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Browse Rewards Programs</h1>
+            <p class="text-muted">Explore travel loyalty programs to track</p>
+        </div>
+        {% if user.is_authenticated %}
+        <div class="col-md-4 text-end">
+            <a href="{% url 'rewards:dashboard' %}" class="btn btn-primary">
+                My Rewards Dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Search & Filter #}
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-8">
+                    {{ form.search }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.program_type }}
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Programs by Type #}
+    {% if programs_by_type %}
+        {% for type_name, type_programs in programs_by_type.items %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h4 class="mb-0">
+                    {% if type_name == "Airline" %}<i class="bi bi-airplane"></i>
+                    {% elif type_name == "Hotel" %}<i class="bi bi-building"></i>
+                    {% elif type_name == "Car Rental" %}<i class="bi bi-car-front"></i>
+                    {% elif type_name == "Train/Rail" %}<i class="bi bi-train-front"></i>
+                    {% elif type_name == "Cruise Line" %}<i class="bi bi-water"></i>
+                    {% else %}<i class="bi bi-star"></i>
+                    {% endif %}
+                    {{ type_name }} Programs
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for program in type_programs %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ program.company }}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">{{ program.name }}</h6>
+                                {% if program.description %}
+                                <p class="card-text">{{ program.description|truncatewords:20 }}</p>
+                                {% endif %}
+                                {% if program.tier_names %}
+                                <p class="mb-2">
+                                    <small class="text-muted">Tiers:</small>
+                                    {% for tier in program.tier_names %}
+                                    <span class="badge bg-secondary">{{ tier }}</span>
+                                    {% endfor %}
+                                </p>
+                                {% endif %}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="bi bi-people"></i> {{ program.member_count }} member{{ program.member_count|pluralize }}
+                                    </small>
+                                    <a href="{% url 'rewards:program_detail' program.id %}" class="btn btn-sm btn-outline-primary">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            No programs found. Try adjusting your search filters.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

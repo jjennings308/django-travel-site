@@ -1,0 +1,113 @@
+{# ============================================ #}
+{# rewards/templates/rewards/program_detail.html #}
+{# ============================================ #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ program.name }} - {{ program.company }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'rewards:programs_browse' %}">Programs</a></li>
+                    <li class="breadcrumb-item active">{{ program.name }}</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-1">{{ program.company }}</h2>
+                    <p class="mb-0">{{ program.name }}</p>
+                </div>
+                <div class="card-body">
+                    {% if program.logo %}
+                    <div class="text-center mb-4">
+                        <img src="{{ program.logo.url }}" alt="{{ program.name }}" style="max-height: 100px;">
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <h5>About This Program</h5>
+                        {% if program.description %}
+                        <p>{{ program.description }}</p>
+                        {% else %}
+                        <p class="text-muted">No description available.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Program Details</h5>
+                            <table class="table">
+                                <tr>
+                                    <th>Type:</th>
+                                    <td>
+                                        <span class="badge bg-info">{{ program.get_program_type_display }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Company:</th>
+                                    <td>{{ program.company }}</td>
+                                </tr>
+                                {% if program.website %}
+                                <tr>
+                                    <th>Website:</th>
+                                    <td>
+                                        <a href="{{ program.website }}" target="_blank">
+                                            Visit Program Site <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            {% if program.tier_names %}
+                            <h5>Tier Levels</h5>
+                            <div class="mb-3">
+                                {% for tier in program.tier_names %}
+                                <span class="badge bg-secondary mb-1">{{ tier }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                        {% if user_membership %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> You're already a member of this program!
+                            <a href="{% url 'rewards:membership_detail' user_membership.id %}" class="alert-link">
+                                View your membership
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="text-center">
+                            <a href="{% url 'rewards:add_membership' %}?program={{ program.id }}" 
+                               class="btn btn-primary btn-lg">
+                                <i class="bi bi-plus-circle"></i> Add This Membership
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <a href="{% url 'login' %}?next={% url 'rewards:program_detail' program.id %}" class="alert-link">
+                            Log in
+                        </a> to add this program to your rewards dashboard
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <a href="{% url 'rewards:programs_browse' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to All Programs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

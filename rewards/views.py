@@ -244,42 +244,40 @@ def toggle_primary(request, membership_id):
         logger.error(f"Error toggling primary: {e}")
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
-
 def programs_browse(request):
     """Browse available rewards programs (public page)"""
     programs = RewardsProgram.objects.filter(is_active=True).annotate(
-        member_count=Count('memberships')
+        _member_count=Count("memberships", distinct=True)
     )
-    
+
     # Search and filter
     form = RewardsProgramSearchForm(request.GET)
     if form.is_valid():
-        search = form.cleaned_data.get('search')
+        search = form.cleaned_data.get("search")
         if search:
             programs = programs.filter(
                 Q(name__icontains=search) |
                 Q(company__icontains=search) |
                 Q(description__icontains=search)
             )
-        
-        program_type = form.cleaned_data.get('program_type')
+
+        program_type = form.cleaned_data.get("program_type")
         if program_type:
             programs = programs.filter(program_type=program_type)
-    
+
     # Group by type
     programs_by_type = {}
     for prog_type in RewardsProgramType:
         type_programs = programs.filter(program_type=prog_type.value)
         if type_programs.exists():
             programs_by_type[prog_type.label] = type_programs
-    
+
     context = {
-        'programs': programs,
-        'programs_by_type': programs_by_type,
-        'form': form,
+        "programs": programs,
+        "programs_by_type": programs_by_type,
+        "form": form,
     }
-    
-    return render(request, 'rewards/programs_browse.html', context)
+    return render(request, "rewards/programs_browse.html", context)
 
 
 def program_detail(request, program_id):

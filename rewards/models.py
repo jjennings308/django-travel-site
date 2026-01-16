@@ -78,8 +78,8 @@ class RewardsProgram(TimeStampedModel):
     
     @property
     def member_count(self):
-        """Count of users enrolled in this program"""
-        return self.memberships.count()
+        # If queryset annotated _member_count, use it; otherwise fall back
+        return getattr(self, "_member_count", self.memberships.count())
 
 
 class UserRewardsMembership(TimeStampedModel, UUIDModel):

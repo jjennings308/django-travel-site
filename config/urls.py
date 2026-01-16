@@ -25,6 +25,11 @@ urlpatterns = [
     path("", include(("core.urls", "core"), namespace="core")),
     path("accounts/", include("accounts.urls")),
     path("rewards/", include(("rewards.urls"), namespace="rewards")),
+    path("bucketlists/", include(("bucketlists.urls"), namespace="bucketlists")),
+    path("activities/", include(("activities.urls"), namespace="activities")),
+    path("events/", include(("events.urls"), namespace="events")),
+    path("locations/", include(("locations.urls"), namespace="locations")),
+    path("trips/", include(("trips.urls"), namespace="trips")),
     path("staff/", include(("accounts.staff_urls", "staff"), namespace="staff")),  # staff dashboard urls here
 ]
 

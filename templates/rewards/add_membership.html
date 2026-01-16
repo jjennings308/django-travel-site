@@ -1,0 +1,173 @@
+{# ============================================ #}
+{# rewards/templates/rewards/add_membership.html #}
+{# ============================================ #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Rewards Membership{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
+                    <li class="breadcrumb-item active">Add Membership</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Add Rewards Membership</h3>
+                </div>
+                <div class="card-body">
+                    {% if programs_by_type %}
+                    <div class="alert alert-info">
+                        <strong>Available Programs:</strong>
+                        {% for type_name, count in programs_by_type.items %}
+                            {{ count }} {{ type_name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {# Program Selection #}
+                        <div class="mb-3">
+                            <label for="{{ form.program.id_for_label }}" class="form-label">
+                                Rewards Program <span class="text-danger">*</span>
+                            </label>
+                            {{ form.program }}
+                            {% if form.program.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.program.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.program.help_text }}</small>
+                        </div>
+
+                        {# Member Number #}
+                        <div class="mb-3">
+                            <label for="{{ form.member_number.id_for_label }}" class="form-label">
+                                Membership Number <span class="text-danger">*</span>
+                            </label>
+                            {{ form.member_number }}
+                            {% if form.member_number.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.member_number.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# Member Name (Optional) #}
+                        <div class="mb-3">
+                            <label for="{{ form.member_name.id_for_label }}" class="form-label">
+                                Name on Account
+                            </label>
+                            {{ form.member_name }}
+                            <small class="form-text text-muted">Leave blank if same as your profile name</small>
+                        </div>
+
+                        <hr>
+
+                        <h5>Status & Balance (Optional)</h5>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.current_tier.id_for_label }}" class="form-label">
+                                    Current Tier
+                                </label>
+                                {{ form.current_tier }}
+                                <small class="form-text text-muted">e.g., Gold, Platinum</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.tier_expires.id_for_label }}" class="form-label">
+                                    Tier Expires
+                                </label>
+                                {{ form.tier_expires }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.points_balance.id_for_label }}" class="form-label">
+                                Points/Miles Balance
+                            </label>
+                            {{ form.points_balance }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">
+                                Login Username
+                            </label>
+                            {{ form.username }}
+                            <small class="form-text text-muted">Optional - for your reference only</small>
+                        </div>
+
+                        <hr>
+
+                        <h5>Preferences</h5>
+
+                        <div class="form-check mb-3">
+                            {{ form.is_primary }}
+                            <label class="form-check-label" for="{{ form.is_primary.id_for_label }}">
+                                Mark as primary program of this type
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                This will be your preferred program for this category
+                            </small>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            {{ form.show_on_profile }}
+                            <label class="form-check-label" for="{{ form.show_on_profile.id_for_label }}">
+                                Show on public profile
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            {{ form.notify_on_expiration }}
+                            <label class="form-check-label" for="{{ form.notify_on_expiration.id_for_label }}">
+                                Notify me when tier is expiring
+                            </label>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.expiration_notice_days.id_for_label }}" class="form-label">
+                                Days before expiration to notify
+                            </label>
+                            {{ form.expiration_notice_days }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                Notes
+                            </label>
+                            {{ form.notes }}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
+                            <a href="{% url 'rewards:dashboard' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Add Membership
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {# Browse Programs Link #}
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Don't see your program? 
+                    <a href="{% url 'rewards:programs_browse' %}">Browse all programs</a>
+                    or contact support to request it.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

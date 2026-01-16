@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-3">{{ page_title }}</h1>
+
+  <div class="alert alert-info">
+    ✅ <strong>{{ app_name }}</strong> app dashboard loaded successfully.
+  </div>
+
+  <p class="text-muted">
+    This is the starter dashboard for the {{ app_name }} app.
+  </p>
+</div>
+{% endblock %}

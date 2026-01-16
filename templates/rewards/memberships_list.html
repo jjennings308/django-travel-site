@@ -1,0 +1,201 @@
+{# rewards/templates/rewards/memberships_list.html #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Memberships{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'rewards/css/rewards.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>My Rewards Memberships</h1>
+            <p class="text-muted">View and manage all your loyalty programs</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Membership
+            </a>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="type" class="form-label">Filter by Type</label>
+                    <select name="type" id="type" class="form-select">
+                        <option value="">All Types</option>
+                        {% for value, label in program_types %}
+                        <option value="{{ value }}" {% if current_type == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Filter by Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All</option>
+                        <option value="primary" {% if current_status == 'primary' %}selected{% endif %}>
+                            Primary Programs
+                        </option>
+                        <option value="expiring" {% if current_status == 'expiring' %}selected{% endif %}>
+                            Expiring Soon
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Results #}
+    {% if memberships %}
+    <div class="card">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col">
+                    <strong>{{ memberships.count }} Membership{{ memberships.count|pluralize }}</strong>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.location.href='{% url 'rewards:dashboard' %}'">
+                            <i class="bi bi-grid"></i> Grid
+                        </button>
+                        <button type="button" class="btn btn-secondary active">
+                            <i class="bi bi-list"></i> List
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Program</th>
+                        <th>Member Number</th>
+                        <th>Tier</th>
+                        <th>Points/Miles</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for membership in memberships %}
+                    <tr class="membership-item" data-membership-id="{{ membership.id }}">
+                        <td>
+                            <div>
+                                <strong>{{ membership.program.company }}</strong>
+                                <br>
+                                <small class="text-muted">{{ membership.program.name }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <code class="member-number">{{ membership.member_number }}</code>
+                        </td>
+                        <td>
+                            {% if membership.current_tier %}
+                            <span class="badge bg-primary">{{ membership.current_tier }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if membership.points_balance %}
+                            <span class="points-display">{{ membership.points_balance|floatformat:0 }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if membership.tier_expires %}
+                            <span {% if membership.is_tier_expiring_soon %}class="text-warning fw-bold"{% endif %}
+                                  data-expiry-date="{{ membership.tier_expires|date:'Y-m-d' }}">
+                                {{ membership.tier_expires|date:"M d, Y" }}
+                                {% if membership.is_tier_expiring_soon %}
+                                <i class="bi bi-exclamation-triangle"></i>
+                                {% endif %}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if membership.is_primary %}
+                            <span class="badge badge-primary-membership">Primary</span>
+                            {% endif %}
+                            {% if not membership.show_on_profile %}
+                            <span class="badge bg-secondary">Private</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'rewards:membership_detail' membership.id %}" 
+                                   class="btn btn-outline-primary"
+                                   title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'rewards:edit_membership' membership.id %}" 
+                                   class="btn btn-outline-secondary"
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" 
+                                        class="btn btn-outline-danger"
+                                        title="Delete"
+                                        data-confirm-delete
+                                        data-program-name="{{ membership.program.name }}"
+                                        onclick="if(confirmDelete('{{ membership.program.name|escapejs }}')) { 
+                                            document.getElementById('delete-form-{{ membership.id }}').submit(); 
+                                        }">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <form id="delete-form-{{ membership.id }}" 
+                                  method="post" 
+                                  action="{% url 'rewards:delete_membership' membership.id %}" 
+                                  style="display: none;">
+                                {% csrf_token %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="bi bi-inbox"></i>
+        </div>
+        <h3>No memberships found</h3>
+        <p>
+            {% if current_type or current_status %}
+                Try adjusting your filters or <a href="{% url 'rewards:memberships_list' %}">clear all filters</a>
+            {% else %}
+                Get started by adding your first rewards program!
+            {% endif %}
+        </p>
+        {% if not current_type and not current_status %}
+        <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary mt-3">
+            <i class="bi bi-plus-circle"></i> Add Membership
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'rewards/js/rewards.js' %}"></script>
+{% endblock %}

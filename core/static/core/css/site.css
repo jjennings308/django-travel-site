@@ -51,3 +51,32 @@ body[data-theme="brand"] {
   border-bottom: 1px solid #ddd;
   margin-top: 0;
 }
+
+/* Sidebar links */
+.sidebar-nav .nav-link {
+  display: flex;
+  align-items: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+/* Hover */
+.sidebar-nav .nav-link:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Active */
+.sidebar-nav .nav-link.active {
+  background: rgba(13, 110, 253, 0.10); /* Bootstrap primary-ish */
+  font-weight: 600;
+  border-left: 4px solid var(--bs-primary);
+  padding-left: calc(0.75rem - 4px);
+}
+
+/* Icon sizing */
+.sidebar-nav .nav-link i {
+  font-size: 1.1rem;
+  line-height: 1;
+}

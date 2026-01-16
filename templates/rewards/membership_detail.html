@@ -1,0 +1,141 @@
+{# ============================================ #}
+{# rewards/templates/rewards/membership_detail.html #}
+{# ============================================ #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ membership.program.name }} Details{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
+                    <li class="breadcrumb-item active">{{ membership.program.name }}</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">{{ membership.program.company }}</h3>
+                            <p class="text-muted mb-0">{{ membership.program.name }}</p>
+                        </div>
+                        <div>
+                            {% if membership.is_primary %}
+                            <span class="badge bg-success">Primary</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Membership Information</h5>
+                            <table class="table">
+                                <tr>
+                                    <th>Member Number:</th>
+                                    <td><code>{{ membership.member_number }}</code></td>
+                                </tr>
+                                {% if membership.member_name %}
+                                <tr>
+                                    <th>Name on Account:</th>
+                                    <td>{{ membership.member_name }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if membership.username %}
+                                <tr>
+                                    <th>Login Username:</th>
+                                    <td>{{ membership.username }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Status & Balance</h5>
+                            <table class="table">
+                                {% if membership.current_tier %}
+                                <tr>
+                                    <th>Current Tier:</th>
+                                    <td>
+                                        <span class="badge bg-primary">{{ membership.current_tier }}</span>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if membership.tier_expires %}
+                                <tr>
+                                    <th>Tier Expires:</th>
+                                    <td>
+                                        {{ membership.tier_expires|date:"F d, Y" }}
+                                        {% if membership.is_tier_expiring_soon %}
+                                        <span class="badge bg-warning">Expiring Soon</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if membership.points_balance %}
+                                <tr>
+                                    <th>Points/Miles:</th>
+                                    <td><strong>{{ membership.points_balance|floatformat:0 }}</strong></td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if membership.notes %}
+                    <div class="mb-3">
+                        <h5>Notes</h5>
+                        <div class="alert alert-light">
+                            {{ membership.notes|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <h5>Settings</h5>
+                        <ul class="list-unstyled">
+                            <li>
+                                <i class="bi {% if membership.show_on_profile %}bi-check-circle text-success{% else %}bi-x-circle text-muted{% endif %}"></i>
+                                Show on public profile
+                            </li>
+                            <li>
+                                <i class="bi {% if membership.notify_on_expiration %}bi-check-circle text-success{% else %}bi-x-circle text-muted{% endif %}"></i>
+                                Expiration notifications ({{ membership.expiration_notice_days }} days)
+                            </li>
+                        </ul>
+                    </div>
+
+                    {% if membership.program.website %}
+                    <div class="mb-3">
+                        <a href="{{ membership.program.website }}" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> Visit Program Website
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
+                        <a href="{% url 'rewards:dashboard' %}" class="btn btn-outline-secondary">
+                            Back to Dashboard
+                        </a>
+                        <a href="{% url 'rewards:edit_membership' membership.id %}" class="btn btn-primary">
+                            Edit Membership
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>
+                        Added {{ membership.created_at|date:"F d, Y" }}
+                        {% if membership.updated_at != membership.created_at %}
+                        • Last updated {{ membership.updated_at|date:"F d, Y" }}
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
