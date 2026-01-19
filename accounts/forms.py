@@ -2,7 +2,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import User, Profile, TravelPreferences, AccountSettings
+from django.core.validators import RegexValidator
+from .models import (
+    User, Profile, TravelPreferences, AccountSettings, RoleRequest
+)
 from datetime import datetime
 from zoneinfo import available_timezones, ZoneInfo
 
@@ -28,7 +31,23 @@ def timezone_choices_grouped():
 
 
 class UserRegistrationForm(UserCreationForm):
-    """Form for user registration using email as username"""
+    """Form for user registration with username and email"""
+    
+    username = forms.CharField(
+        required=True,
+        max_length=30,
+        validators=[
+            RegexValidator(
+                r'^[a-zA-Z0-9_]+$',
+                'Username can only contain letters, numbers, and underscores'
+            )
+        ],
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Username (letters, numbers, and _ only)'
+        }),
+        help_text='Your unique username for your profile URL'
+    )
     
     email = forms.EmailField(
         required=True,
@@ -72,6 +91,25 @@ class UserRegistrationForm(UserCreationForm):
         })
     )
     
+    # Optional role requests during registration
+    request_vendor_role = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        label='I want to apply to become a vendor',
+        help_text='Your account will be created immediately, but vendor features require approval'
+    )
+    
+    request_content_provider_role = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        label='I want to apply to become a content provider',
+        help_text='Your account will be created immediately, but content provider features require approval'
+    )
+    
     terms_accepted = forms.BooleanField(
         required=True,
         widget=forms.CheckboxInput(attrs={
@@ -84,10 +122,17 @@ class UserRegistrationForm(UserCreationForm):
     
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
+    
+    def clean_username(self):
+        """Validate that username is unique (case-insensitive)"""
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError('This username is already taken.')
+        return username.lower()
     
     def clean_email(self):
-        """Validate that email is unique"""
+        """Validate that email is unique (case-insensitive)"""
         email = self.cleaned_data.get('email')
         if User.objects.filter(email__iexact=email).exists():
             raise ValidationError('An account with this email already exists.')
@@ -96,7 +141,7 @@ class UserRegistrationForm(UserCreationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        # Username will be set to email in the view
+        user.username = self.cleaned_data['username']
         if commit:
             user.save()
         return user
@@ -253,3 +298,103 @@ class AccountSettingsForm(forms.ModelForm):
     def save(self, commit=True):
         self.instance.timezone = self.cleaned_data["timezone"]
         return super().save(commit=commit)
+
+
+class RoleRequestForm(forms.ModelForm):
+    """Form for requesting vendor or content provider role"""
+    
+    class Meta:
+        model = RoleRequest
+        fields = [
+            'requested_role',
+            'business_name',
+            'business_description',
+            'website',
+            'business_license',
+            'supporting_documents',
+        ]
+        widgets = {
+            'requested_role': forms.Select(attrs={'class': 'form-control'}),
+            'business_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Your business or brand name'
+            }),
+            'business_description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Tell us about your business, experience, and why you want this role...'
+            }),
+            'website': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://your-website.com (optional)'
+            }),
+            'business_license': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'License number (if applicable)'
+            }),
+            'supporting_documents': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+        }
+    
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        
+        # Make business_description required
+        self.fields['business_description'].required = True
+        
+    def clean(self):
+        cleaned_data = super().clean()
+        requested_role = cleaned_data.get('requested_role')
+        
+        # Check if user already has this role
+        if self.user:
+            if requested_role == RoleRequest.RequestedRole.VENDOR and self.user.is_vendor:
+                raise ValidationError('You already have vendor access.')
+            elif requested_role == RoleRequest.RequestedRole.CONTENT_PROVIDER and self.user.is_content_provider:
+                raise ValidationError('You already have content provider access.')
+        
+        return cleaned_data
+
+
+class RoleRequestReviewForm(forms.Form):
+    """Form for staff to review role requests"""
+    
+    action = forms.ChoiceField(
+        choices=[
+            ('approve', 'Approve'),
+            ('reject', 'Reject'),
+        ],
+        widget=forms.RadioSelect
+    )
+    
+    review_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Internal notes (optional)'
+        }),
+        label='Internal Notes'
+    )
+    
+    rejection_reason = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Reason for rejection (shown to user)'
+        }),
+        label='Rejection Reason (if rejecting)'
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        action = cleaned_data.get('action')
+        rejection_reason = cleaned_data.get('rejection_reason')
+        
+        if action == 'reject' and not rejection_reason:
+            raise ValidationError('You must provide a rejection reason when rejecting a request.')
+        
+        return cleaned_data

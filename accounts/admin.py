@@ -6,7 +6,10 @@ from django import forms
 from datetime import datetime
 from zoneinfo import available_timezones, ZoneInfo
 
-from .models import User, Profile, TravelPreferences, AccountSettings
+from .models import (
+    User, Profile, TravelPreferences, AccountSettings,
+    RoleRequest, VendorProfile, ContentProviderProfile
+)
 
 COMMON_TIMEZONES = [
     "America/New_York",
@@ -108,14 +111,17 @@ class UserAdmin(DjangoUserAdmin):
     class Media:
         js = ("accounts/js/timezone_preview.js",)
 
-    ordering = ("email",)
+    ordering = ("username",)
     list_display = (
+        "username",
         "email",
         "first_name",
         "last_name",
-        "is_staff",
+        "subscription_tier",
         "is_verified",
-        "is_premium",
+        "is_vendor",
+        "is_content_provider",
+        "is_staff",
         "is_active",
         "created_at",
     )
@@ -125,14 +131,15 @@ class UserAdmin(DjangoUserAdmin):
         "is_superuser",
         "is_active",
         "is_verified",
-        "is_premium",
+        "subscription_tier",
+        "groups",
     )
 
-    search_fields = ("email", "first_name", "last_name")
+    search_fields = ("username", "email", "first_name", "last_name")
     readonly_fields = ("created_at", "updated_at", "last_login", "date_joined")
 
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (None, {"fields": ("username", "email", "password")}),
         (_("Personal info"), {
             "fields": (
                 "first_name",
@@ -153,8 +160,8 @@ class UserAdmin(DjangoUserAdmin):
         (_("Account Status"), {
             "fields": (
                 "is_verified",
-                "is_premium",
-                "premium_expires",
+                "subscription_tier",
+                "subscription_expires",
                 "profile_visibility",
             )
         }),
@@ -172,6 +179,7 @@ class UserAdmin(DjangoUserAdmin):
         (None, {
             "classes": ("wide",),
             "fields": (
+                "username",
                 "email",
                 "first_name",
                 "last_name",
@@ -182,6 +190,18 @@ class UserAdmin(DjangoUserAdmin):
             ),
         }),
     )
+    
+    def is_vendor(self, obj):
+        """Show if user has vendor role"""
+        return obj.is_vendor
+    is_vendor.boolean = True
+    is_vendor.short_description = "Vendor"
+    
+    def is_content_provider(self, obj):
+        """Show if user has content provider role"""
+        return obj.is_content_provider
+    is_content_provider.boolean = True
+    is_content_provider.short_description = "Content Provider"
 
 
 # ----------------------------
@@ -200,6 +220,7 @@ class ProfileAdmin(admin.ModelAdmin):
     )
 
     search_fields = (
+        "user__username",
         "user__email",
         "user__first_name",
         "user__last_name",
@@ -231,6 +252,7 @@ class TravelPreferencesAdmin(admin.ModelAdmin):
     )
 
     search_fields = (
+        "user__username",
         "user__email",
         "user__first_name",
         "user__last_name",
@@ -267,9 +289,140 @@ class AccountSettingsAdmin(admin.ModelAdmin):
     )
 
     search_fields = (
+        "user__username",
         "user__email",
         "user__first_name",
         "user__last_name",
     )
 
+    readonly_fields = ("created_at", "updated_at")
+
+
+# ----------------------------
+# Role Request Admin
+# ----------------------------
+
+@admin.register(RoleRequest)
+class RoleRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "requested_role",
+        "status",
+        "created_at",
+        "reviewed_at",
+        "reviewed_by",
+    )
+    
+    list_filter = (
+        "status",
+        "requested_role",
+        "created_at",
+    )
+    
+    search_fields = (
+        "user__username",
+        "user__email",
+        "business_name",
+    )
+    
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "reviewed_at",
+    )
+    
+    fieldsets = (
+        ("Request Information", {
+            "fields": (
+                "user",
+                "requested_role",
+                "status",
+                "created_at",
+            )
+        }),
+        ("Application Details", {
+            "fields": (
+                "business_name",
+                "business_description",
+                "website",
+                "business_license",
+                "supporting_documents",
+            )
+        }),
+        ("Review", {
+            "fields": (
+                "reviewed_by",
+                "reviewed_at",
+                "review_notes",
+                "rejection_reason",
+            )
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-handle status changes from admin"""
+        if change:  # If editing existing
+            old_status = RoleRequest.objects.get(pk=obj.pk).status
+            new_status = obj.status
+            
+            # If manually approved in admin
+            if old_status == 'pending' and new_status == 'approved':
+                obj.approve(reviewed_by=request.user)
+                return  # approve() calls save()
+            
+            # If manually rejected in admin
+            elif old_status == 'pending' and new_status == 'rejected':
+                if not obj.rejection_reason:
+                    obj.rejection_reason = "Manually rejected by admin"
+                obj.reject(reviewed_by=request.user, reason=obj.rejection_reason)
+                return  # reject() calls save()
+        
+        super().save_model(request, obj, form, change)
+
+
+# ----------------------------
+# Vendor Profile Admin
+# ----------------------------
+
+@admin.register(VendorProfile)
+class VendorProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "business_name",
+        "verification_status",
+        "total_listings",
+        "average_rating",
+        "total_bookings",
+    )
+    
+    list_filter = (
+        "verification_status",
+    )
+    
+    search_fields = (
+        "user__username",
+        "user__email",
+        "business_name",
+    )
+    
+    readonly_fields = ("created_at", "updated_at")
+
+
+# ----------------------------
+# Content Provider Profile Admin
+# ----------------------------
+
+@admin.register(ContentProviderProfile)
+class ContentProviderProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "total_contributions",
+        "content_rating",
+    )
+    
+    search_fields = (
+        "user__username",
+        "user__email",
+    )
+    
     readonly_fields = ("created_at", "updated_at")

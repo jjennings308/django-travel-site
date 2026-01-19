@@ -139,6 +139,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.EmailOrUsernameBackend',  # NEW - allows email or username login
+    'django.contrib.auth.backends.ModelBackend',  # Keep as fallback
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

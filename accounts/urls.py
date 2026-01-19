@@ -46,6 +46,10 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('travel-preferences/', views.edit_travel_preferences, name='edit_travel_preferences'),
-    path('settings/', views.settings_view, name='settings'),  # NEW: Account Settings
+    path('settings/', views.settings_view, name='settings'),
     path('profile/<str:username>/', views.profile_view, name='profile_view'),
+    
+    # Role Requests
+    path('request-role/', views.request_role, name='request_role'),
+    path('role-request-status/', views.role_request_status, name='role_request_status'),
 ]
