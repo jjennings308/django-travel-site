@@ -1,7 +1,7 @@
 {% load static %}
 
 <!doctype html>
-<html lang="en" data-theme="{{ user.settings.theme|default:'brand' }}">
+<html lang="en" data-bs-theme="{{ user.settings.theme|default:'brand' }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,24 +24,30 @@
 {% block header %}
   {% include "partials/_header.html" %}
 {% endblock %}
-{% block navbar %}
-  {% include "partials/_mobile_sidebar.html" %}
-{% endblock %}
+{% if user.is_authenticated %}
+  {% block navbar %}
+    {% include "partials/_mobile_sidebar.html" %}
+  {% endblock %}
+{% endif %}
 <main class="container-fluid mt-0 mb-4">
   <div class="container-fluid">
     <div class="row">
-      <!-- Desktop sidebar (lg and up only) -->
-      <aside class="col-lg-2 d-none d-lg-block border-end min-vh-100 py-3">
-        {% include "partials/_sidebar.html" %}
-      </aside>
+
+      {% if user.is_authenticated %}
+        <!-- Desktop sidebar (lg and up only) -->
+        <aside class="col-lg-2 d-none d-lg-block border-end min-vh-100 py-3">
+          {% include "partials/_sidebar.html" %}
+        </aside>
+      {% endif %}
 
       <!-- Main content -->
-      <section class="col-12 col-lg-10 py-3">
+      <section class="{% if user.is_authenticated %}col-12 col-lg-10{% else %}col-12{% endif %} py-3">
         <div class="container">
           {% include "partials/_messages.html" %}
           {% block content %}{% endblock %}
         </div>
       </section>
+
     </div>
   </div>
 </main>
@@ -108,9 +114,9 @@
 
     // only light/dark should set Bootstrap theme
     if (theme === "light" || theme === "dark") {
-      document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.setAttribute("data-bs-theme", theme);
     } else {
-      document.documentElement.removeAttribute("data-theme");
+      document.documentElement.removeAttribute("data-bs-theme");
     }
   }
 

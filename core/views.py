@@ -7,7 +7,7 @@ from trips.models import Trip
 def home(request):
     # Redirect authenticated users to dashboard
     if request.user.is_authenticated:
-        return redirect('dashboard')  # or your post-login page
+        return redirect('core:dashboard')  # or your post-login page
     
     context = {
     'total_users': User.objects.filter(is_active=True).count(),
