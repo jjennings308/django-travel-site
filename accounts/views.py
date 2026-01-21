@@ -485,6 +485,7 @@ def admin_account_list(request):
     elif active_filter == 'no':
         users = users.filter(is_active=False)
     
+    
     order_by = request.GET.get('order_by', '-created_at')
     users = users.order_by(order_by)
     
@@ -500,6 +501,31 @@ def admin_account_list(request):
     
     return render(request, 'accounts/admin_account_list.html', context)
 
+@require_POST
+def set_timezone(request):
+    """Set user timezone from browser detection"""
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
+
+    timezone = data.get("timezone")
+    
+    # Validate timezone
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(timezone)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "invalid_timezone"}, status=400)
+
+    # Persist to AccountSettings if logged in
+    if request.user.is_authenticated and hasattr(request.user, "settings"):
+        settings = request.user.settings
+        settings.timezone = timezone
+        settings.save(update_fields=["timezone"])
+        return JsonResponse({"ok": True, "timezone": timezone})
+    
+    return JsonResponse({"ok": False, "error": "not_authenticated"}, status=401)
 
 @login_required
 @user_passes_test(can_access_staff_dashboard)

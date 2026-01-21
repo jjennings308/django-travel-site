@@ -43,6 +43,7 @@ urlpatterns = [
     
     # Profile & Settings Management
     path("theme/set/", views.set_theme, name="set_theme"),
+    path("tz/set", views.set_timezone, name="set_timezone"),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('travel-preferences/', views.edit_travel_preferences, name='edit_travel_preferences'),
