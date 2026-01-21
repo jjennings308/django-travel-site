@@ -17,24 +17,17 @@
         </button>
 
         <div class="branding">
-          <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none">
-            <img 
-              src="{% static 'core/images/logo/logo-320.webp' %}"
-              srcset="
-                {% static 'core/images/logo/logo-320.webp' %} 1x,
-                {% static 'core/images/logo/logo-640.webp' %} 2x
-              "
+          <a href="{% url 'core:home' %}"
+            class="site-title navbar-brand d-flex align-items-center text-decoration-none">
+
+            <img
+              src="{% static 'core/branding/png/sbl-logo-navbar.png' %}"
               alt="{{ SITE_NAME }}"
-              height="40"
-              class="me-2"
+              class="navbar_logo"
+              loading="eager"
             >
-            <span class="fw-bold fs-5">{{ SITE_NAME }}</span>
+            <span class="visually-hidden">{{ SITE_NAME }}</span>
           </a>
-          {% if SITE_TAGLINE %}
-          <div class="site-tagline text-muted small">
-            {{ SITE_TAGLINE }}
-          </div>
-          {% endif %}
         </div>
       </div>
 

@@ -78,52 +78,6 @@
 }
 
 /* --------------------------------------------
-   BRAND THEME OVERRIDES (Earth Tones)
-   -------------------------------------------- */
-body[data-theme="brand"] {
-  /* Primary Brand Colors (Clay / Sienna) */
-  --sbl-primary: #7A4E2D;
-  --sbl-primary-dark: #5A371F;
-  --sbl-primary-light: #B98255;
-  --sbl-primary-pale: #F3E7DB;
-
-  /* Secondary Colors (Olive / Sage) */
-  --sbl-secondary: #556B2F;
-  --sbl-secondary-dark: #3E5121;
-  --sbl-secondary-light: #8CA66B;
-
-  /* Accent Colors (Ochre / Amber) */
-  --sbl-accent: #C58B2A;
-  --sbl-accent-dark: #9A6A1E;
-
-  /* Semantic Colors (earthy) */
-  --sbl-success: #3F7D5B;
-  --sbl-warning: #C58B2A;
-  --sbl-danger: #B23A2F;
-  --sbl-info: #2A6F6E;
-
-  /* Warm neutrals */
-  --sbl-gray-50:  #FAF7F2;
-  --sbl-gray-100: #F3EEE6;
-  --sbl-gray-200: #E7DED2;
-  --sbl-gray-300: #D4C7B8;
-  --sbl-gray-400: #B9AA99;
-  --sbl-gray-500: #8B7D71;
-  --sbl-gray-600: #6F6258;
-  --sbl-gray-700: #564B43;
-  --sbl-gray-800: #3D342E;
-  --sbl-gray-900: #2A231E;
-
-  /* Semantic mappings */
-  --sbl-text-primary: var(--sbl-gray-900);
-  --sbl-text-secondary: var(--sbl-gray-600);
-  --sbl-text-muted: var(--sbl-gray-500);
-  --sbl-border: var(--sbl-gray-300);
-  --sbl-background: #ffffff;
-  --sbl-background-alt: var(--sbl-gray-50);
-}
-
-/* --------------------------------------------
    DARK THEME OVERRIDES
    -------------------------------------------- */
 [data-theme="dark"] {
@@ -418,17 +372,6 @@ body[data-theme="brand"] {
 
 .nav-link.active {
   color: var(--sbl-primary) !important;
-}
-
-/* Navbar branding logo */
-.navbar-logo {
-  height: 44px;          /* sweet spot for Bootstrap navbars */
-  width: auto;           /* preserve aspect ratio */
-  max-height: 100%;      /* prevent overflow */
-  object-fit: contain;   /* critical: prevents squashing */
-  display: block;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
 }
 
 /* Avatar Component */

@@ -7,120 +7,57 @@
    CSS VARIABLES - Theme Colors & Spacing
    -------------------------------------------- */
 :root {
-  /* Primary Brand Colors */
-  --sbl-primary: #2563eb;        /* Blue - main brand color #2563eb; */
-  --sbl-primary-dark: #1e40af;   /* Darker blue for hovers */
-  --sbl-primary-light: #60a5fa;  /* Light blue for accents */
-  --sbl-primary-pale: #dbeafe;   /* Very light blue for backgrounds */
-  
-  /* Secondary Colors */
-  --sbl-secondary: #7c3aed;      /* Purple - for rewards/premium */
-  --sbl-secondary-dark: #6d28d9;
-  --sbl-secondary-light: #a78bfa;
-  
-  /* Accent Colors */
-  --sbl-accent: #f59e0b;         /* Amber - for highlights/CTAs */
-  --sbl-accent-dark: #d97706;
-  --sbl-success: #10b981;        /* Green - success states */
-  --sbl-warning: #f59e0b;        /* Amber - warnings */
-  --sbl-danger: #ef4444;         /* Red - errors/destructive */
-  --sbl-info: #06b6d4;           /* Cyan - info messages */
-  
-  /* Neutral Colors */
-  --sbl-gray-50: #f9fafb;
-  --sbl-gray-100: #f3f4f6;
-  --sbl-gray-200: #e5e7eb;
-  --sbl-gray-300: #d1d5db;
-  --sbl-gray-400: #9ca3af;
-  --sbl-gray-500: #6b7280;
-  --sbl-gray-600: #4b5563;
-  --sbl-gray-700: #374151;
-  --sbl-gray-800: #1f2937;
-  --sbl-gray-900: #111827;
-  
-  /* Semantic Colors */
-  --sbl-text-primary: var(--sbl-gray-900);
-  --sbl-text-secondary: var(--sbl-gray-600);
-  --sbl-text-muted: var(--sbl-gray-500);
-  --sbl-border: var(--sbl-gray-300);
-  --sbl-background: #ffffff;
-  --sbl-background-alt: var(--sbl-gray-50);
-  
-  /* Spacing (complement Bootstrap's spacing) */
-  --sbl-spacing-xs: 0.25rem;     /* 4px */
-  --sbl-spacing-sm: 0.5rem;      /* 8px */
-  --sbl-spacing-md: 1rem;        /* 16px */
-  --sbl-spacing-lg: 1.5rem;      /* 24px */
-  --sbl-spacing-xl: 2rem;        /* 32px */
-  --sbl-spacing-2xl: 3rem;       /* 48px */
-  
-  /* Border Radius */
-  --sbl-radius-sm: 0.25rem;
-  --sbl-radius-md: 0.5rem;
-  --sbl-radius-lg: 0.75rem;
-  --sbl-radius-xl: 1rem;
-  --sbl-radius-full: 9999px;
-  
-  /* Shadows */
-  --sbl-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --sbl-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --sbl-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --sbl-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  
-  /* Typography */
-  --sbl-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --sbl-font-display: "Inter", var(--sbl-font-sans);
-  
-  /* Transitions */
-  --sbl-transition-fast: 150ms ease;
-  --sbl-transition-base: 250ms ease;
-  --sbl-transition-slow: 350ms ease;
-}
+  /* --------------------------------------------
+     EARTH-TONE BRAND COLORS (Light/Default)
+     -------------------------------------------- */
 
-/* --------------------------------------------
-   BRAND THEME OVERRIDES (Earth Tones)
-   -------------------------------------------- */
-body[data-theme="brand"] {
-  /* Primary Brand Colors (Clay / Sienna) */
-  --sbl-primary: #7A4E2D;
-  --sbl-primary-dark: #5A371F;
-  --sbl-primary-light: #B98255;
-  --sbl-primary-pale: #F3E7DB;
+  /* Primary Brand Colors (Sienna / Clay) */
+  --sbl-primary: #7A4E2D;        /* rich clay-brown */
+  --sbl-primary-dark: #5A371F;   /* espresso hover */
+  --sbl-primary-light: #B98255;  /* warm tan accent */
+  --sbl-primary-pale: #F3E7DB;   /* sand background */
 
-  /* Secondary Colors (Olive / Sage) */
-  --sbl-secondary: #556B2F;
-  --sbl-secondary-dark: #3E5121;
-  --sbl-secondary-light: #8CA66B;
+  /* Optional helper for rgba() usage */
+  --sbl-primary-rgb: 122, 78, 45;
+
+  /* Secondary Colors (Olive / Field Green) */
+  --sbl-secondary: #556B2F;      /* olive */
+  --sbl-secondary-dark: #3E5121; /* deep olive */
+  --sbl-secondary-light: #8CA66B;/* soft sage */
 
   /* Accent Colors (Ochre / Amber) */
-  --sbl-accent: #C58B2A;
-  --sbl-accent-dark: #9A6A1E;
+  --sbl-accent: #C58B2A;         /* ochre CTA */
+  --sbl-accent-dark: #9A6A1E;    /* deeper ochre */
 
-  /* Semantic Colors (earthy) */
-  --sbl-success: #3F7D5B;
-  --sbl-warning: #C58B2A;
-  --sbl-danger: #B23A2F;
-  --sbl-info: #2A6F6E;
+  /* Semantic Colors (Earthy) */
+  --sbl-success: #3F7D5B;        /* evergreen/sage */
+  --sbl-warning: #C58B2A;        /* align with accent */
+  --sbl-danger: #B23A2F;         /* brick red */
+  --sbl-info: #2A6F6E;           /* deep teal */
 
-  /* Warm neutrals */
-  --sbl-gray-50:  #FAF7F2;
-  --sbl-gray-100: #F3EEE6;
-  --sbl-gray-200: #E7DED2;
-  --sbl-gray-300: #D4C7B8;
-  --sbl-gray-400: #B9AA99;
-  --sbl-gray-500: #8B7D71;
-  --sbl-gray-600: #6F6258;
-  --sbl-gray-700: #564B43;
-  --sbl-gray-800: #3D342E;
-  --sbl-gray-900: #2A231E;
+  /* --------------------------------------------
+     WARM NEUTRALS (replace cool grays)
+     -------------------------------------------- */
+  --sbl-gray-50:  #FAF7F2; /* warm paper */
+  --sbl-gray-100: #F3EEE6; /* parchment */
+  --sbl-gray-200: #E7DED2; /* warm light border */
+  --sbl-gray-300: #D4C7B8; /* warm border */
+  --sbl-gray-400: #B9AA99; /* muted text */
+  --sbl-gray-500: #8B7D71; /* secondary text */
+  --sbl-gray-600: #6F6258; /* body text */
+  --sbl-gray-700: #564B43; /* headings */
+  --sbl-gray-800: #3D342E; /* deep text */
+  --sbl-gray-900: #2A231E; /* near-black espresso */
 
-  /* Semantic mappings */
+  /* Semantic Colors (same structure as your file) */
   --sbl-text-primary: var(--sbl-gray-900);
   --sbl-text-secondary: var(--sbl-gray-600);
   --sbl-text-muted: var(--sbl-gray-500);
   --sbl-border: var(--sbl-gray-300);
   --sbl-background: #ffffff;
   --sbl-background-alt: var(--sbl-gray-50);
+
+  /* Keep the rest of your spacing, radius, shadows, typography, transitions as-is */
 }
 
 /* --------------------------------------------
@@ -230,7 +167,7 @@ body[data-theme="brand"] {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--sbl-primary-light);
-  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(var(--sbl-primary-rgb), 0.25);
 }
 
 /* Alerts */
@@ -418,17 +355,6 @@ body[data-theme="brand"] {
 
 .nav-link.active {
   color: var(--sbl-primary) !important;
-}
-
-/* Navbar branding logo */
-.navbar-logo {
-  height: 44px;          /* sweet spot for Bootstrap navbars */
-  width: auto;           /* preserve aspect ratio */
-  max-height: 100%;      /* prevent overflow */
-  object-fit: contain;   /* critical: prevents squashing */
-  display: block;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
 }
 
 /* Avatar Component */
