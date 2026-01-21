@@ -1,19 +1,404 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% load static %}
+
+{% block title %}Dashboard - ShareBucketList{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--sbl-primary) 0%, var(--sbl-secondary) 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+    
+    .welcome-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .user-greeting {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .user-subtitle {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    
+    .quick-stats {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .quick-stat {
+        text-align: center;
+    }
+    
+    .quick-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .quick-stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+    
+    .dashboard-section {
+        margin-bottom: 2rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .recent-activity-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--sbl-border);
+        transition: background-color 0.2s;
+    }
+    
+    .recent-activity-item:hover {
+        background-color: var(--sbl-gray-50);
+    }
+    
+    .recent-activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .recommendation-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .recommendation-card:hover {
+        transform: translateY(-4px);
+    }
+    
+    .recommendation-image {
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .recommendation-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: var(--sbl-accent);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-header {
+            padding: 1.5rem 0;
+        }
+        
+        .user-greeting {
+            font-size: 1.5rem;
+        }
+        
+        .quick-stats {
+            width: 100%;
+            justify-content: space-around;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-
-  <h1 class="mb-4">Main Dashboard</h1>
-
-  <div class="row g-4">
-    {% if user.can_access_staff %}
-        {% include "core/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-lock" %}
-    {% endif %}
-    {% include "core/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" %}
-    {% include "core/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" %}
-    {% include "core/partials/dashboard_card.html" with title="Coming Soon" description="Future module" icon="bi-plus-circle" disabled=True %}
-  </div>
-
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <div class="welcome-section">
+            <div>
+                <div class="user-greeting">
+                    Welcome back, {{ user.get_full_name|default:user.username }}! 👋
+                </div>
+                <div class="user-subtitle">
+                    {% now "l, F j, Y" %}
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="quick-stat">
+                    <div class="quick-stat-value">{{ user.bucket_list_items_count|default:0 }}</div>
+                    <div class="quick-stat-label">Bucket List</div>
+                </div>
+                <div class="quick-stat">
+                    <div class="quick-stat-value">{{ user.trips_count|default:0 }}</div>
+                    <div class="quick-stat-label">Trips</div>
+                </div>
+                <div class="quick-stat">
+                    <div class="quick-stat-value">{{ user.countries_visited|default:0 }}</div>
+                    <div class="quick-stat-label">Countries</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<div class="container-fluid py-4">
+    
+    <!-- Main Navigation Cards -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2 class="section-title">Quick Access</h2>
+        </div>
+        
+        <div class="row g-4">
+            {% if user.is_superuser or user.can_access_staff %}
+            {% include "core/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}
+            {% endif %}
+            
+            {% include "core/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
+            
+            {% include "core/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:dashboard" icon="bi-airplane" color="primary" %}
+            
+            {% include "core/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" color="secondary" %}
+            
+            {% include "core/partials/dashboard_card.html" with title="Activities" description="Find things to do" url_name="activities:dashboard" icon="bi-activity" color="success" %}
+            
+            {% include "core/partials/dashboard_card.html" with title="Locations" description="Explore destinations" url_name="locations:dashboard" icon="bi-geo-alt" color="info" %}
+        </div>
+    </div>
+    
+    <!-- Two Column Layout for Activity & Recommendations -->
+    <div class="row g-4">
+        
+        <!-- Recent Activity -->
+        <div class="col-lg-6">
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Activity</h2>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body p-0">
+                        {% if recent_activities %}
+                            {% for activity in recent_activities %}
+                            <div class="recent-activity-item d-flex align-items-start gap-3">
+                                <div class="activity-icon" style="background: {{ activity.color_class }}; color: white;">
+                                    <i class="bi {{ activity.icon }}"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">{{ activity.title }}</div>
+                                    <small class="text-muted">{{ activity.description }}</small>
+                                    <div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock"></i> {{ activity.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="p-4 text-center text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                <p class="mb-0">No recent activity yet. Start planning your adventures!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upcoming Trips Widget -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Upcoming Trips</h2>
+                    <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus-circle"></i> New Trip
+                    </a>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        {% if upcoming_trips %}
+                            <div class="list-group list-group-flush">
+                                {% for trip in upcoming_trips %}
+                                <a href="{% url 'trips:detail' trip.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">{{ trip.name }}</h6>
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar"></i> {{ trip.start_date|date:"M d, Y" }}
+                                                {% if trip.end_date %}
+                                                - {{ trip.end_date|date:"M d, Y" }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-primary">{{ trip.days_until }} days</span>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                                <p class="mb-2">No upcoming trips planned</p>
+                                <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-primary">
+                                    Plan Your First Trip
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recommendations & Progress -->
+        <div class="col-lg-6">
+            
+            <!-- Recommendations -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recommended For You</h2>
+                    <a href="#" class="btn btn-sm btn-outline-primary">Customize</a>
+                </div>
+                
+                {% if recommendations %}
+                    <div class="row g-3">
+                        {% for rec in recommendations %}
+                        <div class="col-12">
+                            <div class="card recommendation-card">
+                                <span class="recommendation-badge">{{ rec.tag }}</span>
+                                <div class="row g-0">
+                                    <div class="col-md-4">
+                                        <img src="{{ rec.image_url }}" 
+                                             class="recommendation-image w-100" 
+                                             alt="{{ rec.title }}"
+                                             onerror="this.src='https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&h=200&fit=crop'">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ rec.title }}</h5>
+                                            <p class="card-text text-muted small">{{ rec.description|truncatewords:15 }}</p>
+                                            <a href="{{ rec.url }}" class="btn btn-sm btn-primary">
+                                                Learn More <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="card">
+                        <div class="card-body text-center text-muted py-4">
+                            <i class="bi bi-lightbulb fs-1 d-block mb-2"></i>
+                            <p class="mb-2">No recommendations yet</p>
+                            <small>Complete your profile to get personalized suggestions</small>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Bucket List Progress -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Bucket List Progress</h2>
+                    <a href="{% url 'bucketlists:dashboard' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        {% if bucket_list_stats %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Overall Progress</span>
+                                    <span class="fw-bold">{{ bucket_list_stats.completion_percentage }}%</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar" 
+                                         role="progressbar" 
+                                         style="width: {{ bucket_list_stats.completion_percentage }}%; background: linear-gradient(90deg, var(--sbl-primary), var(--sbl-secondary));"
+                                         aria-valuenow="{{ bucket_list_stats.completion_percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 text-center">
+                                <div class="col-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <div class="fs-4 fw-bold text-primary">{{ bucket_list_stats.total }}</div>
+                                        <small class="text-muted">Total Items</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <div class="fs-4 fw-bold text-success">{{ bucket_list_stats.completed }}</div>
+                                        <small class="text-muted">Completed</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <div class="fs-4 fw-bold text-warning">{{ bucket_list_stats.in_progress }}</div>
+                                        <small class="text-muted">In Progress</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-list-check fs-1 d-block mb-2"></i>
+                                <p class="mb-2">Your bucket list is empty</p>
+                                <a href="{% url 'bucketlists:dashboard' %}" class="btn btn-sm btn-primary">
+                                    Add Your First Item
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any dashboard-specific JavaScript here
+    console.log('Dashboard loaded');
+</script>
 {% endblock %}

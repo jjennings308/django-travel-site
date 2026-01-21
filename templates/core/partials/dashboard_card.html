@@ -1,20 +1,46 @@
-<div class="col-12 col-sm-6 col-lg-4">
-  <div class="dashboard-card h-100 {% if disabled %}opacity-75{% endif %}">
-    <div class="dashboard-card-icon">
-      <i class="bi {{ icon }}"></i>
-    </div>
+{% comment %}
+templates/core/partials/dashboard_card.html
 
-    <h3 class="dashboard-card-title">{{ title }}</h3>
-    <p class="dashboard-card-description">
-      {{ description|default:"Module description goes here." }}
-    </p>
+Usage:
+{% include "core/partials/dashboard_card.html" with 
+    title="Bucket List" 
+    description="Places, activities, and events" 
+    url_name="bucketlists:dashboard" 
+    icon="bi-check2-square"
+    color="primary"
+    disabled=False
+%}
 
-    <div class="mt-auto">
-      {% if not disabled and url_name %}
-        <a href="{% url url_name %}" class="btn btn-primary w-100">Open</a>
-      {% else %}
-        <button class="btn btn-secondary w-100" disabled>Coming Soon</button>
-      {% endif %}
+Available colors: primary, secondary, accent, success, info, warning, danger
+{% endcomment %}
+
+{% load static %}
+
+<div class="col-md-6 col-lg-4">
+    <div class="dashboard-card {% if disabled %}opacity-50{% endif %}">
+        <div class="dashboard-card-icon {% if color == 'secondary' %}bg-secondary-subtle text-secondary{% elif color == 'accent' %}text-warning{% elif color == 'success' %}bg-success-subtle text-success{% elif color == 'info' %}bg-info-subtle text-info{% elif color == 'warning' %}bg-warning-subtle text-warning{% elif color == 'danger' %}bg-danger-subtle text-danger{% else %}bg-primary-subtle text-primary{% endif %}" 
+             style="{% if color == 'accent' %}background-color: #fef3c7 !important;{% endif %}">
+            <i class="{{ icon|default:'bi-app' }}"></i>
+        </div>
+        
+        <h3 class="dashboard-card-title">{{ title }}</h3>
+        
+        <p class="dashboard-card-description">
+            {{ description }}
+        </p>
+        
+        {% if disabled %}
+            <button class="btn btn-secondary w-100" disabled>
+                Coming Soon
+            </button>
+        {% elif url_name %}
+            <a href="{% url url_name %}" class="btn btn-{% if color == 'accent' %}warning{% else %}{{ color|default:'primary' }}{% endif %} w-100">
+                Open <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        {% else %}
+            <button class="btn btn-primary w-100" disabled>
+                No URL
+            </button>
+        {% endif %}
     </div>
-  </div>
 </div>

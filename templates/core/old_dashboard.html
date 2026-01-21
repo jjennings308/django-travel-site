@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <h1 class="mb-4">Main Dashboard</h1>
+
+  <div class="row g-4">
+    {% if user.can_access_staff %}
+        {% include "core/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-lock" %}
+    {% endif %}
+    {% include "core/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" %}
+    {% include "core/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" %}
+    {% include "core/partials/dashboard_card.html" with title="Coming Soon" description="Future module" icon="bi-plus-circle" disabled=True %}
+  </div>
+
+</div>
+{% endblock %}

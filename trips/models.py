@@ -225,6 +225,10 @@ class Trip(TimeStampedModel, SlugMixin):
         if self.estimated_budget and self.actual_cost:
             return self.actual_cost - self.estimated_budget
         return None
+
+    def get_country_count(self):
+        """Count distinct countries in this trip"""
+        return self.countries.count()
     
     def save(self, *args, **kwargs):
         # Calculate day count

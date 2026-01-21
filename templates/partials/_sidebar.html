@@ -7,7 +7,7 @@
       <a class="nav-link {% if current == 'core:dashboard' %}active{% endif %}"
          href="{% url 'core:dashboard' %}">
         <i class="bi bi-speedometer2 me-2"></i>
-        Main Dashboard
+        Main
       </a>
     </li>
 
@@ -15,7 +15,7 @@
       <a class="nav-link {% if current|slice:':11' == 'bucketlist:' %}active{% endif %}"
          href="{% url 'bucketlists:dashboard' %}">
         <i class="bi bi-list-check me-2"></i>
-        Bucket List Dashboard
+        Bucket List
       </a>
     </li>
 
@@ -23,7 +23,7 @@
       <a class="nav-link {% if current|slice:':11' == 'activities:' %}active{% endif %}"
          href="{% url 'activities:dashboard' %}">
         <i class="bi bi-signpost-2 me-2"></i>
-        Activities Dashboard
+        Activities
       </a>
     </li>
 
@@ -31,7 +31,7 @@
       <a class="nav-link {% if current|slice:':6' == 'trips:' %}active{% endif %}"
          href="{% url 'trips:dashboard' %}">
         <i class="bi bi-airplane me-2"></i>
-        Trips Dashboard
+        Trips
       </a>
     </li>
 
@@ -39,7 +39,7 @@
       <a class="nav-link {% if current|slice:':10' == 'locations:' %}active{% endif %}"
          href="{% url 'locations:dashboard' %}">
         <i class="bi bi-geo-alt me-2"></i>
-        Locations Dashboard
+        Locations
       </a>
     </li>
 
@@ -47,7 +47,7 @@
       <a class="nav-link {% if current|slice:':7' == 'events:' %}active{% endif %}"
          href="{% url 'events:dashboard' %}">
         <i class="bi bi-calendar-event me-2"></i>
-        Events Dashboard
+        Events
       </a>
     </li>
 
