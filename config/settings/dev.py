@@ -8,7 +8,7 @@ except ImportError:
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "web-dev", "192.168.10.150"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "web-dev", "192.168.10.150","travel.popsicletoes.us"]
 
 SITE_URL = "http://127.0.0.1:8000"
 

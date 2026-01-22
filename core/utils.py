@@ -2,6 +2,7 @@
 from django.utils.text import slugify
 from django.utils import timezone
 
+
 def generate_unique_slug(model_class, title, instance_id=None):
     """Generate a unique slug for a model instance"""
     slug = slugify(title)
