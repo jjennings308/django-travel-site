@@ -1,24 +1,24 @@
 {% load static %}
 {# templates/partials/_header.html #}
 <header class="site-header border-bottom">
-  <div class="container py-0">
-    <div class="d-flex align-items-center justify-content-between gap-3">
+  <div class="container py-2">
+    <div class="d-flex align-items-center justify-content-between">
 
       {# Left: Sidebar toggle + Branding #}
       <div class="d-flex align-items-center gap-3">
-        {# Sidebar toggle button (opens offcanvas) #}
-        <button class="btn btn-outline-secondary d-lg-none"
+        {# Sidebar toggle button #}
+        <button class="btn btn-link text-dark d-lg-none p-0"
           type="button"
           data-bs-toggle="offcanvas"
           data-bs-target="#mobileSidebar"
           aria-controls="mobileSidebar"
           aria-label="Open navigation">
-          <i class="bi bi-list"></i>
+          <i class="bi bi-list fs-4"></i>
         </button>
 
+        {# Simplified branding - logo + name only #}
         <div class="branding">
-          <a href="{% url 'core:home' %}"
-            class="site-title navbar-brand d-flex align-items-center text-decoration-none">
+          <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none">
 
             <img
               src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
@@ -29,111 +29,49 @@
             <span class="visually-hidden">{{ SITE_NAME }}</span>
           </a>
         </div>
-      </div>
 
-      {# Right: User/Admin/Login controls #}
-      <div class="d-flex align-items-center">
-        <ul class="nav">
-
-          {% if user.is_authenticated %}
-            {% if user.can_access_staff %}
-            {# Admin Dropdown #}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="adminDropdownTop"
-                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Admin
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdownTop">
-                <li><a class="dropdown-item" href="{% url 'staff:admin_account_list' %}">
-                  <i class="bi bi-people"></i> Manage Accounts
-                </a></li>
-                <li><a class="dropdown-item" href="{% url 'register' %}">
-                  <i class="bi bi-person-plus"></i> Create New User
-                </a></li>
-              </ul>
-            </li>
-            {% endif %}
-
-            {# Rewards Dropdown #}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="rewardsDropdown" 
-                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-award"></i> Rewards
-                {% if rewards_expiring_count %}
-                <span class="badge bg-warning text-dark">{{ rewards_expiring_count }}</span>
-                {% endif %}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="rewardsDropdown">
-                <li><a class="dropdown-item" href="{% url 'rewards:dashboard' %}">
-                  <i class="bi bi-speedometer2"></i> Dashboard
-                </a></li>
-                <li><a class="dropdown-item" href="{% url 'rewards:memberships_list' %}">
-                  <i class="bi bi-list-ul"></i> All Memberships
-                </a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="{% url 'rewards:add_membership' %}">
-                  <i class="bi bi-plus-circle"></i> Add Membership
-                </a></li>
-                <li><a class="dropdown-item" href="{% url 'rewards:programs_browse' %}">
-                  <i class="bi bi-search"></i> Browse Programs
-                </a></li>
-              </ul>
-            </li>
-
-            {# Theme Dropdown #}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="themeDropdown"
-                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-palette"></i> Theme
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeDropdown">
-                <li><button class="dropdown-item js-theme" data-theme="brand">
-                  <i class="bi bi-stars"></i> ShareBucketList Theme
-                </button></li>
-                <li><button class="dropdown-item js-theme" data-theme="light">
-                  <i class="bi bi-sun"></i> Light
-                </button></li>
-                <li><button class="dropdown-item js-theme" data-theme="dark">
-                  <i class="bi bi-moon"></i> Dark
-                </button></li>
-              </ul>
-            </li>
-
-            {# User Dropdown #}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="userDropdownTop"
-                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdownTop">
-                <li><a class="dropdown-item" href="{% url 'profile' %}">
-                  <i class="bi bi-person"></i> My Profile
-                </a></li>
-                <li><a class="dropdown-item" href="{% url 'settings' %}">
-                  <i class="bi bi-gear"></i> Settings
-                </a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <form method="post" action="{% url 'logout' %}" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="dropdown-item">
-                      <i class="bi bi-box-arrow-right"></i> Logout
-                    </button>
-                  </form>
-                </li>
-              </ul>
-            </li>
-
-          {% else %}
-            {# Not logged in #}
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'login' %}">Login</a>
-            </li>
-            <li class="nav-item">
-              <a class="btn btn-primary ms-2" href="{% url 'register' %}">Sign Up</a>
-            </li>
+      {# Right: Minimal user controls #}
+      <div class="d-flex align-items-center gap-2">
+        {% if user.is_authenticated %}
+          
+          {# Admin link if staff #}
+          {% if user.is_staff %}
+            <a href="{% url 'admin:index' %}" class="btn btn-sm btn-link text-muted" title="Admin">
+              <i class="bi bi-shield-lock"></i>
+            </a>
           {% endif %}
-        </ul>
+
+          {# User dropdown - icon only on mobile #}
+          <div class="dropdown">
+            <button class="btn btn-link text-dark p-1" type="button" 
+                    id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle fs-4"></i>
+              <span class="d-none d-md-inline ms-1">{{ user.username }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="{% url 'profile' %}">
+                <i class="bi bi-person"></i> Profile
+              </a></li>
+              <li><a class="dropdown-item" href="{% url 'settings' %}">
+                <i class="bi bi-gear"></i> Settings
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </div>
+
+        {% else %}
+          {# Not logged in - simplified #}
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'login' %}">Login</a>
+          <a class="btn btn-sm btn-primary" href="{% url 'register' %}">Sign Up</a>
+        {% endif %}
       </div>
 
     </div>
