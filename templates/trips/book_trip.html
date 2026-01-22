@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Book Trip: {{ trip.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .booking-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .booking-icon {
+        font-size: 3rem;
+        opacity: 0.8;
+    }
+    
+    .existing-booking {
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .booking-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    
+    <!-- Header -->
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'trips:dashboard' %}">Trips</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'trips:trip_detail' trip.id %}">{{ trip.title }}</a></li>
+                <li class="breadcrumb-item active">Book Trip</li>
+            </ol>
+        </nav>
+        
+        <h1 class="h2">Book Your Trip</h1>
+        <p class="text-muted">{{ trip.title }} • {{ trip.start_date|date:"M d" }} - {{ trip.end_date|date:"M d, Y" }}</p>
+    </div>
+    
+    <!-- Existing Bookings -->
+    {% if bookings %}
+    <div class="booking-section">
+        <h3 class="h5 mb-3">📋 Current Bookings ({{ bookings.count }})</h3>
+        
+        {% for booking in bookings %}
+        <div class="existing-booking">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="booking-type-badge bg-secondary text-white">
+                        {{ booking.get_booking_type_display }}
+                    </span>
+                    <h6 class="mt-2 mb-1">{{ booking.title }}</h6>
+                    <p class="text-muted small mb-1">
+                        {{ booking.start_date|date:"M d, Y" }}
+                        {% if booking.start_time %}at {{ booking.start_time|time:"g:i A" }}{% endif %}
+                    </p>
+                    {% if booking.confirmation_number %}
+                    <p class="small mb-0">
+                        <strong>Confirmation:</strong> {{ booking.confirmation_number }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold">${{ booking.cost }}</div>
+                    <span class="badge bg-{% if booking.payment_status == 'paid' %}success{% elif booking.payment_status == 'deposit' %}warning{% else %}danger{% endif %}">
+                        {{ booking.get_payment_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="text-end mt-3">
+            <strong>Total Booked:</strong> ${{ bookings|sum_field:"cost"|floatformat:2 }}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Booking Options -->
+    <div class="row g-4">
+        
+        <!-- Flights -->
+        <div class="col-md-6 col-lg-4">
+            <div class="booking-section h-100 text-center">
+                <div class="booking-icon mb-3">✈️</div>
+                <h3 class="h5 mb-3">Flights</h3>
+                <p class="text-muted small mb-4">Search and book flights to your destination</p>
+                <a href="{% url 'trips:search_flights' trip.id %}" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Search Flights
+                </a>
+            </div>
+        </div>
+        
+        <!-- Hotels -->
+        <div class="col-md-6 col-lg-4">
+            <div class="booking-section h-100 text-center">
+                <div class="booking-icon mb-3">🏨</div>
+                <h3 class="h5 mb-3">Accommodation</h3>
+                <p class="text-muted small mb-4">Find and book hotels for your stay</p>
+                <a href="{% url 'trips:search_hotels' trip.id %}" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Search Hotels
+                </a>
+            </div>
+        </div>
+        
+        <!-- Manual Booking -->
+        <div class="col-md-6 col-lg-4">
+            <div class="booking-section h-100 text-center">
+                <div class="booking-icon mb-3">📝</div>
+                <h3 class="h5 mb-3">Add Manually</h3>
+                <p class="text-muted small mb-4">Enter booking details you made elsewhere</p>
+                <a href="{% url 'trips:add_booking' trip.id %}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-plus-circle"></i> Add Booking
+                </a>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Quick Search Forms -->
+    <div class="row g-4 mt-4">
+        
+        <!-- Flight Quick Search -->
+        <div class="col-lg-6">
+            <div class="booking-section">
+                <h3 class="h5 mb-3">✈️ Quick Flight Search</h3>
+                <form method="post" action="{% url 'trips:search_flights' trip.id %}">
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ flight_form.origin.label_tag }}
+                            {{ flight_form.origin }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ flight_form.destination.label_tag }}
+                            {{ flight_form.destination }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ flight_form.departure_date.label_tag }}
+                            {{ flight_form.departure_date }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ flight_form.return_date.label_tag }}
+                            {{ flight_form.return_date }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ flight_form.passengers.label_tag }}
+                            {{ flight_form.passengers }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ flight_form.cabin_class.label_tag }}
+                            {{ flight_form.cabin_class }}
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-search"></i> Search Flights
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Hotel Quick Search -->
+        <div class="col-lg-6">
+            <div class="booking-section">
+                <h3 class="h5 mb-3">🏨 Quick Hotel Search</h3>
+                <form method="post" action="{% url 'trips:search_hotels' trip.id %}">
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            {{ hotel_form.destination.label_tag }}
+                            {{ hotel_form.destination }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ hotel_form.check_in.label_tag }}
+                            {{ hotel_form.check_in }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ hotel_form.check_out.label_tag }}
+                            {{ hotel_form.check_out }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ hotel_form.rooms.label_tag }}
+                            {{ hotel_form.rooms }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ hotel_form.guests.label_tag }}
+                            {{ hotel_form.guests }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ hotel_form.max_price.label_tag }}
+                            {{ hotel_form.max_price }}
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-search"></i> Search Hotels
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Additional Booking Types -->
+    <div class="booking-section mt-4">
+        <h3 class="h5 mb-3">Other Bookings</h3>
+        <div class="row g-3">
+            <div class="col-md-3 col-sm-6">
+                <div class="d-grid">
+                    <a href="{% url 'trips:add_booking' trip.id %}?type=car_rental" class="btn btn-outline-secondary">
+                        🚗 Car Rental
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="d-grid">
+                    <a href="{% url 'trips:add_booking' trip.id %}?type=train" class="btn btn-outline-secondary">
+                        🚆 Train Tickets
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="d-grid">
+                    <a href="{% url 'trips:add_booking' trip.id %}?type=tour" class="btn btn-outline-secondary">
+                        🎯 Tours & Activities
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="d-grid">
+                    <a href="{% url 'trips:add_booking' trip.id %}?type=event" class="btn btn-outline-secondary">
+                        🎫 Event Tickets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="mt-4 d-flex gap-2 justify-content-between">
+        <a href="{% url 'trips:trip_detail' trip.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Trip
+        </a>
+        
+        {% if bookings %}
+        <form method="post" action="{% url 'trips:update_trip_status' trip.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="booked">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Mark as Booked
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pre-fill destination from trip data
+    document.addEventListener('DOMContentLoaded', function() {
+        const flightDest = document.querySelector('#id_destination');
+        const hotelDest = document.querySelector('[name="destination"]');
+        
+        // You can add auto-fill logic here based on trip.primary_destination
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Review: {{ trip.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .review-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .rating-stars {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 2rem;
+        justify-content: center;
+        margin: 2rem 0;
+    }
+    
+    .rating-star {
+        cursor: pointer;
+        transition: all 0.2s;
+        opacity: 0.3;
+    }
+    
+    .rating-star:hover,
+    .rating-star.active {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    
+    .trip-summary-card {
+        background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5 review-container">
+    
+    <!-- Trip Summary -->
+    <div class="trip-summary-card">
+        <h1 class="h3 mb-2">How was your trip?</h1>
+        <h2 class="h4 mb-3">{{ trip.title }}</h2>
+        <p class="mb-0 opacity-90">
+            <i class="bi bi-calendar"></i> {{ trip.start_date|date:"M d" }} - {{ trip.end_date|date:"M d, Y" }}
+            {% if trip.primary_destination %}
+                <i class="bi bi-geo-alt ms-3"></i> {{ trip.primary_destination.name }}
+            {% endif %}
+        </p>
+    </div>
+    
+    <!-- Review Form -->
+    <div class="card">
+        <div class="card-body p-4">
+            <form method="post" id="reviewForm">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+                
+                <!-- Overall Rating -->
+                <div class="mb-4">
+                    <h5 class="text-center mb-3">Overall Rating</h5>
+                    
+                    <div class="rating-stars" id="ratingStars">
+                        <span class="rating-star" data-rating="1">⭐</span>
+                        <span class="rating-star" data-rating="2">⭐</span>
+                        <span class="rating-star" data-rating="3">⭐</span>
+                        <span class="rating-star" data-rating="4">⭐</span>
+                        <span class="rating-star" data-rating="5">⭐</span>
+                    </div>
+                    
+                    {{ form.overall_rating }}
+                    {% if form.overall_rating.errors %}
+                    <div class="invalid-feedback d-block text-center">{{ form.overall_rating.errors }}</div>
+                    {% endif %}
+                    
+                    <div class="text-center text-muted mt-2" id="ratingText">
+                        Click the stars to rate your trip
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- Trip Summary -->
+                <div class="mb-4">
+                    <label for="{{ form.trip_summary.id_for_label }}" class="form-label">
+                        <h5 class="mb-0">Share Your Experience</h5>
+                    </label>
+                    <p class="text-muted small mb-2">Tell us about your trip - the good, the bad, and everything in between.</p>
+                    {{ form.trip_summary }}
+                    {% if form.trip_summary.errors %}
+                    <div class="invalid-feedback d-block">{{ form.trip_summary.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Highlights -->
+                <div class="mb-4">
+                    <label for="{{ form.highlights.id_for_label }}" class="form-label">
+                        <h5 class="mb-0">Trip Highlights</h5>
+                    </label>
+                    <p class="text-muted small mb-2">What were the best moments or experiences?</p>
+                    {{ form.highlights }}
+                    {% if form.highlights.errors %}
+                    <div class="invalid-feedback d-block">{{ form.highlights.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Would Recommend -->
+                {% if form.would_recommend %}
+                <div class="mb-4">
+                    <div class="form-check">
+                        {{ form.would_recommend }}
+                        <label class="form-check-label" for="{{ form.would_recommend.id_for_label }}">
+                            <strong>I would recommend this trip to others</strong>
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Tips for Others -->
+                {% if form.tips_for_others %}
+                <div class="mb-4">
+                    <label for="{{ form.tips_for_others.id_for_label }}" class="form-label">
+                        <h5 class="mb-0">Tips for Future Travelers</h5>
+                    </label>
+                    <p class="text-muted small mb-2">Any advice or tips you'd give to someone planning a similar trip?</p>
+                    {{ form.tips_for_others }}
+                    {% if form.tips_for_others.errors %}
+                    <div class="invalid-feedback d-block">{{ form.tips_for_others.errors }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Submit -->
+                <div class="d-flex gap-2 justify-content-end pt-3 border-top">
+                    <a href="{% url 'trips:trip_detail' trip.id %}" class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Submit Review
+                    </button>
+                </div>
+                
+            </form>
+        </div>
+    </div>
+    
+    <!-- Review Tips -->
+    <div class="mt-4 p-4 bg-light rounded">
+        <h6 class="mb-3">💡 Review Tips</h6>
+        <ul class="mb-0 small">
+            <li>Be honest and specific about your experience</li>
+            <li>Mention both what worked well and what could be improved</li>
+            <li>Include practical details that might help other travelers</li>
+            <li>Remember that your review helps improve future travel planning</li>
+        </ul>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const stars = document.querySelectorAll('.rating-star');
+        const ratingInput = document.querySelector('#id_overall_rating');
+        const ratingText = document.querySelector('#ratingText');
+        
+        const ratingDescriptions = {
+            1: "Poor - Didn't enjoy it",
+            2: "Fair - Had some issues",
+            3: "Good - It was okay",
+            4: "Very Good - Enjoyed it!",
+            5: "Excellent - Amazing experience!"
+        };
+        
+        // Initialize with existing value if editing
+        if (ratingInput.value) {
+            updateStars(parseInt(ratingInput.value));
+        }
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                ratingInput.value = rating;
+                updateStars(rating);
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.rating);
+                highlightStars(rating);
+            });
+        });
+        
+        document.querySelector('.rating-stars').addEventListener('mouseleave', function() {
+            const currentRating = parseInt(ratingInput.value) || 0;
+            updateStars(currentRating);
+        });
+        
+        function updateStars(rating) {
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+            
+            if (rating > 0) {
+                ratingText.textContent = ratingDescriptions[rating];
+            } else {
+                ratingText.textContent = 'Click the stars to rate your trip';
+            }
+        }
+        
+        function highlightStars(rating) {
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
