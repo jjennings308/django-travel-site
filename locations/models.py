@@ -144,6 +144,10 @@ class Region(TimeStampedModel, SlugMixin):
             )
         super().save(*args, **kwargs)
 
+class CapitalType(models.TextChoices):
+    COUNTRY = "country", "Country capital"
+    REGION = "region", "Region/State capital"
+    BOTH = "both", "Country and Region capital"
 
 class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     """Cities within regions/countries"""
@@ -179,6 +183,14 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         blank=True,
         help_text="IANA timezone (e.g., America/New_York)"
     )
+    elevation = models.DecimalField(
+        max_digits=9,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=0,
+        help_text="Elevation of the City in feet"
+    )
     
     # Information
     description = models.TextField(blank=True)
@@ -196,6 +208,19 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         null=True,
         blank=True,
         help_text="Average daily budget in USD"
+    )
+    capital_type = models.CharField(
+        max_length=10,
+        choices=CapitalType.choices,
+        blank=True,
+        null=True,
+        help_text="Capital level for this city"
+    )
+    is_capital = models.BooleanField(
+        null=True,
+        blank=True,
+        default=False,
+        help_text="Is this a capital city.  It can be the capital of the country or region/state"    
     )
     
     # Stats
@@ -222,6 +247,13 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         return f"{self.name}, {self.country.iso_code}"
     
     def save(self, *args, **kwargs):
+        # Derive is_capital from capital_type
+        self.is_capital = self.capital_type in {
+            CapitalType.COUNTRY,
+            CapitalType.REGION,
+            CapitalType.BOTH,
+        }
+
         if not self.slug:
             from core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
@@ -272,6 +304,14 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     longitude = models.DecimalField(
         max_digits=9,
         decimal_places=6
+    )
+    elevation = models.DecimalField(
+        max_digits=9,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=0,
+        help_text="Elevation of the City in feet"
     )
     address = models.CharField(max_length=300, blank=True)
     
