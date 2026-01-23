@@ -22,23 +22,11 @@
                             </div>
                         {% endif %}
                         
-                        <!-- USERNAME FIELD - This was missing! -->
                         <div class="mb-3">
-                            <label for="{{ form.username.id_for_label }}" class="form-label">Username <span class="text-danger">*</span></label>
-                            {{ form.username }}
-                            <small class="form-text text-muted">
-                                Your unique username (letters, numbers, and underscores only). This will be used in your profile URL.
-                            </small>
-                            {% if form.username.errors %}
-                                <div class="text-danger">{{ form.username.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.email.id_for_label }}" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <label for="{{ form.email.id_for_label }}" class="form-label">Email Address</label>
                             {{ form.email }}
                             <small class="form-text text-muted">
-                                You can use this email or your username to log in.
+                                You'll use this email to log in.
                             </small>
                             {% if form.email.errors %}
                                 <div class="text-danger">{{ form.email.errors }}</div>
@@ -47,14 +35,14 @@
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
                                 {{ form.first_name }}
                                 {% if form.first_name.errors %}
                                     <div class="text-danger">{{ form.first_name.errors }}</div>
                                 {% endif %}
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
                                 {{ form.last_name }}
                                 {% if form.last_name.errors %}
                                     <div class="text-danger">{{ form.last_name.errors }}</div>
@@ -63,7 +51,7 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="{{ form.password1.id_for_label }}" class="form-label">Password <span class="text-danger">*</span></label>
+                            <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
                             <div class="input-group">
                                 {{ form.password1 }}
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('{{ form.password1.id_for_label }}', this)">
@@ -79,7 +67,7 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
                             <div class="input-group">
                                 {{ form.password2 }}
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('{{ form.password2.id_for_label }}', this)">
@@ -91,44 +79,10 @@
                             {% endif %}
                         </div>
                         
-                        <!-- Optional Role Requests -->
-                        <div class="mb-3">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title mb-3">
-                                        <i class="bi bi-briefcase"></i> Professional Features (Optional)
-                                    </h6>
-                                    <p class="card-text small text-muted mb-3">
-                                        Apply for additional capabilities. Your account will be created immediately, but these features require approval.
-                                    </p>
-                                    
-                                    <div class="form-check mb-2">
-                                        {{ form.request_vendor_role }}
-                                        <label class="form-check-label" for="{{ form.request_vendor_role.id_for_label }}">
-                                            <strong>{{ form.request_vendor_role.label }}</strong>
-                                        </label>
-                                        {% if form.request_vendor_role.help_text %}
-                                            <small class="form-text text-muted d-block ms-4">{{ form.request_vendor_role.help_text }}</small>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="form-check">
-                                        {{ form.request_content_provider_role }}
-                                        <label class="form-check-label" for="{{ form.request_content_provider_role.id_for_label }}">
-                                            <strong>{{ form.request_content_provider_role.label }}</strong>
-                                        </label>
-                                        {% if form.request_content_provider_role.help_text %}
-                                            <small class="form-text text-muted d-block ms-4">{{ form.request_content_provider_role.help_text }}</small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <div class="mb-3 form-check">
                             {{ form.terms_accepted }}
                             <label class="form-check-label" for="{{ form.terms_accepted.id_for_label }}">
-                                I agree to the <a href="#" target="_blank">Terms and Conditions</a> <span class="text-danger">*</span>
+                                I agree to the <a href="#">Terms and Conditions</a>
                             </label>
                             {% if form.terms_accepted.errors %}
                                 <div class="text-danger">{{ form.terms_accepted.errors }}</div>
