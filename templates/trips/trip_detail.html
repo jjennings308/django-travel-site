@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% load location_tags %}
+
 
 {% block title %}{{ trip.title }} - Trips{% endblock %}
 
@@ -202,12 +204,10 @@
             {% if trip.countries.exists %}
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Countries ({{ trip.countries.count }})</h5>
+                    <h5 class="mb-0">🌍 Countries Visited ({{ trip.countries.count }})</h5>
                 </div>
                 <div class="card-body">
-                    {% for country in trip.countries.all %}
-                        <span class="badge bg-secondary me-1 mb-1">{{ country.name }}</span>
-                    {% endfor %}
+                    {% country_list trip.countries.all use_icons=True%}
                 </div>
             </div>
             {% endif %}

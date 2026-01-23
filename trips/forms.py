@@ -6,8 +6,98 @@ from .models import Trip, TripBooking, TripActivity, TripDay
 from locations.models import City, Country
 
 
+def get_currency_choices():
+    """
+    Dynamically generate currency choices from the Country model.
+    Returns a list of tuples (currency_code, display_name).
+    """
+    # Get all unique currencies from countries
+    currencies = Country.objects.exclude(
+        currency_code=''
+    ).values_list(
+        'currency_code', 'currency_name'
+    ).distinct().order_by('currency_code')
+    
+    # Format as choices: (code, "CODE - Name")
+    choices = []
+    seen_codes = set()
+    
+    for code, name in currencies:
+        if code and code not in seen_codes:
+            seen_codes.add(code)
+            if name:
+                choices.append((code, f"{code} - {name}"))
+            else:
+                choices.append((code, code))
+    
+    # If no currencies in database, provide fallback list
+    if not choices:
+        choices = [
+            ('USD', 'USD - US Dollar'),
+            ('EUR', 'EUR - Euro'),
+            ('GBP', 'GBP - British Pound'),
+            ('JPY', 'JPY - Japanese Yen'),
+            ('AUD', 'AUD - Australian Dollar'),
+            ('CAD', 'CAD - Canadian Dollar'),
+        ]
+    
+    return choices
+
+
 class TripBaseForm(forms.ModelForm):
     """Base form with common trip fields"""
+    
+    # IMPORTANT: Explicitly declare currency as ChoiceField
+    # This overrides the ModelForm's auto-generated CharField
+    currency = forms.ChoiceField(
+        choices=[],  # Will be populated in __init__
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=False
+    )
+    
+    def __init__(self, *args, **kwargs):
+        # Extract user from kwargs if provided
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set currency choices dynamically from Country model
+        self.fields['currency'].choices = get_currency_choices()
+        
+        # Set default currency based on user preferences
+        if self.user and not self.instance.pk:  # Only for new trips
+            default_currency = self._get_user_default_currency()
+            if default_currency:
+                self.fields['currency'].initial = default_currency
+    
+    def _get_user_default_currency(self):
+        """
+        Get the user's default currency from:
+        1. AccountSettings.preferred_currency (if exists)
+        2. Home country's currency (if exists)
+        3. Falls back to 'USD'
+        """
+        if not self.user:
+            return 'USD'
+        
+        # Try to get from AccountSettings
+        try:
+            if hasattr(self.user, 'settings') and self.user.settings.preferred_currency:
+                return self.user.settings.preferred_currency
+        except Exception:
+            pass
+        
+        # Try to get from user's home country
+        try:
+            if hasattr(self.user, 'profile') and self.user.profile.home_country:
+                home_country_name = self.user.profile.home_country
+                country = Country.objects.filter(name__iexact=home_country_name).first()
+                if country and country.currency_code:
+                    return country.currency_code
+        except Exception:
+            pass
+        
+        # Default fallback
+        return 'USD'
     
     class Meta:
         model = Trip
@@ -50,9 +140,7 @@ class TripBaseForm(forms.ModelForm):
                 'placeholder': '0.00',
                 'step': '0.01'
             }),
-            'currency': forms.Select(attrs={
-                'class': 'form-select'
-            }),
+            # currency widget removed - defined as explicit field above
             'traveler_count': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '1'
@@ -210,6 +298,49 @@ class NewTripForm(TripBaseForm):
 class BookingForm(forms.ModelForm):
     """Form for creating a booking"""
     
+    # IMPORTANT: Explicitly declare currency as ChoiceField
+    currency = forms.ChoiceField(
+        choices=[],  # Will be populated in __init__
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=False
+    )
+    
+    def __init__(self, *args, **kwargs):
+        # Extract user from kwargs if provided
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set currency choices dynamically
+        self.fields['currency'].choices = get_currency_choices()
+        
+        # Set default currency based on user preferences
+        if self.user and not self.instance.pk:
+            default_currency = self._get_user_default_currency()
+            if default_currency:
+                self.fields['currency'].initial = default_currency
+    
+    def _get_user_default_currency(self):
+        """Same logic as TripBaseForm"""
+        if not self.user:
+            return 'USD'
+        
+        try:
+            if hasattr(self.user, 'settings') and self.user.settings.preferred_currency:
+                return self.user.settings.preferred_currency
+        except Exception:
+            pass
+        
+        try:
+            if hasattr(self.user, 'profile') and self.user.profile.home_country:
+                home_country_name = self.user.profile.home_country
+                country = Country.objects.filter(name__iexact=home_country_name).first()
+                if country and country.currency_code:
+                    return country.currency_code
+        except Exception:
+            pass
+        
+        return 'USD'
+    
     class Meta:
         model = TripBooking
         fields = [
@@ -247,7 +378,7 @@ class BookingForm(forms.ModelForm):
                 'class': 'form-control',
                 'step': '0.01'
             }),
-            'currency': forms.Select(attrs={'class': 'form-select'}),
+            # currency widget removed - defined as explicit field above
             'confirmation_number': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Confirmation #'

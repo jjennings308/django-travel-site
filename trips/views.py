@@ -133,7 +133,8 @@ def trip_detail(request, trip_id):
 def add_past_trip(request):
     """Add a trip that already occurred"""
     if request.method == 'POST':
-        form = PastTripForm(request.POST)
+        # UPDATED: Pass user to form
+        form = PastTripForm(request.POST, user=request.user)
         if form.is_valid():
             trip = form.save(commit=False)
             trip.user = request.user
@@ -146,7 +147,8 @@ def add_past_trip(request):
             )
             return redirect('trips:trip_detail', trip_id=trip.id)
     else:
-        form = PastTripForm()
+        # UPDATED: Pass user to form
+        form = PastTripForm(user=request.user)
     
     context = {
         'form': form,
@@ -165,7 +167,8 @@ def add_past_trip(request):
 def plan_new_trip(request):
     """Plan a new upcoming trip"""
     if request.method == 'POST':
-        form = NewTripForm(request.POST)
+        # UPDATED: Pass user to form
+        form = NewTripForm(request.POST, user=request.user)
         if form.is_valid():
             trip = form.save(commit=False)
             trip.user = request.user
@@ -178,7 +181,8 @@ def plan_new_trip(request):
             )
             return redirect('trips:trip_detail', trip_id=trip.id)
     else:
-        form = NewTripForm()
+        # UPDATED: Pass user to form
+        form = NewTripForm(user=request.user)
     
     context = {
         'form': form,
@@ -201,13 +205,15 @@ def edit_trip(request, trip_id):
         FormClass = NewTripForm
     
     if request.method == 'POST':
-        form = FormClass(request.POST, instance=trip)
+        # UPDATED: Pass user to form
+        form = FormClass(request.POST, instance=trip, user=request.user)
         if form.is_valid():
             trip = form.save()
             messages.success(request, f'Trip "{trip.title}" updated successfully!')
             return redirect('trips:trip_detail', trip_id=trip.id)
     else:
-        form = FormClass(instance=trip)
+        # UPDATED: Pass user to form
+        form = FormClass(instance=trip, user=request.user)
     
     context = {
         'form': form,
@@ -339,7 +345,8 @@ def add_booking(request, trip_id):
     trip = get_object_or_404(Trip, id=trip_id, user=request.user)
     
     if request.method == 'POST':
-        form = BookingForm(request.POST)
+        # UPDATED: Pass user to form
+        form = BookingForm(request.POST, user=request.user)
         if form.is_valid():
             booking = form.save(commit=False)
             booking.trip = trip
@@ -349,7 +356,8 @@ def add_booking(request, trip_id):
             messages.success(request, 'Booking added successfully!')
             return redirect('trips:book_trip', trip_id=trip.id)
     else:
-        form = BookingForm()
+        # UPDATED: Pass user to form
+        form = BookingForm(user=request.user)
     
     context = {
         'trip': trip,

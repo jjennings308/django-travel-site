@@ -11,6 +11,9 @@ from .models import (
     RoleRequest, VendorProfile, ContentProviderProfile
 )
 
+# UPDATED: Import AccountSettingsForm which now has dynamic currency choices
+from .forms import AccountSettingsForm
+
 COMMON_TIMEZONES = [
     "America/New_York",
     "America/Chicago",
@@ -36,7 +39,13 @@ def timezone_choices_grouped():
     ]
 
 
-class AccountSettingsAdminForm(forms.ModelForm):
+# UPDATED: Changed to inherit from AccountSettingsForm to get dynamic currency choices
+class AccountSettingsAdminForm(AccountSettingsForm):
+    """
+    Admin form for AccountSettings that includes:
+    - Dynamic currency choices from AccountSettingsForm
+    - Timezone dropdown with preview
+    """
     timezone = forms.ChoiceField(choices=[], required=True)
 
     class Meta:
@@ -45,6 +54,9 @@ class AccountSettingsAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Currency choices are already set by AccountSettingsForm.__init__()
+        
+        # Set up timezone choices
         self.fields["timezone"].choices = timezone_choices_grouped()
         
         tz = self.initial.get("timezone") or getattr(self.instance, "timezone", "UTC") or "UTC"

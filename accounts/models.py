@@ -301,19 +301,11 @@ class AccountSettings(TimeStampedModel):
         choices=UNIT_CHOICES,
         default='imperial'
     )
-    
-    CURRENCY_CHOICES = [
-        ('USD', 'US Dollar'),
-        ('EUR', 'Euro'),
-        ('GBP', 'British Pound'),
-        ('JPY', 'Japanese Yen'),
-        ('CAD', 'Canadian Dollar'),
-        ('AUD', 'Australian Dollar')
-    ]
+
     preferred_currency = models.CharField(
         max_length=3,
-        choices=CURRENCY_CHOICES,
-        default='USD'
+        default='USD',
+        help_text='ISO currency code (e.g., USD, EUR, GBP). Should match a currency from the Country model.'
     )
     
     timezone = models.CharField(
