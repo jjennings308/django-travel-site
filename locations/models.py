@@ -1,4 +1,6 @@
-# locations/models.py
+# locations/models.py - UPDATED Country model section
+# This shows only the changes needed to the Country model
+
 from django.db import models
 from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -51,7 +53,11 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     phone_code = models.CharField(max_length=10, blank=True)
     
     # Metadata
-    flag_emoji = models.CharField(max_length=10, blank=True)
+    flag_emoji = models.CharField(
+        max_length=10, 
+        blank=True,
+        help_text="Unicode flag emoji (e.g., 🇺🇸)"
+    )
     description = models.TextField(blank=True)
     travel_tips = models.TextField(
         blank=True,
@@ -82,12 +88,40 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         ordering = ['name']
     
     def __str__(self):
-        return f"{self.flag_emoji} {self.name}"
+        """Return country with flag emoji if available"""
+        if self.flag_emoji:
+            return f"{self.flag_emoji} {self.name}"
+        return self.name
+    
+    @property
+    def display_name(self):
+        """Alternative property for getting name with flag"""
+        return str(self)
+    
+    @property
+    def flag(self):
+        """Get flag emoji, generating from ISO code if needed"""
+        if self.flag_emoji:
+            return self.flag_emoji
+        
+        # Generate from ISO code if flag_emoji is empty
+        if self.iso_code and len(self.iso_code) == 2:
+            return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in self.iso_code.upper())
+        
+        return ''
     
     def save(self, *args, **kwargs):
+        # Auto-generate flag emoji from ISO code if not set
+        if not self.flag_emoji and self.iso_code and len(self.iso_code) == 2:
+            self.flag_emoji = ''.join(
+                chr(0x1F1E6 + ord(c) - ord('A')) 
+                for c in self.iso_code.upper()
+            )
+        
         if not self.slug:
             from core.utils import generate_unique_slug
             self.slug = generate_unique_slug(Country, self.name, self.id)
+        
         super().save(*args, **kwargs)
 
 

@@ -1,0 +1,108 @@
+{% load location_tags %}
+
+{# locations/templates/locations/_country_list.html #}
+{# Reusable component for displaying countries with flags #}
+{# Supports both Unicode emoji flags and flag-icons library SVG flags #}
+
+{% if style == 'badges' %}
+    {# Display as badges (default) #}
+    <div class="country-badges">
+        {% for country in countries %}
+            {% if use_icons %}
+                {# Use flag-icons library (crisp SVG) #}
+                <span class="badge bg-secondary me-1 mb-1" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
+                    <span class="{{ country|country_flag_icon }}" style="margin-right: 0.5rem;"></span>
+                    {{ country.name }}
+                </span>
+            {% else %}
+                {# Use Unicode emoji flags #}
+                <span class="badge bg-secondary me-1 mb-1 emoji-flag" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
+                    {{ country|country_display:"flag_name" }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+{% elif style == 'list' %}
+    {# Display as a bulleted list #}
+    <ul class="country-list list-unstyled mb-0">
+        {% for country in countries %}
+            <li class="mb-2">
+                {% if use_icons %}
+                    <span class="{{ country|country_flag_icon }} fi-2x" style="margin-right: 0.5rem;"></span>
+                {% else %}
+                    <span class="emoji-flag" style="font-size: 1.25rem; margin-right: 0.5rem;">{{ country|country_flag }}</span>
+                {% endif %}
+                <strong>{{ country.name }}</strong>
+                {% if country.continent %}
+                    <small class="text-muted">({{ country.continent }})</small>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+{% elif style == 'inline' %}
+    {# Display inline with commas #}
+    <span class="country-inline emoji-flag">
+        {% for country in countries %}
+            {% if use_icons %}
+                <span class="{{ country|country_flag_icon }}"></span> {{ country.name }}{% if not forloop.last %}, {% endif %}
+            {% else %}
+                {{ country|country_display:"flag_name" }}{% if not forloop.last %}, {% endif %}
+            {% endif %}
+        {% endfor %}
+    </span>
+
+{% elif style == 'grid' %}
+    {# Display as a grid #}
+    <div class="row g-3">
+        {% for country in countries %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        {% if use_icons %}
+                            <span class="{{ country|country_flag_icon }}" style="font-size: 4rem;"></span>
+                        {% else %}
+                            <div class="emoji-flag" style="font-size: 3rem;">{{ country|country_flag }}</div>
+                        {% endif %}
+                        <h6 class="mt-2">{{ country.name }}</h6>
+                        {% if country.continent %}
+                            <small class="text-muted">{{ country.continent }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+{% elif style == 'compact' %}
+    {# Display very compact - just flags #}
+    <div class="country-flags-compact">
+        {% for country in countries %}
+            {% if use_icons %}
+                <span class="{{ country|country_flag_icon }}" 
+                      title="{{ country.name }}" 
+                      style="font-size: 2rem; margin-right: 0.25rem; cursor: help;">
+                </span>
+            {% else %}
+                <span class="country-flag-item emoji-flag" 
+                      title="{{ country.name }}" 
+                      style="font-size: 1.5rem; margin-right: 0.25rem; cursor: help;">
+                    {{ country|country_flag }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+{% else %}
+    {# Default fallback #}
+    <span class="emoji-flag">
+        {% for country in countries %}
+            {% if use_icons %}
+                <span class="{{ country|country_flag_icon }}"></span> {{ country.name }}{% if not forloop.last %}, {% endif %}
+            {% else %}
+                {{ country|country_display }}{% if not forloop.last %}, {% endif %}
+            {% endif %}
+        {% endfor %}
+    </span>
+{% endif %}
