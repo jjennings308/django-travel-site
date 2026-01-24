@@ -217,13 +217,13 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         blank=True,
         help_text="IANA timezone (e.g., America/New_York)"
     )
-    elevation = models.DecimalField(
+    elevation_m = models.DecimalField(
         max_digits=9,
         decimal_places=2,
         null=True,
         blank=True,
         default=0,
-        help_text="Elevation of the City in feet"
+        help_text="Elevation of the City in meters"
     )
     
     # Information
@@ -339,13 +339,13 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         max_digits=9,
         decimal_places=6
     )
-    elevation = models.DecimalField(
+    elevation_m = models.DecimalField(
         max_digits=9,
         decimal_places=2,
         null=True,
         blank=True,
         default=0,
-        help_text="Elevation of the City in feet"
+        help_text="Elevation of the POI in meters"
     )
     address = models.CharField(max_length=300, blank=True)
     

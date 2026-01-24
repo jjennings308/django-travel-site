@@ -19,7 +19,8 @@ class Command(BaseCommand):
                 'lon': -110.5885,
                 'description': 'The first national park in the world, featuring geothermal wonders including Old Faithful geyser, diverse wildlife, and stunning mountain scenery.',
                 'entry_fee': 35.00,
-                'typical_duration': 480,  # 8 hours
+                'typical_duration': 480,
+                'elevation_m': 2350,
             },
             {
                 'name': 'Grand Canyon National Park',
@@ -30,6 +31,7 @@ class Command(BaseCommand):
                 'description': 'One of the Seven Natural Wonders of the World, showcasing immense canyon carved by the Colorado River with breathtaking vistas.',
                 'entry_fee': 35.00,
                 'typical_duration': 360,
+                'elevation_m': 2070,
             },
             {
                 'name': 'Yosemite National Park',
@@ -40,6 +42,7 @@ class Command(BaseCommand):
                 'description': 'Famous for granite cliffs, waterfalls, giant sequoia groves, and biological diversity, including El Capitan and Half Dome.',
                 'entry_fee': 35.00,
                 'typical_duration': 420,
+                'elevation_m': 1200,
             },
             {
                 'name': 'Zion National Park',
@@ -50,6 +53,7 @@ class Command(BaseCommand):
                 'description': 'Known for its towering sandstone cliffs, narrow slot canyons, and scenic Virgin River corridor.',
                 'entry_fee': 35.00,
                 'typical_duration': 300,
+                'elevation_m': 1200,
             },
             {
                 'name': 'Rocky Mountain National Park',
@@ -60,6 +64,7 @@ class Command(BaseCommand):
                 'description': 'Features majestic mountain peaks, alpine lakes, and diverse ecosystems from montane to alpine tundra.',
                 'entry_fee': 30.00,
                 'typical_duration': 360,
+                'elevation_m': 2380,
             },
             {
                 'name': 'Acadia National Park',
@@ -70,6 +75,7 @@ class Command(BaseCommand):
                 'description': 'Coastal park featuring rocky beaches, woodland, and granite peaks including Cadillac Mountain.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 150,
             },
             {
                 'name': 'Grand Teton National Park',
@@ -80,6 +86,7 @@ class Command(BaseCommand):
                 'description': 'Spectacular mountain scenery with the Teton Range rising dramatically above Jackson Hole valley.',
                 'entry_fee': 35.00,
                 'typical_duration': 360,
+                'elevation_m': 2070,
             },
             {
                 'name': 'Great Smoky Mountains National Park',
@@ -88,8 +95,9 @@ class Command(BaseCommand):
                 'lat': 35.6532,
                 'lon': -83.5070,
                 'description': "America's most visited national park, known for ancient mountains, diverse wildlife, and Appalachian culture.",
-                'entry_fee': 0.00,  # Free entry
+                'entry_fee': 0.00,
                 'typical_duration': 360,
+                'elevation_m': 460,
             },
             {
                 'name': 'Glacier National Park',
@@ -100,6 +108,7 @@ class Command(BaseCommand):
                 'description': 'Pristine wilderness with glacier-carved peaks, alpine meadows, and the scenic Going-to-the-Sun Road.',
                 'entry_fee': 35.00,
                 'typical_duration': 420,
+                'elevation_m': 960,
             },
             {
                 'name': 'Olympic National Park',
@@ -110,6 +119,7 @@ class Command(BaseCommand):
                 'description': 'Diverse ecosystems including temperate rainforest, alpine areas, and rugged Pacific coastline.',
                 'entry_fee': 30.00,
                 'typical_duration': 360,
+                'elevation_m': 180,
             },
             {
                 'name': 'Bryce Canyon National Park',
@@ -120,6 +130,7 @@ class Command(BaseCommand):
                 'description': 'Unique geology featuring hoodoos - spire-shaped rock formations in vibrant red, orange, and white colors.',
                 'entry_fee': 35.00,
                 'typical_duration': 240,
+                'elevation_m': 2400,
             },
             {
                 'name': 'Arches National Park',
@@ -130,6 +141,7 @@ class Command(BaseCommand):
                 'description': 'Home to over 2,000 natural stone arches, including the iconic Delicate Arch.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 1520,
             },
             {
                 'name': 'Joshua Tree National Park',
@@ -140,6 +152,7 @@ class Command(BaseCommand):
                 'description': 'Where the Mojave and Colorado deserts meet, featuring unique Joshua trees and excellent rock climbing.',
                 'entry_fee': 30.00,
                 'typical_duration': 240,
+                'elevation_m': 820,
             },
             {
                 'name': 'Sequoia National Park',
@@ -150,6 +163,7 @@ class Command(BaseCommand):
                 'description': 'Home to giant sequoia trees, including General Sherman, the largest tree on Earth by volume.',
                 'entry_fee': 35.00,
                 'typical_duration': 360,
+                'elevation_m': 520,
             },
             {
                 'name': 'Death Valley National Park',
@@ -160,6 +174,7 @@ class Command(BaseCommand):
                 'description': 'Hottest, driest, and lowest national park, featuring dramatic desert landscapes and unique geology.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': -86,
             },
             {
                 'name': 'Everglades National Park',
@@ -170,6 +185,7 @@ class Command(BaseCommand):
                 'description': 'Largest tropical wilderness in the US, featuring wetlands, mangroves, and diverse wildlife including alligators.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 2,
             },
             {
                 'name': 'Denali National Park',
@@ -177,9 +193,10 @@ class Command(BaseCommand):
                 'city': 'Denali Park',
                 'lat': 63.1148,
                 'lon': -151.1926,
-                'description': 'Home to North America\'s tallest peak, Denali (Mount McKinley), and vast subarctic wilderness.',
+                'description': "Home to North America's tallest peak, Denali (Mount McKinley), and vast subarctic wilderness.",
                 'entry_fee': 15.00,
                 'typical_duration': 480,
+                'elevation_m': 640,
             },
             {
                 'name': 'Shenandoah National Park',
@@ -190,6 +207,7 @@ class Command(BaseCommand):
                 'description': 'Blue Ridge Mountains park offering scenic Skyline Drive, waterfalls, and Appalachian Trail hiking.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 1050,
             },
             {
                 'name': 'Canyonlands National Park',
@@ -200,6 +218,7 @@ class Command(BaseCommand):
                 'description': 'Dramatic desert landscape carved by the Colorado and Green Rivers into countless canyons and mesas.',
                 'entry_fee': 30.00,
                 'typical_duration': 360,
+                'elevation_m': 1350,
             },
             {
                 'name': 'Mount Rainier National Park',
@@ -210,8 +229,8 @@ class Command(BaseCommand):
                 'description': 'Features an iconic active volcano covered in glaciers, surrounded by wildflower meadows and old-growth forests.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 510,
             },
-# ... continuing parks_data
             {
                 'name': 'Badlands National Park',
                 'state': 'South Dakota',
@@ -221,6 +240,7 @@ class Command(BaseCommand):
                 'description': 'Striking geologic deposits containing one of the world’s richest fossil beds.',
                 'entry_fee': 30.00,
                 'typical_duration': 240,
+                'elevation_m': 750,
             },
             {
                 'name': 'Big Bend National Park',
@@ -231,6 +251,7 @@ class Command(BaseCommand):
                 'description': 'Massive park protecting the Chisos Mountains and a large swath of the Chihuahuan Desert.',
                 'entry_fee': 30.00,
                 'typical_duration': 480,
+                'elevation_m': 720,
             },
             {
                 'name': 'Biscayne National Park',
@@ -241,6 +262,7 @@ class Command(BaseCommand):
                 'description': 'Protects aquamarine waters, emerald islands, and fish-filled coral reefs.',
                 'entry_fee': 0.00,
                 'typical_duration': 300,
+                'elevation_m': 1,
             },
             {
                 'name': 'Black Canyon of the Gunnison National Park',
@@ -251,6 +273,7 @@ class Command(BaseCommand):
                 'description': 'Features some of the steepest cliffs and oldest rock in North America.',
                 'entry_fee': 30.00,
                 'typical_duration': 180,
+                'elevation_m': 1980,
             },
             {
                 'name': 'Capitol Reef National Park',
@@ -258,9 +281,10 @@ class Command(BaseCommand):
                 'city': 'Torrey',
                 'lat': 38.3670,
                 'lon': -111.2615,
-                'description': 'Home to the Waterpocket Fold, a geologic monocline (a wrinkle on the earth) extending almost 100 miles.',
+                'description': 'Home to the Waterpocket Fold, a geologic monocline extending almost 100 miles.',
                 'entry_fee': 20.00,
                 'typical_duration': 240,
+                'elevation_m': 1650,
             },
             {
                 'name': 'Carlsbad Caverns National Park',
@@ -271,6 +295,7 @@ class Command(BaseCommand):
                 'description': 'High ancient sea ledges, deep rocky canyons, flowering cactus, and desert wildlife.',
                 'entry_fee': 15.00,
                 'typical_duration': 240,
+                'elevation_m': 1340,
             },
             {
                 'name': 'Channel Islands National Park',
@@ -281,6 +306,7 @@ class Command(BaseCommand):
                 'description': 'Five remarkable islands and their ocean environment, preserving unique animals and plants.',
                 'entry_fee': 0.00,
                 'typical_duration': 480,
+                'elevation_m': 5,
             },
             {
                 'name': 'Congaree National Park',
@@ -291,6 +317,7 @@ class Command(BaseCommand):
                 'description': 'The largest intact expanse of old growth bottomland hardwood forest in the Southeast.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
+                'elevation_m': 30,
             },
             {
                 'name': 'Crater Lake National Park',
@@ -301,6 +328,7 @@ class Command(BaseCommand):
                 'description': 'The deepest lake in the USA, formed by the collapse of an ancient volcano.',
                 'entry_fee': 30.00,
                 'typical_duration': 240,
+                'elevation_m': 1880,
             },
             {
                 'name': 'Cuyahoga Valley National Park',
@@ -311,6 +339,7 @@ class Command(BaseCommand):
                 'description': 'A refuge for native plants and wildlife along the Cuyahoga River between Cleveland and Akron.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
+                'elevation_m': 210,
             },
             {
                 'name': 'Dry Tortugas National Park',
@@ -321,6 +350,7 @@ class Command(BaseCommand):
                 'description': 'A 19th-century fort and crystal clear waters 70 miles west of Key West.',
                 'entry_fee': 15.00,
                 'typical_duration': 360,
+                'elevation_m': 2,
             },
             {
                 'name': 'Gates of the Arctic National Park',
@@ -331,6 +361,7 @@ class Command(BaseCommand):
                 'description': 'An untouched wilderness with no roads or trails, lying entirely north of the Arctic Circle.',
                 'entry_fee': 0.00,
                 'typical_duration': 1440,
+                'elevation_m': 300,
             },
             {
                 'name': 'Gateway Arch National Park',
@@ -341,6 +372,7 @@ class Command(BaseCommand):
                 'description': 'The gateway to the west, commemorating the Lewis and Clark expedition and westward expansion.',
                 'entry_fee': 3.00,
                 'typical_duration': 120,
+                'elevation_m': 140,
             },
             {
                 'name': 'Glacier Bay National Park',
@@ -351,6 +383,7 @@ class Command(BaseCommand):
                 'description': 'A highlight of Alaska’s Inside Passage and part of a 25-million-acre World Heritage site.',
                 'entry_fee': 0.00,
                 'typical_duration': 480,
+                'elevation_m': 10,
             },
             {
                 'name': 'Grand Basin National Park',
@@ -361,6 +394,7 @@ class Command(BaseCommand):
                 'description': 'Known for its ancient bristlecone pines and the Lehman Caves.',
                 'entry_fee': 0.00,
                 'typical_duration': 240,
+                'elevation_m': 2050,
             },
             {
                 'name': 'Great Sand Dunes National Park',
@@ -371,6 +405,7 @@ class Command(BaseCommand):
                 'description': 'The tallest sand dunes in North America, set against the backdrop of the Sangre de Cristo Mountains.',
                 'entry_fee': 25.00,
                 'typical_duration': 240,
+                'elevation_m': 2510,
             },
             {
                 'name': 'Guadalupe Mountains National Park',
@@ -381,6 +416,7 @@ class Command(BaseCommand):
                 'description': 'Contains the world’s most extensive Permian fossil reef and the highest point in Texas.',
                 'entry_fee': 10.00,
                 'typical_duration': 300,
+                'elevation_m': 1650,
             },
             {
                 'name': 'Haleakalā National Park',
@@ -391,6 +427,7 @@ class Command(BaseCommand):
                 'description': 'Preserves the volcanic landscape of Maui and the unique flora and fauna that live there.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 2100,
             },
             {
                 'name': 'Hawaiʻi Volcanoes National Park',
@@ -401,6 +438,7 @@ class Command(BaseCommand):
                 'description': 'Protects some of the most unique geological, biological, and cultural landscapes in the world.',
                 'entry_fee': 30.00,
                 'typical_duration': 360,
+                'elevation_m': 1200,
             },
             {
                 'name': 'Hot Springs National Park',
@@ -411,6 +449,7 @@ class Command(BaseCommand):
                 'description': 'An urban park featuring historic bathhouses and thermal springs.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
+                'elevation_m': 180,
             },
             {
                 'name': 'Indiana Dunes National Park',
@@ -421,6 +460,7 @@ class Command(BaseCommand):
                 'description': 'Miles of beaches, sand dunes, woodlands, and marshes along Lake Michigan.',
                 'entry_fee': 25.00,
                 'typical_duration': 240,
+                'elevation_m': 190,
             },
             {
                 'name': 'Isle Royale National Park',
@@ -431,6 +471,7 @@ class Command(BaseCommand):
                 'description': 'A rugged, isolated island in Lake Superior, accessible only by boat or seaplane.',
                 'entry_fee': 7.00,
                 'typical_duration': 1440,
+                'elevation_m': 240,
             },
             {
                 'name': 'Katmai National Park',
@@ -441,6 +482,7 @@ class Command(BaseCommand):
                 'description': 'Famous for its brown bears and the Valley of Ten Thousand Smokes.',
                 'entry_fee': 0.00,
                 'typical_duration': 480,
+                'elevation_m': 20,
             },
             {
                 'name': 'Kenai Fjords National Park',
@@ -451,6 +493,7 @@ class Command(BaseCommand):
                 'description': 'Where the ice age still lingers, featuring glaciers and abundant marine wildlife.',
                 'entry_fee': 0.00,
                 'typical_duration': 360,
+                'elevation_m': 30,
             },
             {
                 'name': 'Kings Canyon National Park',
@@ -461,6 +504,7 @@ class Command(BaseCommand):
                 'description': 'Features giant sequoias and one of the deepest canyons in the United States.',
                 'entry_fee': 35.00,
                 'typical_duration': 360,
+                'elevation_m': 1950,
             },
             {
                 'name': 'Kobuk Valley National Park',
@@ -471,6 +515,7 @@ class Command(BaseCommand):
                 'description': 'Home to vast sand dunes and the annual migration of half a million caribou.',
                 'entry_fee': 0.00,
                 'typical_duration': 1440,
+                'elevation_m': 30,
             },
             {
                 'name': 'Lake Clark National Park',
@@ -481,6 +526,7 @@ class Command(BaseCommand):
                 'description': 'A land of stunning beauty where volcanoes steam and salmon swim.',
                 'entry_fee': 0.00,
                 'typical_duration': 480,
+                'elevation_m': 320,
             },
             {
                 'name': 'Lassen Volcanic National Park',
@@ -491,6 +537,7 @@ class Command(BaseCommand):
                 'description': 'Boasts hydrothermal sites like Bumpass Hell and the massive Lassen Peak volcano.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 1750,
             },
             {
                 'name': 'Mammoth Cave National Park',
@@ -501,6 +548,7 @@ class Command(BaseCommand):
                 'description': 'The world’s longest known cave system.',
                 'entry_fee': 0.00,
                 'typical_duration': 240,
+                'elevation_m': 210,
             },
             {
                 'name': 'Mesa Verde National Park',
@@ -511,6 +559,7 @@ class Command(BaseCommand):
                 'description': 'Preserves the cultural heritage of the Ancestral Pueblo people.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
+                'elevation_m': 2070,
             },
             {
                 'name': 'National Park of American Samoa',
@@ -521,6 +570,7 @@ class Command(BaseCommand):
                 'description': 'One of the most remote parks, preserving coral reefs and tropical rainforests.',
                 'entry_fee': 0.00,
                 'typical_duration': 300,
+                'elevation_m': 20,
             },
             {
                 'name': 'New River Gorge National Park',
@@ -531,6 +581,7 @@ class Command(BaseCommand):
                 'description': 'One of the oldest rivers on the continent, famous for its massive bridge and whitewater rafting.',
                 'entry_fee': 0.00,
                 'typical_duration': 300,
+                'elevation_m': 580,
             },
             {
                 'name': 'North Cascades National Park',
@@ -541,6 +592,7 @@ class Command(BaseCommand):
                 'description': 'An alpine landscape with over 300 glaciers and jagged peaks.',
                 'entry_fee': 0.00,
                 'typical_duration': 420,
+                'elevation_m': 170,
             },
             {
                 'name': 'Petrified Forest National Park',
@@ -551,6 +603,7 @@ class Command(BaseCommand):
                 'description': 'Known for its large deposits of petrified wood and the colorful Painted Desert.',
                 'entry_fee': 25.00,
                 'typical_duration': 180,
+                'elevation_m': 1660,
             },
             {
                 'name': 'Pinnacles National Park',
@@ -561,6 +614,7 @@ class Command(BaseCommand):
                 'description': 'Rock spires and talus caves formed by an ancient volcano.',
                 'entry_fee': 30.00,
                 'typical_duration': 240,
+                'elevation_m': 390,
             },
             {
                 'name': 'Redwood National Park',
@@ -571,6 +625,7 @@ class Command(BaseCommand):
                 'description': 'Home to the tallest trees on Earth and a stunning Pacific coastline.',
                 'entry_fee': 0.00,
                 'typical_duration': 360,
+                'elevation_m': 60,
             },
             {
                 'name': 'Saguaro National Park',
@@ -581,6 +636,7 @@ class Command(BaseCommand):
                 'description': 'Protects the giant saguaro cactus, the symbol of the American West.',
                 'entry_fee': 25.00,
                 'typical_duration': 180,
+                'elevation_m': 820,
             },
             {
                 'name': 'Theodore Roosevelt National Park',
@@ -591,6 +647,7 @@ class Command(BaseCommand):
                 'description': 'Badlands where President Theodore Roosevelt once hunted bison.',
                 'entry_fee': 30.00,
                 'typical_duration': 240,
+                'elevation_m': 700,
             },
             {
                 'name': 'Virgin Islands National Park',
@@ -601,6 +658,7 @@ class Command(BaseCommand):
                 'description': 'Covers most of the island of St. John, known for white sand beaches and coral reefs.',
                 'entry_fee': 0.00,
                 'typical_duration': 360,
+                'elevation_m': 10,
             },
             {
                 'name': 'Voyageurs National Park',
@@ -611,6 +669,7 @@ class Command(BaseCommand):
                 'description': 'A water-based park near the Canadian border, accessible primarily by boat.',
                 'entry_fee': 0.00,
                 'typical_duration': 360,
+                'elevation_m': 340,
             },
             {
                 'name': 'White Sands National Park',
@@ -621,6 +680,7 @@ class Command(BaseCommand):
                 'description': 'The world’s largest gypsum dunefield, creating a landscape of glistening white sand.',
                 'entry_fee': 25.00,
                 'typical_duration': 180,
+                'elevation_m': 1230,
             },
             {
                 'name': 'Wind Cave National Park',
@@ -631,6 +691,7 @@ class Command(BaseCommand):
                 'description': 'One of the world’s longest and most complex caves, featuring rare boxwork formations.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
+                'elevation_m': 1280,
             },
             {
                 'name': 'Wrangell–St. Elias National Park',
@@ -641,8 +702,9 @@ class Command(BaseCommand):
                 'description': 'The largest national park in the USA, containing 9 of the 16 highest peaks in the country.',
                 'entry_fee': 0.00,
                 'typical_duration': 480,
-            },            
-       ]
+                'elevation_m': 300,
+            },
+        ]
 
         # Get or create USA
         try:
