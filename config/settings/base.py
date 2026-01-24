@@ -76,6 +76,13 @@ MIDDLEWARE = [
     'core.middleware.UserThemeMiddleware',
 ]
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        "LOCATION": "unique-snowflake", # Optional location identifier
+
+    }
+}
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -89,8 +96,10 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "core.context_processors.site_branding",                
-                'rewards.context_processors.rewards_context',
+                "core.context_processors.site_branding",   
+                "core.context_processors.user_settings",
+                "core.context_processors.user_preferences",                             
+                "rewards.context_processors.rewards_context",
             ],
         },
     },

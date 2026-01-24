@@ -1,0 +1,2 @@
+#!/bin/bash
+source ~/projects/travel_site/.venv/bin/activate
