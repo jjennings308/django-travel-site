@@ -65,6 +65,7 @@ def location_dashboard(request):
         'recent_regions': recent_regions,
         'recent_cities': recent_cities,
         'recent_pois': recent_pois,
+        'breadcrumb_list': BreadcrumbPatterns.locations_dashboard(),
     }
     
     return render(request, 'locations/dashboard.html', context)
@@ -111,6 +112,7 @@ def country_list(request):
         'search_query': search_query,
         'continent_filter': continent_filter,
         'continents': [choice[0] for choice in Country._meta.get_field('continent').choices],
+        'breadcrumb_list': BreadcrumbPatterns.countries_list(),
     }
     
     return render(request, 'locations/country_list.html', context)
@@ -147,6 +149,7 @@ def country_detail(request, slug):
         'regions': regions,
         'cities': cities,
         'featured_pois': featured_pois,
+        'breadcrumb_list': BreadcrumbPatterns.country_detail(country),
     }
     
     return render(request, 'locations/country_detail.html', context)
@@ -224,6 +227,7 @@ def country_add(request):
     context = {
         'continents': continents,
         'user_media': user_media,
+        'breadcrumb_list': BreadcrumbPatterns.country_add(),
     }
     
     return render(request, 'locations/country_add.html', context)

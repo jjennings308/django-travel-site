@@ -150,20 +150,59 @@ class BreadcrumbPatterns:
         ])
     
     @staticmethod
-    def locations_list():
+    def locations_dashboard():
         """Dashboard > Locations"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', None)
+        ])
+        
+    @staticmethod
+    def locations_list():
+        """Dashboard > Activities"""
         return build_breadcrumbs([
             ('Dashboard', 'core:dashboard'),
             ('Locations', None)
         ])
     
     @staticmethod
-    def location_detail(location):
-        """Dashboard > Locations > Location Name"""
+    def countries_list():
+        """Dashboard > Locations > Countries"""
         return build_breadcrumbs([
             ('Dashboard', 'core:dashboard'),
             ('Locations', 'locations:dashboard'),
-            (location.name, None)
+            ('Countries', None)
+        ])
+    
+    @staticmethod
+    def country_add():
+        """Dashboard > Locations > Countries > Add Country"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Countries', 'locations:country_list'),
+            ('Add Country', None)
+        ])
+    
+    @staticmethod
+    def country_detail(country):
+        """Dashboard > Locations > Countries > Country Name"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Countries', 'locations:country_list'),
+            (country.name, None)
+        ])
+    
+    @staticmethod
+    def country_edit(country):
+        """Dashboard > Locations > Countries > Country Name > Edit"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Countries', 'locations:country_list'),
+            (country.name, ('locations:country_detail', {'slug': country.slug})),
+            ('Edit', None)
         ])
     
     @staticmethod
