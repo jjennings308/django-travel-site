@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add POI{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <h1 class="display-4 fw-bold mb-2">Add New Point of Interest</h1>
+        <p class="text-muted">Submit a new attraction, landmark, or place for approval</p>
+    </div>
+
+    <form method="post" class="card shadow-sm">
+        <div class="card-body p-4">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Basic Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">POI Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" required class="form-control" placeholder="e.g., Eiffel Tower">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+                        <select name="city" required class="form-select">
+                            <option value="">Select City</option>
+                            {% regroup cities by country as country_cities %}
+                            {% for country in country_cities %}
+                                <optgroup label="{{ country.grouper.flag_emoji }} {{ country.grouper.name }}">
+                                    {% for city in country.list %}
+                                        <option value="{{ city.id }}">{{ city.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+                        <select name="poi_type" required class="form-select">
+                            <option value="">Select Type</option>
+                            {% for value, label in poi_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" rows="4" class="form-control" placeholder="Describe this point of interest..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Details -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Location Details</h3>
+                
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Latitude <span class="text-danger">*</span></label>
+                        <input type="number" name="latitude" step="0.000001" required class="form-control" placeholder="e.g., 48.8584">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Longitude <span class="text-danger">*</span></label>
+                        <input type="number" name="longitude" step="0.000001" required class="form-control" placeholder="e.g., 2.2945">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Elevation (meters)</label>
+                        <input type="number" name="elevation_m" step="0.01" class="form-control" placeholder="e.g., 324">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Address</label>
+                        <input type="text" name="address" class="form-control" placeholder="Street address">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact & Visiting Info -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Contact & Visiting Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Website</label>
+                        <input type="url" name="website" class="form-control" placeholder="https://example.com">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Phone</label>
+                        <input type="tel" name="phone" class="form-control" placeholder="+1 234 567 8900">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Entry Fee</label>
+                        <input type="number" name="entry_fee" step="0.01" class="form-control" placeholder="e.g., 25.00">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Currency</label>
+                        <input type="text" name="entry_fee_currency" maxlength="3" class="form-control text-uppercase" placeholder="e.g., EUR">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Typical Visit Duration (minutes)</label>
+                        <input type="number" name="typical_duration" class="form-control" placeholder="e.g., 120">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Accessibility</h3>
+                
+                <div class="form-check mb-2">
+                    <input type="checkbox" name="wheelchair_accessible" id="wheelchair_accessible" class="form-check-input">
+                    <label for="wheelchair_accessible" class="form-check-label">Wheelchair Accessible</label>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" name="parking_available" id="parking_available" class="form-check-input">
+                    <label for="parking_available" class="form-check-label">Parking Available</label>
+                </div>
+            </div>
+
+            <!-- Featured Media -->
+            <div class="mb-4">
+                <h3 class="h4 fw-bold mb-3">Featured Media</h3>
+                <p class="text-muted small mb-3">Select an image or video to represent this POI</p>
+                
+                <input type="hidden" name="featured_media_id" id="featured_media_id">
+                
+                <div id="selected-media" class="d-none mb-3">
+                    <div class="position-relative d-inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="media-grid" class="row g-3">
+                    {% for media in user_media %}
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <div class="media-item border rounded overflow-hidden position-relative" style="cursor: pointer; height: 120px;" 
+                                 onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
+                                 id="media-{{ media.id }}">
+                                {% if media.media_type == 'video' %}
+                                    <video src="{{ media.file.url }}" class="w-100 h-100" style="object-fit: cover;"></video>
+                                    <div class="position-absolute top-50 start-50 translate-middle">
+                                        <i class="bi bi-play-circle-fill text-white" style="font-size: 2rem; opacity: 0.75;"></i>
+                                    </div>
+                                {% else %}
+                                    <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-100 h-100" style="object-fit: cover;">
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">
+                            <p>No media uploaded yet. Upload images or videos in your media library first.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                <a href="{% url 'locations:poi_list' %}" class="btn btn-link text-muted text-decoration-none">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    Submit for Approval
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.media-item {
+    transition: all 0.2s;
+    border: 2px solid transparent !important;
+}
+.media-item:hover {
+    border-color: #0d6efd !important;
+    opacity: 0.8;
+}
+.media-item.selected {
+    border-color: #0d6efd !important;
+}
+</style>
+
+<script>
+function selectMedia(mediaId, mediaUrl) {
+    document.getElementById('featured_media_id').value = mediaId;
+    document.getElementById('selected-media-preview').src = mediaUrl;
+    document.getElementById('selected-media').classList.remove('d-none');
+    
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    document.getElementById('media-' + mediaId).classList.add('selected');
+}
+
+function clearSelectedMedia() {
+    document.getElementById('featured_media_id').value = '';
+    document.getElementById('selected-media').classList.add('d-none');
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+</script>
+{% endblock %}

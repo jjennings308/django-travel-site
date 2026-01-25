@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Region{% endblock %}
+
+{% block breadcrumbs %}
+  {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
+{% endblock %}
+
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <h1 class="display-4 fw-bold mb-2">Add New Region</h1>
+        <p class="text-muted">Submit a new region or state for approval</p>
+    </div>
+
+    <form method="post" class="card shadow-sm">
+        <div class="card-body p-4">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Basic Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Region/State Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" required class="form-control" placeholder="e.g., California">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
+                        <select name="country" required class="form-select">
+                            <option value="">Select Country</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}">{{ country.flag_emoji }} {{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Code</label>
+                        <input type="text" name="code" maxlength="10" class="form-control text-uppercase" placeholder="e.g., CA">
+                        <small class="form-text text-muted">State/Province code (optional)</small>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" rows="4" class="form-control" placeholder="Brief description of the region..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Coordinates -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Geographic Coordinates</h3>
+                <p class="text-muted small">Optional - coordinates for the region center</p>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Latitude</label>
+                        <input type="number" name="latitude" step="0.000001" class="form-control" placeholder="e.g., 36.7783">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Longitude</label>
+                        <input type="number" name="longitude" step="0.000001" class="form-control" placeholder="e.g., -119.4179">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Media -->
+            <div class="mb-4">
+                <h3 class="h4 fw-bold mb-3">Featured Media</h3>
+                <p class="text-muted small mb-3">Select an image to represent this region</p>
+                
+                <input type="hidden" name="featured_media_id" id="featured_media_id">
+                
+                <div id="selected-media" class="d-none mb-3">
+                    <div class="position-relative d-inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="media-grid" class="row g-3">
+                    {% for media in user_media %}
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <div class="media-item border rounded overflow-hidden" style="cursor: pointer; height: 120px;" 
+                                 onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
+                                 id="media-{{ media.id }}">
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-100 h-100" style="object-fit: cover;">
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">
+                            <p>No media uploaded yet. Upload images in your media library first.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                <a href="{% url 'locations:region_list' %}" class="btn btn-link text-muted text-decoration-none">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    Submit for Approval
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.media-item {
+    transition: all 0.2s;
+    border: 2px solid transparent !important;
+}
+.media-item:hover {
+    border-color: #198754 !important;
+    opacity: 0.8;
+}
+.media-item.selected {
+    border-color: #198754 !important;
+}
+</style>
+
+<script>
+function selectMedia(mediaId, mediaUrl) {
+    document.getElementById('featured_media_id').value = mediaId;
+    document.getElementById('selected-media-preview').src = mediaUrl;
+    document.getElementById('selected-media').classList.remove('d-none');
+    
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    document.getElementById('media-' + mediaId).classList.add('selected');
+}
+
+function clearSelectedMedia() {
+    document.getElementById('featured_media_id').value = '';
+    document.getElementById('selected-media').classList.add('d-none');
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+</script>
+{% endblock %}

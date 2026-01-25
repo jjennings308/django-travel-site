@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ poi.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="card shadow-sm mb-4 overflow-hidden">
+        {% if poi.featured_media %}
+            <div class="position-relative" style="height: 400px;">
+                {% if poi.featured_media.media_type == 'video' %}
+                    <video src="{{ poi.featured_media.file.url }}" class="w-100 h-100" style="object-fit: cover;" controls></video>
+                {% else %}
+                    <img src="{{ poi.featured_media.file.url }}" alt="{{ poi.name }}" class="w-100 h-100" style="object-fit: cover;">
+                {% endif %}
+                <div class="position-absolute bottom-0 start-0 end-0 p-4" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                    <h1 class="display-4 fw-bold text-white mb-0">{{ poi.name }}</h1>
+                    <p class="h5 text-white-50 mb-0">{{ poi.city.name }}, {{ poi.city.country.iso_code }}</p>
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-gradient bg-danger d-flex align-items-center justify-content-center" style="height: 400px;">
+                <div class="text-center">
+                    <i class="bi bi-geo-alt text-white" style="font-size: 8rem; opacity: 0.5;"></i>
+                    <h1 class="display-4 fw-bold text-white mt-3">{{ poi.name }}</h1>
+                    <p class="h5 text-white-50">{{ poi.city.name }}, {{ poi.city.country.iso_code }}</p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <span class="badge position-absolute top-0 end-0 m-3 fs-6
+            {% if poi.approval_status == 'approved' %}bg-success
+            {% elif poi.approval_status == 'pending' %}bg-warning text-dark
+            {% elif poi.approval_status == 'rejected' %}bg-danger
+            {% else %}bg-secondary{% endif %}">
+            {{ poi.get_approval_status_display }}
+        </span>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            {% if poi.description %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h3 class="h4 fw-bold mb-3">About</h3>
+                        <p class="lead">{{ poi.description }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Visiting Information -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="h4 fw-bold mb-3">Visiting Information</h3>
+                    
+                    <div class="row g-3">
+                        {% if poi.entry_fee %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-cash-coin fs-3 text-primary me-3"></i>
+                                    <div>
+                                        <p class="text-muted small mb-0">Entry Fee</p>
+                                        <p class="fw-bold mb-0">{{ poi.entry_fee_currency }} {{ poi.entry_fee }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-cash-coin fs-3 text-success me-3"></i>
+                                    <div>
+                                        <p class="text-muted small mb-0">Entry Fee</p>
+                                        <p class="fw-bold mb-0 text-success">Free Entry</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if poi.typical_duration %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-clock fs-3 text-info me-3"></i>
+                                    <div>
+                                        <p class="text-muted small mb-0">Typical Visit</p>
+                                        <p class="fw-bold mb-0">{{ poi.typical_duration }} minutes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if poi.wheelchair_accessible %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-universal-access fs-3 text-success me-3"></i>
+                                    <div>
+                                        <p class="text-muted small mb-0">Accessibility</p>
+                                        <p class="fw-bold mb-0">Wheelchair Accessible</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if poi.parking_available %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-p-circle fs-3 text-primary me-3"></i>
+                                    <div>
+                                        <p class="text-muted small mb-0">Parking</p>
+                                        <p class="fw-bold mb-0">Available</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold mb-3">Quick Info</h5>
+                    <dl class="mb-0">
+                        <div class="mb-3">
+                            <dt class="text-muted small mb-1">Type</dt>
+                            <dd class="mb-0">
+                                <span class="badge bg-danger">{{ poi.get_poi_type_display }}</span>
+                            </dd>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <dt class="text-muted small mb-1">City</dt>
+                            <dd class="mb-0">
+                                <a href="{% url 'locations:city_detail' poi.city.slug %}" class="text-decoration-none">
+                                    {{ poi.city.name }}
+                                </a>
+                            </dd>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <dt class="text-muted small mb-1">Country</dt>
+                            <dd class="mb-0">
+                                <a href="{% url 'locations:country_detail' poi.city.country.slug %}" class="text-decoration-none">
+                                    {{ poi.city.country.flag_emoji }} {{ poi.city.country.name }}
+                                </a>
+                            </dd>
+                        </div>
+                        
+                        {% if poi.address %}
+                            <div class="mb-3">
+                                <dt class="text-muted small mb-1">Address</dt>
+                                <dd class="mb-0">{{ poi.address }}</dd>
+                            </div>
+                        {% endif %}
+                        
+                        {% if poi.website %}
+                            <div class="mb-3">
+                                <dt class="text-muted small mb-1">Website</dt>
+                                <dd class="mb-0">
+                                    <a href="{{ poi.website }}" target="_blank" class="text-decoration-none">
+                                        Visit Website <i class="bi bi-box-arrow-up-right small"></i>
+                                    </a>
+                                </dd>
+                            </div>
+                        {% endif %}
+                        
+                        {% if poi.phone %}
+                            <div class="mb-3">
+                                <dt class="text-muted small mb-1">Phone</dt>
+                                <dd class="mb-0">{{ poi.phone }}</dd>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-0">
+                            <dt class="text-muted small mb-1">Coordinates</dt>
+                            <dd class="small mb-0">{{ poi.latitude }}, {{ poi.longitude }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            {% if poi.visitor_count or poi.average_rating %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3">Statistics</h5>
+                        {% if poi.visitor_count %}
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-muted">Visitors</span>
+                                <span class="h5 mb-0">{{ poi.visitor_count }}</span>
+                            </div>
+                        {% endif %}
+                        {% if poi.average_rating %}
+                            <div class="d-flex justify-content-between mb-0">
+                                <span class="text-muted">Rating</span>
+                                <span class="h5 mb-0">⭐ {{ poi.average_rating }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

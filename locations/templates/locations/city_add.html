@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add City{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <h1 class="display-4 fw-bold mb-2">Add New City</h1>
+        <p class="text-muted">Submit a new city for approval</p>
+    </div>
+
+    <form method="post" class="card shadow-sm">
+        <div class="card-body p-4">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Basic Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">City Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" required class="form-control" placeholder="e.g., New York">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
+                        <select name="country" id="country-select" required class="form-select">
+                            <option value="">Select Country</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}">{{ country.flag_emoji }} {{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Region/State</label>
+                        <select name="region" id="region-select" class="form-select">
+                            <option value="">Select Region (Optional)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Capital Type</label>
+                        <select name="capital_type" class="form-select">
+                            <option value="">Not a capital</option>
+                            {% for value, label in capital_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Population</label>
+                        <input type="number" name="population" class="form-control" placeholder="e.g., 8336000">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" rows="4" class="form-control" placeholder="Brief description of the city..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Geographic Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Latitude <span class="text-danger">*</span></label>
+                        <input type="number" name="latitude" step="0.000001" required class="form-control" placeholder="e.g., 40.7128">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Longitude <span class="text-danger">*</span></label>
+                        <input type="number" name="longitude" step="0.000001" required class="form-control" placeholder="e.g., -74.0060">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Elevation (meters)</label>
+                        <input type="number" name="elevation_m" step="0.01" class="form-control" placeholder="e.g., 10">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Timezone</label>
+                        <input type="text" name="timezone" class="form-control" placeholder="e.g., America/New_York">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Travel Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Travel Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Best Time to Visit</label>
+                        <input type="text" name="best_time_to_visit" class="form-control" placeholder="e.g., Spring (March-May) and Fall (Sept-Nov)">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Average Daily Budget (USD)</label>
+                        <input type="number" name="average_daily_budget" step="0.01" class="form-control" placeholder="e.g., 150.00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Media -->
+            <div class="mb-4">
+                <h3 class="h4 fw-bold mb-3">Featured Media</h3>
+                <p class="text-muted small mb-3">Select an image to represent this city</p>
+                
+                <input type="hidden" name="featured_media_id" id="featured_media_id">
+                
+                <div id="selected-media" class="d-none mb-3">
+                    <div class="position-relative d-inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="media-grid" class="row g-3">
+                    {% for media in user_media %}
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <div class="media-item border rounded overflow-hidden" style="cursor: pointer; height: 120px;" 
+                                 onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
+                                 id="media-{{ media.id }}">
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-100 h-100" style="object-fit: cover;">
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">
+                            <p>No media uploaded yet. Upload images in your media library first.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                <a href="{% url 'locations:city_list' %}" class="btn btn-link text-muted text-decoration-none">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    Submit for Approval
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.media-item {
+    transition: all 0.2s;
+    border: 2px solid transparent !important;
+}
+.media-item:hover {
+    border-color: #0d6efd !important;
+    opacity: 0.8;
+}
+.media-item.selected {
+    border-color: #0d6efd !important;
+}
+</style>
+
+<script>
+// Handle country change to load regions
+document.getElementById('country-select').addEventListener('change', function() {
+    const countryId = this.value;
+    const regionSelect = document.getElementById('region-select');
+    
+    regionSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    if (countryId) {
+        fetch(`/locations/api/countries/${countryId}/regions/`)
+            .then(response => response.json())
+            .then(data => {
+                regionSelect.innerHTML = '<option value="">Select Region (Optional)</option>';
+                data.regions.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region.id;
+                    option.textContent = region.name + (region.code ? ' (' + region.code + ')' : '');
+                    regionSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading regions:', error);
+                regionSelect.innerHTML = '<option value="">Error loading regions</option>';
+            });
+    } else {
+        regionSelect.innerHTML = '<option value="">Select Region (Optional)</option>';
+    }
+});
+
+function selectMedia(mediaId, mediaUrl) {
+    document.getElementById('featured_media_id').value = mediaId;
+    document.getElementById('selected-media-preview').src = mediaUrl;
+    document.getElementById('selected-media').classList.remove('d-none');
+    
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    document.getElementById('media-' + mediaId).classList.add('selected');
+}
+
+function clearSelectedMedia() {
+    document.getElementById('featured_media_id').value = '';
+    document.getElementById('selected-media').classList.add('d-none');
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+</script>
+{% endblock %}

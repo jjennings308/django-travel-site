@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Regions{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-4 fw-bold mb-2">Regions & States</h1>
+            <p class="text-muted">Browse and manage regions and states</p>
+        </div>
+        <a href="{% url 'locations:region_add' %}" class="btn btn-success">
+            <i class="bi bi-plus-lg me-2"></i>Add Region
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold">Search</label>
+                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search regions..." class="form-control">
+                    </div>
+                    
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold">Country</label>
+                        <select name="country" class="form-select">
+                            <option value="">All Countries</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ country.flag_emoji }} {{ country.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-funnel me-2"></i>Filter
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Regions Table -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Region</th>
+                        <th>Country</th>
+                        <th>Code</th>
+                        <th>Cities</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for region in page_obj %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if region.featured_media %}
+                                        <img src="{{ region.featured_media.file.url }}" alt="{{ region.name }}" class="rounded me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="bg-success bg-opacity-25 rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-map text-success"></i>
+                                        </div>
+                                    {% endif %}
+                                    <span class="fw-semibold">{{ region.name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ region.country.flag_emoji }} {{ region.country.name }}</td>
+                            <td><span class="text-muted">{{ region.code|default:"-" }}</span></td>
+                            <td>{{ region.city_count }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if region.approval_status == 'approved' %}bg-success
+                                    {% elif region.approval_status == 'pending' %}bg-warning text-dark
+                                    {% elif region.approval_status == 'rejected' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ region.get_approval_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'locations:region_detail' region.slug %}" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="bi bi-map text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3 text-muted">No regions found</h5>
+                                <p class="text-muted">Try adjusting your filters or add a new region.</p>
+                                <a href="{% url 'locations:region_add' %}" class="btn btn-success mt-2">
+                                    <i class="bi bi-plus-lg me-2"></i>Add Region
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if selected_country %}&country={{ selected_country }}{% endif %}">
+                            Previous
+                        </a>
+                    </li>
+                {% endif %}
+                
+                <li class="page-item disabled">
+                    <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if selected_country %}&country={{ selected_country }}{% endif %}">
+                            Next
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

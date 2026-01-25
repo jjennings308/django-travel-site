@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Country{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <h1 class="display-4 fw-bold mb-2">Add New Country</h1>
+        <p class="text-muted">Submit a new country for approval</p>
+    </div>
+
+    <form method="post" class="card shadow-sm">
+        <div class="card-body p-4">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Basic Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Country Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" required class="form-control" placeholder="e.g., United States">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">ISO Code (2-letter) <span class="text-danger">*</span></label>
+                        <input type="text" name="iso_code" required maxlength="2" class="form-control text-uppercase" placeholder="e.g., US">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">ISO3 Code (3-letter) <span class="text-danger">*</span></label>
+                        <input type="text" name="iso3_code" required maxlength="3" class="form-control text-uppercase" placeholder="e.g., USA">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Continent <span class="text-danger">*</span></label>
+                        <select name="continent" required class="form-select">
+                            <option value="">Select Continent</option>
+                            {% for value, label in continents %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" rows="4" class="form-control" placeholder="Brief description of the country..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Coordinates -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Geographic Coordinates</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Latitude</label>
+                        <input type="number" name="latitude" step="0.000001" class="form-control" placeholder="e.g., 37.0902">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Longitude</label>
+                        <input type="number" name="longitude" step="0.000001" class="form-control" placeholder="e.g., -95.7129">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Travel Information -->
+            <div class="mb-5">
+                <h3 class="h4 fw-bold mb-3">Travel Information</h3>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Currency Code</label>
+                        <input type="text" name="currency_code" maxlength="3" class="form-control text-uppercase" placeholder="e.g., USD">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Currency Name</label>
+                        <input type="text" name="currency_name" class="form-control" placeholder="e.g., US Dollar">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Phone Code</label>
+                        <input type="text" name="phone_code" class="form-control" placeholder="e.g., +1">
+                    </div>
+                    
+                    <div class="col-md-6 d-flex align-items-center">
+                        <div class="form-check">
+                            <input type="checkbox" name="visa_required" id="visa_required" class="form-check-input">
+                            <label for="visa_required" class="form-check-label">Visa Required (General)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Visa Information</label>
+                        <textarea name="visa_info" rows="3" class="form-control" placeholder="Details about visa requirements..."></textarea>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Travel Tips</label>
+                        <textarea name="travel_tips" rows="4" class="form-control" placeholder="General travel tips and advice..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Media -->
+            <div class="mb-4">
+                <h3 class="h4 fw-bold mb-3">Featured Media</h3>
+                <p class="text-muted small mb-3">Select an image or video to represent this country</p>
+                
+                <input type="hidden" name="featured_media_id" id="featured_media_id">
+                
+                <div id="selected-media" class="d-none mb-3">
+                    <div class="position-relative d-inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="media-grid" class="row g-3">
+                    {% for media in user_media %}
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <div class="media-item border rounded overflow-hidden" style="cursor: pointer; height: 120px;" 
+                                 onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
+                                 id="media-{{ media.id }}">
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-100 h-100" style="object-fit: cover;">
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">
+                            <p>No media uploaded yet. Upload images in your media library first.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                <a href="{% url 'locations:country_list' %}" class="btn btn-link text-muted text-decoration-none">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    Submit for Approval
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.media-item {
+    transition: all 0.2s;
+    border: 2px solid transparent !important;
+}
+.media-item:hover {
+    border-color: #0d6efd !important;
+    opacity: 0.8;
+}
+.media-item.selected {
+    border-color: #0d6efd !important;
+}
+</style>
+
+<script>
+function selectMedia(mediaId, mediaUrl) {
+    document.getElementById('featured_media_id').value = mediaId;
+    document.getElementById('selected-media-preview').src = mediaUrl;
+    document.getElementById('selected-media').classList.remove('d-none');
+    
+    // Highlight selected media
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    document.getElementById('media-' + mediaId).classList.add('selected');
+}
+
+function clearSelectedMedia() {
+    document.getElementById('featured_media_id').value = '';
+    document.getElementById('selected-media').classList.add('d-none');
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+</script>
+{% endblock %}

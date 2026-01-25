@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ region.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="card shadow-sm mb-4 overflow-hidden">
+        {% if region.featured_media %}
+            <div class="position-relative" style="height: 300px;">
+                <img src="{{ region.featured_media.file.url }}" alt="{{ region.name }}" class="w-100 h-100" style="object-fit: cover;">
+                <div class="position-absolute bottom-0 start-0 end-0 p-4" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                    <h1 class="display-4 fw-bold text-white mb-0">{{ region.name }}</h1>
+                    <p class="h5 text-white-50 mb-0">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-gradient bg-success d-flex align-items-center justify-content-center" style="height: 300px;">
+                <div class="text-center">
+                    <i class="bi bi-map text-white" style="font-size: 6rem; opacity: 0.5;"></i>
+                    <h1 class="display-4 fw-bold text-white mt-3">{{ region.name }}</h1>
+                    <p class="h5 text-white-50">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <span class="badge position-absolute top-0 end-0 m-3 fs-6
+            {% if region.approval_status == 'approved' %}bg-success
+            {% elif region.approval_status == 'pending' %}bg-warning text-dark
+            {% elif region.approval_status == 'rejected' %}bg-danger
+            {% else %}bg-secondary{% endif %}">
+            {{ region.get_approval_status_display }}
+        </span>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            {% if region.description %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h3 class="h4 fw-bold mb-3">About</h3>
+                        <p class="lead">{{ region.description }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Cities -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="h4 fw-bold mb-3">Cities in {{ region.name }}</h3>
+                    {% if cities %}
+                        <div class="row g-3">
+                            {% for city in cities %}
+                                <div class="col-md-6">
+                                    <a href="{% url 'locations:city_detail' city.slug %}" class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-3 bg-light rounded hover-bg-light">
+                                            {% if city.featured_media %}
+                                                <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="rounded me-3" style="width: 64px; height: 64px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="bg-info bg-opacity-25 rounded d-flex align-items-center justify-content-center me-3" style="width: 64px; height: 64px;">
+                                                    <i class="bi bi-buildings text-info fs-3"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h5 class="mb-1 text-dark">{{ city.name }}</h5>
+                                                {% if city.population %}
+                                                    <p class="mb-0 small text-muted">Population: {{ city.population|intcomma }}</p>
+                                                {% endif %}
+                                            </div>
+                                            {% if city.is_capital %}
+                                                <span class="badge bg-warning text-dark">Capital</span>
+                                            {% endif %}
+                                        </div>
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No cities added yet for this region.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold mb-3">Quick Info</h5>
+                    <dl class="mb-0">
+                        <div class="mb-3">
+                            <dt class="text-muted small mb-1">Country</dt>
+                            <dd class="h5 mb-0">
+                                <a href="{% url 'locations:country_detail' region.country.slug %}" class="text-decoration-none">
+                                    {{ region.country.flag_emoji }} {{ region.country.name }}
+                                </a>
+                            </dd>
+                        </div>
+                        
+                        {% if region.code %}
+                            <div class="mb-3">
+                                <dt class="text-muted small mb-1">Region Code</dt>
+                                <dd class="h5 mb-0">{{ region.code }}</dd>
+                            </div>
+                        {% endif %}
+                        
+                        {% if region.latitude and region.longitude %}
+                            <div class="mb-0">
+                                <dt class="text-muted small mb-1">Coordinates</dt>
+                                <dd class="small mb-0">{{ region.latitude }}, {{ region.longitude }}</dd>
+                            </div>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold mb-3">Statistics</h5>
+                    <div class="d-flex justify-content-between mb-0">
+                        <span class="text-muted">Cities</span>
+                        <span class="h5 mb-0">{{ region.city_count }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            {% if user.is_staff or region.submitted_by == user %}
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3">Actions</h5>
+                        <a href="{% url 'locations:region_list' %}" class="btn btn-success w-100">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Regions
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-bg-light:hover {
+    background-color: #e9ecef !important;
+}
+</style>
+{% endblock %}
