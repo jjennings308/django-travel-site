@@ -1,12 +1,119 @@
-# locations/models.py - UPDATED Country model section
-# This shows only the changes needed to the Country model
+# locations/models.py - Updated with review system and featured media
 
 from django.db import models
+from django.conf import settings
 from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
+from approval_system.models import Approvable
 
 
-class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin):
+class LocationStatus(models.TextChoices):
+    """Status choices for location review workflow"""
+    PENDING = 'pending', 'Pending Review'
+    APPROVED = 'approved', 'Approved'
+    REJECTED = 'rejected', 'Rejected'
+    NEEDS_CHANGES = 'needs_changes', 'Needs Changes'
+
+
+class ReviewableMixin(models.Model):
+    """Mixin for locations that can be reviewed"""
+    
+    status = models.CharField(
+        max_length=20,
+        choices=LocationStatus.choices,
+        default=LocationStatus.APPROVED,
+        help_text='Review status of this location'
+    )
+    
+    # Submission tracking
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='submitted_%(class)ss'
+    )
+    
+    # Review tracking
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_%(class)ss'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(
+        blank=True,
+        help_text='Notes from reviewer'
+    )
+    
+    class Meta:
+        abstract = True
+    
+    def is_public(self):
+        """Check if location is visible to public"""
+        return self.status == LocationStatus.APPROVED
+    
+    def is_pending(self):
+        """Check if location is pending review"""
+        return self.status == LocationStatus.PENDING
+    
+    def approve(self, reviewer, notes=''):
+        """Approve this location"""
+        from django.utils import timezone
+        self.status = LocationStatus.APPROVED
+        self.reviewed_by = reviewer
+        self.reviewed_at = timezone.now()
+        self.review_notes = notes
+        self.save()
+    
+    def reject(self, reviewer, notes=''):
+        """Reject this location"""
+        from django.utils import timezone
+        self.status = LocationStatus.REJECTED
+        self.reviewed_by = reviewer
+        self.reviewed_at = timezone.now()
+        self.review_notes = notes
+        self.save()
+    
+    def request_changes(self, reviewer, notes=''):
+        """Request changes to this location"""
+        from django.utils import timezone
+        self.status = LocationStatus.NEEDS_CHANGES
+        self.reviewed_by = reviewer
+        self.reviewed_at = timezone.now()
+        self.review_notes = notes
+        self.save()
+
+
+class FeaturedMediaMixin(models.Model):
+    """Mixin for locations that can have featured media"""
+    
+    featured_media = models.ForeignKey(
+        'media_app.Media',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='featured_for_%(class)s',
+        help_text='Featured image or video for this location'
+    )
+    
+    class Meta:
+        abstract = True
+    
+    def get_featured_media_url(self):
+        """Get URL of featured media if available"""
+        if self.featured_media:
+            return self.featured_media.file.url
+        return None
+    
+    def has_featured_media(self):
+        """Check if location has featured media"""
+        return self.featured_media is not None
+
+
+class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Countries"""
     
     name = models.CharField(max_length=100, unique=True)
@@ -86,6 +193,9 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         db_table = 'locations_countries'
         verbose_name_plural = 'Countries'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+        ]
     
     def __str__(self):
         """Return country with flag emoji if available"""
@@ -125,7 +235,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         super().save(*args, **kwargs)
 
 
-class Region(TimeStampedModel, SlugMixin):
+class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """States/Provinces/Regions within countries"""
     
     country = models.ForeignKey(
@@ -164,6 +274,9 @@ class Region(TimeStampedModel, SlugMixin):
         db_table = 'locations_regions'
         unique_together = [['country', 'name']]
         ordering = ['country', 'name']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+        ]
     
     def __str__(self):
         return f"{self.name}, {self.country.name}"
@@ -178,12 +291,14 @@ class Region(TimeStampedModel, SlugMixin):
             )
         super().save(*args, **kwargs)
 
+
 class CapitalType(models.TextChoices):
     COUNTRY = "country", "Country capital"
     REGION = "region", "Region/State capital"
     BOTH = "both", "Country and Region capital"
 
-class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
+
+class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Cities within regions/countries"""
     
     country = models.ForeignKey(
@@ -274,6 +389,9 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         verbose_name_plural = 'Cities'
         unique_together = [['country', 'name']]
         ordering = ['country', 'name']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+        ]
     
     def __str__(self):
         if self.region:
@@ -298,7 +416,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         super().save(*args, **kwargs)
 
 
-class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin):
+class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Points of Interest (attractions, landmarks, etc.)"""
     
     city = models.ForeignKey(
@@ -397,6 +515,7 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin):
         indexes = [
             models.Index(fields=['poi_type']),
             models.Index(fields=['latitude', 'longitude']),
+            models.Index(fields=['status', '-created_at']),
         ]
     
     def __str__(self):

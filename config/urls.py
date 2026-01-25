@@ -31,6 +31,7 @@ urlpatterns = [
     path('locations/', include(('locations.urls', 'locations'), namespace='locations')),
     path('trips/', include(('trips.urls', 'trips'), namespace='trips')),
     path('staff/', include(('accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
+    path('approval/', include('approval_system.urls')),
 ]
 
 if settings.DEBUG:

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'recommendations',
     'admin_tools',
     'rewards',
+    'approval_system',
 ]
 
 MIDDLEWARE = [
