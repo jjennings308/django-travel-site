@@ -6,6 +6,7 @@ from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from core.utils.breadcrumbs import BreadcrumbPatterns
 from datetime import datetime, timedelta
 
 from .models import Trip, TripBooking, TripActivity, TripDay
@@ -120,6 +121,7 @@ def trip_detail(request, trip_id):
         'days': days,
         'activities': activities,
         'can_review': trip.status == 'completed' and not trip.overall_rating,
+        'breadcrumb_list': BreadcrumbPatterns.trip_detail(trip)
     }
     
     return render(request, 'trips/trip_detail.html', context)

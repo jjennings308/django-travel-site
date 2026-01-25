@@ -35,26 +35,21 @@
 {% block header %}
   {% include "partials/_header.html" %}
 {% endblock %}
-{% if user.is_authenticated %}
-  {% block navbar %}
-    {% include "partials/_mobile_sidebar.html" %}
-  {% endblock %}
-{% endif %}
+
 <main class="container-fluid mt-0 mb-4">
   <div class="container-fluid">
     <div class="row">
 
-      {% if user.is_authenticated %}
-        <!-- Desktop sidebar (lg and up only) -->
-        <aside class="col-lg-2 d-none d-lg-block border-end min-vh-100 py-3">
-          {% include "partials/_sidebar.html" %}
-        </aside>
-      {% endif %}
-
-      <!-- Main content -->
-      <section class="{% if user.is_authenticated %}col-12 col-lg-10{% else %}col-12{% endif %} py-3">
+      <!-- Main content - full width, no sidebar -->
+      <section class="col-12 py-3">
         <div class="container">
+          <!-- Breadcrumbs (conditionally shown) -->
+          {% block breadcrumbs %}{% endblock %}
+          
+          <!-- Messages -->
           {% include "partials/_messages.html" %}
+          
+          <!-- Page content -->
           {% block content %}{% endblock %}
         </div>
       </section>
@@ -62,6 +57,7 @@
     </div>
   </div>
 </main>
+
 {% block footer %}
   {% include "partials/_footer.html" %}
 {% endblock %}
@@ -100,7 +96,7 @@
     if (data && data.ok) localStorage.setItem(key, tz);
   })
   .catch(() => {
-    // Silently ignore; we’ll retry on next page load
+    // Silently ignore; we'll retry on next page load
   });
 })();
 </script>

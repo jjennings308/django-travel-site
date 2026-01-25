@@ -4,35 +4,38 @@
   <div class="container py-2">
     <div class="d-flex align-items-center justify-content-between">
 
-      {# Left: Sidebar toggle + Branding #}
-      <div class="d-flex align-items-center gap-3">
-        {# Sidebar toggle button #}
-        <button class="btn btn-link text-dark d-lg-none p-0"
-          type="button"
-          data-bs-toggle="offcanvas"
-          data-bs-target="#mobileSidebar"
-          aria-controls="mobileSidebar"
-          aria-label="Open navigation">
-          <i class="bi bi-list fs-4"></i>
-        </button>
-
-        {# Simplified branding - logo + name only #}
-        <div class="branding">
-          <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none mb-0">
-            <img
-              src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
-              alt="{{ SITE_NAME }}"
-              class="navbar_logo"
-              loading="eager"
-            >
-            <span class="visually-hidden">{{ SITE_NAME }}</span>
-          </a>
-        </div>
+      {# Left: Branding #}
+      <div class="branding">
+        <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none mb-0">
+          <img
+            src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
+            alt="{{ SITE_NAME }}"
+            class="navbar_logo"
+            loading="eager"
+          >
+          <span class="visually-hidden">{{ SITE_NAME }}</span>
+        </a>
       </div>
 
-      {# Right: Minimal user controls #}
+      {# Right: User controls #}
       <div class="d-flex align-items-center gap-2">
         {% if user.is_authenticated %}
+          
+          {# Quick nav links - shown on larger screens #}
+          <nav class="d-none d-lg-flex align-items-center gap-2 me-2">
+            <a href="{% url 'core:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Dashboard">
+              <i class="bi bi-speedometer2"></i>
+              <span class="ms-1 d-none d-xl-inline">Dashboard</span>
+            </a>
+            <a href="{% url 'bucketlists:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Bucket List">
+              <i class="bi bi-list-check"></i>
+              <span class="ms-1 d-none d-xl-inline">Bucket List</span>
+            </a>
+            <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Trips">
+              <i class="bi bi-airplane"></i>
+              <span class="ms-1 d-none d-xl-inline">Trips</span>
+            </a>
+          </nav>
           
           {# Admin link if staff #}
           {% if user.is_staff %}
@@ -41,7 +44,7 @@
             </a>
           {% endif %}
 
-          {# User dropdown - icon only on mobile #}
+          {# User dropdown #}
           <div class="dropdown">
             <button class="btn btn-link text-dark p-1 d-flex align-items-center" type="button" 
                     id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -49,6 +52,25 @@
               <span class="d-none d-md-inline ms-2">{{ user.username }}</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              {# Mobile-only nav links in dropdown #}
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'core:dashboard' %}">
+                <i class="bi bi-speedometer2 me-2"></i>Dashboard
+              </a></li>
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'bucketlists:dashboard' %}">
+                <i class="bi bi-list-check me-2"></i>Bucket List
+              </a></li>
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'trips:dashboard' %}">
+                <i class="bi bi-airplane me-2"></i>Trips
+              </a></li>
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'activities:dashboard' %}">
+                <i class="bi bi-signpost-2 me-2"></i>Activities
+              </a></li>
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'locations:dashboard' %}">
+                <i class="bi bi-geo-alt me-2"></i>Locations
+              </a></li>
+              <li class="d-lg-none"><hr class="dropdown-divider"></li>
+              
+              {# Standard user menu items #}
               <li><a class="dropdown-item" href="{% url 'profile' %}">
                 <i class="bi bi-person me-2"></i>Profile
               </a></li>
@@ -68,7 +90,7 @@
           </div>
 
         {% else %}
-          {# Not logged in - simplified #}
+          {# Not logged in #}
           <a class="btn btn-sm btn-outline-primary me-1" href="{% url 'login' %}">Login</a>
           <a class="btn btn-sm btn-primary" href="{% url 'register' %}">Sign Up</a>
         {% endif %}

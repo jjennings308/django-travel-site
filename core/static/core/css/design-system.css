@@ -573,3 +573,59 @@ button:focus,
     --sbl-text-secondary: #ffffff;
   }
 }
+
+/* ============================================================================
+   RESPONSIVE NAVBAR LOGO SIZING
+   Add this to your main CSS file (e.g., static/core/css/style.css)
+   ============================================================================ */
+
+.navbar_logo {
+  max-height: 50px;  /* Desktop default */
+  height: auto;
+  width: auto;
+  transition: max-height 0.2s ease;
+}
+
+/* Extra small devices (phones, less than 576px) */
+@media (max-width: 575.98px) {
+  .navbar_logo {
+    max-height: 30px;  /* Compact for mobile */
+  }
+}
+
+/* Small devices (tablets, 576px to 767px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .navbar_logo {
+    max-height: 36px;
+  }
+}
+
+/* Medium devices (tablets, 768px to 991px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .navbar_logo {
+    max-height: 42px;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .navbar_logo {
+    max-height: 50px;  /* Full size on desktop */
+  }
+}
+
+/* ============================================================================
+   ALTERNATIVE: If you want different sizing
+   ============================================================================ */
+
+/*
+.navbar_logo {
+  max-height: 48px;
+}
+
+@media (max-width: 575.98px) {
+  .navbar_logo {
+    max-height: 28px;
+  }
+}
+*/
