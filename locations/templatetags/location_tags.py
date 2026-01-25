@@ -133,7 +133,7 @@ def country_badge(country, classes='badge bg-secondary', use_icon=False):
     return mark_safe(html)
 
 
-@register.inclusion_tag('locations/_country_list.html')
+@register.inclusion_tag('locations/partials/_country_list.html')
 def country_list(countries, style='badges', use_icons=False):
     """
     Renders a list of countries with flags.
