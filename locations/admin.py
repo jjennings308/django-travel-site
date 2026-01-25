@@ -49,6 +49,10 @@ class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
                       'reviewed_by', 'reviewed_at'),
             'classes': ('collapse',)
         }),        
+       ('Featured Media', {
+            'fields': ('featured_media',), 
+            'classes': ('collapse',)
+        }),          
     )
     
     # ApprovableAdminMixin automatically adds these to readonly_fields,
@@ -88,6 +92,10 @@ class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
                       'reviewed_by', 'reviewed_at'),
             'classes': ('collapse',)
         }),
+       ('Featured Media', {
+            'fields': ('featured_media',), 
+            'classes': ('collapse',)
+        }),          
     )
     
     readonly_fields = [
@@ -135,6 +143,10 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
                       'reviewed_by', 'reviewed_at'),
             'classes': ('collapse',)
         }),
+       ('Featured Media', {
+            'fields': ('featured_media',), 
+            'classes': ('collapse',)
+        }),          
     )
     
     readonly_fields = [
@@ -164,7 +176,7 @@ class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
             'fields': ('city', 'name', 'slug', 'poi_type')
         }),
         ('Geographic Data', {
-            'fields': ('latitude', 'longitude', 'address')
+            'fields': ('latitude', 'longitude', 'address', 'elevation_m')
         }),
         ('Information', {
             'fields': ('description', 'website', 'phone')
@@ -191,6 +203,10 @@ class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
                       'reviewed_by', 'reviewed_at'),
             'classes': ('collapse',)
         }),
+       ('Featured Media', {
+            'fields': ('featured_media',), 
+            'classes': ('collapse',)
+        }),          
     )
     
     readonly_fields = [

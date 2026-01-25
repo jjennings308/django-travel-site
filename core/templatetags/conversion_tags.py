@@ -15,7 +15,8 @@ from decimal import Decimal
 # Updated imports for new utils structure
 from core.utils.helpers import (
     convert_distance_by_preference,
-    convert_temperature_by_preference
+    convert_temperature_by_preference,
+    convert_elevation_by_preference
 )
 from core.utils.imperial_metric import (
     km_to_miles,
@@ -48,6 +49,21 @@ def distance(km, unit_system='metric'):
         return ''
     
     result = convert_distance_by_preference(km, unit_system)
+    return result['formatted'] if result else ''
+
+@register.filter
+def elevation(m, unit_system='metric'):
+    """
+    Convert distance based on user's unit preference.
+    
+    Usage:
+        {{ trip.elevation|distance:user.settings.unit_system }}
+        {{ 100|elevation:'imperial' }}  # Returns "328.08 ft"
+    """
+    if m is None:
+        return ''
+    
+    result = convert_elevation_by_preference(m, unit_system)
     return result['formatted'] if result else ''
 
 

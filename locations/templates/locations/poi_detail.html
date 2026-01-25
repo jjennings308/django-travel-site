@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load location_tags %}
+{% load conversion_tags %}
 
 {% block title %}{{ poi.name }}{% endblock %}
 
@@ -145,7 +147,9 @@
                             <dt class="text-muted small mb-1">Country</dt>
                             <dd class="mb-0">
                                 <a href="{% url 'locations:country_detail' poi.city.country.slug %}" class="text-decoration-none">
-                                    {{ poi.city.country.flag_emoji }} {{ poi.city.country.name }}
+                                    <span class="badge bg-secondary me-1 mb-1" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
+                                    <span class="{{ poi.city.country|country_flag_icon }}" style="margin-right: 0.5rem;"></span>
+                                    {{ poi.city.country.name }}
                                 </a>
                             </dd>
                         </div>
@@ -179,6 +183,12 @@
                             <dt class="text-muted small mb-1">Coordinates</dt>
                             <dd class="small mb-0">{{ poi.latitude }}, {{ poi.longitude }}</dd>
                         </div>
+                        {% if poi.elevation_m %}
+                            <div class="mb-0">
+                                    <dt class="text-muted small mb-1">Elevation</dt>
+                                    <dd class="mb-0">{{ poi.elevation_m|elevation:user_units }}</dd>
+                            </div>
+                        {% endif %}
                     </dl>
                 </div>
             </div>

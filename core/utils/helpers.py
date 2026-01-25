@@ -4,7 +4,7 @@ Helper functions for user preferences and conversions
 """
 
 from decimal import Decimal, ROUND_HALF_UP
-from .imperial_metric import km_to_miles, celsius_to_fahrenheit
+from .imperial_metric import km_to_miles, celsius_to_fahrenheit, meters_to_feet
 
 
 def convert_distance_by_preference(distance_km, user_preference='metric'):
@@ -31,6 +31,37 @@ def convert_distance_by_preference(distance_km, user_preference='metric'):
     else:
         value = Decimal(str(distance_km)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         unit = 'km'
+    
+    return {
+        'value': value,
+        'unit': unit,
+        'formatted': f"{value} {unit}"
+    }
+
+def convert_elevation_by_preference(distance_m, user_preference='metric'):
+    """
+    Convert distance based on user's preference
+    
+    Args:
+        distance_km (float or Decimal): Distance in kilometers
+        user_preference (str): 'metric' or 'imperial'
+    
+    Returns:
+        dict: Dictionary with value, unit, and formatted string
+    
+    Example:
+        >>> convert_distance_by_preference(100, 'imperial')
+        {'value': Decimal('62.14'), 'unit': 'mi', 'formatted': '62.14 mi'}
+    """
+    if distance_m is None:
+        return None
+    
+    if user_preference == 'imperial':
+        value = meters_to_feet(distance_m)
+        unit = 'ft'
+    else:
+        value = Decimal(str(distance_m)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        unit = 'm'
     
     return {
         'value': value,

@@ -15,6 +15,7 @@ from accounts.models import User
 from core.utils.breadcrumbs import BreadcrumbPatterns
 
 
+
 # ============================================================================
 # DASHBOARD VIEWS
 # ============================================================================
@@ -646,7 +647,7 @@ def poi_detail(request, slug):
         POI.objects.select_related('city', 'city__country', 'city__region', 'featured_media'),
         slug=slug
     )
-    
+        
     context = {
         'poi': poi,
     }
