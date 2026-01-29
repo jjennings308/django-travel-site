@@ -4,6 +4,10 @@
 
 {% block title %}{{ city.name }}{% endblock %}
 
+{% block breadcrumbs %}
+  {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <!-- Header -->

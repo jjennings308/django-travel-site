@@ -7,7 +7,6 @@ from approval_system.models import ApprovalStatus
 
 User = get_user_model()
 
-
 class Command(BaseCommand):
     """
     Seed/repair Regions for already-loaded countries.
@@ -23,7 +22,6 @@ class Command(BaseCommand):
       - Safe to re-run as a repair tool (idempotent)
       - Offline / no external dependencies
       - Does NOT delete anything
-      - Automatically marks all regions as APPROVED (system import)
 
     Countries with detailed regions included (by request):
       - US (states + DC)
@@ -37,7 +35,7 @@ class Command(BaseCommand):
       - Region.code is optional; we set commonly-used codes where available.
     """
 
-    help = "Seed/repair Regions (baseline National + detailed regions for selected countries) with auto-approval"
+    help = "Seed/repair Regions (baseline National + detailed regions for selected countries)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -123,7 +121,7 @@ class Command(BaseCommand):
         created = 0
         updated = 0
         skipped = 0
-        approved_count = 0
+        approved_count = 0 
         errors = 0
 
         # -------------------------
@@ -142,28 +140,32 @@ class Command(BaseCommand):
                     defaults={
                         "code": country.iso_code,
                         "description": "Baseline region (auto-created). Replace/add real states/provinces as needed.",
-                        # Approval fields - mark as approved for system imports
-                        "approval_status": ApprovalStatus.APPROVED,
-                        "submitted_by": approver,
-                        "submitted_at": timezone.now(),
-                        "reviewed_by": approver,
-                        "reviewed_at": timezone.now(),
                     },
                 )
 
+                # Set approval fields for both new and existing regions
+                needs_save = False
+                if region.approval_status != ApprovalStatus.APPROVED:
+                    region.approval_status = ApprovalStatus.APPROVED
+                    needs_save = True
+                if not region.submitted_by:
+                    region.submitted_by = approver
+                    region.submitted_at = timezone.now()
+                    needs_save = True
+                if not region.reviewed_by:
+                    region.reviewed_by = approver
+                    region.reviewed_at = timezone.now()
+                    needs_save = True
+                    
+                if needs_save:
+                    region.save()
+                    approved_count += 1
+
                 if was_created:
                     created += 1
-                    approved_count += 1
                     self.stdout.write(self.style.SUCCESS(f"✓ Created & Approved: National ({country.iso_code})"))
                 else:
                     updated += 1
-                    # Ensure existing region is approved
-                    if region.approval_status != ApprovalStatus.APPROVED:
-                        region.approval_status = ApprovalStatus.APPROVED
-                        region.reviewed_by = approver
-                        region.reviewed_at = timezone.now()
-                        region.save()
-                        approved_count += 1
                     self.stdout.write(self.style.WARNING(f"↻ Updated: National ({country.iso_code})"))
 
             except Exception as e:
@@ -190,7 +192,7 @@ class Command(BaseCommand):
                     ("South Dakota", "SD"), ("Tennessee", "TN"), ("Texas", "TX"), ("Utah", "UT"),
                     ("Vermont", "VT"), ("Virginia", "VA"), ("Washington", "WA"), ("West Virginia", "WV"),
                     ("Wisconsin", "WI"), ("Wyoming", "WY"),
-                    ("District of Columbia", "DC"),
+                    ("District of Columbia", "DC"), ("US Virgin Islands", "VI"),
                 ],
 
                 # Mexico: 31 states + Mexico City (CDMX)
@@ -233,9 +235,9 @@ class Command(BaseCommand):
 
             det_created = 0
             det_updated = 0
-            det_approved = 0
             det_skipped_missing_country = 0
             det_errors = 0
+            det_approved = 0
 
             for iso, regions in detailed.items():
                 try:
@@ -274,7 +276,7 @@ class Command(BaseCommand):
                                 region.reviewed_at = timezone.now()
                                 region.save()
                                 det_approved += 1
-
+                                
                     except Exception as e:
                         det_errors += 1
                         self.stdout.write(self.style.ERROR(

@@ -156,15 +156,7 @@ class BreadcrumbPatterns:
             ('Dashboard', 'core:dashboard'),
             ('Locations', None)
         ])
-        
-    @staticmethod
-    def locations_list():
-        """Dashboard > Activities"""
-        return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
-            ('Locations', None)
-        ])
-    
+           
     @staticmethod
     def countries_list():
         """Dashboard > Locations > Countries"""
@@ -205,6 +197,126 @@ class BreadcrumbPatterns:
             ('Edit', None)
         ])
     
+    @staticmethod
+    def regions_list():
+        """Dashboard > Locations > Regions"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Regions', None)
+        ])
+    
+    @staticmethod
+    def region_add():
+        """Dashboard > Locations > Regions > Add Region"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Regions', 'locations:region_list'),
+            ('Add Region', None)
+        ])
+    
+    @staticmethod
+    def region_detail(region):
+        """Dashboard > Locations > Regions > Region Name"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Regions', 'locations:region_list'),
+            (region.name, None)
+        ])
+    
+    @staticmethod
+    def region_edit(region):
+        """Dashboard > Locations > Regions > Region Name > Edit"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Regions', 'locations:region_list'),
+            (region.name, ('locations:region_detail', {'slug': region.slug})),
+            ('Edit', None)
+        ])
+
+    @staticmethod
+    def cities_list():
+        """Dashboard > Locations > Cities"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Cities', None)
+        ])
+    
+    @staticmethod
+    def city_add():
+        """Dashboard > Locations > Cities > Add City"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Cities', 'locations:city_list'),
+            ('Add City', None)
+        ])
+    
+    @staticmethod
+    def city_detail(city):
+        """Dashboard > Locations > Cities > City Name"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Cities', 'locations:city_list'),
+            (city.name, None)
+        ])
+    
+    @staticmethod
+    def city_edit(city):
+        """Dashboard > Locations > Cities > City Name > Edit"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('Cities', 'locations:city_list'),
+            (city.name, ('locations:city_detail', {'slug': city.slug})),
+            ('Edit', None)
+        ])
+
+    @staticmethod
+    def pois_list():
+        """Dashboard > Locations > POIs"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('POIs', None)
+        ])
+    
+    @staticmethod
+    def poi_add():
+        """Dashboard > Locations > POIs > Add POI"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('POIs', 'locations:poi_list'),
+            ('Add POI', None)
+        ])
+    
+    @staticmethod
+    def poi_detail(poi):
+        """Dashboard > Locations > POIs > POI Name"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('POIs', 'locations:poi_list'),
+            (poi.name, None)
+        ])
+    
+    @staticmethod
+    def poi_edit(poi):
+        """Dashboard > Locations > POIs > POI Name > Edit"""
+        return build_breadcrumbs([
+            ('Dashboard', 'core:dashboard'),
+            ('Locations', 'locations:dashboard'),
+            ('POIs', 'locations:city_list'),
+            (poi.name, ('locations:poi_detail', {'slug': poi.slug})),
+            ('Edit', None)
+        ])
+
     @staticmethod
     def events_list():
         """Dashboard > Events"""

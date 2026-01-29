@@ -331,7 +331,7 @@ def region_list(request):
         'search_query': search_query,
         'countries': countries,
         'selected_country': country_id,
-        'breadcrumb_list': BreadcrumbPatterns.locations_list
+        'breadcrumb_list': BreadcrumbPatterns.regions_list
     }
     
     return render(request, 'locations/region_list.html', context)
@@ -355,7 +355,7 @@ def region_detail(request, slug):
     context = {
         'region': region,
         'cities': cities,
-        'breadcrumb_list': BreadcrumbPatterns.locations_list
+        'breadcrumb_list': BreadcrumbPatterns.region_detail(region)
     }
     
     return render(request, 'locations/region_detail.html', context)
@@ -420,7 +420,7 @@ def region_add(request):
     context = {
         'countries': countries,
         'user_media': user_media,
-        'breadcrumb_list': BreadcrumbPatterns.locations_list
+        'breadcrumb_list': BreadcrumbPatterns.region_add
     }
     
     return render(request, 'locations/region_add.html', context)
@@ -478,6 +478,7 @@ def city_list(request):
         'countries': countries,
         'selected_country': country_id,
         'capital_only': capital_only,
+        'breadcrumb_list': BreadcrumbPatterns.cities_list
     }
     
     return render(request, 'locations/city_list.html', context)
@@ -501,6 +502,7 @@ def city_detail(request, slug):
     context = {
         'city': city,
         'pois': pois,
+        'breadcrumb_list': BreadcrumbPatterns.city_detail(city)
     }
     
     return render(request, 'locations/city_detail.html', context)
@@ -586,6 +588,7 @@ def city_add(request):
         'countries': countries,
         'capital_types': capital_types,
         'user_media': user_media,
+        'breadcrumb_list': BreadcrumbPatterns.city_add
     }
     
     return render(request, 'locations/city_add.html', context)
@@ -638,6 +641,7 @@ def poi_list(request):
         'search_query': search_query,
         'poi_types': poi_types,
         'selected_type': poi_type,
+        'breadcrumb_list': BreadcrumbPatterns.pois_list
     }
     
     return render(request, 'locations/poi_list.html', context)
@@ -654,6 +658,7 @@ def poi_detail(request, slug):
         
     context = {
         'poi': poi,
+        'breadcrumb_list': BreadcrumbPatterns.poi_detail(poi)
     }
     
     return render(request, 'locations/poi_detail.html', context)
@@ -740,6 +745,7 @@ def poi_add(request):
         'cities': cities,
         'poi_types': poi_types,
         'user_media': user_media,
+        'breadcrumb_list': BreadcrumbPatterns.poi_add
     }
     
     return render(request, 'locations/poi_add.html', context)
