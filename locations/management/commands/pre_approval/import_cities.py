@@ -1,24 +1,12 @@
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 from locations.models import CapitalType, City, Country, Region
-from approval_system.models import ApprovalStatus
-
-User = get_user_model()
 
 
 class Command(BaseCommand):
-    """
-    Seed/repair Cities (curated set for US/MX/CR/DE/AT; offline & idempotent).
-    
-    Now includes approval system integration - all imported cities are
-    automatically marked as APPROVED since these are system-level imports.
-    """
-
-    help = "Seed/repair Cities (curated set for US/MX/CR/DE/AT; offline & idempotent with auto-approval)"
+    help = "Seed/repair Cities (curated set for US/MX/CR/DE/AT; offline & idempotent)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -26,46 +14,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Skip seeding the curated city lists (no-op).",
         )
-        parser.add_argument(
-            "--approved-by",
-            type=str,
-            default=None,
-            help="Username of the user to mark as approver. If not provided, uses first superuser.",
-        )
-
-    def _get_approver(self, username=None):
-        """Get the user who will be marked as the approver for system imports"""
-        if username:
-            try:
-                return User.objects.get(username=username)
-            except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"User '{username}' not found. Trying first superuser..."
-                ))
-        
-        # Fallback to first superuser
-        superuser = User.objects.filter(is_superuser=True).first()
-        if superuser:
-            return superuser
-        
-        return None
 
     def handle(self, *args, **options):
         if options.get("skip_detailed", False):
             self.stdout.write(self.style.WARNING("Skipped (per --skip-detailed)."))
             return
-
-        # Get approver user for marking imports as approved
-        approver = self._get_approver(options.get("approved_by"))
-        if not approver:
-            self.stdout.write(self.style.ERROR(
-                "No approver found. Please create a superuser first or specify --approved-by <username>."
-            ))
-            return
-
-        self.stdout.write(self.style.SUCCESS(
-            f"Using approver: {approver.username} (ID: {approver.id})"
-        ))
 
         # Tuple formats supported:
         #   (city_name, region_name, lat, lon, description)
@@ -121,7 +74,6 @@ class Command(BaseCommand):
 
         created = 0
         updated = 0
-        approved_count = 0
         errors = 0
         missing_countries = 0
 
@@ -152,16 +104,10 @@ class Command(BaseCommand):
                         defaults={
                             "code": (region_name[:3].upper() if region_name else country.iso_code),
                             "description": f"Auto-created region to support city seeding for {country.name}.",
-                            # Approval fields for auto-created regions
-                            "approval_status": ApprovalStatus.APPROVED,
-                            "submitted_by": approver,
-                            "submitted_at": timezone.now(),
-                            "reviewed_by": approver,
-                            "reviewed_at": timezone.now(),
                         },
                     )
 
-                    city, was_created = City.objects.update_or_create(
+                    _, was_created = City.objects.update_or_create(
                         country=country,
                         name=city_name,
                         defaults={
@@ -173,28 +119,14 @@ class Command(BaseCommand):
                             "population": None,
                             "elevation": None,
                             "capital_type": capital_type,  # City.save() derives is_capital
-                            # Approval fields - mark as approved for system imports
-                            "approval_status": ApprovalStatus.APPROVED,
-                            "submitted_by": approver,
-                            "submitted_at": timezone.now(),
-                            "reviewed_by": approver,
-                            "reviewed_at": timezone.now(),
                         },
                     )
 
                     if was_created:
                         created += 1
-                        approved_count += 1
-                        self.stdout.write(self.style.SUCCESS(f"✓ Created & Approved: {city_name}, {iso2}"))
+                        self.stdout.write(self.style.SUCCESS(f"✓ Created: {city_name}, {iso2}"))
                     else:
                         updated += 1
-                        # Ensure existing city is approved
-                        if city.approval_status != ApprovalStatus.APPROVED:
-                            city.approval_status = ApprovalStatus.APPROVED
-                            city.reviewed_by = approver
-                            city.reviewed_at = timezone.now()
-                            city.save()
-                            approved_count += 1
                         self.stdout.write(self.style.WARNING(f"↻ Updated: {city_name}, {iso2}"))
 
                 except Exception as e:
@@ -209,10 +141,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Cities seed/repair complete!"))
         self.stdout.write(self.style.SUCCESS(f"Created: {created}"))
         self.stdout.write(self.style.WARNING(f"Updated: {updated}"))
-        self.stdout.write(self.style.SUCCESS(f"Auto-Approved: {approved_count}"))
         if missing_countries:
             self.stdout.write(self.style.WARNING(f"Countries missing (skipped): {missing_countries}"))
         if errors:
             self.stdout.write(self.style.ERROR(f"Errors: {errors}"))
-        self.stdout.write(self.style.SUCCESS(f"All imports marked as approved by: {approver.username}"))
         self.stdout.write(self.style.SUCCESS("=" * 60))

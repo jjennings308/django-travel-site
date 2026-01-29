@@ -1,63 +1,14 @@
+# locations/management/commands/import_national_parks.py
+from django.core.management.base import BaseCommand
+from locations.models import Country, Region, City, POI
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-
-from locations.models import Country, Region, City, POI
-from approval_system.models import ApprovalStatus
-
-User = get_user_model()
 
 
 class Command(BaseCommand):
-    """
-    Import US National Parks as POIs.
-    
-    Now includes approval system integration - all imported national parks
-    are automatically marked as APPROVED since these are system-level imports.
-    """
-
-    help = 'Import US National Parks as POIs with auto-approval'
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--approved-by",
-            type=str,
-            default=None,
-            help="Username of the user to mark as approver. If not provided, uses first superuser.",
-        )
-
-    def _get_approver(self, username=None):
-        """Get the user who will be marked as the approver for system imports"""
-        if username:
-            try:
-                return User.objects.get(username=username)
-            except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"User '{username}' not found. Trying first superuser..."
-                ))
-        
-        # Fallback to first superuser
-        superuser = User.objects.filter(is_superuser=True).first()
-        if superuser:
-            return superuser
-        
-        return None
+    help = 'Import US National Parks as POIs'
 
     def handle(self, *args, **options):
-        # Get approver user for marking imports as approved
-        approver = self._get_approver(options.get("approved_by"))
-        if not approver:
-            self.stdout.write(self.style.ERROR(
-                "No approver found. Please create a superuser first or specify --approved-by <username>."
-            ))
-            return
-
-        self.stdout.write(self.style.SUCCESS(
-            f"Using approver: {approver.username} (ID: {approver.id})"
-        ))
-
         # National Parks data
         parks_data = [
             {
@@ -248,37 +199,15 @@ class Command(BaseCommand):
                 'elevation_m': 640,
             },
             {
-                'name': 'Mesa Verde National Park',
-                'state': 'Colorado',
-                'city': 'Cortez',
-                'lat': 37.1853,
-                'lon': -108.4887,
-                'description': 'Ancient Puebloan cliff dwellings and archaeological sites dating back to 600-1300 CE.',
+                'name': 'Shenandoah National Park',
+                'state': 'Virginia',
+                'city': 'Luray',
+                'lat': 38.2928,
+                'lon': -78.6795,
+                'description': 'Blue Ridge Mountains park offering scenic Skyline Drive, waterfalls, and Appalachian Trail hiking.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
-                'elevation_m': 2100,
-            },
-            {
-                'name': 'Crater Lake National Park',
-                'state': 'Oregon',
-                'city': 'Crater Lake',
-                'lat': 42.8684,
-                'lon': -122.1685,
-                'description': "Deepest lake in the United States, formed by collapsed volcano with strikingly blue water.",
-                'entry_fee': 30.00,
-                'typical_duration': 240,
-                'elevation_m': 1880,
-            },
-            {
-                'name': 'Badlands National Park',
-                'state': 'South Dakota',
-                'city': 'Interior',
-                'lat': 43.8554,
-                'lon': -102.3397,
-                'description': 'Dramatically eroded buttes and pinnacles with rich fossil beds and prairie wildlife.',
-                'entry_fee': 30.00,
-                'typical_duration': 240,
-                'elevation_m': 730,
+                'elevation_m': 1050,
             },
             {
                 'name': 'Canyonlands National Park',
@@ -286,10 +215,10 @@ class Command(BaseCommand):
                 'city': 'Moab',
                 'lat': 38.2135,
                 'lon': -109.8801,
-                'description': 'Colorful landscape eroded into countless canyons, mesas, and buttes by the Colorado River.',
+                'description': 'Dramatic desert landscape carved by the Colorado and Green Rivers into countless canyons and mesas.',
                 'entry_fee': 30.00,
                 'typical_duration': 360,
-                'elevation_m': 1680,
+                'elevation_m': 1350,
             },
             {
                 'name': 'Mount Rainier National Park',
@@ -297,208 +226,43 @@ class Command(BaseCommand):
                 'city': 'Ashford',
                 'lat': 46.8800,
                 'lon': -121.7269,
-                'description': 'Iconic volcano with glaciers, wildflower meadows, and old-growth forests.',
+                'description': 'Features an iconic active volcano covered in glaciers, surrounded by wildflower meadows and old-growth forests.',
                 'entry_fee': 30.00,
                 'typical_duration': 300,
-                'elevation_m': 1800,
+                'elevation_m': 510,
             },
             {
-                'name': 'Shenandoah National Park',
-                'state': 'Virginia',
-                'city': 'Luray',
-                'lat': 38.2925,
-                'lon': -78.6795,
-                'description': 'Part of the Blue Ridge Mountains with Skyline Drive and extensive hiking trails.',
+                'name': 'Badlands National Park',
+                'state': 'South Dakota',
+                'city': 'Interior',
+                'lat': 43.8554,
+                'lon': -102.3397,
+                'description': 'Striking geologic deposits containing one of the world’s richest fossil beds.',
                 'entry_fee': 30.00,
-                'typical_duration': 300,
-                'elevation_m': 1070,
-            },
-            {
-                'name': 'Haleakalā National Park',
-                'state': 'Hawaii',
-                'city': 'Makawao',
-                'lat': 20.7203,
-                'lon': -156.1535,
-                'description': 'Massive volcano crater with rare silversword plants and spectacular sunrises.',
-                'entry_fee': 30.00,
-                'typical_duration': 300,
-                'elevation_m': 3050,
-            },
-            {
-                'name': 'Hawaii Volcanoes National Park',
-                'state': 'Hawaii',
-                'city': 'Volcano',
-                'lat': 19.4194,
-                'lon': -155.2885,
-                'description': 'Active volcanoes including Kīlauea, with lava flows, steam vents, and unique volcanic landscapes.',
-                'entry_fee': 30.00,
-                'typical_duration': 360,
-                'elevation_m': 1240,
+                'typical_duration': 240,
+                'elevation_m': 750,
             },
             {
                 'name': 'Big Bend National Park',
                 'state': 'Texas',
-                'city': 'Big Bend National Park',
+                'city': 'Alpine',
                 'lat': 29.1275,
-                'lon': -103.2428,
-                'description': 'Remote desert park on the Mexican border, featuring the Rio Grande and Chisos Mountains.',
+                'lon': -103.2425,
+                'description': 'Massive park protecting the Chisos Mountains and a large swath of the Chihuahuan Desert.',
                 'entry_fee': 30.00,
-                'typical_duration': 420,
-                'elevation_m': 580,
-            },
-            {
-                'name': 'Capitol Reef National Park',
-                'state': 'Utah',
-                'city': 'Torrey',
-                'lat': 38.0877,
-                'lon': -111.1662,
-                'description': 'Waterpocket Fold, a 100-mile monocline with colorful cliffs and historic orchards.',
-                'entry_fee': 20.00,
-                'typical_duration': 300,
-                'elevation_m': 1770,
-            },
-            {
-                'name': 'Redwood National Park',
-                'state': 'California',
-                'city': 'Crescent City',
-                'lat': 41.2982,
-                'lon': -124.0045,
-                'description': 'Home to the tallest trees on Earth, coastal old-growth redwood forests.',
-                'entry_fee': 0.00,
-                'typical_duration': 300,
-                'elevation_m': 200,
-            },
-            {
-                'name': 'Channel Islands National Park',
-                'state': 'California',
-                'city': 'Ventura',
-                'lat': 34.0000,
-                'lon': -119.7771,
-                'description': 'Five islands off Southern California coast with unique marine life and endemic species.',
-                'entry_fee': 0.00,
                 'typical_duration': 480,
-                'elevation_m': 250,
+                'elevation_m': 720,
             },
             {
-                'name': 'Petrified Forest National Park',
-                'state': 'Arizona',
-                'city': 'Petrified Forest',
-                'lat': 34.9100,
-                'lon': -109.8068,
-                'description': 'Ancient petrified wood and colorful badlands with archaeological sites.',
-                'entry_fee': 25.00,
-                'typical_duration': 180,
-                'elevation_m': 1740,
-            },
-            {
-                'name': 'Mammoth Cave National Park',
-                'state': 'Kentucky',
-                'city': 'Mammoth Cave',
-                'lat': 37.1862,
-                'lon': -86.1003,
-                'description': "World's longest known cave system with over 400 miles explored.",
-                'entry_fee': 0.00,
-                'typical_duration': 240,
-                'elevation_m': 230,
-            },
-            {
-                'name': 'Carlsbad Caverns National Park',
-                'state': 'New Mexico',
-                'city': 'Carlsbad',
-                'lat': 32.1479,
-                'lon': -104.5567,
-                'description': 'Spectacular limestone caverns with the famous Big Room and bat flight program.',
-                'entry_fee': 15.00,
-                'typical_duration': 240,
-                'elevation_m': 1440,
-            },
-            {
-                'name': 'Kings Canyon National Park',
-                'state': 'California',
-                'city': 'Three Rivers',
-                'lat': 36.8879,
-                'lon': -118.5551,
-                'description': 'Deep canyons and giant sequoias, often visited with Sequoia National Park.',
-                'entry_fee': 35.00,
-                'typical_duration': 360,
-                'elevation_m': 1350,
-            },
-            {
-                'name': 'North Cascades National Park',
-                'state': 'Washington',
-                'city': 'Sedro-Woolley',
-                'lat': 48.7718,
-                'lon': -121.2985,
-                'description': 'Rugged alpine landscape with jagged peaks, over 300 glaciers, and pristine wilderness.',
-                'entry_fee': 0.00,
-                'typical_duration': 360,
-                'elevation_m': 1200,
-            },
-            {
-                'name': 'Congaree National Park',
-                'state': 'South Carolina',
-                'city': 'Hopkins',
-                'lat': 33.7948,
-                'lon': -80.7821,
-                'description': 'Largest intact expanse of old-growth bottomland hardwood forest in the southeastern US.',
-                'entry_fee': 0.00,
-                'typical_duration': 180,
-                'elevation_m': 25,
-            },
-            {
-                'name': 'Lassen Volcanic National Park',
-                'state': 'California',
-                'city': 'Mineral',
-                'lat': 40.4977,
-                'lon': -121.4207,
-                'description': 'Active volcanic area with bubbling mud pots, steaming fumaroles, and all four types of volcanoes.',
-                'entry_fee': 30.00,
-                'typical_duration': 300,
-                'elevation_m': 2020,
-            },
-            {
-                'name': 'Guadalupe Mountains National Park',
-                'state': 'Texas',
-                'city': 'Salt Flat',
-                'lat': 31.9232,
-                'lon': -104.8671,
-                'description': "Contains Guadalupe Peak, Texas' highest point, and fossilized reef from Permian period.",
-                'entry_fee': 0.00,
-                'typical_duration': 240,
-                'elevation_m': 1730,
-            },
-            {
-                'name': 'Great Basin National Park',
-                'state': 'Nevada',
-                'city': 'Baker',
-                'lat': 38.9833,
-                'lon': -114.3000,
-                'description': 'High desert park with ancient bristlecone pines, Lehman Caves, and Wheeler Peak.',
+                'name': 'Biscayne National Park',
+                'state': 'Florida',
+                'city': 'Homestead',
+                'lat': 25.4824,
+                'lon': -80.1604,
+                'description': 'Protects aquamarine waters, emerald islands, and fish-filled coral reefs.',
                 'entry_fee': 0.00,
                 'typical_duration': 300,
-                'elevation_m': 2040,
-            },
-            {
-                'name': 'Pinnacles National Park',
-                'state': 'California',
-                'city': 'Paicines',
-                'lat': 36.4906,
-                'lon': -121.1825,
-                'description': 'Volcanic spires and talus caves from ancient volcano, home to California condors.',
-                'entry_fee': 30.00,
-                'typical_duration': 240,
-                'elevation_m': 390,
-            },
-            {
-                'name': 'Hot Springs National Park',
-                'state': 'Arkansas',
-                'city': 'Hot Springs',
-                'lat': 34.5217,
-                'lon': -93.0424,
-                'description': 'Historic bathhouses in an urban setting, with natural thermal springs.',
-                'entry_fee': 0.00,
-                'typical_duration': 120,
-                'elevation_m': 190,
+                'elevation_m': 1,
             },
             {
                 'name': 'Black Canyon of the Gunnison National Park',
@@ -506,21 +270,76 @@ class Command(BaseCommand):
                 'city': 'Montrose',
                 'lat': 38.5754,
                 'lon': -107.7416,
-                'description': 'Steep, narrow canyon with dramatic black-streaked walls carved by the Gunnison River.',
+                'description': 'Features some of the steepest cliffs and oldest rock in North America.',
                 'entry_fee': 30.00,
-                'typical_duration': 240,
-                'elevation_m': 2440,
+                'typical_duration': 180,
+                'elevation_m': 1980,
             },
             {
-                'name': 'Biscayne National Park',
-                'state': 'Florida',
-                'city': 'Homestead',
-                'lat': 25.4900,
-                'lon': -80.2100,
-                'description': 'Aquatic park preserving Biscayne Bay and coral reef ecosystems, mostly accessible by boat.',
+                'name': 'Capitol Reef National Park',
+                'state': 'Utah',
+                'city': 'Torrey',
+                'lat': 38.3670,
+                'lon': -111.2615,
+                'description': 'Home to the Waterpocket Fold, a geologic monocline extending almost 100 miles.',
+                'entry_fee': 20.00,
+                'typical_duration': 240,
+                'elevation_m': 1650,
+            },
+            {
+                'name': 'Carlsbad Caverns National Park',
+                'state': 'New Mexico',
+                'city': 'Carlsbad',
+                'lat': 32.1479,
+                'lon': -104.5567,
+                'description': 'High ancient sea ledges, deep rocky canyons, flowering cactus, and desert wildlife.',
+                'entry_fee': 15.00,
+                'typical_duration': 240,
+                'elevation_m': 1340,
+            },
+            {
+                'name': 'Channel Islands National Park',
+                'state': 'California',
+                'city': 'Ventura',
+                'lat': 34.0069,
+                'lon': -119.7785,
+                'description': 'Five remarkable islands and their ocean environment, preserving unique animals and plants.',
                 'entry_fee': 0.00,
-                'typical_duration': 360,
-                'elevation_m': 0,
+                'typical_duration': 480,
+                'elevation_m': 5,
+            },
+            {
+                'name': 'Congaree National Park',
+                'state': 'South Carolina',
+                'city': 'Hopkins',
+                'lat': 33.7948,
+                'lon': -80.7821,
+                'description': 'The largest intact expanse of old growth bottomland hardwood forest in the Southeast.',
+                'entry_fee': 0.00,
+                'typical_duration': 180,
+                'elevation_m': 30,
+            },
+            {
+                'name': 'Crater Lake National Park',
+                'state': 'Oregon',
+                'city': 'Crater Lake',
+                'lat': 42.8684,
+                'lon': -122.1685,
+                'description': 'The deepest lake in the USA, formed by the collapse of an ancient volcano.',
+                'entry_fee': 30.00,
+                'typical_duration': 240,
+                'elevation_m': 1880,
+            },
+            {
+                'name': 'Cuyahoga Valley National Park',
+                'state': 'Ohio',
+                'city': 'Brecksville',
+                'lat': 41.2808,
+                'lon': -81.5678,
+                'description': 'A refuge for native plants and wildlife along the Cuyahoga River between Cleveland and Akron.',
+                'entry_fee': 0.00,
+                'typical_duration': 180,
+                'elevation_m': 210,
             },
             {
                 'name': 'Dry Tortugas National Park',
@@ -528,120 +347,21 @@ class Command(BaseCommand):
                 'city': 'Key West',
                 'lat': 24.6285,
                 'lon': -82.8732,
-                'description': 'Remote islands 70 miles west of Key West, featuring Fort Jefferson and pristine coral reefs.',
+                'description': 'A 19th-century fort and crystal clear waters 70 miles west of Key West.',
                 'entry_fee': 15.00,
-                'typical_duration': 480,
+                'typical_duration': 360,
                 'elevation_m': 2,
-            },
-            {
-                'name': 'Katmai National Park',
-                'state': 'Alaska',
-                'city': 'King Salmon',
-                'lat': 58.5973,
-                'lon': -154.9036,
-                'description': 'Famous for brown bears fishing for salmon at Brooks Falls, with Valley of Ten Thousand Smokes.',
-                'entry_fee': 0.00,
-                'typical_duration': 360,
-                'elevation_m': 60,
-            },
-            {
-                'name': 'Kenai Fjords National Park',
-                'state': 'Alaska',
-                'city': 'Seward',
-                'lat': 59.8125,
-                'lon': -150.0000,
-                'description': 'Coastal fjords carved by glaciers, with abundant marine wildlife and tidewater glaciers.',
-                'entry_fee': 0.00,
-                'typical_duration': 480,
-                'elevation_m': 30,
-            },
-            {
-                'name': 'Kobuk Valley National Park',
-                'state': 'Alaska',
-                'city': 'Kotzebue',
-                'lat': 67.3500,
-                'lon': -159.1000,
-                'description': 'Arctic wilderness with Great Kobuk Sand Dunes and caribou migration routes.',
-                'entry_fee': 0.00,
-                'typical_duration': 360,
-                'elevation_m': 100,
-            },
-            {
-                'name': 'Lake Clark National Park',
-                'state': 'Alaska',
-                'city': 'Port Alsworth',
-                'lat': 60.4127,
-                'lon': -154.3155,
-                'description': 'Remote park with volcanoes, glaciers, and pristine lakes; accessible only by air or water.',
-                'entry_fee': 0.00,
-                'typical_duration': 480,
-                'elevation_m': 100,
             },
             {
                 'name': 'Gates of the Arctic National Park',
                 'state': 'Alaska',
                 'city': 'Bettles',
-                'lat': 67.7800,
+                'lat': 67.8860,
                 'lon': -153.3000,
-                'description': 'Entirely north of the Arctic Circle, no roads or trails, completely wilderness.',
+                'description': 'An untouched wilderness with no roads or trails, lying entirely north of the Arctic Circle.',
                 'entry_fee': 0.00,
-                'typical_duration': 480,
-                'elevation_m': 200,
-            },
-            {
-                'name': 'Isle Royale National Park',
-                'state': 'Michigan',
-                'city': 'Houghton',
-                'lat': 47.9959,
-                'lon': -88.9092,
-                'description': 'Remote island in Lake Superior, only accessible by boat or seaplane, known for wolf-moose study.',
-                'entry_fee': 0.00,
-                'typical_duration': 480,
-                'elevation_m': 190,
-            },
-            {
-                'name': 'Cuyahoga Valley National Park',
-                'state': 'Ohio',
-                'city': 'Peninsula',
-                'lat': 41.2408,
-                'lon': -81.5514,
-                'description': 'Urban park between Cleveland and Akron, with waterfalls, hiking trails, and scenic railroad.',
-                'entry_fee': 0.00,
-                'typical_duration': 240,
-                'elevation_m': 190,
-            },
-            {
-                'name': 'Saguaro National Park',
-                'state': 'Arizona',
-                'city': 'Tucson',
-                'lat': 32.2500,
-                'lon': -110.7500,
-                'description': 'Iconic giant saguaro cacti in the Sonoran Desert, split into east and west districts.',
-                'entry_fee': 25.00,
-                'typical_duration': 240,
-                'elevation_m': 790,
-            },
-            {
-                'name': 'American Samoa National Park',
-                'state': 'American Samoa',
-                'city': 'Pago Pago',
-                'lat': -14.2580,
-                'lon': -170.6832,
-                'description': 'Tropical rainforest, pristine coral reefs, and Samoan culture on three islands.',
-                'entry_fee': 0.00,
-                'typical_duration': 360,
-                'elevation_m': 100,
-            },
-            {
-                'name': 'Indiana Dunes National Park',
-                'state': 'Indiana',
-                'city': 'Porter',
-                'lat': 41.6533,
-                'lon': -87.0524,
-                'description': 'Sand dunes along Lake Michigan shoreline with diverse ecosystems and beaches.',
-                'entry_fee': 25.00,
-                'typical_duration': 240,
-                'elevation_m': 190,
+                'typical_duration': 1440,
+                'elevation_m': 300,
             },
             {
                 'name': 'Gateway Arch National Park',
@@ -649,21 +369,274 @@ class Command(BaseCommand):
                 'city': 'St. Louis',
                 'lat': 38.6247,
                 'lon': -90.1848,
-                'description': "Urban park centered on the iconic 630-foot Gateway Arch, symbol of westward expansion.",
+                'description': 'The gateway to the west, commemorating the Lewis and Clark expedition and westward expansion.',
+                'entry_fee': 3.00,
+                'typical_duration': 120,
+                'elevation_m': 140,
+            },
+            {
+                'name': 'Glacier Bay National Park',
+                'state': 'Alaska',
+                'city': 'Gustavus',
+                'lat': 58.6658,
+                'lon': -136.9002,
+                'description': 'A highlight of Alaska’s Inside Passage and part of a 25-million-acre World Heritage site.',
+                'entry_fee': 0.00,
+                'typical_duration': 480,
+                'elevation_m': 10,
+            },
+            {
+                'name': 'Grand Basin National Park',
+                'state': 'Nevada',
+                'city': 'Baker',
+                'lat': 38.9836,
+                'lon': -114.3000,
+                'description': 'Known for its ancient bristlecone pines and the Lehman Caves.',
+                'entry_fee': 0.00,
+                'typical_duration': 240,
+                'elevation_m': 2050,
+            },
+            {
+                'name': 'Great Sand Dunes National Park',
+                'state': 'Colorado',
+                'city': 'Mosca',
+                'lat': 37.7916,
+                'lon': -105.5943,
+                'description': 'The tallest sand dunes in North America, set against the backdrop of the Sangre de Cristo Mountains.',
+                'entry_fee': 25.00,
+                'typical_duration': 240,
+                'elevation_m': 2510,
+            },
+            {
+                'name': 'Guadalupe Mountains National Park',
+                'state': 'Texas',
+                'city': 'Salt Flat',
+                'lat': 31.9484,
+                'lon': -104.8683,
+                'description': 'Contains the world’s most extensive Permian fossil reef and the highest point in Texas.',
+                'entry_fee': 10.00,
+                'typical_duration': 300,
+                'elevation_m': 1650,
+            },
+            {
+                'name': 'Haleakalā National Park',
+                'state': 'Hawaii',
+                'city': 'Kula',
+                'lat': 20.7012,
+                'lon': -156.1733,
+                'description': 'Preserves the volcanic landscape of Maui and the unique flora and fauna that live there.',
+                'entry_fee': 30.00,
+                'typical_duration': 300,
+                'elevation_m': 2100,
+            },
+            {
+                'name': 'Hawaiʻi Volcanoes National Park',
+                'state': 'Hawaii',
+                'city': 'Hawaii National Park',
+                'lat': 19.4194,
+                'lon': -155.2885,
+                'description': 'Protects some of the most unique geological, biological, and cultural landscapes in the world.',
+                'entry_fee': 30.00,
+                'typical_duration': 360,
+                'elevation_m': 1200,
+            },
+            {
+                'name': 'Hot Springs National Park',
+                'state': 'Arkansas',
+                'city': 'Hot Springs',
+                'lat': 34.5217,
+                'lon': -93.0423,
+                'description': 'An urban park featuring historic bathhouses and thermal springs.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
-                'elevation_m': 140,
+                'elevation_m': 180,
+            },
+            {
+                'name': 'Indiana Dunes National Park',
+                'state': 'Indiana',
+                'city': 'Porter',
+                'lat': 41.6533,
+                'lon': -87.0524,
+                'description': 'Miles of beaches, sand dunes, woodlands, and marshes along Lake Michigan.',
+                'entry_fee': 25.00,
+                'typical_duration': 240,
+                'elevation_m': 190,
+            },
+            {
+                'name': 'Isle Royale National Park',
+                'state': 'Michigan',
+                'city': 'Houghton',
+                'lat': 47.9959,
+                'lon': -88.9040,
+                'description': 'A rugged, isolated island in Lake Superior, accessible only by boat or seaplane.',
+                'entry_fee': 7.00,
+                'typical_duration': 1440,
+                'elevation_m': 240,
+            },
+            {
+                'name': 'Katmai National Park',
+                'state': 'Alaska',
+                'city': 'King Salmon',
+                'lat': 58.5079,
+                'lon': -154.9059,
+                'description': 'Famous for its brown bears and the Valley of Ten Thousand Smokes.',
+                'entry_fee': 0.00,
+                'typical_duration': 480,
+                'elevation_m': 20,
+            },
+            {
+                'name': 'Kenai Fjords National Park',
+                'state': 'Alaska',
+                'city': 'Seward',
+                'lat': 59.9171,
+                'lon': -149.8611,
+                'description': 'Where the ice age still lingers, featuring glaciers and abundant marine wildlife.',
+                'entry_fee': 0.00,
+                'typical_duration': 360,
+                'elevation_m': 30,
+            },
+            {
+                'name': 'Kings Canyon National Park',
+                'state': 'California',
+                'city': 'Grant Grove Village',
+                'lat': 36.8879,
+                'lon': -118.5551,
+                'description': 'Features giant sequoias and one of the deepest canyons in the United States.',
+                'entry_fee': 35.00,
+                'typical_duration': 360,
+                'elevation_m': 1950,
+            },
+            {
+                'name': 'Kobuk Valley National Park',
+                'state': 'Alaska',
+                'city': 'Kotzebue',
+                'lat': 67.3331,
+                'lon': -159.1230,
+                'description': 'Home to vast sand dunes and the annual migration of half a million caribou.',
+                'entry_fee': 0.00,
+                'typical_duration': 1440,
+                'elevation_m': 30,
+            },
+            {
+                'name': 'Lake Clark National Park',
+                'state': 'Alaska',
+                'city': 'Port Alsworth',
+                'lat': 60.4113,
+                'lon': -154.3235,
+                'description': 'A land of stunning beauty where volcanoes steam and salmon swim.',
+                'entry_fee': 0.00,
+                'typical_duration': 480,
+                'elevation_m': 320,
+            },
+            {
+                'name': 'Lassen Volcanic National Park',
+                'state': 'California',
+                'city': 'Mineral',
+                'lat': 40.4977,
+                'lon': -121.4207,
+                'description': 'Boasts hydrothermal sites like Bumpass Hell and the massive Lassen Peak volcano.',
+                'entry_fee': 30.00,
+                'typical_duration': 300,
+                'elevation_m': 1750,
+            },
+            {
+                'name': 'Mammoth Cave National Park',
+                'state': 'Kentucky',
+                'city': 'Mammoth Cave',
+                'lat': 37.1870,
+                'lon': -86.1005,
+                'description': 'The world’s longest known cave system.',
+                'entry_fee': 0.00,
+                'typical_duration': 240,
+                'elevation_m': 210,
+            },
+            {
+                'name': 'Mesa Verde National Park',
+                'state': 'Colorado',
+                'city': 'Cortez',
+                'lat': 37.2309,
+                'lon': -108.4618,
+                'description': 'Preserves the cultural heritage of the Ancestral Pueblo people.',
+                'entry_fee': 30.00,
+                'typical_duration': 300,
+                'elevation_m': 2070,
+            },
+            {
+                'name': 'National Park of American Samoa',
+                'state': 'American Samoa',
+                'city': 'Pago Pago',
+                'lat': -14.2583,
+                'lon': -170.6833,
+                'description': 'One of the most remote parks, preserving coral reefs and tropical rainforests.',
+                'entry_fee': 0.00,
+                'typical_duration': 300,
+                'elevation_m': 20,
             },
             {
                 'name': 'New River Gorge National Park',
                 'state': 'West Virginia',
                 'city': 'Glen Jean',
-                'lat': 38.0689,
-                'lon': -81.0784,
-                'description': 'Ancient river carved deep gorge with whitewater rafting, rock climbing, and iconic bridge.',
+                'lat': 37.8782,
+                'lon': -81.0160,
+                'description': 'One of the oldest rivers on the continent, famous for its massive bridge and whitewater rafting.',
                 'entry_fee': 0.00,
                 'typical_duration': 300,
-                'elevation_m': 520,
+                'elevation_m': 580,
+            },
+            {
+                'name': 'North Cascades National Park',
+                'state': 'Washington',
+                'city': 'Sedro-Woolley',
+                'lat': 48.7718,
+                'lon': -121.2985,
+                'description': 'An alpine landscape with over 300 glaciers and jagged peaks.',
+                'entry_fee': 0.00,
+                'typical_duration': 420,
+                'elevation_m': 170,
+            },
+            {
+                'name': 'Petrified Forest National Park',
+                'state': 'Arizona',
+                'city': 'Holbrook',
+                'lat': 34.9100,
+                'lon': -109.8068,
+                'description': 'Known for its large deposits of petrified wood and the colorful Painted Desert.',
+                'entry_fee': 25.00,
+                'typical_duration': 180,
+                'elevation_m': 1660,
+            },
+            {
+                'name': 'Pinnacles National Park',
+                'state': 'California',
+                'city': 'Paicines',
+                'lat': 36.4906,
+                'lon': -121.1819,
+                'description': 'Rock spires and talus caves formed by an ancient volcano.',
+                'entry_fee': 30.00,
+                'typical_duration': 240,
+                'elevation_m': 390,
+            },
+            {
+                'name': 'Redwood National Park',
+                'state': 'California',
+                'city': 'Crescent City',
+                'lat': 41.2132,
+                'lon': -124.0046,
+                'description': 'Home to the tallest trees on Earth and a stunning Pacific coastline.',
+                'entry_fee': 0.00,
+                'typical_duration': 360,
+                'elevation_m': 60,
+            },
+            {
+                'name': 'Saguaro National Park',
+                'state': 'Arizona',
+                'city': 'Tucson',
+                'lat': 32.2967,
+                'lon': -111.1666,
+                'description': 'Protects the giant saguaro cactus, the symbol of the American West.',
+                'entry_fee': 25.00,
+                'typical_duration': 180,
+                'elevation_m': 820,
             },
             {
                 'name': 'Theodore Roosevelt National Park',
@@ -704,7 +677,7 @@ class Command(BaseCommand):
                 'city': 'Alamogordo',
                 'lat': 32.7872,
                 'lon': -106.3257,
-                'description': "The world's largest gypsum dunefield, creating a landscape of glistening white sand.",
+                'description': 'The world’s largest gypsum dunefield, creating a landscape of glistening white sand.',
                 'entry_fee': 25.00,
                 'typical_duration': 180,
                 'elevation_m': 1230,
@@ -715,7 +688,7 @@ class Command(BaseCommand):
                 'city': 'Hot Springs',
                 'lat': 43.5700,
                 'lon': -103.4799,
-                'description': "One of the world's longest and most complex caves, featuring rare boxwork formations.",
+                'description': 'One of the world’s longest and most complex caves, featuring rare boxwork formations.',
                 'entry_fee': 0.00,
                 'typical_duration': 180,
                 'elevation_m': 1280,
@@ -797,11 +770,10 @@ class Command(BaseCommand):
             'American Samoa': 'AS',
             'US Virgin Islands': 'VI',
             'District of Columbia': 'DC'
-        }
+        }  
       
         created_count = 0
         updated_count = 0
-        approved_count = 0
         skipped_count = 0
 
         for park_data in parks_data:
@@ -811,15 +783,7 @@ class Command(BaseCommand):
                 region, _ = Region.objects.get_or_create(
                     country=usa,
                     name=park_data['state'],
-                    defaults={
-                        'code': state_code,
-                        # Approval fields for auto-created regions
-                        'approval_status': ApprovalStatus.APPROVED,
-                        'submitted_by': approver,
-                        'submitted_at': timezone.now(),
-                        'reviewed_by': approver,
-                        'reviewed_at': timezone.now(),
-                    }
+                    defaults={'code': state_code}
                 )
 
                 # Get or create city
@@ -830,12 +794,6 @@ class Command(BaseCommand):
                         'region': region,
                         'latitude': Decimal(str(park_data['lat'])),
                         'longitude': Decimal(str(park_data['lon'])),
-                        # Approval fields for auto-created cities
-                        'approval_status': ApprovalStatus.APPROVED,
-                        'submitted_by': approver,
-                        'submitted_at': timezone.now(),
-                        'reviewed_by': approver,
-                        'reviewed_at': timezone.now(),
                     }
                 )
 
@@ -854,30 +812,16 @@ class Command(BaseCommand):
                         'is_featured': True,
                         'wheelchair_accessible': True,
                         'parking_available': True,
-                        # Approval fields - mark as approved for system imports
-                        'approval_status': ApprovalStatus.APPROVED,
-                        'submitted_by': approver,
-                        'submitted_at': timezone.now(),
-                        'reviewed_by': approver,
-                        'reviewed_at': timezone.now(),
                     }
                 )
 
                 if created:
                     created_count += 1
-                    approved_count += 1
                     self.stdout.write(
-                        self.style.SUCCESS(f'✓ Created & Approved: {park_data["name"]}')
+                        self.style.SUCCESS(f'✓ Created: {park_data["name"]}')
                     )
                 else:
                     updated_count += 1
-                    # Ensure existing POI is approved
-                    if poi.approval_status != ApprovalStatus.APPROVED:
-                        poi.approval_status = ApprovalStatus.APPROVED
-                        poi.reviewed_by = approver
-                        poi.reviewed_at = timezone.now()
-                        poi.save()
-                        approved_count += 1
                     self.stdout.write(
                         self.style.WARNING(f'↻ Updated: {park_data["name"]}')
                     )
@@ -889,12 +833,10 @@ class Command(BaseCommand):
                 )
 
         # Summary
-        self.stdout.write(self.style.SUCCESS('\n' + '='*60))
+        self.stdout.write(self.style.SUCCESS('\n' + '='*50))
         self.stdout.write(self.style.SUCCESS(f'Import complete!'))
         self.stdout.write(self.style.SUCCESS(f'Created: {created_count}'))
         self.stdout.write(self.style.WARNING(f'Updated: {updated_count}'))
-        self.stdout.write(self.style.SUCCESS(f'Auto-Approved: {approved_count}'))
         if skipped_count > 0:
             self.stdout.write(self.style.ERROR(f'Errors: {skipped_count}'))
-        self.stdout.write(self.style.SUCCESS(f'All imports marked as approved by: {approver.username}'))
-        self.stdout.write(self.style.SUCCESS('='*60))
+        self.stdout.write(self.style.SUCCESS('='*50))
