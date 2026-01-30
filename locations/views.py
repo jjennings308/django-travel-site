@@ -343,7 +343,8 @@ def region_detail(request, slug):
     
     region = get_object_or_404(
         Region.objects.select_related('country', 'featured_media')
-        .prefetch_related('cities'),
+        .prefetch_related('cities')
+        .annotate(_city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED))),
         slug=slug
     )
     

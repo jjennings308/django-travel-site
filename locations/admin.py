@@ -65,7 +65,7 @@ class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 
 @admin.register(Region)
 class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_display = ['name', 'country', 'code', 'city_count']
+    list_display = ['name', 'country', 'code', 'get_city_count']
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
     
     list_filter = ['country']
@@ -83,7 +83,7 @@ class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
             'fields': ('latitude', 'longitude', 'description')
         }),
         ('Statistics', {
-            'fields': ('city_count',),
+            'fields': ('get_city_count_display',),
             'classes': ('collapse',)
         }),
         ('Approval Information', {
@@ -99,9 +99,31 @@ class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     )
     
     readonly_fields = [
-        'city_count',
+        'get_city_count_display',
         'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
     ]
+    
+    def get_queryset(self, request):
+        """Optimize queryset with city count annotation"""
+        from django.db.models import Count, Q
+        from approval_system.models import ApprovalStatus
+        
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED))
+        )
+    
+    def get_city_count(self, obj):
+        """Display city count in list view"""
+        # Use annotated value if available, otherwise fall back to property
+        return getattr(obj, '_city_count', obj.city_count)
+    get_city_count.short_description = 'Cities'
+    get_city_count.admin_order_field = '_city_count'  # Allows column order sorting
+    
+    def get_city_count_display(self, obj):
+        """Display city count in detail view"""
+        return obj.city_count
+    get_city_count_display.short_description = 'Number of Cities'
 
 
 @admin.register(City)

@@ -267,9 +267,6 @@ class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, A
     
     description = models.TextField(blank=True)
     
-    # Stats
-    city_count = models.IntegerField(default=0)
-    
     class Meta:
         db_table = 'locations_regions'
         unique_together = [['country', 'name']]
@@ -280,6 +277,17 @@ class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, A
     
     def __str__(self):
         return f"{self.name}, {self.country.name}"
+    
+    @property
+    def city_count(self):
+        """Return count of approved cities in this region"""
+        # Check if we have an annotated count (for performance)
+        if hasattr(self, '_city_count'):
+            return self._city_count
+        
+        # Otherwise calculate it (for admin and other views)
+        from approval_system.models import ApprovalStatus
+        return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
     
     def save(self, *args, **kwargs):
         if not self.slug:
