@@ -481,6 +481,7 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
         ('shopping', 'Shopping'),
         ('nightlife', 'Nightlife'),
         ('nature', 'Nature Reserve'),
+        ('sports', 'Sports Venues'),
         ('other', 'Other')
     ]
     poi_type = models.CharField(

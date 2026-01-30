@@ -71,7 +71,7 @@
                         <div class="row g-3">
                             {% for poi in pois %}
                                 <div class="col-md-6">
-                                    <a href="{% url 'locations:poi_detail' city.slug %}" class="text-decoration-none">
+                                    <a href="{% url 'locations:poi_detail' poi.slug %}" class="text-decoration-none">
                                         <div class="card border-0 bg-light h-100 hover-shadow">
                                             {% if poi.featured_media %}
                                                 <div style="height: 160px; overflow: hidden;">
