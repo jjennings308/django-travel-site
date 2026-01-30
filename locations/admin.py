@@ -8,7 +8,7 @@ from .models import Country, Region, City, POI
 class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     list_display = [
         'flag_emoji', 'name', 'iso_code', 'continent', 
-        'currency_code', 'city_count', 'visitor_count', 'is_featured'
+        'currency_code', 'get_city_count', 'visitor_count', 'is_featured'
     ]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
     
@@ -40,7 +40,7 @@ class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
             'fields': ('is_featured', 'featured_order'),
         }),
         ('Statistics', {
-            'fields': ('city_count', 'poi_count', 'visitor_count'),
+            'fields': ('get_city_count_display', 'get_poi_count_display', 'visitor_count'),
             'classes': ('collapse',)
         }),
         ('Approval Information', {
@@ -58,9 +58,42 @@ class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     # ApprovableAdminMixin automatically adds these to readonly_fields,
     # but we include our custom ones here
     readonly_fields = [
-        'city_count', 'poi_count', 'visitor_count',
+        'get_city_count_display', 'get_poi_count_display', 'visitor_count',
         'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
     ]
+    
+    def get_queryset(self, request):
+        """Optimize queryset with count annotations"""
+        from django.db.models import Count, Q
+        from approval_system.models import ApprovalStatus
+        
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED)),
+            _poi_count=Count('cities__pois', filter=Q(cities__pois__approval_status=ApprovalStatus.APPROVED))
+        )
+    
+    def get_city_count(self, obj):
+        """Display city count in list view"""
+        return getattr(obj, '_city_count', obj.city_count)
+    get_city_count.short_description = 'Cities'
+    get_city_count.admin_order_field = '_city_count'
+    
+    def get_poi_count(self, obj):
+        """Display POI count in list view"""
+        return getattr(obj, '_poi_count', obj.poi_count)
+    get_poi_count.short_description = 'POIs'
+    get_poi_count.admin_order_field = '_poi_count'
+    
+    def get_city_count_display(self, obj):
+        """Display city count in detail view"""
+        return obj.city_count
+    get_city_count_display.short_description = 'Number of Cities'
+    
+    def get_poi_count_display(self, obj):
+        """Display POI count in detail view"""
+        return obj.poi_count
+    get_poi_count_display.short_description = 'Number of POIs'
 
 
 @admin.register(Region)
@@ -130,7 +163,7 @@ class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     list_display = [
         'name', 'country', 'region', 'population', 
-        'poi_count', 'average_rating', 'is_featured'
+        'get_poi_count', 'average_rating', 'is_featured'
     ]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
     
@@ -156,7 +189,7 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
             'fields': ('is_featured', 'featured_order'),
         }),
         ('Statistics', {
-            'fields': ('poi_count', 'visitor_count', 'average_rating', 'review_count'),
+            'fields': ('get_poi_count_display', 'visitor_count', 'average_rating', 'review_count'),
             'classes': ('collapse',)
         }),
         ('Approval Information', {
@@ -172,9 +205,31 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     )
     
     readonly_fields = [
-        'poi_count', 'visitor_count', 'average_rating', 'review_count',
+        'get_poi_count_display', 'visitor_count', 'average_rating', 'review_count',
         'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
     ]
+    
+    def get_queryset(self, request):
+        """Optimize queryset with POI count annotation"""
+        from django.db.models import Count, Q
+        from approval_system.models import ApprovalStatus
+        
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _poi_count=Count('pois', filter=Q(pois__approval_status=ApprovalStatus.APPROVED))
+        )
+    
+    def get_poi_count(self, obj):
+        """Display POI count in list view"""
+        return getattr(obj, '_poi_count', obj.poi_count)
+    get_poi_count.short_description = 'POIs'
+    get_poi_count.admin_order_field = '_poi_count'
+    
+    def get_poi_count_display(self, obj):
+        """Display POI count in detail view"""
+        return obj.poi_count
+    get_poi_count_display.short_description = 'Number of POIs'
+
 
 
 @admin.register(POI)

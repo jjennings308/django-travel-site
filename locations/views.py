@@ -124,7 +124,11 @@ def country_detail(request, slug):
     
     country = get_object_or_404(
         Country.objects.select_related('featured_media')
-        .prefetch_related('regions', 'cities'),
+        .prefetch_related('regions', 'cities')
+        .annotate(
+            _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED)),
+            _poi_count=Count('cities__pois', filter=Q(cities__pois__approval_status=ApprovalStatus.APPROVED))
+        ),
         slug=slug
     )
     
@@ -491,7 +495,8 @@ def city_detail(request, slug):
     
     city = get_object_or_404(
         City.objects.select_related('country', 'region', 'featured_media')
-        .prefetch_related('pois'),
+        .prefetch_related('pois')
+        .annotate(_poi_count=Count('pois', filter=Q(pois__approval_status=ApprovalStatus.APPROVED))),
         slug=slug
     )
     

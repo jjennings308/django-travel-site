@@ -71,7 +71,7 @@
                         <div class="row g-3">
                             {% for poi in pois %}
                                 <div class="col-md-6">
-                                    <a href="{% url 'locations:poi_detail' poi.slug %}" class="text-decoration-none">
+                                    <a href="{% url 'locations:poi_detail' city.slug %}" class="text-decoration-none">
                                         <div class="card border-0 bg-light h-100 hover-shadow">
                                             {% if poi.featured_media %}
                                                 <div style="height: 160px; overflow: hidden;">
@@ -154,7 +154,11 @@
                         
                         <div class="mb-0">
                             <dt class="text-muted small mb-1">Coordinates</dt>
-                            <dd class="small mb-0">{{ city.latitude }}, {{ city.longitude }}</dd>
+                            <dd class="small mb-0">
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ city.latitude }},{{ city.longitude }}" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                </a> {{ city.latitude }}, {{ city.longitude }} 
+                            </dd>
                         </div>
                     </dl>
                 </div>

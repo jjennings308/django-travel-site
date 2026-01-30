@@ -182,8 +182,6 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
     )
     
     # Stats (denormalized)
-    city_count = models.IntegerField(default=0)
-    poi_count = models.IntegerField(default=0)
     visitor_count = models.IntegerField(
         default=0,
         help_text="Number of users who visited"
@@ -219,6 +217,31 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
             return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in self.iso_code.upper())
         
         return ''
+    
+    @property
+    def city_count(self):
+        """Return count of approved cities in this country"""
+        # Check if we have an annotated count (for performance)
+        if hasattr(self, '_city_count'):
+            return self._city_count
+        
+        # Otherwise calculate it
+        from approval_system.models import ApprovalStatus
+        return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
+    
+    @property
+    def poi_count(self):
+        """Return count of approved POIs in this country"""
+        # Check if we have an annotated count (for performance)
+        if hasattr(self, '_poi_count'):
+            return self._poi_count
+        
+        # Otherwise calculate it
+        from approval_system.models import ApprovalStatus
+        return POI.objects.filter(
+            city__country=self,
+            approval_status=ApprovalStatus.APPROVED
+        ).count()
     
     def save(self, *args, **kwargs):
         # Auto-generate flag emoji from ISO code if not set
@@ -381,7 +404,6 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
     )
     
     # Stats
-    poi_count = models.IntegerField(default=0)
     visitor_count = models.IntegerField(default=0)
     average_rating = models.DecimalField(
         max_digits=3,
@@ -405,6 +427,17 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
         if self.region:
             return f"{self.name}, {self.region.code}, {self.country.iso_code}"
         return f"{self.name}, {self.country.iso_code}"
+    
+    @property
+    def poi_count(self):
+        """Return count of approved POIs in this city"""
+        # Check if we have an annotated count (for performance)
+        if hasattr(self, '_poi_count'):
+            return self._poi_count
+        
+        # Otherwise calculate it
+        from approval_system.models import ApprovalStatus
+        return self.pois.filter(approval_status=ApprovalStatus.APPROVED).count()
     
     def save(self, *args, **kwargs):
         # Derive is_capital from capital_type
