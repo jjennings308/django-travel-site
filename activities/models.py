@@ -93,8 +93,9 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     )    
 
     VISIBILITY_CHOICES = [
-        ('private', 'Private - Only I can see'),
-        ('public', 'Public - Everyone can see (requires approval)'),
+        ('private', 'Private'),
+        ('public', 'Public'),
+        ('shared', 'Shared')
     ]
     visibility = models.CharField(
         max_length=20,
@@ -125,9 +126,9 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     
     # Specificity level - how detailed is this activity?
     SPECIFICITY_CHOICES = [
-        ('general', 'General - e.g., "Go to a concert"'),
-        ('specific', 'Specific - e.g., "See Kenny Chesney at Vegas Sphere"'),
-        ('very_specific', 'Very Specific - includes dates/times'),
+        ('general', 'General - no details'),
+        ('specific', 'Specific - some details'),
+        ('very_specific', 'Very Specific - most details'),
     ]
     specificity_level = models.CharField(
         max_length=20,
