@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">{{ title }}</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {# Basic Information Section #}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Basic Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label">
+                                        Activity Name <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger">{{ form.name.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">
+                                        Examples: "See Kenny Chesney concert", "Try skydiving", "Visit the Louvre"
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.category.id_for_label }}" class="form-label">
+                                        Category <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.category }}
+                                    {% if form.category.errors %}
+                                        <div class="text-danger">{{ form.category.errors }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.description }}
+                                    {% if form.description.errors %}
+                                        <div class="text-danger">{{ form.description.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">
+                                        Describe the activity. What makes it special? What should people know?
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.visibility.id_for_label }}" class="form-label">
+                                        Visibility <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.visibility }}
+                                    {% if form.visibility.errors %}
+                                        <div class="text-danger">{{ form.visibility.errors }}</div>
+                                    {% endif %}
+                                    <div class="alert alert-info mt-2">
+                                        <strong>Private:</strong> Only you can see this activity.<br>
+                                        <strong>Public:</strong> Will be visible to everyone after staff approval.
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.specificity_level.id_for_label }}" class="form-label">
+                                        How Specific?
+                                    </label>
+                                    {{ form.specificity_level }}
+                                    {% if form.specificity_level.errors %}
+                                        <div class="text-danger">{{ form.specificity_level.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">
+                                        General: "Go to a concert"<br>
+                                        Specific: "See Kenny Chesney at Vegas Sphere"<br>
+                                        Very Specific: Includes dates/times
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Suggested Details Section #}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Suggested Details (Optional)</h5>
+                                <small class="text-muted">These help when creating specific events later</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.suggested_location.id_for_label }}" class="form-label">
+                                            Suggested Location
+                                        </label>
+                                        {{ form.suggested_location }}
+                                        {% if form.suggested_location.errors %}
+                                            <div class="text-danger">{{ form.suggested_location.errors }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.suggested_timeframe.id_for_label }}" class="form-label">
+                                            Suggested Timeframe
+                                        </label>
+                                        {{ form.suggested_timeframe }}
+                                        {% if form.suggested_timeframe.errors %}
+                                            <div class="text-danger">{{ form.suggested_timeframe.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.suggested_date_range_start.id_for_label }}" class="form-label">
+                                            Date Range Start
+                                        </label>
+                                        {{ form.suggested_date_range_start }}
+                                        {% if form.suggested_date_range_start.errors %}
+                                            <div class="text-danger">{{ form.suggested_date_range_start.errors }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.suggested_date_range_end.id_for_label }}" class="form-label">
+                                            Date Range End
+                                        </label>
+                                        {{ form.suggested_date_range_end }}
+                                        {% if form.suggested_date_range_end.errors %}
+                                            <div class="text-danger">{{ form.suggested_date_range_end.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Activity Characteristics #}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Activity Characteristics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.skill_level.id_for_label }}" class="form-label">
+                                            Skill Level
+                                        </label>
+                                        {{ form.skill_level }}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.duration_category.id_for_label }}" class="form-label">
+                                            Duration
+                                        </label>
+                                        {{ form.duration_category }}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.cost_level.id_for_label }}" class="form-label">
+                                            Cost Level
+                                        </label>
+                                        {{ form.cost_level }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.best_for.id_for_label }}" class="form-label">
+                                            Best For
+                                        </label>
+                                        {{ form.best_for }}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.indoor_outdoor.id_for_label }}" class="form-label">
+                                            Indoor/Outdoor
+                                        </label>
+                                        {{ form.indoor_outdoor }}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.fitness_required.id_for_label }}" class="form-label">
+                                            Fitness Required (1-5)
+                                        </label>
+                                        {{ form.fitness_required }}
+                                    </div>
+                                </div>
+
+                                {% if form.tags %}
+                                <div class="mb-3">
+                                    <label class="form-label">Tags</label>
+                                    {{ form.tags }}
+                                    <small class="form-text text-muted">
+                                        Select all that apply
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# Additional Details - Collapsible #}
+                        <div class="accordion mb-4" id="additionalDetails">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#moreDetails">
+                                        Additional Details (Optional)
+                                    </button>
+                                </h2>
+                                <div id="moreDetails" class="accordion-collapse collapse" data-bs-parent="#additionalDetails">
+                                    <div class="accordion-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="{{ form.age_minimum.id_for_label }}" class="form-label">
+                                                    Minimum Age
+                                                </label>
+                                                {{ form.age_minimum }}
+                                            </div>
+
+                                            <div class="col-md-6 mb-3">
+                                                <label for="{{ form.age_maximum.id_for_label }}" class="form-label">
+                                                    Maximum Age
+                                                </label>
+                                                {{ form.age_maximum }}
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="{{ form.estimated_cost_min.id_for_label }}" class="form-label">
+                                                    Estimated Cost (Min)
+                                                </label>
+                                                {{ form.estimated_cost_min }}
+                                            </div>
+
+                                            <div class="col-md-6 mb-3">
+                                                <label for="{{ form.estimated_cost_max.id_for_label }}" class="form-label">
+                                                    Estimated Cost (Max)
+                                                </label>
+                                                {{ form.estimated_cost_max }}
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.equipment_needed.id_for_label }}" class="form-label">
+                                                Equipment Needed
+                                            </label>
+                                            {{ form.equipment_needed }}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.safety_notes.id_for_label }}" class="form-label">
+                                                Safety Notes
+                                            </label>
+                                            {{ form.safety_notes }}
+                                        </div>
+
+                                        <div class="form-check mb-2">
+                                            {{ form.booking_required }}
+                                            <label class="form-check-label" for="{{ form.booking_required.id_for_label }}">
+                                                Booking Required
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check mb-2">
+                                            {{ form.guide_required }}
+                                            <label class="form-check-label" for="{{ form.guide_required.id_for_label }}">
+                                                Guide Required
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check mb-2">
+                                            <label class="form-check-label" for="{{ form.risk_level.id_for_label }}">
+                                                Risk Level
+                                            </label>
+                                            {{ form.risk_level }}
+                                        </div>
+
+                                        <div class="form-check mb-2">
+                                            <label class="form-check-label" for="{{ form.wheelchair_accessible.id_for_label }}">
+                                                Wheelchair Accessible
+                                            </label>
+                                            {{ form.wheelchair_accessible }}
+                                        </div>
+
+                                        <div class="form-check mb-2">
+                                            <label class="form-check-label" for="{{ form.suitable_for_children.id_for_label }}">
+                                                Suitable for Children
+                                            </label>
+                                            {{ form.suitable_for_children }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Submit Buttons #}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'activities:my_activities' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                {% if activity %}
+                                    Update Activity
+                                {% else %}
+                                    Create Activity
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+</style>
+{% endblock %}
