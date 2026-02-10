@@ -1,0 +1,46 @@
+{% comment %}
+=============================================================================
+STAT CARD COMPONENT
+=============================================================================
+Displays a single statistic with icon, value, and label.
+Commonly used in dashboards for metrics display.
+
+REQUIRED PARAMETERS:
+  - value: The numeric or text value to display
+  - label: The descriptive label for the stat
+
+OPTIONAL PARAMETERS:
+  - icon: Bootstrap icon class (e.g., "bi-globe", "bi-airplane")
+  - color: Color variant (clay, olive, ochre, sage) - defaults to 'clay'
+  - animate: Boolean to enable hover animation - defaults to true
+
+USAGE EXAMPLES:
+  {% include 'components/cards/stat_card.html' with value=42 label="Countries Visited" icon="bi-globe" color="clay" %}
+  {% include 'components/cards/stat_card.html' with value="$1,234" label="Total Spent" icon="bi-currency-dollar" color="ochre" %}
+  {% include 'components/cards/stat_card.html' with value=stats.total_trips label="Total Trips" icon="bi-airplane" %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with color=color|default:"clay" animate=animate|default:True %}
+
+<div class="bg-white rounded-xl border border-warm-200 p-6 text-center 
+            {% if animate %}transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group{% endif %}">
+  
+  {% if icon %}
+  <div class="inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3
+              {% if color == 'clay' %}bg-earth-sand text-earth-clay{% endif %}
+              {% if color == 'olive' %}bg-emerald-50 text-earth-olive{% endif %}
+              {% if color == 'ochre' %}bg-amber-50 text-earth-ochre{% endif %}
+              {% if color == 'sage' %}bg-green-50 text-earth-sage{% endif %}
+              {% if animate %}group-hover:scale-110 transition-transform{% endif %}">
+    <i class="{{ icon }} text-2xl"></i>
+  </div>
+  {% endif %}
+  
+  <div class="text-4xl font-bold text-warm-900 mb-1">{{ value|default:"—" }}</div>
+  
+  <div class="text-sm text-warm-600 uppercase tracking-wider font-medium">{{ label }}</div>
+</div>
+
+{% endwith %}

@@ -1,0 +1,51 @@
+{% load static tailwind_tags %}
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}ShareBucketList{% endblock %}</title>
+
+  {# TAILWIND CSS #}
+  {% tailwind_css %}
+  
+  {# Bootstrap Icons #}
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  {# Flag icons #}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css"/>
+
+  {# Favicons #}
+  <link rel="icon" href="{% static 'core/branding/ico/favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'core/branding/png/favicon/favicon-32x32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'core/branding/png/favicon/favicon-16x16.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'core/branding/png/app/icon-180x180.png' %}">
+
+  {% block extra_css %}{% endblock %}
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-white text-warm-900 min-h-screen">
+  
+  {# Header - Simple version without sidebar toggle #}
+  {% block header %}
+    {% include "partials/_header_simple.html" %}
+  {% endblock %}
+  
+  {# Full-width content - NO container, NO sidebar #}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  
+  {# Footer #}
+  {% block footer %}
+    {% include "partials/_footer.html" %}
+  {% endblock %}
+
+  {# Alpine.js #}
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

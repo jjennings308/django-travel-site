@@ -1,0 +1,66 @@
+{% comment %}
+=============================================================================
+PROGRESS CARD COMPONENT
+=============================================================================
+Displays progress towards a goal with label, percentage, and visual bar.
+Ideal for bucket list completion, trip planning milestones, achievement tracking.
+
+REQUIRED PARAMETERS:
+  - label: Description of what's being tracked
+  - percentage: Numeric percentage (0-100)
+
+OPTIONAL PARAMETERS:
+  - sublabel: Additional context text below progress bar
+  - color: Color variant (clay, olive, ochre, sage) - defaults to 'clay'
+  - show_count: Boolean to show "X/Y completed" format - defaults to false
+  - completed: Number completed (required if show_count is true)
+  - total: Total number (required if show_count is true)
+
+USAGE EXAMPLES:
+  {% include 'components/cards/progress_card.html' with label="Bucket List Progress" percentage=65 sublabel="26 of 40 items completed" %}
+  
+  {% include 'components/cards/progress_card.html' with label="Trip Planning" percentage=33 show_count=True completed=2 total=6 color="olive" %}
+  
+  {% include 'components/cards/progress_card.html' with label="Overall Progress" percentage=bucket_list_stats.completion_percentage %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with color=color|default:"clay" show_count=show_count|default:False %}
+
+<div class="bg-white border border-warm-200 rounded-xl p-6">
+  
+  {# Header with label and percentage #}
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm font-medium text-warm-700">{{ label }}</span>
+    <span class="text-sm font-bold 
+                 {% if color == 'clay' %}text-earth-clay{% endif %}
+                 {% if color == 'olive' %}text-earth-olive{% endif %}
+                 {% if color == 'ochre' %}text-earth-ochre{% endif %}
+                 {% if color == 'sage' %}text-earth-sage{% endif %}">
+      {{ percentage|floatformat:0 }}%
+    </span>
+  </div>
+  
+  {# Progress bar #}
+  <div class="w-full bg-warm-100 rounded-full h-2.5 overflow-hidden">
+    <div class="h-2.5 rounded-full transition-all duration-500 ease-out
+                {% if color == 'clay' %}bg-gradient-to-r from-earth-clay to-earth-tan{% endif %}
+                {% if color == 'olive' %}bg-gradient-to-r from-earth-olive to-earth-sage{% endif %}
+                {% if color == 'ochre' %}bg-gradient-to-r from-earth-ochre to-amber-300{% endif %}
+                {% if color == 'sage' %}bg-gradient-to-r from-earth-sage to-green-300{% endif %}"
+         style="width: {{ percentage|floatformat:0 }}%">
+    </div>
+  </div>
+  
+  {# Optional sublabel or count #}
+  {% if show_count and completed is not None and total is not None %}
+  <p class="text-xs text-warm-500 mt-2">
+    {{ completed }} of {{ total }} completed
+  </p>
+  {% elif sublabel %}
+  <p class="text-xs text-warm-500 mt-2">{{ sublabel }}</p>
+  {% endif %}
+</div>
+
+{% endwith %}

@@ -1,212 +1,57 @@
-{% extends "base.html" %}
+{% extends "base_marketing.html" %}
 {% load static %}
 
 {% block title %}ShareBucketList - Plan it. Live it. Share it.{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Hero Section */
-    .hero-gradient {
-        background: linear-gradient(135deg, var(--sbl-primary) 0%, var(--sbl-secondary) 100%);
-        color: white;
-        padding: 5rem 0 4rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .hero-gradient::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        opacity: 0.4;
-    }
-    
-    .hero-content {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-title {
-        font-size: 3.5rem;
-        font-weight: 800;
-        line-height: 1.2;
-        margin-bottom: 1.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .hero-subtitle {
-        font-size: 1.5rem;
-        font-weight: 400;
-        opacity: 0.95;
-        margin-bottom: 2.5rem;
-        line-height: 1.6;
-    }
-    
-    .hero-cta-group {
-        gap: 1rem;
-    }
-    
-    .hero-image {
-        max-width: 100%;
-        border-radius: 1rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    
-    /* Feature Cards */
-    .feature-card {
-        text-align: center;
-        padding: 2rem;
-        height: 100%;
-        transition: transform 0.3s ease;
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-8px);
-    }
-    
-    .feature-icon {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 1rem;
-        font-size: 2.5rem;
-    }
-    
-    .feature-icon-primary {
-        background: linear-gradient(135deg, var(--sbl-primary), var(--sbl-primary-light));
-        color: white;
-    }
-    
-    .feature-icon-secondary {
-        background: linear-gradient(135deg, var(--sbl-secondary), var(--sbl-secondary-light));
-        color: white;
-    }
-    
-    .feature-icon-accent {
-        background: linear-gradient(135deg, var(--sbl-accent), #fbbf24);
-        color: white;
-    }
-    
-    /* Stats Section */
-    .stats-section {
-        background: linear-gradient(135deg, var(--sbl-primary-dark), var(--sbl-primary));
-        color: white;
-        padding: 4rem 0;
-    }
-    
-    .stat-item {
-        text-align: center;
-    }
-    
-    .stat-number {
-        font-size: 3.5rem;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 0.5rem;
-    }
-    
-    .stat-label {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
-    
-    /* CTA Section */
-    .cta-section {
-        background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%);
-        padding: 5rem 0;
-    }
-    
-    .cta-card {
-        background: white;
-        border-radius: 1.5rem;
-        padding: 3rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    }
-    
-    /* Testimonial Cards */
-    .testimonial-card {
-        background: white;
-        border-radius: 1rem;
-        padding: 2rem;
-        height: 100%;
-        border: 1px solid var(--sbl-border);
-        transition: all 0.3s ease;
-    }
-    
-    .testimonial-card:hover {
-        box-shadow: var(--sbl-shadow-lg);
-        transform: translateY(-4px);
-    }
-    
-    .testimonial-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 1rem;
-        border: 3px solid var(--sbl-primary-pale);
-    }
-    
-    .stars {
-        color: #fbbf24;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .hero-title {
-            font-size: 2.5rem;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-        }
-        
-        .stat-number {
-            font-size: 2.5rem;
-        }
-        
-        .hero-gradient {
-            padding: 3rem 0 2rem;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 
 <!-- Hero Section -->
-<section class="hero-gradient">
-    <div class="container hero-content">
-        <div class="row align-items-center">
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <h1 class="hero-title">Plan it. Live it. Share it.</h1>
-                <p class="hero-subtitle">
+<section class="relative bg-gradient-to-br from-earth-clay to-earth-olive text-white overflow-hidden">
+    
+    {# Background pattern overlay #}
+    <div class="absolute inset-0 opacity-10">
+        <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="hero-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                    <path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z" fill="white" fill-opacity="0.3"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#hero-pattern)"/>
+        </svg>
+    </div>
+    
+    <div class="container mx-auto px-4 relative z-10">
+        <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center py-16 md:py-20 lg:py-28">
+            
+            {# Hero Content #}
+            <div class="mb-8 lg:mb-0">
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6" 
+                    style="text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    Plan it. Live it. Share it.
+                </h1>
+                <p class="text-xl lg:text-2xl mb-10 opacity-95 leading-relaxed">
                     Your ultimate travel companion for discovering amazing destinations, 
                     planning unforgettable trips, and sharing your adventures with the world.
                 </p>
-                <div class="d-flex flex-wrap hero-cta-group">
-                    <a href="{% url 'register' %}" class="btn btn-light btn-lg px-5 py-3">
-                        <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
+                <div class="flex flex-wrap gap-4">
+                    <a href="{% url 'register' %}" 
+                       class="inline-flex items-center gap-2 px-8 py-4 bg-white text-earth-clay font-bold text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200">
+                        <i class="bi bi-rocket-takeoff"></i>
+                        Get Started Free
                     </a>
-                    <a href="#features" class="btn btn-outline-light btn-lg px-5 py-3">
-                        <i class="bi bi-play-circle me-2"></i>Learn More
+                    <a href="#features" 
+                       class="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold text-lg rounded-lg border-2 border-white/30 hover:bg-white/20 hover:border-white/50 transition-all duration-200">
+                        <i class="bi bi-play-circle"></i>
+                        Learn More
                     </a>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <img src="{% static 'ore/branding/svg/sbl-logo-hero.svg' %}" 
+            
+            {# Hero Image #}
+            <div>
+                <img src="{% static 'core/branding/svg/sbl-logo-hero.svg' %}" 
                      alt="ShareBucketList App Preview" 
-                     class="hero-image bg-light"
+                     class="w-full rounded-2xl shadow-2xl bg-white/10 transform hover:scale-105 transition-transform duration-300"
                      onerror="this.src='https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&h=400&fit=crop'">
             </div>
         </div>
@@ -214,176 +59,165 @@
 </section>
 
 <!-- Features Section -->
-<section id="features" class="py-5 bg-white">
-    <div class="container py-4">
-        <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3">Everything You Need for Your Next Adventure</h2>
-            <p class="lead text-muted">Powerful tools to help you explore, plan, and remember every moment.</p>
+<section id="features" class="py-16 md:py-20 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12 lg:mb-16">
+            <h2 class="text-4xl lg:text-5xl font-bold text-warm-900 mb-4">
+                Everything You Need for Your Next Adventure
+            </h2>
+            <p class="text-xl text-warm-600 max-w-3xl mx-auto">
+                Powerful tools to help you explore, plan, and remember every moment.
+            </p>
         </div>
         
-        <div class="row g-4">
-            <!-- Feature 1: Bucket List -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-primary">
-                        <i class="bi bi-check2-square"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Build Your Bucket List</h3>
-                    <p class="text-muted">
-                        Curate your dream destinations and activities. Track what you've done 
-                        and what's still waiting for you.
-                    </p>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            {# Feature 1: Bucket List #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-clay to-earth-tan text-white">
+                    <i class="bi bi-list-check"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Create Bucket Lists</h3>
+                <p class="text-warm-600">
+                    Organize your travel dreams into customizable lists. Track places you want 
+                    to visit and experiences you don't want to miss.
+                </p>
             </div>
             
-            <!-- Feature 2: Trip Planning -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-secondary">
-                        <i class="bi bi-calendar-event"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Plan Your Trips</h3>
-                    <p class="text-muted">
-                        Create detailed itineraries, manage bookings, and organize all your 
-                        travel details in one place.
-                    </p>
+            {# Feature 2: Trip Planning #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-olive to-earth-sage text-white">
+                    <i class="bi bi-map"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Plan Trips</h3>
+                <p class="text-warm-600">
+                    Build detailed itineraries with flights, hotels, activities, and budgets. 
+                    Everything you need in one organized place.
+                </p>
             </div>
             
-            <!-- Feature 3: Discover -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-accent">
-                        <i class="bi bi-compass"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Discover New Places</h3>
-                    <p class="text-muted">
-                        Get personalized recommendations based on your interests and travel style. 
-                        Find hidden gems.
-                    </p>
+            {# Feature 3: Discover Places #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-clay to-earth-tan text-white">
+                    <i class="bi bi-compass"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Discover Places</h3>
+                <p class="text-warm-600">
+                    Explore curated destinations and hidden gems. Get personalized 
+                    recommendations based on your interests.
+                </p>
             </div>
             
-            <!-- Feature 4: Share -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-primary">
-                        <i class="bi bi-people"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Share with Friends</h3>
-                    <p class="text-muted">
-                        Connect with fellow travelers, share your experiences, and inspire 
-                        others with your journeys.
-                    </p>
+            {# Feature 4: Track Adventures #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-olive to-earth-sage text-white">
+                    <i class="bi bi-camera"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Track Adventures</h3>
+                <p class="text-warm-600">
+                    Document your journey with photos, notes, and ratings. Build a 
+                    beautiful travel diary to cherish forever.
+                </p>
             </div>
             
-            <!-- Feature 5: Memories -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-secondary">
-                        <i class="bi bi-camera"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Capture Memories</h3>
-                    <p class="text-muted">
-                        Document your adventures with photos, notes, and stories. 
-                        Create a beautiful travel diary.
-                    </p>
+            {# Feature 5: Connect & Share #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-ochre to-amber-400 text-white">
+                    <i class="bi bi-people"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Connect & Share</h3>
+                <p class="text-warm-600">
+                    Share your experiences with friends and the travel community. 
+                    Get inspired by others' journeys.
+                </p>
             </div>
             
-            <!-- Feature 6: Rewards -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon feature-icon-accent">
-                        <i class="bi bi-gift"></i>
-                    </div>
-                    <h3 class="h4 fw-bold mb-3">Earn Rewards</h3>
-                    <p class="text-muted">
-                        Complete adventures and earn badges. Unlock premium features and 
-                        exclusive travel perks.
-                    </p>
+            {# Feature 6: Rewards #}
+            <div class="text-center p-8 h-full transition-transform duration-300 hover:-translate-y-2">
+                <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-ochre to-amber-400 text-white">
+                    <i class="bi bi-gift"></i>
                 </div>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Earn Rewards</h3>
+                <p class="text-warm-600">
+                    Complete adventures and earn badges. Unlock premium features and 
+                    exclusive travel perks.
+                </p>
             </div>
         </div>
     </div>
 </section>
 
 <!-- Stats Section -->
-<section class="stats-section">
-    <div class="container">
-        <div class="row g-4">
-            <div class="col-6 col-md-3">
-                <div class="stat-item">
-                    <div class="stat-number">10K+</div>
-                    <div class="stat-label">Active Travelers</div>
-                </div>
+<section class="py-16 md:py-20 bg-gradient-to-br from-earth-clay-dark to-earth-clay text-white">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">10K+</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Active Travelers</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-item">
-                    <div class="stat-number">{{ countries_count }}</div>
-                    <div class="stat-label">Countries</div>
-                </div>
+            <div class="text-center">
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ countries_count|default:"150+" }}</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Countries</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-item">
-                    <div class="stat-number">50K+</div>
-                    <div class="stat-label">Trips Planned</div>
-                </div>
+            <div class="text-center">
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">50K+</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Trips Planned</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-item">
-                    <div class="stat-number">100K+</div>
-                    <div class="stat-label">Bucket List Items</div>
-                </div>
+            <div class="text-center">
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">100K+</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Bucket List Items</div>
             </div>
         </div>
     </div>
 </section>
 
 <!-- How It Works Section -->
-<section class="py-5 bg-white">
-    <div class="container py-4">
-        <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3">How It Works</h2>
-            <p class="lead text-muted">Get started in three simple steps</p>
+<section class="py-16 md:py-20 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12 lg:mb-16">
+            <h2 class="text-4xl lg:text-5xl font-bold text-warm-900 mb-4">How It Works</h2>
+            <p class="text-xl text-warm-600">Get started in three simple steps</p>
         </div>
         
-        <div class="row g-5 align-items-center">
-            <div class="col-lg-4 text-center">
-                <div class="mb-4">
-                    <div class="badge rounded-circle bg-primary p-3" style="width: 80px; height: 80px; font-size: 2rem; display: inline-flex; align-items: center; justify-content: center;">
+        <div class="grid lg:grid-cols-3 gap-12 lg:gap-8 items-start">
+            
+            {# Step 1 #}
+            <div class="text-center">
+                <div class="mb-6">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-earth-clay text-white flex items-center justify-center text-4xl font-bold">
                         1
                     </div>
                 </div>
-                <h3 class="h4 fw-bold mb-3">Create Your Profile</h3>
-                <p class="text-muted">
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Create Your Profile</h3>
+                <p class="text-warm-600">
                     Sign up for free and tell us about your travel preferences, 
                     interests, and dream destinations.
                 </p>
             </div>
             
-            <div class="col-lg-4 text-center">
-                <div class="mb-4">
-                    <div class="badge rounded-circle p-3" style="width: 80px; height: 80px; font-size: 2rem; display: inline-flex; align-items: center; justify-content: center; background: var(--sbl-secondary);">
+            {# Step 2 #}
+            <div class="text-center">
+                <div class="mb-6">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-earth-olive text-white flex items-center justify-center text-4xl font-bold">
                         2
                     </div>
                 </div>
-                <h3 class="h4 fw-bold mb-3">Build Your Bucket List</h3>
-                <p class="text-muted">
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Build Your Bucket List</h3>
+                <p class="text-warm-600">
                     Add destinations and activities you want to experience. 
                     Browse recommendations tailored just for you.
                 </p>
             </div>
             
-            <div class="col-lg-4 text-center">
-                <div class="mb-4">
-                    <div class="badge rounded-circle p-3" style="width: 80px; height: 80px; font-size: 2rem; display: inline-flex; align-items: center; justify-content: center; background: var(--sbl-accent);">
+            {# Step 3 #}
+            <div class="text-center">
+                <div class="mb-6">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-earth-ochre text-white flex items-center justify-center text-4xl font-bold">
                         3
                     </div>
                 </div>
-                <h3 class="h4 fw-bold mb-3">Plan & Share</h3>
-                <p class="text-muted">
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Plan & Share</h3>
+                <p class="text-warm-600">
                     Create detailed trip itineraries, track your adventures, 
                     and share your experiences with the community.
                 </p>
@@ -393,79 +227,83 @@
 </section>
 
 <!-- Testimonials Section -->
-<section class="py-5" style="background: #f9fafb;">
-    <div class="container py-4">
-        <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3">What Travelers Say</h2>
-            <p class="lead text-muted">Join thousands of happy adventurers</p>
+<section class="py-16 md:py-20 bg-warm-50">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12 lg:mb-16">
+            <h2 class="text-4xl lg:text-5xl font-bold text-warm-900 mb-4">What Travelers Say</h2>
+            <p class="text-xl text-warm-600">Join thousands of happy adventurers</p>
         </div>
         
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="testimonial-card">
-                    <div class="stars mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="mb-4">
-                        "ShareBucketList completely transformed how I plan my trips. 
-                        I've discovered so many amazing places I never would have found otherwise!"
-                    </p>
-                    <div class="d-flex align-items-center">
-                        <img src="https://i.pravatar.cc/150?img=1" alt="Sarah" class="testimonial-avatar">
-                        <div>
-                            <div class="fw-bold">Sarah Johnson</div>
-                            <small class="text-muted">Traveled to 47 countries</small>
-                        </div>
+        <div class="grid md:grid-cols-3 gap-8">
+            
+            {# Testimonial 1 #}
+            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div class="flex gap-1 mb-4 text-amber-400">
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="text-warm-700 mb-6">
+                    "ShareBucketList completely transformed how I plan my trips. 
+                    I've discovered so many amazing places I never would have found otherwise!"
+                </p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/150?img=1" 
+                         alt="Sarah" 
+                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
+                    <div>
+                        <div class="font-bold text-warm-900">Sarah Johnson</div>
+                        <small class="text-warm-500">Traveled to 47 countries</small>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="testimonial-card">
-                    <div class="stars mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="mb-4">
-                        "The best travel planning tool I've ever used. Love seeing my bucket list 
-                        come to life and sharing adventures with friends!"
-                    </p>
-                    <div class="d-flex align-items-center">
-                        <img src="https://i.pravatar.cc/150?img=13" alt="Michael" class="testimonial-avatar">
-                        <div>
-                            <div class="fw-bold">Michael Chen</div>
-                            <small class="text-muted">Adventure Enthusiast</small>
-                        </div>
+            {# Testimonial 2 #}
+            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div class="flex gap-1 mb-4 text-amber-400">
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="text-warm-700 mb-6">
+                    "The best travel planning tool I've ever used. Love seeing my bucket list 
+                    come to life and sharing adventures with friends!"
+                </p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/150?img=13" 
+                         alt="Michael" 
+                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
+                    <div>
+                        <div class="font-bold text-warm-900">Michael Chen</div>
+                        <small class="text-warm-500">Adventure Enthusiast</small>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="testimonial-card">
-                    <div class="stars mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="mb-4">
-                        "Finally, a place to organize all my travel dreams! The recommendations 
-                        are spot-on and the community is incredibly helpful."
-                    </p>
-                    <div class="d-flex align-items-center">
-                        <img src="https://i.pravatar.cc/150?img=5" alt="Emma" class="testimonial-avatar">
-                        <div>
-                            <div class="fw-bold">Emma Rodriguez</div>
-                            <small class="text-muted">Digital Nomad</small>
-                        </div>
+            {# Testimonial 3 #}
+            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div class="flex gap-1 mb-4 text-amber-400">
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="text-warm-700 mb-6">
+                    "Finally, a place to organize all my travel dreams! The recommendations 
+                    are spot-on and the community is incredibly helpful."
+                </p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/150?img=5" 
+                         alt="Emma" 
+                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
+                    <div>
+                        <div class="font-bold text-warm-900">Emma Rodriguez</div>
+                        <small class="text-warm-500">Digital Nomad</small>
                     </div>
                 </div>
             </div>
@@ -474,23 +312,29 @@
 </section>
 
 <!-- CTA Section -->
-<section class="cta-section">
-    <div class="container">
-        <div class="cta-card text-center">
-            <h2 class="display-5 fw-bold mb-4">Ready to Start Your Adventure?</h2>
-            <p class="lead text-muted mb-4">
+<section class="py-20 bg-gradient-to-br from-warm-50 to-warm-200">
+    <div class="container mx-auto px-4">
+        <div class="bg-white rounded-3xl p-8 md:p-12 lg:p-16 shadow-xl text-center max-w-4xl mx-auto">
+            <h2 class="text-4xl lg:text-5xl font-bold text-warm-900 mb-6">
+                Ready to Start Your Adventure?
+            </h2>
+            <p class="text-xl text-warm-600 mb-8 max-w-2xl mx-auto">
                 Join thousands of travelers planning their dream trips. It's completely free to get started!
             </p>
-            <div class="d-flex flex-wrap justify-content-center gap-3">
-                <a href="{% url 'register' %}" class="btn btn-primary btn-lg px-5 py-3">
-                    <i class="bi bi-person-plus me-2"></i>Create Free Account
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="{% url 'register' %}" 
+                   class="inline-flex items-center gap-2 px-8 py-4 bg-earth-clay text-white font-bold text-lg rounded-lg shadow-lg hover:bg-earth-clay-dark hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <i class="bi bi-person-plus"></i>
+                    Create Free Account
                 </a>
-                <a href="{% url 'login' %}" class="btn btn-outline-primary btn-lg px-5 py-3">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                <a href="{% url 'login' %}" 
+                   class="inline-flex items-center gap-2 px-8 py-4 border-2 border-earth-clay text-earth-clay font-semibold text-lg rounded-lg hover:bg-earth-clay hover:text-white transition-all duration-200">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign In
                 </a>
             </div>
-            <p class="text-muted mt-4 mb-0">
-                <small>No credit card required • Free forever • Cancel anytime</small>
+            <p class="text-warm-500 mt-6 text-sm">
+                No credit card required • Free forever • Cancel anytime
             </p>
         </div>
     </div>

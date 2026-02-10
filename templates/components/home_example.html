@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ShareBucketList - Plan it. Live it. Share it.{% endblock %}
+
+{% block content %}
+
+{# Hero Section #}
+{% include 'components/sections/hero.html' with 
+   title="ShareBucketList" 
+   subtitle="Turn your travel dreams into reality. Plan adventures, track experiences, and share your journey with the world." 
+   cta_primary_text="Start Your Journey" 
+   cta_primary_url="register" 
+   cta_secondary_text="Learn More" 
+   cta_secondary_url="core:about" %}
+
+{# Features Section #}
+<div class="py-20 bg-warm-50">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-bold text-warm-900 mb-4">Everything You Need</h2>
+      <p class="text-xl text-warm-600 max-w-2xl mx-auto">
+        All the tools to plan, experience, and remember your travels in one beautiful place.
+      </p>
+    </div>
+    
+    <div class="grid md:grid-cols-3 gap-8">
+      {% include 'components/cards/action_card.html' with 
+         title="Bucket Lists" 
+         icon="bi-list-check" 
+         description="Create wish lists of places to visit, activities to try, and experiences to collect" 
+         url="bucketlists:dashboard" 
+         button_text="Explore"
+         color="clay" %}
+      
+      {% include 'components/cards/action_card.html' with 
+         title="Trip Planning" 
+         icon="bi-map" 
+         description="Plan every detail of your adventures from flights to activities and everything between" 
+         url="trips:dashboard" 
+         button_text="Start Planning"
+         color="olive" %}
+      
+      {% include 'components/cards/action_card.html' with 
+         title="Rewards & Tracking" 
+         icon="bi-trophy" 
+         description="Track your progress, earn achievements, and maximize your travel rewards programs" 
+         url="rewards:dashboard" 
+         button_text="View Rewards"
+         color="ochre" %}
+    </div>
+  </div>
+</div>
+
+{# Stats Section (if user is logged in) #}
+{% if user.is_authenticated %}
+<div class="py-20 bg-white">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-bold text-warm-900 mb-4">Your Journey So Far</h2>
+      <p class="text-xl text-warm-600">Keep track of your amazing adventures</p>
+    </div>
+    
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+      {% include 'components/cards/stat_card.html' with 
+         value=user.bucket_list_items_count|default:0 
+         label="Bucket List Items" 
+         icon="bi-check2-square" 
+         color="clay" %}
+      
+      {% include 'components/cards/stat_card.html' with 
+         value=user.trips_count|default:0 
+         label="Trips Taken" 
+         icon="bi-airplane" 
+         color="olive" %}
+      
+      {% include 'components/cards/stat_card.html' with 
+         value=user.countries_visited|default:0 
+         label="Countries Visited" 
+         icon="bi-globe" 
+         color="ochre" %}
+      
+      {% include 'components/cards/stat_card.html' with 
+         value=user.total_points|default:0 
+         label="Reward Points" 
+         icon="bi-star-fill" 
+         color="sage" %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# CTA Section #}
+<div class="py-20 bg-gradient-to-br from-earth-olive to-earth-sage text-white">
+  <div class="container mx-auto px-4 text-center">
+    <h2 class="text-4xl lg:text-5xl font-bold mb-6">Ready to Start Your Adventure?</h2>
+    <p class="text-xl mb-10 opacity-95 max-w-2xl mx-auto">
+      Join thousands of travelers who are planning, tracking, and sharing their journeys with ShareBucketList.
+    </p>
+    <a href="{% url 'register' %}" 
+       class="inline-flex items-center gap-2 px-8 py-4 bg-white text-earth-olive font-bold text-lg rounded-lg
+              shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200">
+      Create Free Account
+      <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+
+{% endblock %}

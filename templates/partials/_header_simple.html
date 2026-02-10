@@ -1,0 +1,82 @@
+{% load static %}
+{# Simplified header for marketing/public pages - no sidebar toggle #}
+<header class="border-b border-warm-200 bg-white sticky top-0 z-50">
+  <div class="container mx-auto px-4">
+    <div class="flex items-center justify-between py-4">
+
+      {# Logo/Branding #}
+      <div>
+        <a href="{% url 'core:home' %}" class="flex items-center text-decoration-none">
+          <img src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
+               alt="{{ SITE_NAME }}"
+               class="h-12 w-auto"
+               loading="eager">
+          <span class="sr-only">{{ SITE_NAME }}</span>
+        </a>
+      </div>
+
+      {# Right side - Auth buttons or user menu #}
+      <div class="flex items-center gap-3">
+        {% if user.is_authenticated %}
+          
+          {# User is logged in #}
+          <a href="{% url 'core:dashboard' %}" 
+             class="text-warm-700 hover:text-earth-clay font-medium transition-colors">
+            Dashboard
+          </a>
+          
+          {# User dropdown with Alpine.js #}
+          <div x-data="{ open: false }" class="relative">
+            <button @click="open = !open" 
+                    class="flex items-center gap-2 text-warm-700 hover:text-earth-clay font-medium transition-colors">
+              <i class="bi bi-person-circle text-2xl"></i>
+              <span class="hidden md:inline">{{ user.username }}</span>
+              <i class="bi bi-chevron-down text-xs"></i>
+            </button>
+            
+            {# Dropdown menu #}
+            <div x-show="open" 
+                 @click.away="open = false"
+                 x-transition
+                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-warm-200 py-2">
+              <a href="{% url 'profile' %}" 
+                 class="block px-4 py-2 text-warm-700 hover:bg-warm-50 transition-colors">
+                <i class="bi bi-person me-2"></i>Profile
+              </a>
+              <a href="{% url 'settings' %}" 
+                 class="block px-4 py-2 text-warm-700 hover:bg-warm-50 transition-colors">
+                <i class="bi bi-gear me-2"></i>Settings
+              </a>
+              {% if user.is_staff %}
+              <a href="{% url 'admin:index' %}" 
+                 class="block px-4 py-2 text-warm-700 hover:bg-warm-50 transition-colors">
+                <i class="bi bi-shield-lock me-2"></i>Admin
+              </a>
+              {% endif %}
+              <hr class="my-2 border-warm-200">
+              <form method="post" action="{% url 'logout' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="w-full text-left px-4 py-2 text-warm-700 hover:bg-warm-50 transition-colors">
+                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </button>
+              </form>
+            </div>
+          </div>
+
+        {% else %}
+          {# User is not logged in #}
+          <a href="{% url 'login' %}" 
+             class="text-warm-700 hover:text-earth-clay font-medium transition-colors">
+            Login
+          </a>
+          <a href="{% url 'register' %}" 
+             class="inline-flex items-center gap-2 px-6 py-2.5 bg-earth-clay text-white font-semibold rounded-lg hover:bg-earth-clay-dark transition-all duration-200 shadow-sm hover:shadow-md">
+            Sign Up
+          </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</header>

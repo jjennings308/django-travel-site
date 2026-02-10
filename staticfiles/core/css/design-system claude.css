@@ -1,0 +1,501 @@
+/* ============================================
+   ShareBucketList Design System
+   Built on Bootstrap 5 + Custom Variables
+   ============================================ */
+
+/* --------------------------------------------
+   CSS VARIABLES - Theme Colors & Spacing
+   -------------------------------------------- */
+:root {
+  /* --------------------------------------------
+     EARTH-TONE BRAND COLORS (Light/Default)
+     -------------------------------------------- */
+
+  /* Primary Brand Colors (Sienna / Clay) */
+  --sbl-primary: #7A4E2D;        /* rich clay-brown */
+  --sbl-primary-dark: #5A371F;   /* espresso hover */
+  --sbl-primary-light: #B98255;  /* warm tan accent */
+  --sbl-primary-pale: #F3E7DB;   /* sand background */
+
+  /* Optional helper for rgba() usage */
+  --sbl-primary-rgb: 122, 78, 45;
+
+  /* Secondary Colors (Olive / Field Green) */
+  --sbl-secondary: #556B2F;      /* olive */
+  --sbl-secondary-dark: #3E5121; /* deep olive */
+  --sbl-secondary-light: #8CA66B;/* soft sage */
+
+  /* Accent Colors (Ochre / Amber) */
+  --sbl-accent: #C58B2A;         /* ochre CTA */
+  --sbl-accent-dark: #9A6A1E;    /* deeper ochre */
+
+  /* Semantic Colors (Earthy) */
+  --sbl-success: #3F7D5B;        /* evergreen/sage */
+  --sbl-warning: #C58B2A;        /* align with accent */
+  --sbl-danger: #B23A2F;         /* brick red */
+  --sbl-info: #2A6F6E;           /* deep teal */
+
+  /* --------------------------------------------
+     WARM NEUTRALS (replace cool grays)
+     -------------------------------------------- */
+  --sbl-gray-50:  #FAF7F2; /* warm paper */
+  --sbl-gray-100: #F3EEE6; /* parchment */
+  --sbl-gray-200: #E7DED2; /* warm light border */
+  --sbl-gray-300: #D4C7B8; /* warm border */
+  --sbl-gray-400: #B9AA99; /* muted text */
+  --sbl-gray-500: #8B7D71; /* secondary text */
+  --sbl-gray-600: #6F6258; /* body text */
+  --sbl-gray-700: #564B43; /* headings */
+  --sbl-gray-800: #3D342E; /* deep text */
+  --sbl-gray-900: #2A231E; /* near-black espresso */
+
+  /* Semantic Colors (same structure as your file) */
+  --sbl-text-primary: var(--sbl-gray-900);
+  --sbl-text-secondary: var(--sbl-gray-600);
+  --sbl-text-muted: var(--sbl-gray-500);
+  --sbl-border: var(--sbl-gray-300);
+  --sbl-background: #ffffff;
+  --sbl-background-alt: var(--sbl-gray-50);
+
+  /* Keep the rest of your spacing, radius, shadows, typography, transitions as-is */
+}
+
+/* --------------------------------------------
+   DARK THEME OVERRIDES
+   -------------------------------------------- */
+[data-theme="dark"] {
+  --sbl-primary: #3b82f6;
+  --sbl-primary-dark: #2563eb;
+  --sbl-primary-light: #60a5fa;
+  --sbl-primary-pale: #1e3a8a;
+  
+  --sbl-text-primary: #f9fafb;
+  --sbl-text-secondary: #d1d5db;
+  --sbl-text-muted: #9ca3af;
+  --sbl-border: #374151;
+  --sbl-background: #111827;
+  --sbl-background-alt: #1f2937;
+  
+  --sbl-gray-50: #1f2937;
+  --sbl-gray-100: #374151;
+  --sbl-gray-200: #4b5563;
+  --sbl-gray-900: #f9fafb;
+}
+
+/* --------------------------------------------
+   LIGHT THEME (explicit for toggle)
+   -------------------------------------------- */
+[data-theme="light"] {
+  /* Uses root defaults */
+}
+
+/* --------------------------------------------
+   BOOTSTRAP OVERRIDES
+   -------------------------------------------- */
+
+/* Primary button colors */
+.btn-primary {
+  background-color: var(--sbl-primary);
+  border-color: var(--sbl-primary);
+  color: white;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--sbl-primary-dark);
+  border-color: var(--sbl-primary-dark);
+}
+
+.btn-secondary {
+  background-color: var(--sbl-secondary);
+  border-color: var(--sbl-secondary);
+  color: white;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+  background-color: var(--sbl-secondary-dark);
+  border-color: var(--sbl-secondary-dark);
+}
+
+/* Accent button for CTAs */
+.btn-accent {
+  background-color: var(--sbl-accent);
+  border-color: var(--sbl-accent);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-accent:hover,
+.btn-accent:focus {
+  background-color: var(--sbl-accent-dark);
+  border-color: var(--sbl-accent-dark);
+  color: white;
+}
+
+/* Cards */
+.card {
+  border-radius: var(--sbl-radius-lg);
+  border-color: var(--sbl-border);
+  box-shadow: var(--sbl-shadow-sm);
+  transition: transform var(--sbl-transition-base), box-shadow var(--sbl-transition-base);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sbl-shadow-md);
+}
+
+.card-elevated {
+  box-shadow: var(--sbl-shadow-lg);
+}
+
+/* Badges */
+.badge-primary {
+  background-color: var(--sbl-primary);
+}
+
+.badge-secondary {
+  background-color: var(--sbl-secondary);
+}
+
+.badge-accent {
+  background-color: var(--sbl-accent);
+}
+
+/* Forms */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--sbl-primary-light);
+  box-shadow: 0 0 0 0.2rem rgba(var(--sbl-primary-rgb), 0.25);
+}
+
+/* Alerts */
+.alert-primary {
+  background-color: var(--sbl-primary-pale);
+  border-color: var(--sbl-primary-light);
+  color: var(--sbl-primary-dark);
+}
+
+/* --------------------------------------------
+   CUSTOM COMPONENTS
+   -------------------------------------------- */
+
+/* Dashboard Cards */
+.dashboard-card {
+  background: var(--sbl-background);
+  border: 1px solid var(--sbl-border);
+  border-radius: var(--sbl-radius-xl);
+  padding: var(--sbl-spacing-xl);
+  box-shadow: var(--sbl-shadow-sm);
+  transition: all var(--sbl-transition-base);
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--sbl-shadow-lg);
+  transform: translateY(-4px);
+}
+
+.dashboard-card-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sbl-radius-lg);
+  background: var(--sbl-primary-pale);
+  color: var(--sbl-primary);
+  font-size: 24px;
+  margin-bottom: var(--sbl-spacing-md);
+}
+
+.dashboard-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--sbl-text-primary);
+  margin-bottom: var(--sbl-spacing-sm);
+}
+
+.dashboard-card-description {
+  color: var(--sbl-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: var(--sbl-spacing-lg);
+}
+
+/* Feature Sections */
+.feature-section {
+  padding: var(--sbl-spacing-2xl) 0;
+}
+
+.feature-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sbl-radius-full);
+  background: linear-gradient(135deg, var(--sbl-primary), var(--sbl-primary-light));
+  color: white;
+  font-size: 32px;
+  margin: 0 auto var(--sbl-spacing-lg);
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, var(--sbl-primary) 0%, var(--sbl-secondary) 100%);
+  color: white;
+  padding: var(--sbl-spacing-2xl) 0;
+  border-radius: 0 0 var(--sbl-radius-xl) var(--sbl-radius-xl);
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: var(--sbl-spacing-md);
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-bottom: var(--sbl-spacing-xl);
+}
+
+/* Recommendation Banners */
+.recommendation-banner {
+  background: var(--sbl-background);
+  border: 1px solid var(--sbl-border);
+  border-radius: var(--sbl-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--sbl-shadow-md);
+  transition: all var(--sbl-transition-base);
+  cursor: pointer;
+}
+
+.recommendation-banner:hover {
+  box-shadow: var(--sbl-shadow-xl);
+  transform: scale(1.02);
+}
+
+.recommendation-banner-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.recommendation-banner-content {
+  padding: var(--sbl-spacing-lg);
+}
+
+.recommendation-banner-tag {
+  display: inline-block;
+  padding: var(--sbl-spacing-xs) var(--sbl-spacing-sm);
+  background: var(--sbl-accent);
+  color: white;
+  border-radius: var(--sbl-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: var(--sbl-spacing-sm);
+}
+
+.recommendation-banner-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--sbl-text-primary);
+  margin-bottom: var(--sbl-spacing-sm);
+}
+
+.recommendation-banner-description {
+  color: var(--sbl-text-secondary);
+  margin-bottom: var(--sbl-spacing-md);
+}
+
+/* Stat Cards */
+.stat-card {
+  background: var(--sbl-background);
+  border: 1px solid var(--sbl-border);
+  border-radius: var(--sbl-radius-lg);
+  padding: var(--sbl-spacing-lg);
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--sbl-primary);
+  line-height: 1;
+  margin-bottom: var(--sbl-spacing-xs);
+}
+
+.stat-label {
+  color: var(--sbl-text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Navigation Enhancements */
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--sbl-primary) !important;
+}
+
+.nav-link {
+  color: var(--sbl-text-secondary) !important;
+  font-weight: 500;
+  transition: color var(--sbl-transition-fast);
+}
+
+.nav-link:hover {
+  color: var(--sbl-primary) !important;
+}
+
+.nav-link.active {
+  color: var(--sbl-primary) !important;
+}
+
+/* Avatar Component */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sbl-radius-full);
+  object-fit: cover;
+  border: 2px solid var(--sbl-border);
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-lg {
+  width: 64px;
+  height: 64px;
+}
+
+.avatar-xl {
+  width: 96px;
+  height: 96px;
+}
+
+/* Status Indicators */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sbl-spacing-xs) var(--sbl-spacing-sm);
+  border-radius: var(--sbl-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge-verified {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-premium {
+  background: linear-gradient(135deg, var(--sbl-secondary), var(--sbl-secondary-light));
+  color: white;
+}
+
+.status-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Loading States */
+.skeleton {
+  background: linear-gradient(90deg, var(--sbl-gray-200) 25%, var(--sbl-gray-100) 50%, var(--sbl-gray-200) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+  border-radius: var(--sbl-radius-md);
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Utility Classes */
+.text-primary-custom {
+  color: var(--sbl-primary) !important;
+}
+
+.text-secondary-custom {
+  color: var(--sbl-secondary) !important;
+}
+
+.text-accent {
+  color: var(--sbl-accent) !important;
+}
+
+.bg-primary-light {
+  background-color: var(--sbl-primary-pale) !important;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--sbl-primary), var(--sbl-primary-light)) !important;
+}
+
+.bg-gradient-secondary {
+  background: linear-gradient(135deg, var(--sbl-secondary), var(--sbl-secondary-light)) !important;
+}
+
+.border-primary-custom {
+  border-color: var(--sbl-primary) !important;
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  
+  .dashboard-card {
+    padding: var(--sbl-spacing-lg);
+  }
+}
+
+/* --------------------------------------------
+   ACCESSIBILITY ENHANCEMENTS
+   -------------------------------------------- */
+
+/* Focus states */
+a:focus,
+button:focus,
+.btn:focus,
+.form-control:focus {
+  outline: 2px solid var(--sbl-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --sbl-border: #000000;
+    --sbl-text-secondary: #000000;
+  }
+  
+  [data-theme="dark"] {
+    --sbl-border: #ffffff;
+    --sbl-text-secondary: #ffffff;
+  }
+}

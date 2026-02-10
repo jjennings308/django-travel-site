@@ -1,70 +1,70 @@
-<!-- Footer -->
-<footer class="bg-dark text-white py-5">
-    <div class="container">
-        <div class="row g-4">
-            <div class="col-lg-4">
-                <h5 class="fw-bold mb-3">
-                    <i class="bi bi-airplane-engines me-2"></i>ShareBucketList
+{% load static %}
+{# Tailwind Footer for Marketing Pages #}
+<footer class="bg-warm-900 text-white py-16">
+    <div class="container mx-auto px-4">
+        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
+            
+            {# Brand Column #}
+            <div class="lg:col-span-2">
+                <h5 class="font-bold text-xl mb-4 flex items-center gap-2">
+                    <i class="bi bi-airplane-engines"></i>ShareBucketList
                 </h5>
-                <p class="text-white-50">
+                <p class="text-warm-400 leading-relaxed">
                     Your ultimate travel companion for discovering amazing destinations 
                     and creating unforgettable memories.
                 </p>
             </div>
             
-            <div class="col-lg-2 col-md-4">
-                <h6 class="fw-bold mb-3">Product</h6>
-                <ul class="list-unstyled">
-                    <li class="mb-2"><a href="#features" class="text-white-50 text-decoration-none">Features</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Pricing</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Premium</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Mobile App</a></li>
+            {# Product Column #}
+            <div>
+                <h6 class="font-bold mb-4">Product</h6>
+                <ul class="space-y-2">
+                    <li><a href="#features" class="text-warm-400 hover:text-white transition-colors">Features</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Pricing</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Premium</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Mobile App</a></li>
                 </ul>
             </div>
             
-            <div class="col-lg-2 col-md-4">
-                <h6 class="fw-bold mb-3">Company</h6>
-                <ul class="list-unstyled">
-                    <li class="mb-2"><a href="{% url 'core:about' %}" class="text-white-50 text-decoration-none">About Us</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Blog</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Careers</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Contact</a></li>
+            {# Company Column #}
+            <div>
+                <h6 class="font-bold mb-4">Company</h6>
+                <ul class="space-y-2">
+                    <li><a href="{% url 'core:about' %}" class="text-warm-400 hover:text-white transition-colors">About Us</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Blog</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Careers</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Contact</a></li>
                 </ul>
             </div>
             
-            <div class="col-lg-2 col-md-4">
-                <h6 class="fw-bold mb-3">Support</h6>
-                <ul class="list-unstyled">
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Help Center</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Privacy</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Terms</a></li>
-                    <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Safety</a></li>
+            {# Support & Social Column #}
+            <div>
+                <h6 class="font-bold mb-4">Support</h6>
+                <ul class="space-y-2 mb-6">
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Help Center</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Privacy</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Terms</a></li>
+                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Safety</a></li>
                 </ul>
-            </div>
-            
-            <div class="col-lg-2 col-md-12">
-                <h6 class="fw-bold mb-3">Follow Us</h6>
-                <div class="d-flex gap-3">
-                    <a href="#" class="text-white-50 fs-4"><i class="bi bi-facebook"></i></a>
-                    <a href="#" class="text-white-50 fs-4"><i class="bi bi-twitter"></i></a>
-                    <a href="#" class="text-white-50 fs-4"><i class="bi bi-instagram"></i></a>
-                    <a href="#" class="text-white-50 fs-4"><i class="bi bi-youtube"></i></a>
+                
+                <h6 class="font-bold mb-3">Follow Us</h6>
+                <div class="flex gap-4">
+                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-facebook"></i></a>
+                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-twitter"></i></a>
+                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-instagram"></i></a>
+                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-youtube"></i></a>
                 </div>
             </div>
         </div>
         
-        <hr class="my-4 border-secondary">
+        <hr class="border-warm-700 my-8">
         
-        <div class="row">
-            <div class="col-md-6 text-center text-md-start">
-                <small class="text-white-50">
-                    © 2026 ShareBucketList. All rights reserved.
-                </small>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
+            <div class="text-warm-400 text-center md:text-left">
+                © 2026 ShareBucketList. All rights reserved.
             </div>
-            <div class="col-md-6 text-center text-md-end">
-                <small class="text-white-50">
-                    Made with <i class="bi bi-heart-fill text-danger"></i> for travelers worldwide
-                </small>
+            <div class="text-warm-400 text-center md:text-right">
+                Made with <i class="bi bi-heart-fill text-red-500"></i> for travelers worldwide
             </div>
         </div>
     </div>

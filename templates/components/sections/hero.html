@@ -1,0 +1,98 @@
+{% comment %}
+=============================================================================
+HERO SECTION COMPONENT
+=============================================================================
+Large, attention-grabbing header section for landing pages.
+Typically used on homepage with title, subtitle, and CTA buttons.
+
+REQUIRED PARAMETERS:
+  - title: Main headline
+
+OPTIONAL PARAMETERS:
+  - subtitle: Supporting text below title
+  - cta_primary_text: Primary button text
+  - cta_primary_url: Primary button URL name
+  - cta_secondary_text: Secondary button text
+  - cta_secondary_url: Secondary button URL name
+  - image_url: Hero image URL (optional)
+  - gradient: Custom gradient colors (defaults to primary-secondary)
+
+USAGE EXAMPLES:
+  {% include 'components/sections/hero.html' with 
+     title="ShareBucketList" 
+     subtitle="Plan it. Live it. Share it." 
+     cta_primary_text="Get Started" 
+     cta_primary_url="register" 
+     cta_secondary_text="Learn More" 
+     cta_secondary_url="core:about" %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with gradient=gradient|default:"from-earth-clay to-earth-olive" %}
+
+<div class="relative bg-gradient-to-br {{ gradient }} text-white overflow-hidden">
+  
+  {# Background pattern overlay #}
+  <div class="absolute inset-0 opacity-10">
+    <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="hero-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+          <path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z" fill="white" fill-opacity="0.3"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hero-pattern)"/>
+    </svg>
+  </div>
+  
+  <div class="relative z-10 container mx-auto px-4 py-20 lg:py-28">
+    <div class="{% if image_url %}grid lg:grid-cols-2 gap-12 items-center{% else %}text-center max-w-4xl mx-auto{% endif %}">
+      
+      {# Content #}
+      <div class="{% if not image_url %}text-center{% endif %}">
+        <h1 class="text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-6 leading-tight">
+          {{ title }}
+        </h1>
+        
+        {% if subtitle %}
+        <p class="text-xl lg:text-2xl mb-10 opacity-95 leading-relaxed max-w-2xl {% if not image_url %}mx-auto{% endif %}">
+          {{ subtitle }}
+        </p>
+        {% endif %}
+        
+        {# CTA Buttons #}
+        {% if cta_primary_url or cta_secondary_url %}
+        <div class="flex flex-wrap gap-4 {% if not image_url %}justify-center{% endif %}">
+          {% if cta_primary_url %}
+          <a href="{% url cta_primary_url %}" 
+             class="inline-flex items-center gap-2 px-8 py-4 bg-white text-earth-clay font-bold text-lg rounded-lg
+                    shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200">
+            {{ cta_primary_text|default:"Get Started" }}
+            <i class="bi bi-arrow-right"></i>
+          </a>
+          {% endif %}
+          
+          {% if cta_secondary_url %}
+          <a href="{% url cta_secondary_url %}" 
+             class="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold text-lg rounded-lg
+                    border-2 border-white/30 hover:bg-white/20 hover:border-white/50 transition-all duration-200">
+            {{ cta_secondary_text|default:"Learn More" }}
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      
+      {# Optional hero image #}
+      {% if image_url %}
+      <div class="relative">
+        <img src="{{ image_url }}" 
+             alt="{{ title }}" 
+             class="w-full rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endwith %}

@@ -1,0 +1,60 @@
+{% comment %}
+=============================================================================
+LOADING SPINNER COMPONENT
+=============================================================================
+Animated loading indicator for asynchronous operations.
+Can be used inline or as a full-page overlay.
+
+OPTIONAL PARAMETERS:
+  - size: Size variant (sm, md, lg) - defaults to 'md'
+  - text: Loading text to display below spinner
+  - overlay: Boolean to show as full-page overlay - defaults to false
+  - color: Color variant (clay, olive, ochre, sage) - defaults to 'clay'
+
+USAGE EXAMPLES:
+  {# Inline spinner #}
+  {% include 'components/feedback/loading_spinner.html' with size="sm" text="Loading..." %}
+  
+  {# Full-page overlay #}
+  {% include 'components/feedback/loading_spinner.html' with overlay=True text="Processing your request..." color="olive" %}
+  
+  {# Just the spinner, no text #}
+  {% include 'components/feedback/loading_spinner.html' with size="lg" %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with size=size|default:"md" color=color|default:"clay" overlay=overlay|default:False %}
+
+{% if overlay %}
+{# Full-page overlay version #}
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl p-8 shadow-2xl text-center max-w-sm">
+{% endif %}
+
+    <div class="flex flex-col items-center justify-center {% if not overlay %}py-8{% endif %}">
+      {# Spinner #}
+      <div class="relative {% if size == 'sm' %}w-8 h-8{% elif size == 'lg' %}w-16 h-16{% else %}w-12 h-12{% endif %}">
+        <div class="absolute inset-0 rounded-full border-4 border-warm-200"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin
+                    {% if color == 'clay' %}border-earth-clay{% endif %}
+                    {% if color == 'olive' %}border-earth-olive{% endif %}
+                    {% if color == 'ochre' %}border-earth-ochre{% endif %}
+                    {% if color == 'sage' %}border-earth-sage{% endif %}">
+        </div>
+      </div>
+      
+      {# Loading text #}
+      {% if text %}
+      <p class="mt-4 text-warm-700 font-medium {% if size == 'sm' %}text-sm{% elif size == 'lg' %}text-lg{% endif %}">
+        {{ text }}
+      </p>
+      {% endif %}
+    </div>
+
+{% if overlay %}
+  </div>
+</div>
+{% endif %}
+
+{% endwith %}

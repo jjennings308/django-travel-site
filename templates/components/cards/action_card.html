@@ -1,0 +1,76 @@
+{% comment %}
+=============================================================================
+ACTION CARD COMPONENT
+=============================================================================
+Interactive card with icon, title, description, and call-to-action.
+Perfect for dashboard quick actions, feature highlights, or navigation cards.
+
+REQUIRED PARAMETERS:
+  - title: Card heading
+  - url: Django URL name to link to (use {% url %} pattern)
+
+OPTIONAL PARAMETERS:
+  - icon: Bootstrap icon class (e.g., "bi-map", "bi-calendar-plus")
+  - description: Supporting text
+  - button_text: CTA button text (defaults to "Go")
+  - color: Color variant (clay, olive, ochre, sage) - defaults to 'clay'
+  - external: Boolean for external links - defaults to false
+
+USAGE EXAMPLES:
+  {% include 'components/cards/action_card.html' with title="Plan Trip" icon="bi-map" url="trips:plan" description="Start planning your next adventure" button_text="Start Planning" %}
+  
+  {% include 'components/cards/action_card.html' with title="View Statistics" icon="bi-graph-up" url="trips:stats" description="See your travel analytics" color="olive" %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with color=color|default:"clay" button_text=button_text|default:"Go" external=external|default:False %}
+
+<a href="{% if not external %}{% url url %}{% else %}{{ url }}{% endif %}" 
+   class="block group h-full">
+  <div class="bg-white border border-warm-200 rounded-xl p-6 h-full 
+              transition-all duration-300 hover:shadow-lg 
+              hover:border-earth-{{ color }} flex flex-col">
+    
+    {# Icon section #}
+    {% if icon %}
+    <div class="flex justify-center mb-4">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full 
+                  {% if color == 'clay' %}bg-earth-sand text-earth-clay{% endif %}
+                  {% if color == 'olive' %}bg-emerald-50 text-earth-olive{% endif %}
+                  {% if color == 'ochre' %}bg-amber-50 text-earth-ochre{% endif %}
+                  {% if color == 'sage' %}bg-green-50 text-earth-sage{% endif %}
+                  group-hover:scale-110 transition-transform duration-300">
+        <i class="{{ icon }} text-3xl"></i>
+      </div>
+    </div>
+    {% endif %}
+    
+    {# Content section #}
+    <div class="text-center flex-1 flex flex-col">
+      <h3 class="text-lg font-semibold text-warm-900 mb-2 
+                 group-hover:text-earth-{{ color }} transition-colors">
+        {{ title }}
+      </h3>
+      
+      {% if description %}
+      <p class="text-sm text-warm-600 mb-4 flex-1">{{ description }}</p>
+      {% endif %}
+      
+      {# CTA Button #}
+      <div class="mt-auto">
+        <span class="inline-flex items-center gap-2 text-sm font-semibold
+                     {% if color == 'clay' %}text-earth-clay{% endif %}
+                     {% if color == 'olive' %}text-earth-olive{% endif %}
+                     {% if color == 'ochre' %}text-earth-ochre{% endif %}
+                     {% if color == 'sage' %}text-earth-sage{% endif %}
+                     group-hover:gap-3 transition-all">
+          {{ button_text }}
+          <i class="bi bi-arrow-right"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+</a>
+
+{% endwith %}

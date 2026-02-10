@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'tailwind',
-    'django_browser_reload',
     
     # local apps 
     'core',

@@ -1,0 +1,61 @@
+{% comment %}
+=============================================================================
+EMPTY STATE COMPONENT
+=============================================================================
+Friendly message shown when there's no data to display.
+Guides users with clear messaging and optional call-to-action.
+
+REQUIRED PARAMETERS:
+  - title: Main heading for empty state
+
+OPTIONAL PARAMETERS:
+  - message: Descriptive text explaining the empty state
+  - icon: Bootstrap icon class (defaults to "bi-inbox")
+  - cta_url: Django URL name for call-to-action button
+  - cta_text: Button text (defaults to "Get Started")
+  - color: Color variant for CTA button (clay, olive, ochre, sage) - defaults to 'clay'
+
+USAGE EXAMPLES:
+  {% include 'components/feedback/empty_state.html' with title="No trips yet" message="Start planning your first adventure" icon="bi-airplane" cta_url="trips:plan" cta_text="Plan a Trip" %}
+  
+  {% include 'components/feedback/empty_state.html' with title="Bucket list is empty" message="Add items you want to experience" icon="bi-list-check" cta_url="bucketlists:add" color="olive" %}
+  
+  {# Minimal version without CTA #}
+  {% include 'components/feedback/empty_state.html' with title="No results found" message="Try adjusting your filters" %}
+=============================================================================
+{% endcomment %}
+
+{# Set defaults #}
+{% with icon=icon|default:"bi-inbox" color=color|default:"clay" cta_text=cta_text|default:"Get Started" %}
+
+<div class="text-center py-12 px-4">
+  
+  {# Icon #}
+  <div class="mb-4">
+    <i class="{{ icon }} text-warm-300" style="font-size: 4rem;"></i>
+  </div>
+  
+  {# Title #}
+  <h3 class="text-xl font-semibold text-warm-900 mb-2">{{ title }}</h3>
+  
+  {# Message #}
+  {% if message %}
+  <p class="text-warm-600 mb-6 max-w-md mx-auto">{{ message }}</p>
+  {% endif %}
+  
+  {# Call to Action #}
+  {% if cta_url %}
+  <a href="{% url cta_url %}" 
+     class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold
+            transition-all duration-200 hover:shadow-md
+            {% if color == 'clay' %}bg-earth-clay hover:bg-earth-clay-dark text-white{% endif %}
+            {% if color == 'olive' %}bg-earth-olive hover:bg-earth-olive-dark text-white{% endif %}
+            {% if color == 'ochre' %}bg-earth-ochre hover:bg-earth-ochre-dark text-white{% endif %}
+            {% if color == 'sage' %}bg-earth-sage hover:bg-green-600 text-white{% endif %}">
+    {{ cta_text }}
+    <i class="bi bi-arrow-right"></i>
+  </a>
+  {% endif %}
+</div>
+
+{% endwith %}
