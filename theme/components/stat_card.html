@@ -1,0 +1,12 @@
+{% comment %}
+Usage: {% include 'components/stat_card.html' with value=42 label="Countries" icon="bi-globe" %}
+Works with Bootstrap now, easy to convert to Tailwind later
+{% endcomment %}
+
+<div class="stat-card text-center">
+  <div class="stat-icon mb-3">
+    <i class="{{ icon }} fs-1"></i>
+  </div>
+  <div class="stat-value display-4 fw-bold text-primary mb-1">{{ value }}</div>
+  <div class="stat-label text-muted text-uppercase small">{{ label }}</div>
+</div>

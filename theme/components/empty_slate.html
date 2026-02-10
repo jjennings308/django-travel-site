@@ -1,0 +1,14 @@
+{% comment %}
+Empty state component - shown when there's no data
+{% endcomment %}
+
+<div class="text-center py-5">
+  <div class="empty-state-icon mb-3">
+    <i class="{{ icon|default:'bi-inbox' }}" style="font-size: 4rem; opacity: 0.3;"></i>
+  </div>
+  <h3 class="h5 mb-2">{{ title|default:"No items yet" }}</h3>
+  <p class="text-muted mb-3">{{ message }}</p>
+  {% if cta_url %}
+    <a href="{% url cta_url %}" class="btn btn-primary">{{ cta_text|default:"Get Started" }}</a>
+  {% endif %}
+</div>

@@ -32,6 +32,7 @@ urlpatterns = [
     path('trips/', include(('trips.urls', 'trips'), namespace='trips')),
     path('staff/', include(('accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
     path('approval/', include('approval_system.urls')),
+    path("__reload__/", include("django_browser_reload.urls")),
 ]
 
 if settings.DEBUG:

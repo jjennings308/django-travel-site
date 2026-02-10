@@ -1,0 +1,16 @@
+{% comment %}
+Quick action card with icon, title, description, and link
+{% endcomment %}
+
+<div class="card h-100 action-card">
+  <div class="card-body text-center d-flex flex-column">
+    <div class="action-icon mb-3">
+      <i class="{{ icon }} display-4" style="color: var(--sbl-{{ color|default:'primary' }});"></i>
+    </div>
+    <h5 class="card-title">{{ title }}</h5>
+    <p class="card-text text-muted small flex-grow-1">{{ description }}</p>
+    <a href="{% url url %}" class="btn btn-{{ color|default:'primary' }} btn-sm mt-2">
+      {{ button_text|default:"Go" }}
+    </a>
+  </div>
+</div>
