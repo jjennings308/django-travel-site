@@ -1,75 +1,87 @@
+# App dependencies
+
+**An arrow `A --> B` means "A imports B".** Imports may only point down the layers (or along
+the allowed same-layer arrows). The rules are the "Dependency layers" table in `CLAUDE.md`.
+`scripts/check_layers.py` enforces them, and `core.tests.test_layers` runs it as part of
+`manage.py test`.
+
+The diagram shows the imports that actually exist (generated from the checker's import scan,
+migrations excluded). Every app also imports `core`; those arrows are left out to keep the
+diagram readable.
+
+```mermaid
 graph TD
 
-    core["core<br/>(settings, utils, base models)"]
+    subgraph L5["5 · Site"]
+        pages
+        admin_tools
+    end
 
-    accounts["accounts<br/>(custom user, profiles)"]
+    subgraph L4["4 · User content"]
+        bucketlists
+        trips
+        reviews
+        recommendations
+    end
 
-    locations["locations<br/>(countries, regions, cities, POIs)"]
+    subgraph L3["3 · Catalog"]
+        locations
+        activities
+        vendors
+        events
+    end
 
-    vendors["vendors<br/>(tour operators, hotels, restaurants)"]
+    subgraph L2["2 · Platform services"]
+        notifications
+        media_app
+        approval_system
+        rewards
+    end
 
-    trips["trips<br/>(itineraries, travel days, bookings)"]
+    subgraph L1["1 · Identity"]
+        accounts
+    end
 
-    events["events<br/>(date, time, place)"]
+    subgraph L0["0 · Base"]
+        core
+    end
 
-    bucketlists["bucketlists<br/>(user bucket list items)"]
+    pages --> accounts
+    pages --> bucketlists
+    pages --> trips
 
-    reviews["reviews<br/>(ratings, comments)"]
+    bucketlists --> activities
+    bucketlists --> events
+    bucketlists --> locations
 
-    media["media<br/>(photos, videos, uploads)"]
-
-    notifications["notifications<br/>(email, alerts)"]
-
-    recommendations["recommendations<br/>(AI & rules engine)"]
-
-    admin_tools["admin_tools<br/>(reports, moderation)"]
-
-    activities["activities<br/>(skill level, goal, resources, style, time needed)"]
-
-    core --> accounts
-    core --> locations
-    core --> activities
-
-    accounts --> bucketlists
-    accounts --> trips
-    accounts --> admin_tools
-    accounts --> recommendations
-
-    locations --> vendors
-    locations --> trips
-    locations --> bucketlists
-    locations --> media
-
-    activities --> bucketlists
-    activities --> media  
-     
-    vendors --> trips
-    vendors --> media
-
+    trips --> activities
     trips --> events
     trips --> locations
-    trips --> activities
     trips --> vendors
-    trips --> recommendations
-    trips --> notifications
-    trips --> media
 
-    bucketlists --> media
-    bucketlists --> recommendations
-    bucketlists --> notifications
+    reviews --> activities
+    reviews --> events
+    reviews --> locations
+    reviews --> vendors
+    reviews --> trips
 
+    recommendations --> activities
+    recommendations --> events
+    recommendations --> locations
+    recommendations --> trips
+
+    locations --> approval_system
+    locations --> media_app
+    activities --> approval_system
+    vendors --> locations
     events --> locations
     events --> activities
-    events --> bucketlists
-    events --> media   
-    events --> notifications 
 
-    reviews --> admin_tools
-    reviews --> notifications
-    reviews --> vendors
-    reviews --> accounts
-    reviews --> vendors    
-    reviews --> activities 
-    reviews --> events     
-    reviews --> locations  
-    reviews --> trips      
+    approval_system --> notifications
+
+    accounts --> core
+```
+
+Foreign keys to the user model go through `settings.AUTH_USER_MODEL`, so they create a
+migration dependency on `accounts` but no import. That is why most apps show no arrow to
+`accounts`. For which side of each relationship owns the foreign key, see `fk_direction.md`.

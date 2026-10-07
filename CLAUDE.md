@@ -25,7 +25,7 @@ python manage.py test locations         # one app
 python manage.py test locations.tests.SomeTestCase.test_method   # single test
 ```
 
-The `tests.py` files are currently empty stubs. That changes with the itinerary merge (see "Work plan"):
+Only `core` (layer check), `accounts` and `pages` have tests so far, each as a `tests/` package; the other apps' `tests.py` files are empty stubs. That changes with the itinerary merge (see "Work plan"):
 its `trips` test suite comes across, and new tests should follow its pattern — a `tests/` package per
 app, Django's built-in runner, no pytest.
 
@@ -43,7 +43,7 @@ python manage.py migrate
 
 ### Settings and URLs
 - `config/settings/{base,dev,prod}.py`. `base.py` reads env vars. `dev.py` and `prod.py` override `DEBUG`, `ALLOWED_HOSTS`, `SITE_URL` and email.
-- `config/urls.py` mounts each app under its own namespace (`core:`, `locations:`, `activities:`, `trips:`, `bucketlists:`, `events:`, `rewards:`, `staff:`). Use namespaced names with `reverse` and `{% url %}`. `accounts.urls` (login, register and so on) is not namespaced. Staff-only views live in `accounts/staff_urls.py` under `/staff/`.
+- `config/urls.py` mounts each app under its own namespace (`pages:` for home/dashboard/about, `locations:`, `activities:`, `trips:`, `bucketlists:`, `events:`, `rewards:`, `staff:`). Use namespaced names with `reverse` and `{% url %}`. `accounts.urls` (login, register and so on) is not namespaced. Staff-only views live in `accounts/staff_urls.py` under `/staff/`.
 - `AUTH_USER_MODEL = 'accounts.User'`. Login accepts a username or an email (`accounts.backends.EmailOrUsernameBackend`).
 
 ### Shared base models (`core/models.py`)
@@ -104,38 +104,21 @@ Rules that follow from this:
   models here already set `db_table` explicitly — keep doing that for new models.
 - **Each app ships its own templates** under `<app>/templates/<app>/`; only the shell
   (`base.html`, `partials/`, `components/`) lives in the top-level `templates/`.
-- Keep `docs/architecture/app_dependencies.md` in step with this table. It currently draws the
-  arrows the other way round (`core --> accounts` meaning "is depended on by"); either is fine, but
-  say which in the file.
+- Keep `docs/architecture/app_dependencies.md` (arrows mean "imports") and the `LAYERS` /
+  `SAME_LAYER_ALLOWED` tables in `scripts/check_layers.py` in step with this table.
 
 ### Checking it
 
-Until `scripts/check_layers.py` exists (Phase 0.5), this prints each app's local imports:
-
 ```bash
-APPS="core accounts locations activities vendors events media_app bucketlists trips reviews notifications recommendations admin_tools rewards approval_system pages"
-for a in $APPS; do [ -d "$a" ] || continue
-  deps=$(grep -rhoE "^\s*(from|import) ($(echo $APPS | tr ' ' '|'))\b" --include=*.py "$a" \
-    | grep -v migrations | sed -E 's/^\s*(from|import) //' | sort -u | grep -vx "$a" | tr '\n' ' ')
-  echo "$a -> $deps"; done
+python scripts/check_layers.py      # exits 1 and lists each violation
 ```
 
-### Known violations (from a read of the public repo, commit `ddd00d7`, Feb 2026)
+It parses every app's imports with `ast` (migrations skipped) and flags upward imports, same-layer
+imports not listed above, and concrete `accounts.models.User` imports outside `accounts`.
+`core.tests.test_layers` runs it, so `manage.py test` fails on a violation.
 
-Re-run the check against the local tree first; the local code may be ahead of that snapshot.
-
-- `core` → `accounts`, `trips`, `bucketlists`: all from `core/views.py` (the home/dashboard pages:
-  `User`, `Profile`, `Trip`, `BucketListItem`). Fix: move those views, their URLs and templates
-  into a new layer-5 `pages` app. After that, `core` imports nothing local.
-- `accounts` → `locations`: only `accounts/forms.py`, which builds currency choices from
-  `Country`. Fix: build the choices from a static ISO 4217 list in `core/utils/currency.py` (which
-  already handles conversion), so `accounts` does not need the catalog at all. This also breaks the
-  loop `accounts` → `locations` → `media_app` → `accounts`.
-- Concrete `User` imports in ten files: `media_app/models.py`, `trips/models.py`,
-  `locations/views.py`, `bucketlists/models.py`, `admin_tools/models.py`, `reviews/models.py`,
-  `rewards/models.py`, `notifications/models.py`, `recommendations/models.py`, `core/views.py`.
-  Switching a model FK from `User` to `settings.AUTH_USER_MODEL` produces **no** migration when
-  `AUTH_USER_MODEL` already points at that model — run `makemigrations --check` to confirm.
+The violations found at commit `ddd00d7` (`core` → `accounts`/`trips`/`bucketlists`, `accounts` →
+`locations`, ten concrete `User` imports) were fixed in Phase 0.5.
 
 ## Work plan
 
@@ -156,11 +139,15 @@ itinerary app into this project (Phases 1–4). Work on a branch; do one phase p
 
 ### Phase 0 — prep
 
+Status: Django is on 6.1.2 (branch `phase-0-django-6.1`). The `pg_dump` backups have **not** been taken yet.
+
 - `pg_dump` both databases before anything else (this one's container, and `itinerary` on
   `localhost:5432` — command in the itinerary CLAUDE.md under "Database").
 - Upgrade Django 6.0.1 → 6.1.x (itinerary is on 6.1.1); `manage.py check` clean.
 
 ### Phase 0.5 — dependency layers
+
+Status: steps 1–6 done on branch `phase-0.5-layers`; `check_layers.py` is clean.
 
 Smallest useful set; each is independent and can be its own commit.
 
