@@ -189,6 +189,14 @@ LOGOUT_REDIRECT_URL = 'pages:home'
 
 DEFAULT_FROM_EMAIL = 'no-reply@sharebucketlist.com'
 
+# SMTP (smtp2go). Credentials come from the environment (.env), never from code.
+# dev.py / prod.py choose EMAIL_BACKEND; these apply whenever the SMTP backend is used.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "mail.smtp2go.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+
 SITE_NAME = 'ShareBucketList'
 SITE_TAGLINE = 'Plan it. Live it. Share it.'
 
