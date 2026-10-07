@@ -7,7 +7,7 @@ charset-normalizer==3.4.4
 click==8.3.1
 cookiecutter==2.6.0
 crispy-bootstrap5==2025.6
-Django==6.0.1
+Django==6.1.2
 django-browser-reload==1.21.0
 django-crispy-forms==2.5
 django-taggit==6.1.0
