@@ -8,98 +8,7 @@ from zoneinfo import available_timezones, ZoneInfo
 from .models import (
     User, Profile, TravelPreferences, AccountSettings, RoleRequest
 )
-from locations.models import Country
-
-def get_currency_choices():
-    """
-    Dynamically generate currency choices from the Country model.
-    Returns a list of tuples (currency_code, display_name).
-    """
-    # Get all unique currencies from countries
-    currencies = Country.objects.exclude(
-        currency_code=''
-    ).values_list(
-        'currency_code', 'currency_name'
-    ).distinct().order_by('currency_code')
-    
-    # Format as choices
-    choices = []
-    seen_codes = set()
-    
-    for code, name in currencies:
-        if code and code not in seen_codes:
-            seen_codes.add(code)
-            if name:
-                choices.append((code, f"{code} - {name}"))
-            else:
-                choices.append((code, code))
-    
-    # Fallback if database is empty
-    if not choices:
-        choices = [
-            ('USD', 'USD - US Dollar'),
-            ('EUR', 'EUR - Euro'),
-            ('GBP', 'GBP - British Pound'),
-            ('JPY', 'JPY - Japanese Yen'),
-            ('AUD', 'AUD - Australian Dollar'),
-            ('CAD', 'CAD - Canadian Dollar'),
-        ]
-    
-    return choices
-
-
-class AccountSettingsForm(forms.ModelForm):
-    """Form for user account settings"""
-    
-    # Override preferred_currency to add dynamic choices
-    preferred_currency = forms.ChoiceField(
-        label='Preferred Currency',
-        help_text='Your default currency for budgets and expenses',
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Populate currency choices from Country model
-        self.fields['preferred_currency'].choices = get_currency_choices()
-    
-    class Meta:
-        model = AccountSettings
-        fields = [
-            'email_notifications',
-            'push_notifications',
-            'marketing_emails',
-            'notify_bucket_list_reminders',
-            'notify_trip_updates',
-            'notify_event_reminders',
-            'notify_friend_activity',
-            'notify_recommendations',
-            'language',
-            'units',
-            'preferred_currency',
-            'timezone',
-            'theme',
-            'show_email_on_profile',
-            'show_trips_publicly',
-            'allow_friend_requests',
-        ]
-        widgets = {
-            'email_notifications': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'push_notifications': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'marketing_emails': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notify_bucket_list_reminders': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notify_trip_updates': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notify_event_reminders': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notify_friend_activity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notify_recommendations': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'language': forms.Select(attrs={'class': 'form-select'}),
-            'units': forms.Select(attrs={'class': 'form-select'}),
-            'timezone': forms.TextInput(attrs={'class': 'form-control'}),
-            'theme': forms.Select(attrs={'class': 'form-select'}),
-            'show_email_on_profile': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'show_trips_publicly': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'allow_friend_requests': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
+from core.utils.currency import CURRENCY_CHOICES
 
 
 class ProfileForm(forms.ModelForm):
@@ -416,6 +325,13 @@ class TravelPreferencesForm(forms.ModelForm):
 class AccountSettingsForm(forms.ModelForm):
     """Form for editing account settings (notifications, regional, privacy)"""
 
+    preferred_currency = forms.ChoiceField(
+        label="Preferred Currency",
+        choices=CURRENCY_CHOICES,
+        help_text="Your default currency for budgets and expenses",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
     timezone = forms.ChoiceField(
         choices=[],
         required=True,
@@ -448,7 +364,6 @@ class AccountSettingsForm(forms.ModelForm):
         widgets = {
             "language": forms.Select(attrs={"class": "form-control"}),
             "units": forms.Select(attrs={"class": "form-control"}),
-            "preferred_currency": forms.Select(attrs={"class": "form-control"}),
             "theme": forms.Select(attrs={"class": "form-control"}),
         }
 
