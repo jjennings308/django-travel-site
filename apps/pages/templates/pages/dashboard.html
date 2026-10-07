@@ -182,7 +182,7 @@
             <h2 class="section-title">Quick Access</h2>
         </div>
         
-        <div class="row g-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {% if user.is_superuser or user.can_access_staff %}
             {% include "pages/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}
             {% endif %}

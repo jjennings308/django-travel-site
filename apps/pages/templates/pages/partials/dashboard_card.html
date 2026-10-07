@@ -1,46 +1,19 @@
 {% comment %}
-templates/pages/partials/dashboard_card.html
-
-Usage:
-{% include "pages/partials/dashboard_card.html" with 
-    title="Bucket List" 
-    description="Places, activities, and events" 
-    url_name="bucketlists:dashboard" 
-    icon="bi-check2-square"
-    color="primary"
-    disabled=False
-%}
-
-Available colors: primary, secondary, accent, success, info, warning, danger
+pages/partials/dashboard_card.html — one Quick Access card on the dashboard (Tailwind; Bootstrap is not loaded).
+Usage, one line: {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:trip_list" icon="bi-airplane" color="primary" %}
+color: primary (clay), accent (ochre), secondary (olive), success (sage), info (tan); disabled=True shows "Coming soon".
 {% endcomment %}
-
-{% load static %}
-
-<div class="col-md-6 col-lg-4">
-    <div class="dashboard-card {% if disabled %}opacity-50{% endif %}">
-        <div class="dashboard-card-icon {% if color == 'secondary' %}bg-secondary-subtle text-secondary{% elif color == 'accent' %}text-warning{% elif color == 'success' %}bg-success-subtle text-success{% elif color == 'info' %}bg-info-subtle text-info{% elif color == 'warning' %}bg-warning-subtle text-warning{% elif color == 'danger' %}bg-danger-subtle text-danger{% else %}bg-primary-subtle text-primary{% endif %}" 
-             style="{% if color == 'accent' %}background-color: #fef3c7 !important;{% endif %}">
-            <i class="{{ icon|default:'bi-app' }}"></i>
-        </div>
-        
-        <h3 class="dashboard-card-title">{{ title }}</h3>
-        
-        <p class="dashboard-card-description">
-            {{ description }}
-        </p>
-        
-        {% if disabled %}
-            <button class="btn btn-secondary w-100" disabled>
-                Coming Soon
-            </button>
-        {% elif url_name %}
-            <a href="{% url url_name %}" class="btn btn-{% if color == 'accent' %}warning{% else %}{{ color|default:'primary' }}{% endif %} w-100">
-                Open <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-        {% else %}
-            <button class="btn btn-primary w-100" disabled>
-                No URL
-            </button>
-        {% endif %}
-    </div>
+<div class="flex flex-col rounded-xl border border-warm-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md {% if disabled %}opacity-50{% endif %}">
+  <div class="mb-4 flex size-12 items-center justify-center rounded-lg text-2xl {% if color == 'accent' %}bg-amber-50 text-earth-ochre-dark{% elif color == 'secondary' %}bg-lime-50 text-earth-olive{% elif color == 'success' %}bg-green-50 text-earth-sage{% elif color == 'info' %}bg-orange-50 text-earth-tan{% else %}bg-earth-sand text-earth-clay{% endif %}">
+    <i class="bi {{ icon|default:'bi-app' }}"></i>
+  </div>
+  <h3 class="text-lg font-semibold text-warm-900">{{ title }}</h3>
+  <p class="mt-1 mb-5 flex-1 text-sm text-warm-600">{{ description }}</p>
+  {% if disabled or not url_name %}
+    <span class="block rounded-lg bg-warm-100 px-4 py-2 text-center text-sm font-medium text-warm-500">Coming soon</span>
+  {% else %}
+    <a href="{% url url_name %}" class="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white {% if color == 'accent' %}bg-earth-ochre hover:bg-earth-ochre-dark{% elif color == 'secondary' %}bg-earth-olive hover:bg-earth-olive-dark{% elif color == 'success' %}bg-earth-sage hover:bg-earth-olive{% elif color == 'info' %}bg-earth-tan hover:bg-earth-clay{% else %}bg-earth-clay hover:bg-earth-clay-dark{% endif %}">
+      Open <i class="bi bi-arrow-right"></i>
+    </a>
+  {% endif %}
 </div>
