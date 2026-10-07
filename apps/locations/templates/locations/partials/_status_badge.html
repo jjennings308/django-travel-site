@@ -1,0 +1,2 @@
+{# locations/partials/_status_badge.html — approval status pill; pass obj= a model using Approvable #}
+<span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium {% if obj.approval_status == 'approved' %}bg-emerald-100 text-emerald-800{% elif obj.approval_status == 'pending' %}bg-amber-100 text-amber-800{% elif obj.approval_status == 'rejected' %}bg-red-100 text-red-800{% else %}bg-warm-100 text-warm-700{% endif %}">{{ obj.get_approval_status_display }}</span>

@@ -1,0 +1,19 @@
+{% comment %}
+locations/partials/_stat_card.html — one count card on the locations dashboard.
+Usage, one line: {% include "locations/partials/_stat_card.html" with title="Countries" icon="bi-globe2" pending=countries_pending approved=countries_approved list_url="locations:country_list" add_url="locations:country_add" tone="clay" %}
+tone: clay, olive, ochre, sage.
+{% endcomment %}
+<div class="flex flex-col rounded-xl border border-warm-200 border-l-4 bg-white p-5 shadow-sm {% if tone == 'olive' %}border-l-earth-olive{% elif tone == 'ochre' %}border-l-earth-ochre{% elif tone == 'sage' %}border-l-earth-sage{% else %}border-l-earth-clay{% endif %}">
+  <div class="mb-4 flex items-center justify-between">
+    <h2 class="text-base font-semibold text-warm-700">{{ title }}</h2>
+    <i class="bi {{ icon }} text-3xl {% if tone == 'olive' %}text-earth-olive{% elif tone == 'ochre' %}text-earth-ochre{% elif tone == 'sage' %}text-earth-sage{% else %}text-earth-clay{% endif %}"></i>
+  </div>
+  <dl class="mb-5 space-y-2 text-sm">
+    <div class="flex items-center justify-between"><dt class="text-warm-500">Pending</dt><dd class="text-2xl font-bold tabular-nums text-amber-600">{{ pending }}</dd></div>
+    <div class="flex items-center justify-between"><dt class="text-warm-500">Approved</dt><dd class="text-2xl font-bold tabular-nums text-emerald-700">{{ approved }}</dd></div>
+  </dl>
+  <div class="mt-auto flex gap-2">
+    <a href="{% url list_url %}" class="flex-1 rounded-lg border border-warm-300 px-3 py-1.5 text-center text-sm font-medium text-warm-700 hover:bg-warm-100">View all</a>
+    <a href="{% url add_url %}" class="flex-1 rounded-lg bg-earth-clay px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-earth-clay-dark">Add new</a>
+  </div>
+</div>
