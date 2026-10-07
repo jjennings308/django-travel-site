@@ -13,12 +13,12 @@ from django import template
 from decimal import Decimal
 
 # Updated imports for new utils structure
-from core.utils.helpers import (
+from apps.core.utils.helpers import (
     convert_distance_by_preference,
     convert_temperature_by_preference,
     convert_elevation_by_preference
 )
-from core.utils.imperial_metric import (
+from apps.core.utils.imperial_metric import (
     km_to_miles,
     miles_to_km,
     celsius_to_fahrenheit,
@@ -28,7 +28,7 @@ from core.utils.imperial_metric import (
     meters_to_feet,
     feet_to_meters
 )
-from core.utils.currency import (
+from apps.core.utils.currency import (
     convert_currency,
     format_currency
 )

@@ -8,7 +8,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from trips.models import Day, Section, Trip
+from apps.trips.models import Day, Section, Trip
 
 User = get_user_model()
 

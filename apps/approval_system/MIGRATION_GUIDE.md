@@ -66,7 +66,7 @@ python manage.py shell
 ```
 
 ```python
-from approval_system.models import ApprovalQueue, ApprovalSettings
+from apps.approval_system.models import ApprovalQueue, ApprovalSettings
 from django.contrib.contenttypes.models import ContentType
 
 # Create settings
@@ -75,7 +75,7 @@ settings.review_sla_hours = 48
 settings.save()
 
 # Create locations queue
-from locations.models import City, Country, POI, Region
+from apps.locations.models import City, Country, POI, Region
 
 locations_queue = ApprovalQueue.objects.create(
     name='Locations',
@@ -99,8 +99,8 @@ locations_queue.content_types.add(
 Keep old fields, add new mixin alongside:
 
 ```python
-# locations/models.py
-from approval_system.models import Approvable
+# apps/locations/models.py
+from apps.approval_system.models import Approvable
 
 class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     # Keep existing fields temporarily
@@ -122,7 +122,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
 Map old fields to new ones:
 
 ```python
-# locations/migrations/0006_migrate_to_approval_system.py
+# apps/locations/migrations/0006_migrate_to_approval_system.py
 
 from django.db import migrations
 
@@ -186,10 +186,10 @@ class Migration(migrations.Migration):
 Replace location-specific admin with unified approach:
 
 ```python
-# locations/admin.py
+# apps/locations/admin.py
 
 from django.contrib import admin
-from approval_system.admin import ApprovableAdminMixin  # NEW
+from apps.approval_system.admin import ApprovableAdminMixin  # NEW
 from .models import Country, City, POI, Region
 
 
@@ -236,9 +236,9 @@ class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 Replace location-specific views with unified system:
 
 ```python
-# locations/views.py
+# apps/locations/views.py
 
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 # OLD: Custom review dashboard
 # def review_dashboard(request):
@@ -299,7 +299,7 @@ rm locations/templates/locations/review_location.html
 
 2. **Remove old URLs**
 ```python
-# locations/urls.py
+# apps/locations/urls.py
 # Remove old review URLs
 # urlpatterns = [
 #     path('review/', views.review_dashboard, name='review_dashboard'),
@@ -317,7 +317,7 @@ urlpatterns = [
 3. **Remove old fields** (after confirming everything works)
 ```python
 # Create a migration to remove old fields
-# locations/migrations/0007_remove_old_review_fields.py
+# apps/locations/migrations/0007_remove_old_review_fields.py
 
 from django.db import migrations
 
@@ -366,9 +366,9 @@ approval_system/
   admin.py - ApprovableAdminMixin
   templates/ - One set of review templates
 
-locations/models.py - class Country(Approvable)
-reviews/models.py - class Review(Approvable)
-events/models.py - class Event(Approvable)
+apps/locations/models.py - class Country(Approvable)
+apps/reviews/models.py - class Review(Approvable)
+apps/events/models.py - class Event(Approvable)
 photos/models.py - class Photo(Approvable)
 
 # Benefits:
@@ -384,7 +384,7 @@ photos/models.py - class Photo(Approvable)
 
 ```python
 # Verify status mapping worked
-from locations.models import Country
+from apps.locations.models import Country
 
 # Check a country that was approved
 country = Country.objects.get(name="United States")

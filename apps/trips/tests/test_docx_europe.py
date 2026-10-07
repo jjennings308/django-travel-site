@@ -21,8 +21,8 @@ from pathlib import Path
 from django.core.management import call_command
 from django.test import TestCase
 
-from trips.docx_import import parse_document
-from trips.models import (
+from apps.trips.docx_import import parse_document
+from apps.trips.models import (
     BookingTask,
     Day,
     Lodging,
@@ -305,7 +305,7 @@ class TipBoxTests(TestCase):
     """Two-column tip boxes become callouts, however many tips they stack."""
 
     def handle(self, rows):
-        from trips.docx_europe import _handle_table
+        from apps.trips.docx_europe import _handle_table
 
         day = {"sections": [], "meals": []}
         _handle_table(day, rows, warn=lambda *a, **k: None)

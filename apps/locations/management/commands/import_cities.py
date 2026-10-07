@@ -4,8 +4,8 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from locations.models import CapitalType, City, Country, Region
-from approval_system.models import ApprovalStatus
+from apps.locations.models import CapitalType, City, Country, Region
+from apps.approval_system.models import ApprovalStatus
 
 User = get_user_model()
 

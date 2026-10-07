@@ -1,10 +1,10 @@
 # bucketlists/models.py
 from django.db import models
-from core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel
 from django.conf import settings
-from activities.models import Activity
-from locations.models import City  # CORRECTED: Use City instead of Location
-from events.models import Event
+from apps.activities.models import Activity
+from apps.locations.models import City  # CORRECTED: Use City instead of Location
+from apps.events.models import Event
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 

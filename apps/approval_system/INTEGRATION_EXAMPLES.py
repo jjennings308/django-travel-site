@@ -1,8 +1,8 @@
 # locations/models.py - EXAMPLE: How to integrate with approval_system
 
 from django.db import models
-from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
-from approval_system.models import Approvable  # Import the Approvable mixin
+from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
+from apps.approval_system.models import Approvable  # Import the Approvable mixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
@@ -86,7 +86,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
             )
         
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(Country, self.name, self.id)
         
         super().save(*args, **kwargs)
@@ -139,7 +139,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(City, f"{self.name}-{self.country.iso_code}", self.id)
         super().save(*args, **kwargs)
 
@@ -151,7 +151,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
 # locations/admin.py - EXAMPLE: How to integrate admin
 
 from django.contrib import admin
-from approval_system.admin import ApprovableAdminMixin
+from apps.approval_system.admin import ApprovableAdminMixin
 from .models import Country, City
 
 
@@ -240,7 +240,7 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 
 from django.shortcuts import render
 from .models import City, Country
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 
 def city_list(request):

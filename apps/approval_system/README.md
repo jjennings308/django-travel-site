@@ -117,7 +117,7 @@ urlpatterns = [
 
 ```python
 # your_app/models.py
-from approval_system.models import Approvable
+from apps.approval_system.models import Approvable
 
 class YourModel(Approvable):
     title = models.CharField(max_length=200)
@@ -129,7 +129,7 @@ class YourModel(Approvable):
 
 ```python
 # your_app/admin.py
-from approval_system.admin import ApprovableAdminMixin
+from apps.approval_system.admin import ApprovableAdminMixin
 
 @admin.register(YourModel)
 class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
@@ -140,7 +140,7 @@ class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 ### 4. Use in Views (2 minutes)
 
 ```python
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 # Show only approved content
 public_items = YourModel.objects.filter(

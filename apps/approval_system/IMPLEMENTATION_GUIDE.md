@@ -73,14 +73,14 @@ python manage.py shell
 ```
 
 ```python
-from approval_system.models import ApprovalQueue, ApprovalSettings
+from apps.approval_system.models import ApprovalQueue, ApprovalSettings
 from django.contrib.contenttypes.models import ContentType
 
 # Create settings
 settings = ApprovalSettings.get_settings()
 
 # Create a default queue
-from locations.models import City, Country, POI
+from apps.locations.models import City, Country, POI
 
 queue = ApprovalQueue.objects.create(
     name='Locations Review',
@@ -107,7 +107,7 @@ Simply inherit from `Approvable`:
 
 ```python
 from django.db import models
-from approval_system.models import Approvable
+from apps.approval_system.models import Approvable
 
 class YourModel(Approvable):
     # Your fields
@@ -129,7 +129,7 @@ Use the `ApprovableAdminMixin` for automatic approval features:
 
 ```python
 from django.contrib import admin
-from approval_system.admin import ApprovableAdminMixin
+from apps.approval_system.admin import ApprovableAdminMixin
 from .models import YourModel
 
 @admin.register(YourModel)
@@ -145,7 +145,7 @@ class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 ### In Views
 
 ```python
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 # Show only approved content to users
 public_items = YourModel.objects.filter(approval_status=ApprovalStatus.APPROVED)
@@ -241,7 +241,7 @@ for log in history:
 Create rules for automatic approval:
 
 ```python
-from approval_system.models import ApprovalRule
+from apps.approval_system.models import ApprovalRule
 from django.contrib.contenttypes.models import ContentType
 
 # Auto-approve if user has 10+ approved items
@@ -416,7 +416,7 @@ photos_queue = ApprovalQueue.objects.create(
 photos_queue.content_types.add(ContentType.objects.get_for_model(Photo))
 
 # Add specific reviewers
-from accounts.models import User
+from apps.accounts.models import User
 photo_moderators = User.objects.filter(groups__name='Photo Moderators')
 photos_queue.reviewers.set(photo_moderators)
 ```
@@ -461,7 +461,7 @@ settings.save()
 ## Querying Examples
 
 ```python
-from approval_system.models import ApprovalStatus, ApprovalPriority
+from apps.approval_system.models import ApprovalStatus, ApprovalPriority
 
 # Get all pending items
 pending = YourModel.objects.filter(approval_status=ApprovalStatus.PENDING)
@@ -668,7 +668,7 @@ def submit_item(request):
 
 ```python
 # models.py
-from approval_system.models import Approvable
+from apps.approval_system.models import Approvable
 
 class Review(Approvable):
     place = models.ForeignKey(Place, on_delete=models.CASCADE)

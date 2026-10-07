@@ -4,7 +4,7 @@ Breadcrumb utilities for consistent navigation across the app.
 
 Usage in views:
 
-from core.utils.breadcrumbs import build_breadcrumbs
+from apps.core.utils.breadcrumbs import build_breadcrumbs
 
 def trip_detail(request, trip_id):
     trip = get_object_or_404(Trip, id=trip_id)

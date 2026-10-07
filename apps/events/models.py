@@ -1,9 +1,9 @@
 # events/models.py
 from django.db import models
-from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
+from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from locations.models import City, POI
-from activities.models import Activity, ActivityCategory
+from apps.locations.models import City, POI
+from apps.activities.models import Activity, ActivityCategory
 from django.utils import timezone
 
 
@@ -39,7 +39,7 @@ class EventCategory(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(EventCategory, self.name, self.id)
         super().save(*args, **kwargs)
 
@@ -361,7 +361,7 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             slug_base = f"{self.name}-{self.start_date.strftime('%Y-%m-%d')}"
             self.slug = generate_unique_slug(Event, slug_base, self.id)
         
@@ -400,7 +400,7 @@ class EventTag(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(EventTag, self.name, self.id)
         super().save(*args, **kwargs)
 

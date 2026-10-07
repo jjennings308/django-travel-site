@@ -15,9 +15,9 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from trips.models import TripRole
-from trips.models import RewardsMembership, Traveler, Trip, TripGrant
-from trips.public import public_trip
+from apps.trips.models import TripRole
+from apps.trips.models import RewardsMembership, Traveler, Trip, TripGrant
+from apps.trips.public import public_trip
 
 User = get_user_model()
 

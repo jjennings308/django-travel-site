@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.utils import timezone
-from core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel
 from django.utils.translation import gettext_lazy as _
 
 
@@ -88,7 +88,7 @@ class User(AbstractUser, TimeStampedModel):
     def age(self):
         """Calculate user's age"""
         if self.date_of_birth:
-            from core.utils import calculate_age
+            from apps.core.utils import calculate_age
             return calculate_age(self.date_of_birth)
         return None
     

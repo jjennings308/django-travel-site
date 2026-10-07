@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 class TripsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "trips"
+    name = "apps.trips"
     # Pinned deliberately. Without this the label would become "trips" only by
     # luck of Django's last-component rule; stating it means the database
     # tables (trips_trip, trips_day, ...) and the recorded migration history

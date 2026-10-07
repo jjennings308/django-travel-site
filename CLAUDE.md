@@ -3,11 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **Layout:** Django apps live under `apps/` and are imported as `apps.<name>` (Phase 3.5).
-> Paths in this file assume that layout. If there is no `apps/` directory at the repo root,
-> Phase 3.5 has not run yet: see **Phase 3.5** in the work plan and do it before anything else
-> that adds or moves app code. App *labels* (`trips`, `accounts`, …) did not change, so model
-> references (`"trips.Trip"`), permissions, URL namespaces and template names are the same in
-> both layouts.
+> App *labels* (`trips`, `accounts`, …) are unchanged, so model references (`"trips.Trip"`),
+> permissions, URL namespaces and template names use the bare name.
 
 ## Project
 
@@ -342,7 +339,7 @@ unique here) — replace them in the admin. Row counts match, both detail pages 
 - Add the trips templates to the Tailwind `@source` globs; retire their standalone npm build and
   `static/css/app.css`.
 
-**Phase 3.5 — move every app under `apps/`.** Status: not started. Branch `phase-3.5-apps-dir`.
+**Phase 3.5 — move every app under `apps/`.** Status: done on branch `phase-3.5-apps-dir`. All step 10 checks hold: no migration changes, `showmigrations` identical, no stale content types, CSS hash unchanged, `audit_public_leak` 0, layer check clean (it now also flags root-level apps and unprefixed local imports). The `staticfiles/` refresh it turned up (Django 6.1 admin CSS, rebuilt Tailwind, one never-collected SVG) is committed separately; none of it came from the move.
 
 Do it before Phase 4: Phase 4 adds cross-app FKs and imports, and every one of those would
 otherwise need rewriting. The move is a **code-only change**. Labels are pinned (Phase 0.5 step 4)
@@ -391,6 +388,9 @@ found. What stays at the root: `config/`, `theme/` (django-tailwind finds it by
      `"pages:home"`, `"trips/trip_detail.html"`. Decide each string by what Django does with it,
      not by its shape; don't run a blind `sed`.
    - Relative imports within one app stay as they are. Add no `sys.path` changes.
+   - The grep above misses path segments that start with a digit: `test_planning.py` loads
+     `"trips.migrations.0004_…"` with `importlib.import_module`, and only the test run caught it.
+     Also grep for `import_module(` / `import_string(`.
 6. **Migrations.** Grep `apps/*/migrations/*.py` for serialized module paths and rewrite them
    to `apps.<x>.…`:
    ```bash

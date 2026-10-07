@@ -1,6 +1,6 @@
 # media/models.py
 from django.db import models
-from core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType

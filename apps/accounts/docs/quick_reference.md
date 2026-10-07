@@ -262,7 +262,7 @@ user.groups.remove(vendor_group)
 ### Grant Vendor Access Manually
 ```python
 from django.contrib.auth.models import Group
-from accounts.models import VendorProfile
+from apps.accounts.models import VendorProfile
 
 # Add to group
 vendor_group, _ = Group.objects.get_or_create(name='Vendors')
@@ -311,7 +311,7 @@ if hasattr(user, 'vendor_profile'):
 ### Test Username Login
 ```python
 from django.test import Client
-from accounts.models import User
+from apps.accounts.models import User
 
 client = Client()
 
@@ -340,7 +340,7 @@ assert response.status_code == 302  # Also works!
 
 ### Test Role Request
 ```python
-from accounts.models import RoleRequest
+from apps.accounts.models import RoleRequest
 
 # User applies
 role_request = RoleRequest.objects.create(

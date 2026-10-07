@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from trips.docx_import import parse_document
-from trips.models import (
+from apps.trips.docx_import import parse_document
+from apps.trips.models import (
     BookingTask,
     Confirmation,
     Contact,

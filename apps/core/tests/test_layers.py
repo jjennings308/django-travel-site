@@ -25,10 +25,30 @@ class DependencyLayerTests(SimpleTestCase):
         self.assertEqual(violations, [], "\n" + "\n".join(violations))
 
     def test_flags_upward_import(self):
-        self.assertTrue(self.check_layers.check_import("core", "trips.models", ["Trip"]))
+        self.assertTrue(self.check_layers.check_import("core", "apps.trips.models", ["Trip"]))
 
     def test_flags_concrete_user_import(self):
-        self.assertTrue(self.check_layers.check_import("trips", "accounts.models", ["User"]))
+        self.assertTrue(self.check_layers.check_import("trips", "apps.accounts.models", ["User"]))
 
     def test_allows_listed_same_layer_import(self):
-        self.assertEqual(self.check_layers.check_import("events", "locations.models", ["City"]), [])
+        self.assertEqual(self.check_layers.check_import("events", "apps.locations.models", ["City"]), [])
+
+    def test_flags_unprefixed_local_import(self):
+        self.assertTrue(self.check_layers.check_import("trips", "locations.models", ["City"]))
+
+    def test_allows_third_party_and_django_imports(self):
+        self.assertEqual(self.check_layers.check_import("trips", "django.apps", ["apps"]), [])
+
+    def test_flags_app_directories_outside_apps(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel in ["theme/apps.py", "stray/apps.py", "apps/core/apps.py", "apps/newapp/apps.py"]:
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_text("")
+            problems = self.check_layers.check_layout(root)
+        self.assertEqual(len(problems), 2, problems)
+        self.assertTrue(any(p.startswith("stray/") for p in problems))
+        self.assertTrue(any(p.startswith("apps/newapp/") for p in problems))

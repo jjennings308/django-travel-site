@@ -49,7 +49,7 @@ import re
 
 from django.core.serializers.json import DjangoJSONEncoder
 
-from trips.models import Meal, Trip
+from apps.trips.models import Meal, Trip
 
 #: Fields of ``Trip`` the public page may show. ``name``, ``notes``, ``status``,
 #: ``travelers``, ``created_by`` and ``deleted_at`` are all absent, and their

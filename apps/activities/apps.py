@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class ActivitiesConfig(AppConfig):
-    name = 'activities'
+    name = 'apps.activities'
     label = 'activities'

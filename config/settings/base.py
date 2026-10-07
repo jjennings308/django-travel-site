@@ -50,22 +50,22 @@ INSTALLED_APPS = [
     'tailwind',
     
     # local apps 
-    'core',
-    'accounts',
-    'locations',
-    'activities',
-    'vendors',
-    'events',
-    'media_app',
-    'bucketlists',
-    'trips',
-    'reviews',
-    'notifications',
-    'recommendations',
-    'admin_tools',
-    'rewards',
-    'approval_system',
-    'pages',
+    'apps.core',
+    'apps.accounts',
+    'apps.locations',
+    'apps.activities',
+    'apps.vendors',
+    'apps.events',
+    'apps.media_app',
+    'apps.bucketlists',
+    'apps.trips',
+    'apps.reviews',
+    'apps.notifications',
+    'apps.recommendations',
+    'apps.admin_tools',
+    'apps.rewards',
+    'apps.approval_system',
+    'apps.pages',
     'theme',
 ]
 
@@ -77,8 +77,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.UserTimezoneMiddleware',
-    'core.middleware.UserThemeMiddleware',
+    'apps.core.middleware.UserTimezoneMiddleware',
+    'apps.core.middleware.UserThemeMiddleware',
     'django_browser_reload.middleware.BrowserReloadMiddleware',
 ]
 
@@ -102,10 +102,10 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "core.context_processors.site_branding",   
-                "core.context_processors.user_settings",
-                "core.context_processors.user_preferences",                             
-                "rewards.context_processors.rewards_context",
+                "apps.core.context_processors.site_branding",   
+                "apps.core.context_processors.user_settings",
+                "apps.core.context_processors.user_preferences",                             
+                "apps.rewards.context_processors.rewards_context",
             ],
         },
     },
@@ -156,7 +156,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.EmailOrUsernameBackend',  # NEW - allows email or username login
+    'apps.accounts.backends.EmailOrUsernameBackend',  # NEW - allows email or username login
     'django.contrib.auth.backends.ModelBackend',  # Keep as fallback
 ]
 

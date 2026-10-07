@@ -5,9 +5,9 @@ from django.shortcuts import render, redirect
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from accounts.models import Profile
-from trips.models import Trip
-from bucketlists.models import BucketListItem
+from apps.accounts.models import Profile
+from apps.trips.models import Trip
+from apps.bucketlists.models import BucketListItem
 # from activities.models import Activity  # Uncomment when ready
 # from recommendations.models import Recommendation  # When you create this
 

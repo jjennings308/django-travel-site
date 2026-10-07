@@ -13,7 +13,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
-from core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel
 
 
 class ApprovalStatus(models.TextChoices):
@@ -209,7 +209,7 @@ class Approvable(models.Model):
         # This can be implemented to send emails, in-app notifications, etc.
         # For now, just create a notification record
         if self.submitted_by:
-            from notifications.models import Notification  # Assuming you have notifications app
+            from apps.notifications.models import Notification  # Assuming you have notifications app
             # Notification.objects.create(...)
             pass
     

@@ -6,8 +6,8 @@ trips"); passed with a trip it also gives an editor grant, which is what the
 role migration (trips 0014) did with existing creators.
 """
 
-from accounts.models import Role, UserRole
-from trips.models import TRIP_ROLE_RANK, TripGrant, TripRole
+from apps.accounts.models import Role, UserRole
+from apps.trips.models import TRIP_ROLE_RANK, TripGrant, TripRole
 
 
 def give(user, *roles, trip=None, granted_by=None):

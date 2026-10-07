@@ -9,9 +9,9 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
 from .models import Country, Region, City, POI, LocationStatus, CapitalType
-from media_app.models import Media
-from approval_system.models import ApprovalStatus
-from core.utils.breadcrumbs import BreadcrumbPatterns
+from apps.media_app.models import Media
+from apps.approval_system.models import ApprovalStatus
+from apps.core.utils.breadcrumbs import BreadcrumbPatterns
 
 
 

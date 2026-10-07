@@ -1,12 +1,12 @@
 # reviews/models.py
 from django.db import models
-from core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel
 from django.conf import settings
-from vendors.models import Vendor
-from activities.models import Activity
-from events.models import Event
-from locations.models import City
-from trips.models import Trip
+from apps.vendors.models import Vendor
+from apps.activities.models import Activity
+from apps.events.models import Event
+from apps.locations.models import City
+from apps.trips.models import Trip
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 

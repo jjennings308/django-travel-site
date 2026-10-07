@@ -21,15 +21,15 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from trips.models import TripRole
-from trips.forms import (
+from apps.trips.models import TripRole
+from apps.trips.forms import (
     ROW_CELL_SEPARATOR,
     section_payload_form,
     validate_day_roster,
 )
-from trips.models import BookingTask, Day, Meal, Section, Trip
+from apps.trips.models import BookingTask, Day, Meal, Section, Trip
 
-from trips.tests.helpers import give
+from apps.trips.tests.helpers import give
 
 User = get_user_model()
 
@@ -142,7 +142,7 @@ class DayCreateTests(DayEditingFixture):
         self.assertIn("/accounts/login/", response["Location"])
 
     def test_the_roster_only_offers_this_trip_s_travelers(self):
-        from trips.models import Traveler
+        from apps.trips.models import Traveler
 
         theirs = Traveler.objects.create(name="Stranger")
         self.make_trip().travelers.add(theirs)
@@ -231,7 +231,7 @@ class DayEditTests(DayEditingFixture):
         self.assertEqual(Meal.objects.count(), 0)
 
     def test_a_roster_naming_a_stranger_is_rejected(self):
-        from trips.models import Traveler
+        from apps.trips.models import Traveler
 
         stranger = Traveler.objects.create(name="Nobody")
         self.client.force_login(self.alice)
@@ -655,7 +655,7 @@ class BlankOrderTests(DayEditingFixture):
         self.assertEqual(Section.objects.get(title="Tip").order, 0)
 
     def test_a_blank_booking_task_order_saves(self):
-        from trips.forms import BookingTaskForm
+        from apps.trips.forms import BookingTaskForm
 
         form = BookingTaskForm(
             data={

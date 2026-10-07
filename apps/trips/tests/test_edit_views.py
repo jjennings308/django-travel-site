@@ -12,10 +12,10 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role
-from trips.models import TripRole
-from trips.forms import TRIP_SUBSECTION_FORMSETS
-from trips.models import (
+from apps.accounts.models import Role
+from apps.trips.models import TripRole
+from apps.trips.forms import TRIP_SUBSECTION_FORMSETS
+from apps.trips.models import (
     BookingTask,
     Confirmation,
     Contact,
@@ -28,9 +28,9 @@ from trips.models import (
     TripGrant,
     can_create_trip,
 )
-from trips.views import _visible_capabilities
+from apps.trips.views import _visible_capabilities
 
-from trips.tests.helpers import give
+from apps.trips.tests.helpers import give
 
 User = get_user_model()
 

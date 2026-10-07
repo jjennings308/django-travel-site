@@ -2,7 +2,7 @@
 from django import forms
 from django.utils import timezone
 from .models import Activity, ActivityCategory, ActivityTag
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 
 class ActivityCreateForm(forms.ModelForm):

@@ -3,7 +3,7 @@
 # ============================================
 from django.db import models
 from django.core.validators import MinValueValidator
-from core.models import TimeStampedModel, UUIDModel
+from apps.core.models import TimeStampedModel, UUIDModel
 from django.conf import settings
 
 

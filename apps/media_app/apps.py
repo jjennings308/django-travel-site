@@ -3,5 +3,5 @@ from django.apps import AppConfig
 
 class MediaConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = 'media_app'
+    name = 'apps.media_app'
     label = 'media_app'

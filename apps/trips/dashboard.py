@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from accounts.models import Role, UserRole
+from apps.accounts.models import Role, UserRole
 
 from .models import (
     BookingTask,

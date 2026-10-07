@@ -9,7 +9,7 @@ Usage:
 """
 
 from django.core.management.base import BaseCommand
-from locations.models import Country
+from apps.locations.models import Country
 
 
 def iso_to_flag_emoji(iso_code):

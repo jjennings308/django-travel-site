@@ -11,16 +11,16 @@ This update implements:
 ## Files to Replace
 
 ### 1. Core Model Files (REPLACE COMPLETELY)
-- `accounts/models.py` - Replace with new version
-- `accounts/forms.py` - Replace with new version
-- `accounts/views.py` - Replace with new version
-- `accounts/urls.py` - Replace with new version
-- `accounts/staff_urls.py` - Replace with new version
+- `apps/accounts/models.py` - Replace with new version
+- `apps/accounts/forms.py` - Replace with new version
+- `apps/accounts/views.py` - Replace with new version
+- `apps/accounts/urls.py` - Replace with new version
+- `apps/accounts/staff_urls.py` - Replace with new version
 
 ### 2. New Files (CREATE NEW)
-- `accounts/backends.py` - New authentication backend
-- `accounts/migrations/0009_role_system.py` - New migration
-- `accounts/migrations/0010_migrate_existing_users.py` - Data migration
+- `apps/accounts/backends.py` - New authentication backend
+- `apps/accounts/migrations/0009_role_system.py` - New migration
+- `apps/accounts/migrations/0010_migrate_existing_users.py` - Data migration
 
 ### 3. Settings Configuration
 

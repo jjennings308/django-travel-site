@@ -6,7 +6,7 @@
    build scanned nothing, which is why the utilities block below was written by
    hand; it can shrink now that the classes are generated. */
 @source "../../../templates/**/*.html";
-@source "../../../*/templates/**/*.html";
+@source "../../../apps/*/templates/**/*.html";
 @source "../../templates/**/*.html";
 
 /* Brand palette as theme colours, so bg-earth-clay, text-warm-700, ... are

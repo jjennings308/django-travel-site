@@ -1,8 +1,8 @@
 # vendors/models.py
 from django.db import models
-from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
+from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from locations.models import City, POI
+from apps.locations.models import City, POI
 
 
 class VendorCategory(TimeStampedModel, SlugMixin):
@@ -31,7 +31,7 @@ class VendorCategory(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(VendorCategory, self.name, self.id)
         super().save(*args, **kwargs)
 
@@ -62,7 +62,7 @@ class VendorType(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
                 VendorType,
                 f"{self.category.name}-{self.name}",
@@ -260,7 +260,7 @@ class Vendor(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
                 Vendor,
                 f"{self.name}-{self.city.slug}",

@@ -2,7 +2,7 @@
 
 **An arrow `A --> B` means "A imports B".** Imports may only point down the layers (or along
 the allowed same-layer arrows). The rules are the "Dependency layers" table in `CLAUDE.md`.
-`scripts/check_layers.py` enforces them, and `core.tests.test_layers` runs it as part of
+`scripts/check_layers.py` enforces them, and `apps.core.tests.test_layers` runs it as part of
 `manage.py test`.
 
 The diagram shows the imports that actually exist (generated from the checker's import scan,

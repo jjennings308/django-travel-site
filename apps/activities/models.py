@@ -1,9 +1,9 @@
 # activities/models.py
 from django.db import models
 from django.conf import settings
-from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
+from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from approval_system.models import Approvable, ApprovalStatus
+from apps.approval_system.models import Approvable, ApprovalStatus
 
 
 class ActivityCategory(TimeStampedModel, SlugMixin):
@@ -41,7 +41,7 @@ class ActivityCategory(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(ActivityCategory, self.name, self.id)
         super().save(*args, **kwargs)
 
@@ -378,7 +378,7 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     def save(self, *args, **kwargs):
         # Auto-generate slug if needed
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             slug_parts = [self.name]
             if self.created_by:
                 slug_parts.append(str(self.created_by.id))
@@ -520,7 +520,7 @@ class ActivityTag(TimeStampedModel, SlugMixin):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(ActivityTag, self.name, self.id)
         super().save(*args, **kwargs)
 

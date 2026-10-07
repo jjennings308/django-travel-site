@@ -25,8 +25,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from trips.models import TripRole
-from trips.models import Comment, Day, Section, Trip, TripGrant
+from apps.trips.models import TripRole
+from apps.trips.models import Comment, Day, Section, Trip, TripGrant
 
 User = get_user_model()
 
@@ -148,7 +148,7 @@ class CommentTargetTests(CommentFixture):
     """The target is the thing commented on, and it comes from the URL."""
 
     def test_comments_attach_to_a_day_a_section_and_a_task(self):
-        from trips.models import BookingTask
+        from apps.trips.models import BookingTask
 
         task = BookingTask.objects.create(trip=self.trip, title="Book the hotel")
         self.login(self.ada)
@@ -415,7 +415,7 @@ class CommentRenderingTests(CommentFixture):
     def test_every_target_kind_redirects_to_the_detail_page(self):
         # One rule for all four kinds, including the ones whose editing pages
         # live at different depths.
-        from trips.models import BookingTask
+        from apps.trips.models import BookingTask
 
         task = BookingTask.objects.create(trip=self.trip, title="Book the hotel")
         self.login(self.ada)
@@ -446,7 +446,7 @@ class CommentRenderingTests(CommentFixture):
         self.assertContains(response, "this warning is out of date")
 
     def test_a_task_comment_shows_on_the_detail_page(self):
-        from trips.models import BookingTask
+        from apps.trips.models import BookingTask
 
         task = BookingTask.objects.create(trip=self.trip, title="Book the hotel")
         self.login(self.ada)

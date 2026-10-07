@@ -28,8 +28,8 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from trips.models import Trip
-from trips.public import find_leaks, public_trip, trip_leak_finders
+from apps.trips.models import Trip
+from apps.trips.public import find_leaks, public_trip, trip_leak_finders
 
 
 class Command(BaseCommand):

@@ -19,7 +19,7 @@ that fails part-way leaves the roster exactly as it was.
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from trips.models import Traveler
+from apps.trips.models import Traveler
 
 DETAIL_FIELDS = (
     "home_airport",

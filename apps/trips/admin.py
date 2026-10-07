@@ -23,7 +23,7 @@ from .models import (
     TripGrant,
 )
 
-from accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
+from apps.accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
 
 User = get_user_model()
 

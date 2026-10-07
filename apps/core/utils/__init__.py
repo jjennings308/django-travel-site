@@ -4,15 +4,15 @@ Core utility functions organized by category.
 
 Usage:
     # Import specific functions
-    from core.utils.slug import generate_unique_slug
-    from core.utils.age import calculate_age
-    from core.utils.imperial_metric import km_to_miles
-    from core.utils.currency import convert_currency
-    from core.utils.breadcrumbs import build_breadcrumbs, BreadcrumbPatterns
-    from core.utils.helpers import convert_distance_by_preference
+    from apps.core.utils.slug import generate_unique_slug
+    from apps.core.utils.age import calculate_age
+    from apps.core.utils.imperial_metric import km_to_miles
+    from apps.core.utils.currency import convert_currency
+    from apps.core.utils.breadcrumbs import build_breadcrumbs, BreadcrumbPatterns
+    from apps.core.utils.helpers import convert_distance_by_preference
     
     # Or import commonly used functions directly from core.utils
-    from core.utils import generate_unique_slug, calculate_age
+    from apps.core.utils import generate_unique_slug, calculate_age
 """
 
 # Commonly used functions available directly from core.utils

@@ -1,6 +1,6 @@
 # locations/admin.py
 from django.contrib import admin
-from approval_system.admin import ApprovableAdminMixin
+from apps.approval_system.admin import ApprovableAdminMixin
 from .models import Country, Region, City, POI
 
 
@@ -65,7 +65,7 @@ class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset with count annotations"""
         from django.db.models import Count, Q
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         
         qs = super().get_queryset(request)
         return qs.annotate(
@@ -139,7 +139,7 @@ class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset with city count annotation"""
         from django.db.models import Count, Q
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         
         qs = super().get_queryset(request)
         return qs.annotate(
@@ -212,7 +212,7 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset with POI count annotation"""
         from django.db.models import Count, Q
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         
         qs = super().get_queryset(request)
         return qs.annotate(

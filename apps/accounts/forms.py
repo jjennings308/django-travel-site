@@ -8,7 +8,7 @@ from zoneinfo import available_timezones, ZoneInfo
 from .models import (
     User, Profile, TravelPreferences, AccountSettings, RoleRequest
 )
-from core.utils.currency import CURRENCY_CHOICES
+from apps.core.utils.currency import CURRENCY_CHOICES
 
 
 class ProfileForm(forms.ModelForm):

@@ -16,8 +16,8 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from trips.docx_import import _compact_confirmation, parse_document
-from trips.models import Day, Meal, Trip
+from apps.trips.docx_import import _compact_confirmation, parse_document
+from apps.trips.models import Day, Meal, Trip
 
 
 def run_import(path, **kwargs):
@@ -161,7 +161,7 @@ class ParseDocumentTests(TestCase):
 
 class StayDateTests(TestCase):
     def test_checkout_row_without_a_year_uses_the_checkin_year(self):
-        from trips.docx_import import _parse_stay_dates
+        from apps.trips.docx_import import _parse_stay_dates
 
         fields = {
             "check-in": "Sept 13, 4:00 PM",
@@ -172,7 +172,7 @@ class StayDateTests(TestCase):
         self.assertEqual(check_out, "2026-09-20")
 
     def test_stay_row_shape(self):
-        from trips.docx_import import _parse_stay_dates
+        from apps.trips.docx_import import _parse_stay_dates
 
         fields = {"stay": "1 night, Sept 12 — check-in 4:00 PM, check-out Sept 13, 11:00 AM"}
         check_in, check_out = _parse_stay_dates(fields, "2026-09-12", None)

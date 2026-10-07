@@ -14,11 +14,11 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
-from trips.models import TripRole
-from trips.models import Day, Section, Traveler, Trip, TripGrant, can_create_trip
+from apps.accounts.models import Role, UserRole
+from apps.trips.models import TripRole
+from apps.trips.models import Day, Section, Traveler, Trip, TripGrant, can_create_trip
 
-from trips.tests.helpers import give
+from apps.trips.tests.helpers import give
 
 User = get_user_model()
 
@@ -320,7 +320,7 @@ class TripDetailAccessTests(AccessFixture):
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 200)
 
     def test_a_traveler_without_a_grant_cannot_read_the_trip(self):
-        from trips.models import Traveler
+        from apps.trips.models import Traveler
 
         # Being on the trip is not being able to read it: Traveler and User are
         # different models, and only TripGrant grants access.

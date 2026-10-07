@@ -19,25 +19,25 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-from trips.views import public_trip_detail
+from apps.trips.views import public_trip_detail
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include(('pages.urls', 'pages'), namespace='pages')),
-    path('accounts/', include('accounts.urls')),
-    path('rewards/', include(('rewards.urls','rewards'), namespace='rewards')),
-    path('bucketlists/', include(('bucketlists.urls', 'bucketlists'), namespace='bucketlists')),
-    path('activities/', include(('activities.urls', 'activities'), namespace='activities')),
-    path('events/', include(('events.urls', 'events'), namespace='events')),
-    path('locations/', include(('locations.urls', 'locations'), namespace='locations')),
-    path('trips/', include('trips.urls')),
-    path('staff/', include(('accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
-    path('staff/trips/', include('trips.staff_urls')),
+    path('', include(('apps.pages.urls', 'pages'), namespace='pages')),
+    path('accounts/', include('apps.accounts.urls')),
+    path('rewards/', include(('apps.rewards.urls','rewards'), namespace='rewards')),
+    path('bucketlists/', include(('apps.bucketlists.urls', 'bucketlists'), namespace='bucketlists')),
+    path('activities/', include(('apps.activities.urls', 'activities'), namespace='activities')),
+    path('events/', include(('apps.events.urls', 'events'), namespace='events')),
+    path('locations/', include(('apps.locations.urls', 'locations'), namespace='locations')),
+    path('trips/', include('apps.trips.urls')),
+    path('staff/', include(('apps.accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
+    path('staff/trips/', include('apps.trips.staff_urls')),
     # Public, non-detailed trip summary behind a share token. Outside the trips:
     # namespace because every URL there assumes a signed-in reader with a grant.
     path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
-    path('approval/', include('approval_system.urls')),
+    path('approval/', include('apps.approval_system.urls')),
     path("__reload__/", include("django_browser_reload.urls")),
 ]
 

@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class LocationsConfig(AppConfig):
-    name = 'locations'
+    name = 'apps.locations'
     label = 'locations'

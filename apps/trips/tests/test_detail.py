@@ -18,8 +18,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from trips.models import TripRole
-from trips.models import (
+from apps.trips.models import TripRole
+from apps.trips.models import (
     BookingTask,
     Contact,
     Day,
@@ -325,7 +325,7 @@ class TripChromeTests(DetailFixture):
         self.assertIn("Book 6pm, patio.", html)
 
     def test_quick_reference_lists_confirmations_and_contacts(self):
-        from trips.models import Confirmation
+        from apps.trips.models import Confirmation
 
         Confirmation.objects.create(trip=self.trip, label="Hotel", confirmation_number="XYZ789")
         Contact.objects.create(trip=self.trip, name="Front desk", phone="555-0100")

@@ -2,9 +2,9 @@
 
 from django.db import models
 from django.conf import settings
-from core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
+from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from approval_system.models import Approvable
+from apps.approval_system.models import Approvable
 
 
 class LocationStatus(models.TextChoices):
@@ -226,7 +226,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
             return self._city_count
         
         # Otherwise calculate it
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
     
     @property
@@ -237,7 +237,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
             return self._poi_count
         
         # Otherwise calculate it
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         return POI.objects.filter(
             city__country=self,
             approval_status=ApprovalStatus.APPROVED
@@ -252,7 +252,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
             )
         
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(Country, self.name, self.id)
         
         super().save(*args, **kwargs)
@@ -309,12 +309,12 @@ class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, A
             return self._city_count
         
         # Otherwise calculate it (for admin and other views)
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
                 Region,
                 f"{self.name}-{self.country.iso_code}",
@@ -436,7 +436,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
             return self._poi_count
         
         # Otherwise calculate it
-        from approval_system.models import ApprovalStatus
+        from apps.approval_system.models import ApprovalStatus
         return self.pois.filter(approval_status=ApprovalStatus.APPROVED).count()
     
     def save(self, *args, **kwargs):
@@ -448,7 +448,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
         }
 
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
                 City,
                 f"{self.name}-{self.country.iso_code}",
@@ -565,7 +565,7 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            from core.utils import generate_unique_slug
+            from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(
                 POI,
                 f"{self.name}-{self.city.slug}",

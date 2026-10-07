@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from accounts.forms import AccountSettingsForm
+from apps.accounts.forms import AccountSettingsForm
 
 
 class AccountSettingsFormCurrencyTests(SimpleTestCase):

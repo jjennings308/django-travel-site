@@ -15,9 +15,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
-from trips.dashboard import build_dashboard
-from trips.models import (
+from apps.accounts.models import Role, UserRole
+from apps.trips.dashboard import build_dashboard
+from apps.trips.models import (
     BookingTask,
     Comment,
     Day,

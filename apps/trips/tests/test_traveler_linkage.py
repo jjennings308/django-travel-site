@@ -22,9 +22,9 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import UserRole
-from trips.models import Day, Trip, TripGrant, Traveler
-from trips.tests.test_docx_import import build_document, run_import
+from apps.accounts.models import UserRole
+from apps.trips.models import Day, Trip, TripGrant, Traveler
+from apps.trips.tests.test_docx_import import build_document, run_import
 
 User = get_user_model()
 

@@ -8,7 +8,7 @@ from django.http import HttpResponseForbidden
 from django.utils import timezone
 from .models import Activity, ActivityCategory, UserActivityBookmark
 from .forms import ActivityCreateForm, ActivityEditForm, ActivityQuickCreateForm
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 
 def activity_list(request):

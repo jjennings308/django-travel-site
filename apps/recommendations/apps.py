@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class RecommendationsConfig(AppConfig):
-    name = 'recommendations'
+    name = 'apps.recommendations'
     label = 'recommendations'

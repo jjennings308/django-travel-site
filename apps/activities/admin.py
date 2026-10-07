@@ -4,7 +4,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils import timezone
 from .models import ActivityCategory, Activity, ActivityTag, UserActivityBookmark
-from approval_system.models import ApprovalStatus
+from apps.approval_system.models import ApprovalStatus
 
 
 @admin.register(ActivityCategory)

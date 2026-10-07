@@ -22,7 +22,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.test import TestCase
 from django.urls import reverse
 
-from trips.models import (
+from apps.trips.models import (
     BookingTask,
     Comment,
     Confirmation,
@@ -36,7 +36,7 @@ from trips.models import (
     Trip,
     TripGrant,
 )
-from trips.public import (
+from apps.trips.public import (
     DAY_FIELDS,
     MEAL_FIELDS,
     TRIP_FIELDS,

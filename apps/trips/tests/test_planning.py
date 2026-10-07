@@ -24,14 +24,14 @@ from django.db.models import Count, Q
 from django.test import RequestFactory, TestCase
 from django.test.utils import CaptureQueriesContext
 
-from trips.admin import (
+from apps.trips.admin import (
     DayAdmin,
     RosterFilter,
     TransportLegAdmin,
     TripAdmin,
 )
-from trips.forms import DayAdminForm, TransportLegAdminForm
-from trips.models import (
+from apps.trips.forms import DayAdminForm, TransportLegAdminForm
+from apps.trips.models import (
     BookingTask,
     Confirmation,
     Day,
@@ -39,7 +39,7 @@ from trips.models import (
     TransportLeg,
     Trip,
 )
-from trips.tests.test_docx_import import build_document, run_import
+from apps.trips.tests.test_docx_import import build_document, run_import
 
 User = get_user_model()
 
@@ -194,7 +194,7 @@ class StatusDataMigrationTests(TestCase):
 
     def setUp(self):
         module = importlib.import_module(
-            "trips.migrations.0004_mark_booked_trip_ready_to_go"
+            "apps.trips.migrations.0004_mark_booked_trip_ready_to_go"
         )
         self.module = module
         self.apps = type(
@@ -415,7 +415,7 @@ class TripAdminTests(TestCase):
         self.assertIn("status", self.admin.list_filter)
 
     def test_booking_task_inline_is_registered(self):
-        from trips.admin import BookingTaskInline
+        from apps.trips.admin import BookingTaskInline
 
         self.assertIn(BookingTaskInline, self.admin.inlines)
 
@@ -425,7 +425,7 @@ class BookingTaskAdminTests(TestCase):
         self.trip = make_trip()
 
     def _admin(self):
-        from trips.admin import BookingTaskAdmin
+        from apps.trips.admin import BookingTaskAdmin
 
         return BookingTaskAdmin(BookingTask, AdminSite())
 
@@ -449,7 +449,7 @@ class BookingTaskAdminTests(TestCase):
                 "day": Day,
                 "confirmation": Confirmation,
             }[field]
-            from trips import admin as trips_admin
+            from apps.trips import admin as trips_admin
 
             self.assertTrue(getattr(trips_admin, f"{target.__name__}Admin").search_fields)
 
@@ -624,7 +624,7 @@ class DayAdminWiringTests(TestCase):
         self.assertIn("travelers", self.admin.filter_horizontal)
 
     def test_the_filter_is_registered(self):
-        from trips.admin import RosterFilter
+        from apps.trips.admin import RosterFilter
 
         self.assertIn(RosterFilter, self.admin.list_filter)
 
@@ -779,7 +779,7 @@ class TransportLegAdminTests(TestCase):
     def test_the_inline_prefix_follows_the_related_name(self):
         # The trip admin's inline is keyed on `transport`, and a stale
         # `flights` prefix would silently drop submitted legs.
-        from trips.admin import TripAdmin as _TripAdmin
+        from apps.trips.admin import TripAdmin as _TripAdmin
 
         inlines = _TripAdmin(Trip, AdminSite()).inlines
         self.assertIn(
