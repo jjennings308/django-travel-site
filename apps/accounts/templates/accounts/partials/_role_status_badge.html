@@ -1,0 +1,2 @@
+{# accounts/partials/_role_status_badge.html — pass rr= a RoleRequest #}
+<span class="sbl-badge {% if rr.status == 'approved' %}sbl-badge-success{% elif rr.status == 'rejected' %}sbl-badge-danger{% elif rr.status == 'revoked' %}sbl-badge-neutral{% else %}sbl-badge-warning{% endif %}">{{ rr.get_status_display }}</span>

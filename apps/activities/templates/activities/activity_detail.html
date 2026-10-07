@@ -89,7 +89,7 @@
                         <div class="grid grid-cols-12 gap-4">
                             {% for city in cities %}
                                 <div class="col-span-12 md:col-span-6">
-                                    <a href="{% url 'activities:city_detail' city.slug %}" class="no-underline">
+                                    <a href="{% url 'locations:city_detail' city.slug %}" class="no-underline">
                                         <div class="flex items-center p-4 bg-warm-50 rounded-lg hover:bg-warm-50">
                                             {% if city.featured_media %}
                                                 <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="rounded-lg mr-4" style="width: 64px; height: 64px; object-fit: cover;">
@@ -126,7 +126,7 @@
                         <div class="grid grid-cols-12 gap-4">
                             {% for poi in featured_pois %}
                                 <div class="col-span-12 md:col-span-6">
-                                    <a href="{% url 'activities:poi_detail' poi.slug %}" class="no-underline">
+                                    <a href="{% url 'locations:poi_detail' poi.slug %}" class="no-underline">
                                         <div class="sbl-card border-0 bg-warm-50 h-full transition hover:shadow-md">
                                             {% if poi.featured_media %}
                                                 <div style="height: 160px; overflow: hidden;">
@@ -210,13 +210,28 @@
             </div>
 
             <!-- Actions -->
-            {% if user.is_staff or activity.submitted_by == user %}
-                <div class="sbl-card shadow-sm">
-                    <div class="p-5">
-                        <h5 class="font-semibold text-warm-900 font-bold mb-4">Actions</h5>
-                        <a href="{% url 'activities:activity_edit' activity.slug %}" class="sbl-btn sbl-btn-primary w-full">
-                            <i class="bi bi-pencil mr-2"></i>Edit Activity
-                        </a>
+            {% if user.is_authenticated %}
+                <div class="sbl-card p-5">
+                    <h2 class="mb-4 font-bold text-warm-900">Actions</h2>
+                    <div class="grid gap-2">
+                        {% if is_bookmarked %}
+                            <form method="post" action="{% url 'activities:activity_unbookmark' activity.slug %}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-outline w-full"><i class="bi bi-bookmark-fill text-earth-ochre"></i>Bookmarked · remove</button></form>
+                        {% else %}
+                            <form method="post" action="{% url 'activities:activity_bookmark' activity.slug %}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-outline w-full"><i class="bi bi-bookmark"></i>Bookmark</button></form>
+                        {% endif %}
+                        {% if can_edit %}
+                            <a href="{% url 'activities:activity_edit' activity.slug %}" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-pencil"></i>Edit activity</a>
+                        {% endif %}
+                        {% if activity.created_by == user %}
+                            {% if activity.visibility == 'private' or activity.approval_status == 'draft' or activity.approval_status == 'rejected' or activity.approval_status == 'changes_requested' %}
+                                <a href="{% url 'activities:activity_submit_for_public' activity.slug %}" class="sbl-btn sbl-btn-secondary w-full"><i class="bi bi-globe2"></i>Submit for public</a>
+                            {% elif activity.visibility == 'public' and activity.approval_status != 'approved' %}
+                                <a href="{% url 'activities:activity_make_private' activity.slug %}" class="sbl-btn sbl-btn-outline w-full"><i class="bi bi-lock"></i>Make private</a>
+                            {% endif %}
+                        {% endif %}
+                        {% if can_delete %}
+                            <a href="{% url 'activities:activity_delete' activity.slug %}" class="sbl-btn sbl-btn-outline-danger w-full"><i class="bi bi-trash"></i>Delete</a>
+                        {% endif %}
                     </div>
                 </div>
             {% endif %}

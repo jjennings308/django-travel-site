@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Approval Stats{% endblock %}
+
+{% block content %}
+<header class="mb-4 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="sbl-page-title">Approval Stats</h1>
+    <p class="sbl-page-subtitle">Review activity over the last {{ days }} days.</p>
+  </div>
+  <form method="get" class="flex items-center gap-2">
+    <label for="days" class="text-sm text-warm-600">Period</label>
+    <select id="days" name="days" class="sbl-input w-auto" onchange="this.form.submit()">
+      <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+      <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+      <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+      <option value="365" {% if days == 365 %}selected{% endif %}>1 year</option>
+    </select>
+  </form>
+</header>
+{% include "approval_system/partials/_nav.html" with active="stats" %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <section class="sbl-card p-5">
+    <h2 class="sbl-section-title">By action</h2>
+    <table class="sbl-table"><tbody>
+      {% for row in action_stats %}<tr><td>{{ row.label }}</td><td class="text-right font-semibold tabular-nums">{{ row.count }}</td></tr>
+      {% empty %}<tr><td class="text-warm-500">Nothing in this period.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <section class="sbl-card p-5">
+    <h2 class="sbl-section-title">Top reviewers</h2>
+    <table class="sbl-table"><tbody>
+      {% for row in reviewer_stats %}<tr><td>@{{ row.performed_by__username }}</td><td class="text-right font-semibold tabular-nums">{{ row.count }}</td></tr>
+      {% empty %}<tr><td class="text-warm-500">Nothing in this period.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <section class="sbl-card p-5">
+    <h2 class="sbl-section-title">By content type</h2>
+    <table class="sbl-table"><tbody>
+      {% for row in content_type_stats %}<tr><td class="capitalize">{{ row.content_type__model }}</td><td class="text-right font-semibold tabular-nums">{{ row.count }}</td></tr>
+      {% empty %}<tr><td class="text-warm-500">Nothing in this period.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Delete {{ activity.name }}{% endblock %}
+{% block content %}
+{% include "activities/partials/_confirm.html" with heading="Delete this activity?" message="This permanently removes the activity. Bucket-list items and bookmarks that point at it go with it. This can't be undone." button="Delete activity" tone="danger" icon="bi-trash" %}
+{% endblock %}

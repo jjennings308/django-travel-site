@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Role Requests{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="sbl-page-title">Role Requests</h1>
+  <p class="sbl-page-subtitle">Vendor and content provider applications.</p>
+</header>
+
+<section class="mb-8">
+  <h2 class="sbl-section-title">Waiting for review ({{ pending_requests|length }})</h2>
+  <div class="sbl-card overflow-x-auto">
+    {% if pending_requests %}
+      <table class="sbl-table">
+        <thead><tr><th>User</th><th>Role</th><th>Business</th><th>Submitted</th><th></th></tr></thead>
+        <tbody>
+          {% for rr in pending_requests %}
+            <tr>
+              <td>@{{ rr.user.username }}<div class="text-xs text-warm-500">{{ rr.user.get_full_name }}</div></td>
+              <td>{{ rr.get_requested_role_display }}</td>
+              <td>{{ rr.business_name|default:"—" }}</td>
+              <td class="whitespace-nowrap">{{ rr.created_at|date:"M j, Y" }}</td>
+              <td class="text-right"><a href="{% url 'staff:admin_role_request_detail' rr.id %}" class="sbl-btn sbl-btn-primary sbl-btn-sm">Review</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="p-8 text-center text-warm-500">Nothing waiting. 🎉</p>
+    {% endif %}
+  </div>
+</section>
+
+<section>
+  <h2 class="sbl-section-title">Recently reviewed</h2>
+  <div class="sbl-card overflow-x-auto">
+    {% if reviewed_requests %}
+      <table class="sbl-table">
+        <thead><tr><th>User</th><th>Role</th><th>Decision</th><th>By</th><th>Reviewed</th><th></th></tr></thead>
+        <tbody>
+          {% for rr in reviewed_requests %}
+            <tr>
+              <td>@{{ rr.user.username }}</td>
+              <td>{{ rr.get_requested_role_display }}</td>
+              <td>{% include "accounts/partials/_role_status_badge.html" with rr=rr %}</td>
+              <td>{% if rr.reviewed_by %}@{{ rr.reviewed_by.username }}{% else %}—{% endif %}</td>
+              <td class="whitespace-nowrap">{{ rr.reviewed_at|date:"M j, Y" }}</td>
+              <td class="text-right"><a href="{% url 'staff:admin_role_request_detail' rr.id %}" class="sbl-link text-sm">View</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="p-8 text-center text-warm-500">No reviewed requests yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

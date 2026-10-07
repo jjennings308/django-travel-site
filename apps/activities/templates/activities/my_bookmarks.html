@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}My Bookmarks{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="sbl-page-title">My Bookmarks</h1>
+    <p class="sbl-page-subtitle">Activities you've saved for later.</p>
+  </div>
+  <a href="{% url 'activities:activity_list' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-search"></i>Browse activities</a>
+</header>
+
+{% if page_obj %}
+  <ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {% for bookmark in page_obj %}
+      {% with activity=bookmark.activity %}
+        <li class="sbl-card sbl-card-hover flex flex-col p-5">
+          <div class="mb-2 flex items-start justify-between gap-2">
+            <a href="{% url 'activities:activity_detail' activity.slug %}" class="text-lg font-semibold text-warm-900 hover:text-earth-clay">{{ activity.name }}</a>
+            {% if activity.category %}<span class="sbl-badge sbl-badge-primary shrink-0">{{ activity.category.name }}</span>{% endif %}
+          </div>
+          {% if activity.description %}<p class="mb-4 flex-1 text-sm text-warm-600">{{ activity.description|truncatewords:25 }}</p>{% else %}<div class="flex-1"></div>{% endif %}
+          <div class="flex items-center justify-between border-t border-warm-100 pt-3 text-xs text-warm-500">
+            <span><i class="bi bi-bookmark-fill text-earth-ochre"></i> Saved {{ bookmark.created_at|date:"M j, Y" }}</span>
+            <form method="post" action="{% url 'activities:activity_unbookmark' activity.slug %}">
+              {% csrf_token %}
+              <button type="submit" class="text-warm-500 hover:text-red-700" title="Remove bookmark"><i class="bi bi-x-lg"></i> Remove</button>
+            </form>
+          </div>
+        </li>
+      {% endwith %}
+    {% endfor %}
+  </ul>
+  {% include "partials/_pagination.html" %}
+{% else %}
+  <div class="sbl-card p-10 text-center text-warm-500">
+    <i class="bi bi-bookmark mb-2 block text-4xl"></i>
+    <p class="mb-4">No bookmarks yet. Save activities you like and they'll show up here.</p>
+    <a href="{% url 'activities:activity_list' %}" class="sbl-btn sbl-btn-primary">Browse activities</a>
+  </div>
+{% endif %}
+{% endblock %}

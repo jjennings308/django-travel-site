@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ queue.name }} · Approvals{% endblock %}
+
+{% block content %}
+<a href="{% url 'approval_system:dashboard' %}" class="sbl-link mb-4 inline-flex items-center gap-1 text-sm"><i class="bi bi-arrow-left"></i>All queues</a>
+<header class="mb-6">
+  <h1 class="sbl-page-title">{% if queue.icon and 'bi-' not in queue.icon %}{{ queue.icon }} {% endif %}{{ queue.name }}</h1>
+  <p class="sbl-page-subtitle">{{ queue.description|default:"" }} Showing up to {{ settings.items_per_page }} items per content type, newest first.</p>
+</header>
+
+<div class="sbl-card overflow-x-auto">
+  {% if items %}
+    <table class="sbl-table">
+      <thead><tr><th>Item</th><th>Type</th><th>Status</th><th>Priority</th><th>Submitted</th><th></th></tr></thead>
+      <tbody>
+        {% for entry in items %}
+          {% with obj=entry.object %}
+            <tr>
+              <td class="font-medium text-warm-900">{{ obj }}</td>
+              <td class="capitalize">{{ entry.model_name }}</td>
+              <td>{% include "approval_system/partials/_status.html" with obj=obj %}</td>
+              <td>{{ obj.get_approval_priority_display }}</td>
+              <td class="whitespace-nowrap">{% if obj.submitted_at %}{{ obj.submitted_at|date:"M j, Y" }}{% endif %}{% if obj.submitted_by %}<div class="text-xs text-warm-500">@{{ obj.submitted_by.username }}</div>{% endif %}</td>
+              <td class="text-right"><a class="sbl-btn sbl-btn-primary sbl-btn-sm" href="{% url 'approval_system:review_item' entry.content_type.id obj.id %}?next={{ request.get_full_path|urlencode }}">Review</a></td>
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="p-10 text-center text-warm-500">This queue is empty. 🎉</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -552,7 +552,7 @@ def admin_toggle_user_status(request, user_id):
     
     user.save()
     
-    return redirect('admin_account_detail', user_id=user_id)
+    return redirect('staff:admin_account_detail', user_id=user_id)
 
 
 # ============================================
@@ -612,7 +612,7 @@ def admin_role_request_detail(request, request_id):
                     f'Rejected role request from @{role_request.user.username}'
                 )
             
-            return redirect('admin_role_requests')
+            return redirect('staff:admin_role_requests')
     else:
         form = RoleRequestReviewForm()
     

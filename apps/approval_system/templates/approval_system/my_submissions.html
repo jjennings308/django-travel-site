@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}My Submissions{% endblock %}
+
+{% block content %}
+<header class="mb-4">
+  <h1 class="sbl-page-title">My Submissions</h1>
+  <p class="sbl-page-subtitle">Everything you've submitted for review, and where it stands.</p>
+</header>
+{% if user.is_staff %}{% include "approval_system/partials/_nav.html" with active="mine" %}{% endif %}
+
+<div class="sbl-card overflow-x-auto">
+  {% if submissions %}
+    <table class="sbl-table">
+      <thead><tr><th>Item</th><th>Type</th><th>Status</th><th>Submitted</th><th>Reviewed</th></tr></thead>
+      <tbody>
+        {% for entry in submissions %}
+          {% with obj=entry.object %}
+            <tr>
+              <td class="font-medium text-warm-900">{{ obj }}</td>
+              <td class="capitalize">{{ entry.model_name }}</td>
+              <td>{% include "approval_system/partials/_status.html" with obj=obj %}</td>
+              <td class="whitespace-nowrap">{{ obj.submitted_at|date:"M j, Y"|default:"—" }}</td>
+              <td class="whitespace-nowrap">{% if obj.reviewed_at %}{{ obj.reviewed_at|date:"M j, Y" }}{% if obj.reviewed_by %} · @{{ obj.reviewed_by.username }}{% endif %}{% else %}—{% endif %}</td>
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="p-10 text-center text-warm-500">You haven't submitted anything for review yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

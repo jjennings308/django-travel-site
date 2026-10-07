@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit {{ country.name }}{% endblock %}
+
+{% block breadcrumbs %}
+  {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
+{% endblock %}
+
+{% block content %}
+<div class="py-6" style="max-width: 900px;">
+    <div class="mb-6">
+        <h1 class="text-4xl font-bold mb-2">Edit {{ country.flag_emoji }} {{ country.name }}</h1>
+        <p class="text-warm-500">Changes are saved straight to the country; its approval status does not change.</p>
+    </div>
+
+    <form method="post" class="sbl-card shadow-sm">
+        <div class="p-5 p-6">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Country Name <span class="text-red-700">*</span></label>
+                        <input type="text" name="name" value="{{ country.name|default:'' }}" required class="sbl-input" placeholder="e.g., United States">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">ISO Code (2-letter) <span class="text-red-700">*</span></label>
+                        <input type="text" name="iso_code" value="{{ country.iso_code|default:'' }}" required maxlength="2" class="sbl-input uppercase" placeholder="e.g., US">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">ISO3 Code (3-letter) <span class="text-red-700">*</span></label>
+                        <input type="text" name="iso3_code" value="{{ country.iso3_code|default:'' }}" required maxlength="3" class="sbl-input uppercase" placeholder="e.g., USA">
+                    </div>
+                    
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Continent <span class="text-red-700">*</span></label>
+                        <select name="continent" required class="sbl-input">
+                            <option value="">Select Continent</option>
+                            {% for value, label in continents %}
+                                <option value="{{ value }}" {% if value == country.continent %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Description</label>
+                        <textarea name="description" rows="4" class="sbl-input" placeholder="Brief description of the country...">{{ country.description }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Coordinates -->
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Coordinates</h3>
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Latitude</label>
+                        <input type="number" name="latitude" value="{{ country.latitude|default_if_none:''|stringformat:'s' }}" step="0.000001" class="sbl-input" placeholder="e.g., 37.0902">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Longitude</label>
+                        <input type="number" name="longitude" value="{{ country.longitude|default_if_none:''|stringformat:'s' }}" step="0.000001" class="sbl-input" placeholder="e.g., -95.7129">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Travel Information -->
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Travel Information</h3>
+                
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Currency Code</label>
+                        <input type="text" name="currency_code" value="{{ country.currency_code|default:'' }}" maxlength="3" class="sbl-input uppercase" placeholder="e.g., USD">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Currency Name</label>
+                        <input type="text" name="currency_name" value="{{ country.currency_name|default:'' }}" class="sbl-input" placeholder="e.g., US Dollar">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Phone Code</label>
+                        <input type="text" name="phone_code" value="{{ country.phone_code|default:'' }}" class="sbl-input" placeholder="e.g., +1">
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-6 flex items-center">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="visa_required" id="visa_required" class="sbl-check" {% if country.visa_required %}checked{% endif %}>
+                            <label for="visa_required" class="text-sm text-warm-700">Visa Required (General)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Visa Information</label>
+                        <textarea name="visa_info" rows="3" class="sbl-input" placeholder="Details about visa requirements...">{{ country.visa_info }}</textarea>
+                    </div>
+                    
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Travel Tips</label>
+                        <textarea name="travel_tips" rows="4" class="sbl-input" placeholder="General travel tips and advice...">{{ country.travel_tips }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Media -->
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <p class="text-warm-500 text-sm mb-4">Select an image to replace the current one{% if not country.featured_media %} (none set yet){% endif %}.</p>
+                {% if country.featured_media %}<div class="mb-4"><p class="sbl-label">Current</p><img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="h-32 rounded-lg object-cover"></div>{% endif %}
+                
+                <input type="hidden" name="featured_media_id" id="featured_media_id">
+                
+                <div id="selected-media" class="hidden mb-4">
+                    <div class="relative inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded-lg" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="sbl-btn sbl-btn-danger sbl-btn-sm absolute top-0 right-0 m-2">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="media-grid" class="grid grid-cols-12 gap-4">
+                    {% for media in user_media %}
+                        <div class="col-span-6 md:col-span-4 lg:col-span-2">
+                            <div class="media-item border border-warm-200 rounded-lg overflow-hidden" style="cursor: pointer; height: 120px;" 
+                                 onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
+                                 id="media-{{ media.id }}">
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-full h-full" style="object-fit: cover;">
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-span-12 text-center py-6 text-warm-500">
+                            <p>No media uploaded yet. Upload images in your media library first.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex justify-between items-center pt-6 border-t border-warm-200">
+                <a href="{% url 'locations:country_detail' country.slug %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
+                <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
+                    Save changes
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.media-item {
+    transition: all 0.2s;
+    border: 2px solid transparent !important;
+}
+.media-item:hover {
+    border-color: #7A4E2D !important;
+    opacity: 0.8;
+}
+.media-item.selected {
+    border-color: #7A4E2D !important;
+}
+</style>
+
+<script>
+function selectMedia(mediaId, mediaUrl) {
+    document.getElementById('featured_media_id').value = mediaId;
+    document.getElementById('selected-media-preview').src = mediaUrl;
+    document.getElementById('selected-media').classList.remove('hidden');
+    
+    // Highlight selected media
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    document.getElementById('media-' + mediaId).classList.add('selected');
+}
+
+function clearSelectedMedia() {
+    document.getElementById('featured_media_id').value = '';
+    document.getElementById('selected-media').classList.add('hidden');
+    document.querySelectorAll('[id^="media-"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+</script>
+{% endblock %}

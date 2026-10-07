@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Submit {{ activity.name }} for approval{% endblock %}
+{% block content %}
+{% include "activities/partials/_confirm.html" with heading="Make this activity public?" message="It will be set to public and sent to staff for review. Until it's approved, only you can see it." button="Submit for approval" tone="primary" icon="bi-globe2" %}
+{% endblock %}

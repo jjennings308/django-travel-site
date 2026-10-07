@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Request a Role{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">Request a Role</h1>
+    <p class="sbl-page-subtitle">Apply for vendor or content provider access. Staff review every request.</p>
+  </header>
+
+  {% if pending_requests %}
+    <div class="sbl-alert sbl-alert-warning mb-6">
+      <p class="font-semibold">You already have a request waiting for review:</p>
+      <ul class="mt-1 list-disc pl-5">
+        {% for rr in pending_requests %}<li>{{ rr.get_requested_role_display }}, submitted {{ rr.created_at|date:"M j, Y" }}</li>{% endfor %}
+      </ul>
+      <a href="{% url 'role_request_status' %}" class="sbl-link mt-2 inline-block">See your requests</a>
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="sbl-card p-6">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    {% include "accounts/partials/_form_field.html" with field=form.requested_role %}
+    {% include "accounts/partials/_form_field.html" with field=form.business_name %}
+    {% include "accounts/partials/_form_field.html" with field=form.business_description %}
+    <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+      {% include "accounts/partials/_form_field.html" with field=form.website %}
+      {% include "accounts/partials/_form_field.html" with field=form.business_license %}
+    </div>
+    {% include "accounts/partials/_form_field.html" with field=form.supporting_documents %}
+    <div class="mt-6 flex justify-end gap-2">
+      <a href="{% url 'profile' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+      <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-send"></i>Submit request</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

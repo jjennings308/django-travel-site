@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Review {{ item }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl">
+  <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'approval_system:dashboard' %}{% endif %}" class="sbl-link mb-4 inline-flex items-center gap-1 text-sm"><i class="bi bi-arrow-left"></i>Back</a>
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-sm uppercase tracking-wide text-warm-500">{{ model_name }}</p>
+      <h1 class="sbl-page-title">{{ item }}</h1>
+      <p class="sbl-page-subtitle">{% if item.submitted_by %}Submitted by @{{ item.submitted_by.username }}{% endif %}{% if item.submitted_at %} · {{ item.submitted_at|date:"M j, Y H:i" }}{% endif %}</p>
+    </div>
+    <div class="flex items-center gap-2">{% include "approval_system/partials/_status.html" with obj=item %}<span class="sbl-badge sbl-badge-neutral">{{ item.get_approval_priority_display }}</span></div>
+  </header>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <section class="sbl-card p-6 lg:col-span-2">
+      <h2 class="sbl-section-title">Content</h2>
+      <dl class="divide-y divide-warm-100 text-sm">
+        {% for label, value in fields %}
+          <div class="grid grid-cols-3 gap-3 py-2"><dt class="capitalize text-warm-500">{{ label }}</dt><dd class="col-span-2 whitespace-pre-line break-words text-warm-900">{{ value }}</dd></div>
+        {% empty %}
+          <p class="py-2 text-warm-500">No content fields.</p>
+        {% endfor %}
+      </dl>
+    </section>
+
+    <div class="space-y-6">
+      <form method="post" class="sbl-card p-5">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% if next_url %}{{ next_url }}{% else %}approval_system:dashboard{% endif %}">
+        <h2 class="sbl-section-title">Decision</h2>
+        <label for="notes" class="sbl-label">Notes</label>
+        <textarea id="notes" name="notes" rows="4" class="sbl-input mb-3" placeholder="Shown in the approval history"></textarea>
+        <label for="priority" class="sbl-label">Priority</label>
+        <select id="priority" name="priority" class="sbl-input mb-4">
+          {% for value, label in priority_choices %}<option value="{{ value }}" {% if value == item.approval_priority %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <div class="grid gap-2">
+          <button type="submit" name="action" value="approve" class="sbl-btn sbl-btn-secondary"><i class="bi bi-check-lg"></i>Approve</button>
+          <button type="submit" name="action" value="request_changes" class="sbl-btn sbl-btn-outline"><i class="bi bi-pencil"></i>Request changes</button>
+          <button type="submit" name="action" value="reject" class="sbl-btn sbl-btn-danger"><i class="bi bi-x-lg"></i>Reject</button>
+          <button type="submit" name="action" value="" class="sbl-btn sbl-btn-link text-sm">Save priority only</button>
+        </div>
+      </form>
+
+      <section class="sbl-card p-5">
+        <h2 class="sbl-section-title">History</h2>
+        {% if history %}
+          <ol class="space-y-3 text-sm">
+            {% for log in history %}
+              <li>
+                <div class="font-medium text-warm-900">{{ log.get_action_display }}</div>
+                <div class="text-xs text-warm-500">{% if log.performed_by %}@{{ log.performed_by.username }} · {% endif %}{{ log.created_at|date:"M j, Y H:i" }}</div>
+                {% if log.notes %}<p class="mt-1 text-warm-700">{{ log.notes }}</p>{% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="text-sm text-warm-500">No history yet.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

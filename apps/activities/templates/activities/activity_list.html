@@ -14,9 +14,13 @@
             <h1 class="text-4xl font-bold mb-2">Activities</h1>
             <p class="text-warm-500">Browse and manage activities</p>
         </div>
+        <div class="flex flex-wrap gap-2">
+        <a href="{% url 'activities:my_bookmarks' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-bookmark"></i>My bookmarks</a>
+        <a href="{% url 'activities:activity_quick_add' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-lightning"></i>Quick add</a>
         <a href="{% url 'activities:activity_add' %}" class="sbl-btn sbl-btn-primary">
             <i class="bi bi-plus-lg mr-2"></i>Add Activity
         </a>
+        </div>
     </div>
 
     <!-- Filters -->

@@ -66,7 +66,9 @@ class ReviewableMixin(models.Model):
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
         self.review_notes = notes
-        self.save()
+        # Approvable (later in the MRO) owns approval_status and the ApprovalLog;
+        # without this, approving a location never left the 'pending' queue.
+        super().approve(reviewer, notes)
     
     def reject(self, reviewer, notes=''):
         """Reject this location"""
@@ -75,7 +77,9 @@ class ReviewableMixin(models.Model):
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
         self.review_notes = notes
-        self.save()
+        # Approvable (later in the MRO) owns approval_status and the ApprovalLog;
+        # without this, approving a location never left the 'pending' queue.
+        super().reject(reviewer, notes)
     
     def request_changes(self, reviewer, notes=''):
         """Request changes to this location"""
@@ -84,7 +88,9 @@ class ReviewableMixin(models.Model):
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
         self.review_notes = notes
-        self.save()
+        # Approvable (later in the MRO) owns approval_status and the ApprovalLog;
+        # without this, approving a location never left the 'pending' queue.
+        super().request_changes(reviewer, notes)
 
 
 class FeaturedMediaMixin(models.Model):

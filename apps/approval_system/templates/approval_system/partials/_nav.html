@@ -1,0 +1,6 @@
+{# approval_system/partials/_nav.html — section links; pass active="dashboard"|"stats"|"mine" #}
+<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+  <a href="{% url 'approval_system:dashboard' %}" class="sbl-btn sbl-btn-sm {% if active == 'dashboard' %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}"><i class="bi bi-inboxes"></i>Queues</a>
+  <a href="{% url 'approval_system:stats' %}" class="sbl-btn sbl-btn-sm {% if active == 'stats' %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}"><i class="bi bi-bar-chart"></i>Stats</a>
+  <a href="{% url 'approval_system:my_submissions' %}" class="sbl-btn sbl-btn-sm {% if active == 'mine' %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}"><i class="bi bi-person-lines-fill"></i>My submissions</a>
+</nav>

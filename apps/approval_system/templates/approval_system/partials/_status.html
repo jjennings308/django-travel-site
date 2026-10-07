@@ -1,0 +1,2 @@
+{# approval_system/partials/_status.html — pass obj= an Approvable #}
+<span class="sbl-badge {% if obj.approval_status == 'approved' %}sbl-badge-success{% elif obj.approval_status == 'pending' %}sbl-badge-warning{% elif obj.approval_status == 'rejected' %}sbl-badge-danger{% elif obj.approval_status == 'changes_requested' %}sbl-badge-info{% else %}sbl-badge-neutral{% endif %}">{{ obj.get_approval_status_display }}</span>

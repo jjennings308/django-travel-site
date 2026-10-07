@@ -175,9 +175,26 @@ def review_item(request, content_type_id, object_id):
     
     # Get approval history
     history = item.get_approval_history()
-    
+
+    # The item's own content, for a template that has to work for any model:
+    # every concrete, non-empty field except the approval bookkeeping.
+    skip = {'id', 'approval_status', 'approval_priority', 'submitted_by', 'submitted_at',
+            'reviewed_by', 'reviewed_at', 'created_at', 'updated_at'}
+    fields = []
+    for field in model._meta.concrete_fields:
+        if field.name in skip:
+            continue
+        value = getattr(item, field.name)
+        if value in (None, '', [], {}):
+            continue
+        if field.choices:
+            value = getattr(item, f'get_{field.name}_display')()
+        fields.append((field.verbose_name, value))
+
     context = {
         'item': item,
+        'fields': fields,
+        'next_url': request.GET.get('next', ''),
         'content_type': content_type,
         'model_name': content_type.model,
         'history': history,
@@ -285,6 +302,8 @@ def approval_stats(request):
     
     # Stats by action
     action_stats = logs.values('action').annotate(count=Count('id')).order_by('-count')
+    action_labels = dict(ApprovalLog.ACTION_CHOICES)
+    action_stats = [{**row, 'label': action_labels.get(row['action'], row['action'])} for row in action_stats]
     
     # Stats by reviewer
     reviewer_stats = logs.filter(

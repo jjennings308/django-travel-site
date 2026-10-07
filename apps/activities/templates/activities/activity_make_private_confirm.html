@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Make {{ activity.name }} private{% endblock %}
+{% block content %}
+{% include "activities/partials/_confirm.html" with heading="Make this activity private?" message="Only you will see it again, and any pending public submission is withdrawn. You can submit it again later." button="Make private" tone="primary" icon="bi-lock" %}
+{% endblock %}

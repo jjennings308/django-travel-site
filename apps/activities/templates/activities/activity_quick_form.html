@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">{{ title }}</h1>
+    <p class="sbl-page-subtitle">Just the essentials. You'll land on the full form next to add details.</p>
+  </header>
+  <form method="post" class="sbl-card p-6">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    {% for field in form %}
+      <div class="mb-4">
+        <label for="{{ field.id_for_label }}" class="sbl-label">{{ field.label }}{% if field.field.required %} <span class="text-red-700">*</span>{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="sbl-help">{{ field.help_text|safe }}</p>{% endif %}
+        {% for error in field.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+      <a href="{% url 'activities:activity_add' %}" class="sbl-link text-sm">Use the full form instead</a>
+      <div class="flex gap-2">
+        <a href="{% url 'activities:my_activities' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+        <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-lightning"></i>Create</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

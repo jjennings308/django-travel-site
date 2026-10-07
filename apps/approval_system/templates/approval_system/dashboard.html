@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Approvals{% endblock %}
+
+{% block content %}
+<header class="mb-4">
+  <h1 class="sbl-page-title">Approvals</h1>
+  <p class="sbl-page-subtitle">Everything waiting for review, across the site. Review target: {{ sla_hours }} hours.</p>
+</header>
+{% include "approval_system/partials/_nav.html" with active="dashboard" %}
+
+<section class="mb-8">
+  <div class="mb-4 flex items-baseline justify-between">
+    <h2 class="sbl-section-title mb-0">Queues</h2>
+    <span class="text-sm text-warm-500"><span class="text-2xl font-bold text-warm-900 tabular-nums">{{ total_pending }}</span> pending in total</span>
+  </div>
+  {% if queue_stats %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for q in queue_stats %}
+        <a href="{% url 'approval_system:queue_detail' q.queue.slug %}" class="sbl-card sbl-card-hover border-l-4 p-5" style="border-left-color: {{ q.color }};">
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="font-semibold text-warm-900">{% if q.icon %}{% if 'bi-' in q.icon %}<i class="bi {{ q.icon }}"></i>{% else %}{{ q.icon }}{% endif %} {% endif %}{{ q.queue.name }}</h3>
+            <span class="text-3xl font-bold tabular-nums text-warm-900">{{ q.count }}</span>
+          </div>
+          {% if q.queue.description %}<p class="text-sm text-warm-600">{{ q.queue.description }}</p>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="sbl-card p-8 text-center text-warm-500">No active queues. Create one in the admin under Approval System → Approval queues.</div>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="sbl-section-title">Recent activity</h2>
+  <div class="sbl-card">
+    {% if recent_logs %}
+      <ul class="sbl-list">
+        {% for log in recent_logs %}
+          <li class="sbl-list-item flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span><span class="font-medium text-warm-900">{{ log.get_action_display }}</span> · {{ log.content_type.model }} “{{ log.content_object|default:"(deleted)" }}”{% if log.notes %} <span class="text-warm-500">— {{ log.notes|truncatechars:80 }}</span>{% endif %}</span>
+            <span class="text-xs text-warm-500">{% if log.performed_by %}@{{ log.performed_by.username }} · {% endif %}{{ log.created_at|timesince }} ago</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="p-8 text-center text-warm-500">No approval activity yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

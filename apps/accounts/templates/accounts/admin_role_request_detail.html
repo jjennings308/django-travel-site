@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Role Request · @{{ role_request.user.username }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <a href="{% url 'staff:admin_role_requests' %}" class="sbl-link mb-4 inline-flex items-center gap-1 text-sm"><i class="bi bi-arrow-left"></i>All role requests</a>
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="sbl-page-title">{{ role_request.get_requested_role_display }} request</h1>
+      <p class="sbl-page-subtitle">From <a class="sbl-link" href="{% url 'staff:admin_account_detail' role_request.user.id %}">@{{ role_request.user.username }}</a>{% if role_request.user.get_full_name %} ({{ role_request.user.get_full_name }}){% endif %} · {{ role_request.created_at|date:"M j, Y" }}</p>
+    </div>
+    {% include "accounts/partials/_role_status_badge.html" with rr=role_request %}
+  </header>
+
+  <section class="sbl-card mb-6 p-6">
+    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Business name</dt><dd class="text-warm-900">{{ role_request.business_name|default:"—" }}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Website</dt><dd>{% if role_request.website %}<a class="sbl-link break-all" href="{{ role_request.website }}" rel="noopener noreferrer" target="_blank">{{ role_request.website }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Business license</dt><dd class="text-warm-900">{{ role_request.business_license|default:"—" }}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Supporting documents</dt><dd>{% if role_request.supporting_documents %}<a class="sbl-link" href="{{ role_request.supporting_documents.url }}" target="_blank">Download</a>{% else %}—{% endif %}</dd></div>
+      <div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-warm-500">Description</dt><dd class="whitespace-pre-line text-warm-900">{{ role_request.business_description }}</dd></div>
+    </dl>
+  </section>
+
+  {% if role_request.status == 'pending' %}
+    <form method="post" class="sbl-card p-6" x-data="{ action: '{{ form.action.value|default:'' }}' }">
+      {% csrf_token %}
+      <h2 class="sbl-section-title">Decision</h2>
+      {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+      <div class="mb-4 flex gap-6">
+        {% for choice in form.action %}
+          <label class="flex items-center gap-2 text-sm font-medium text-warm-800">
+            <input type="radio" name="{{ form.action.html_name }}" value="{{ choice.data.value }}" class="sbl-check" x-model="action" {% if form.action.value == choice.data.value %}checked{% endif %} required>
+            {{ choice.choice_label }}
+          </label>
+        {% endfor %}
+      </div>
+      {% for error in form.action.errors %}<p class="sbl-error mb-4">{{ error }}</p>{% endfor %}
+      <div x-show="action === 'reject'" x-cloak>
+        {% include "accounts/partials/_form_field.html" with field=form.rejection_reason %}
+      </div>
+      {% include "accounts/partials/_form_field.html" with field=form.review_notes %}
+      <div class="flex justify-end">
+        <button type="submit" class="sbl-btn sbl-btn-primary">Save decision</button>
+      </div>
+    </form>
+  {% else %}
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">Decision</h2>
+      <p class="text-sm text-warm-700">{{ role_request.get_status_display }} by {% if role_request.reviewed_by %}@{{ role_request.reviewed_by.username }}{% else %}—{% endif %}{% if role_request.reviewed_at %} on {{ role_request.reviewed_at|date:"M j, Y" }}{% endif %}.</p>
+      {% if role_request.rejection_reason %}<p class="mt-3 text-sm"><span class="font-semibold">Reason given:</span> {{ role_request.rejection_reason|linebreaksbr }}</p>{% endif %}
+      {% if role_request.review_notes %}<p class="mt-3 text-sm"><span class="font-semibold">Internal notes:</span> {{ role_request.review_notes|linebreaksbr }}</p>{% endif %}
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

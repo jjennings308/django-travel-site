@@ -6,9 +6,15 @@
 {% block content %}
 <div class="mt-6">
     <div class="grid grid-cols-12">
-        <div class="col-span-12 md:col-span-12">
-            <h2>Account Management</h2>
-            <p class="text-warm-500">View and manage all user accounts</p>
+        <div class="col-span-12 mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="sbl-page-title">Account Management</h1>
+                <p class="text-warm-500">View and manage all user accounts</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'staff:admin_role_requests' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-briefcase"></i>Role requests</a>
+                {% if user.is_staff %}<a href="{% url 'approval_system:dashboard' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-inboxes"></i>Approvals</a>{% endif %}
+            </div>
         </div>
     </div>
     
