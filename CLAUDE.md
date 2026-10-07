@@ -2,9 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Layout:** Django apps live under `apps/` and are imported as `apps.<name>` (Phase 3.5).
+> Paths in this file assume that layout. If there is no `apps/` directory at the repo root,
+> Phase 3.5 has not run yet: see **Phase 3.5** in the work plan and do it before anything else
+> that adds or moves app code. App *labels* (`trips`, `accounts`, …) did not change, so model
+> references (`"trips.Trip"`), permissions, URL namespaces and template names are the same in
+> both layouts.
+
 ## Project
 
 ShareBucketList (`SITE_NAME` in settings): a Django 6 travel site for bucket lists, trips, activities and locations. It uses PostgreSQL and server-rendered templates styled with Tailwind via `django-tailwind`. The site is moving from Bootstrap to Tailwind, so `*_bs.html` templates and crispy-bootstrap5 are leftovers.
+
+## Repository layout
+
+```
+manage.py
+config/            # settings/{base,dev,prod}.py, urls.py, wsgi.py — not an app, stays at the root
+theme/             # django-tailwind app (TAILWIND_APP_NAME = "theme") — stays at the root
+apps/              # every project Django app; apps/__init__.py makes it a package
+  core/ accounts/ notifications/ media_app/ approval_system/ rewards/
+  locations/ activities/ vendors/ events/
+  bucketlists/ trips/ reviews/ recommendations/
+  pages/ admin_tools/
+templates/         # site shell only: base.html, base_marketing.html, partials/, components/
+scripts/           # check_layers.py, reset_db.sh
+docs/              # architecture diagrams
+staticfiles/       # collectstatic output (committed)
+```
+
+Nothing that is a Django app (has an `apps.py`) belongs at the root except `config` and `theme`.
 
 ## Commands
 
@@ -19,14 +45,28 @@ python manage.py tailwind start         # Tailwind watcher (theme/static_src, np
 python manage.py tailwind build         # production CSS -> theme/static/css/dist/styles.css
 python manage.py collectstatic          # -> staticfiles/ (committed to git)
 
-python manage.py makemigrations <app> && python manage.py migrate
+python manage.py makemigrations <label> && python manage.py migrate   # label, e.g. "trips"
 python manage.py test                   # all apps
-python manage.py test locations         # one app
-python manage.py test locations.tests.SomeTestCase.test_method   # single test
+python manage.py test apps.locations    # one app (test labels are module paths)
+python manage.py test apps.locations.tests.SomeTestCase.test_method   # single test
 ```
 
 `trips` (from the itinerary merge), `core` (layer check), `accounts` and `pages` have tests, each as a `tests/` package; the other apps' `tests.py` files are empty stubs. New tests should follow the `trips` pattern — a `tests/` package per
-app, Django's built-in runner, no pytest.
+app, Django's built-in runner, no pytest. When patching, mock the full module path
+(`mock.patch("apps.trips.views.something")`).
+
+**Adding a new app:**
+
+```bash
+mkdir apps/<name>
+python manage.py startapp <name> apps/<name>
+```
+
+Then, in `apps/<name>/apps.py`, set `name = "apps.<name>"` and pin `label = "<name>"`
+(`startapp` writes only `name = "<name>"`, which is wrong here). Add `"apps.<name>"` to
+`INSTALLED_APPS` in `config/settings/base.py`, put its templates in
+`apps/<name>/templates/<name>/`, and add it to the layer table below and to `LAYERS` in
+`scripts/check_layers.py`. Never add `apps/` to `sys.path` to shorten imports.
 
 **Database:** Postgres runs in a Docker container named `postgres`. Connection settings come from `.env` (see `.env.example`), which `config/settings/base.py` loads with python-dotenv. To reset the database (it takes a backup to `~/db_backups` first):
 
@@ -36,49 +76,52 @@ set -a; source .env; set +a
 python manage.py migrate
 ```
 
-**Seed reference data** with the idempotent management commands in `locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
+**Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
 ## Architecture
 
 ### Settings and URLs
 - `config/settings/{base,dev,prod}.py`. `base.py` reads env vars. `dev.py` and `prod.py` override `DEBUG`, `ALLOWED_HOSTS`, `SITE_URL` and email.
-- `config/urls.py` mounts each app under its own namespace (`pages:` for home/dashboard/about, `locations:`, `activities:`, `trips:`, `bucketlists:`, `events:`, `rewards:`, `staff:`). Use namespaced names with `reverse` and `{% url %}`. `accounts.urls` (login, register and so on) is not namespaced. Staff-only views live in `accounts/staff_urls.py` under `/staff/`.
-- `AUTH_USER_MODEL = 'accounts.User'`. Login accepts a username or an email (`accounts.backends.EmailOrUsernameBackend`).
+- `config/urls.py` mounts each app under its own namespace (`pages:` for home/dashboard/about, `locations:`, `activities:`, `trips:`, `bucketlists:`, `events:`, `rewards:`, `staff:`) with `include("apps.<name>.urls")`. Use namespaced names with `reverse` and `{% url %}`. `apps.accounts.urls` (login, register and so on) is not namespaced. Staff-only views live in `apps/accounts/staff_urls.py` under `/staff/`.
+- `AUTH_USER_MODEL = 'accounts.User'` (a label reference — no `apps.` prefix). Login accepts a username or an email (`apps.accounts.backends.EmailOrUsernameBackend`).
+- Settings that hold **module paths** (`INSTALLED_APPS`, `MIDDLEWARE`, `TEMPLATES` context processors, `AUTHENTICATION_BACKENDS`, logging handlers) use `apps.<name>.…`. Settings that hold **labels** (`AUTH_USER_MODEL`, `"label.Model"` strings, permission strings like `"accounts.can_access_staff_dashboard"`) do not.
 
-### Shared base models (`core/models.py`)
-App models are built from abstract mixins: `TimeStampedModel`, `UUIDModel`, `SlugMixin`, `SoftDeleteModel`, `PublishableModel`, `FeaturedContentMixin`. Generate slugs with `core.utils.generate_unique_slug`. Other helpers under `core/utils/` handle breadcrumbs, currency, imperial/metric conversion and age. `docs/architecture/` has Mermaid diagrams of the intended app-dependency direction and FK ownership. Check them before adding cross-app foreign keys.
+### Shared base models (`apps/core/models.py`)
+App models are built from abstract mixins: `TimeStampedModel`, `UUIDModel`, `SlugMixin`, `SoftDeleteModel`, `PublishableModel`, `FeaturedContentMixin`. Generate slugs with `apps.core.utils.generate_unique_slug`. Other helpers under `apps/core/utils/` handle breadcrumbs, currency, imperial/metric conversion and age. `docs/architecture/` has Mermaid diagrams of the intended app-dependency direction and FK ownership. Check them before adding cross-app foreign keys.
 
 ### Approval / moderation (`approval_system`)
-User-submitted content inherits the `approval_system.models.Approvable` mixin. It adds `approval_status`, priority, submitted/reviewed-by fields and an `ApprovalLog` audit trail. Admin classes add `ApprovableAdminMixin`. When filtering for public visibility, use `approval_status=ApprovalStatus.APPROVED`.
-- `locations` models (Country, Region, City, POI) still carry the old `ReviewableMixin` (`status` field) next to `Approvable`. A migration from the old system is in progress (see `approval_system/MIGRATION_GUIDE.md`). New code should use the `Approvable` fields.
-- `Activity` also uses `Approvable`. App-level docs are in `approval_system/*.md` and `accounts/docs/`.
+User-submitted content inherits the `apps.approval_system.models.Approvable` mixin. It adds `approval_status`, priority, submitted/reviewed-by fields and an `ApprovalLog` audit trail. Admin classes add `ApprovableAdminMixin`. When filtering for public visibility, use `approval_status=ApprovalStatus.APPROVED`.
+- `locations` models (Country, Region, City, POI) still carry the old `ReviewableMixin` (`status` field) next to `Approvable`. A migration from the old system is in progress (see `apps/approval_system/MIGRATION_GUIDE.md`). New code should use the `Approvable` fields.
+- `Activity` also uses `Approvable`. App-level docs are in `apps/approval_system/*.md` and `apps/accounts/docs/`.
 
 ### Users, roles and per-user settings
 - Roles are Django Groups: `Vendors` and `Content Providers`. Users request a role through `accounts.RoleRequest`, and approving the request adds them to the group. Staff access uses the `accounts.can_access_staff_dashboard` permission. Check access with the `User` properties `is_vendor`, `can_access_staff` and `can_access_*_dashboard`.
 - Per-user data is spread over `Profile`, `AccountSettings` (`user.settings`: units, currency, language, timezone, theme) and `TravelPreferences` (`user.travel_preferences`). `UserPreferences` is the older combined model and was split into these.
 - Request-time plumbing:
-  - `core.middleware.UserTimezoneMiddleware` activates the user's timezone.
+  - `apps.core.middleware.UserTimezoneMiddleware` activates the user's timezone.
   - `UserThemeMiddleware` sets `request.theme` and the `ui_theme` cookie.
-  - Context processors in `core/context_processors.py` expose `user_units`, `user_currency`, `user_theme`, `user_travel_styles` and similar to every template.
-  - `rewards.context_processors.rewards_context` adds rewards data.
-  - `core/templatetags/conversion_tags.py` provides unit and currency filters that use these values.
+  - Context processors in `apps/core/context_processors.py` expose `user_units`, `user_currency`, `user_theme`, `user_travel_styles` and similar to every template.
+  - `apps.rewards.context_processors.rewards_context` adds rewards data.
+  - `apps/core/templatetags/conversion_tags.py` provides unit and currency filters that use these values (`{% load conversion_tags %}` — tag libraries load by name, not path).
 
 ### Templates and styling
 - Site-level templates are in `templates/`: `base.html` (Tailwind app shell with header, sidebar and messages), `base_marketing.html` (public pages), `partials/` and `components/`. App templates extend `base.html`. Reusable pieces are included with `{% include 'components/cards/stat_card.html' with color="clay" ... %}`; see `templates/components/README.md`.
-- Detail and list views pass `breadcrumb_list` (built with `core.utils.breadcrumbs`) to `partials/_breadcrumbs.html`.
-- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the forms and typography plugins. DaisyUI is in `package.json` but not loaded (no `@plugin`). `@source` globs cover `templates/` and every app's templates; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The older hand-written `!important` utilities in `styles.css` predate the `@source`/`@theme` fix and can be pruned. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` after template or CSS changes.
+- App templates live in `apps/<name>/templates/<name>/` and are still referenced as `"<name>/…html"` (e.g. `trips/trip_detail.html`); the `apps/` directory never appears in a template name.
+- Detail and list views pass `breadcrumb_list` (built with `apps.core.utils.breadcrumbs`) to `partials/_breadcrumbs.html`.
+- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the forms and typography plugins. DaisyUI is in `package.json` but not loaded (no `@plugin`). `@source` globs cover `templates/` and `apps/*/templates/`; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The older hand-written `!important` utilities in `styles.css` predate the `@source`/`@theme` fix and can be pruned. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` after template or CSS changes.
 - **Trips pages are scoped.** Every trips template extends `trips/base_trips.html`, which sets `content_class` = `trips-ui` (and a default `wrap_class` width) on `base.html`'s content area. The itinerary component layer (`.card`, `.btn`, `.badge-*`, `.callout-*`, `.chip`, form controls) and its `@media print` rules are written as `.trips-ui …` in `styles.css`, so they never restyle other apps' templates. Tests assert those class names. Site header, sidebars and footer carry `print:hidden`.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
 
-### Trips (`trips`, merged from the itinerary project)
+### Trips (`apps/trips`, merged from the itinerary project)
 
 The itinerary project's `trips` app replaced ours in Phase 1. Its own CLAUDE.md
 (`~/projects/itinerary/code/CLAUDE.md`) is the long-form reference; read the relevant section
-there before changing the docx importers, section payloads, formsets or the dashboard. The rules
+there before changing the docx importers, section payloads, formsets or the dashboard. (That
+project also kept its apps under `apps/`, so its paths line up with ours again.) The rules
 that matter most:
 
 - **Models:** `Traveler` (roster person, optional `user` link), `Trip`, `Day`, `Section`
-  (`content` is JSONB; per-type shapes in the `trips/models.py` docstring), `Meal`, `Lodging`,
+  (`content` is JSONB; per-type shapes in the `apps/trips/models.py` docstring), `Meal`, `Lodging`,
   `TransportLeg`, `Confirmation`, `Contact`, `BookingTask`, `TripGrant`, generic `Comment`,
   `RewardsMembership`.
 - **Access is per trip.** A `trips.TripGrant` row (one per trip and user) carries the person's
@@ -91,10 +134,10 @@ that matter most:
   the action is refused. `Trip.status`, `Trip.travelers` and booking-task names are never access
   checks. Staff/superusers get everything without grants. Trips are soft-deleted (`deleted_at`);
   `visible_to` hides deleted trips from everyone, recovery is an admin action.
-- **Every account is a traveler.** `trips/signals.py` links or creates a `Traveler` on every
+- **Every account is a traveler.** `apps/trips/signals.py` links or creates a `Traveler` on every
   user save (unique exact-name match only). Travel-profile data (passport, loyalty numbers) is on
   `Traveler` and visible only to that person and staff (`Traveler.is_private_to`).
-- **Public view:** `/public/<uuid:token>/` (`public_trip`) renders `trips/public.py`'s
+- **Public view:** `/public/<uuid:token>/` (`public_trip`) renders `apps/trips/public.py`'s
   allowlisted dict, never a `Trip`; sections, themes, lodging, transport, confirmations and
   travellers are omitted on purpose. `manage.py audit_public_leak` checks the real data (exit 1
   on a certain leak).
@@ -105,19 +148,21 @@ that matter most:
   pins it.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
-  with role and trip-access inlines is registered from `trips/admin.py`.
+  with role and trip-access inlines is registered from `apps/trips/admin.py`.
 - Management commands: `import_itinerary` (docx, dry run unless `--apply`), `dedupe_travelers`,
-  `audit_public_leak`, `unescape_html`. Tests: `python manage.py test trips` (about 12 minutes
+  `audit_public_leak`, `unescape_html`. Tests: `python manage.py test apps.trips` (about 12 minutes
   for the whole suite).
 
 ## Dependency layers
 
 The goal is that any app can be lifted into another project by taking it plus the layers below it.
-What makes that possible is the direction of imports, not where the app sits on disk, so the apps
-stay flat at the repo root.
+What makes that possible is the direction of imports. Apps live in `apps/` and import each other
+as `apps.<name>`; James's other Django projects (e.g. SoHo) use the same `apps/` convention, so a
+lifted app dropped into another project's `apps/` keeps working without import rewrites.
 
 **Imports only point down this list.** An app may import from its own layer only when the order
-inside the layer allows it (listed left to right; a later app may import an earlier one).
+inside the layer allows it (listed left to right; a later app may import an earlier one). Names
+in the table are app labels; the code is at `apps/<label>/`.
 
 | Layer | Apps | May import |
 |---|---|---|
@@ -126,23 +171,26 @@ inside the layer allows it (listed left to right; a later app may import an earl
 | 2. Platform services | `notifications`, `media_app`, `approval_system`, `rewards` | layers 0–1 (`approval_system` → `notifications` is allowed) |
 | 3. Catalog | `locations`, `activities`, `vendors`, `events` | layers 0–2; within the layer: `vendors` → `locations`; `events` → `locations`, `activities` |
 | 4. User content | `bucketlists`, `trips`, `reviews`, `recommendations` | layers 0–3; within the layer: `reviews` and `recommendations` → `trips` |
-| 5. Site | `pages` (to be created), `admin_tools` | anything |
+| 5. Site | `pages`, `admin_tools` | anything |
 
-`theme` (django-tailwind) and `config` sit outside the ladder.
+`theme` (django-tailwind) and `config` sit outside the ladder and outside `apps/`.
 
 Rules that follow from this:
 
-- **Never `from accounts.models import User` outside `accounts`.** Models use
+- **Never `from apps.accounts.models import User` outside `accounts`.** Models use
   `settings.AUTH_USER_MODEL` in the FK; code uses `django.contrib.auth.get_user_model()`. An app that
   imports the concrete `User` can only ever run inside this project.
 - **A cross-layer FK pointing up is a design error, not an import problem.** A string reference like
   `"trips.Trip"` hides the import but still makes the lower app's migrations depend on the higher one.
   If a lower model needs to know about a higher one, put the FK on the higher model, or use a
   `GenericForeignKey`, or a signal.
-- **Pin `label` in every `apps.py`** (`name = "trips"`, `label = "trips"`). The label decides table
-  names, content types and migration history; pinning it makes a later move data-neutral. Most
-  models here already set `db_table` explicitly — keep doing that for new models.
-- **Each app ships its own templates** under `<app>/templates/<app>/`; only the shell
+- **Pin `label` in every `apps.py`** (`name = "apps.trips"`, `label = "trips"`). The label decides table
+  names, content types and migration history; pinning it is what made the move into `apps/`
+  data-neutral, and keeps any later move data-neutral too. Most models here already set `db_table`
+  explicitly — keep doing that for new models.
+- **Always import other apps absolutely as `apps.<name>`.** Relative imports are fine inside one
+  app; no `sys.path` tricks, no bare `from trips…`.
+- **Each app ships its own templates** under `apps/<app>/templates/<app>/`; only the shell
   (`base.html`, `partials/`, `components/`) lives in the top-level `templates/`.
 - Keep `docs/architecture/app_dependencies.md` (arrows mean "imports") and the `LAYERS` /
   `SAME_LAYER_ALLOWED` tables in `scripts/check_layers.py` in step with this table.
@@ -153,9 +201,10 @@ Rules that follow from this:
 python scripts/check_layers.py      # exits 1 and lists each violation
 ```
 
-It parses every app's imports with `ast` (migrations skipped) and flags upward imports, same-layer
-imports not listed above, and concrete `accounts.models.User` imports outside `accounts`.
-`core.tests.test_layers` runs it, so `manage.py test` fails on a violation.
+It parses every app's imports under `apps/` with `ast` (migrations skipped) and flags upward imports,
+same-layer imports not listed above, concrete `apps.accounts.models.User` imports outside `accounts`,
+bare (un-prefixed) imports of a local app, and any Django app directory at the repo root other than
+`config` and `theme`. `apps.core.tests.test_layers` runs it, so `manage.py test` fails on a violation.
 
 The violations found at commit `ddd00d7` (`core` → `accounts`/`trips`/`bucketlists`, `accounts` →
 `locations`, ten concrete `User` imports) were fixed in Phase 0.5.
@@ -163,7 +212,9 @@ The violations found at commit `ddd00d7` (`core` → `accounts`/`trips`/`bucketl
 ## Work plan
 
 Two pieces of work, in this order: tidy the dependency layers (Phase 0.5), then merge the
-itinerary app into this project (Phases 1–4). Work on a branch; do one phase per branch/PR.
+itinerary app into this project (Phases 1–4), with the move into `apps/` (Phase 3.5) between
+styling and integration. Work on a branch; do one phase per branch/PR. Completed phases below are
+kept as history and describe the flat layout as it was at the time; their paths are not current.
 
 **Decisions** (1–3 answered 2026-10-07: 1 = nothing to keep, drop and replace; 2 = no outside users or production database, migration history may be reset; 3 = move the role onto `TripGrant` per trip, as its own step after Phase 1). **Still open — stop and ask James before the step that depends on it:**
 
@@ -238,7 +289,8 @@ change pages added to `accounts`; staff-lands-on-dashboard login behaviour dropp
   and the views that move to `pages` in Phase 0.5. Repoint them at the new `Trip`.
 - Copy their `apps/trips` in as `trips/` (flat). Rewrite `apps.trips.` → `trips.` in imports
   **and** in serialized paths inside migrations (e.g. `apps.trips.models.validate_timezone_name`).
-  Leave `to='trips.day'`-style references alone — they resolve by label.
+  Leave `to='trips.day'`-style references alone — they resolve by label. (Phase 3.5 reverses the
+  prefix rewrite.)
 - Move `UserRole` into our `accounts` as a new migration; rewrite `from apps.accounts` imports.
   Their rule that `accounts` never imports `trips` still holds and matches the layer table.
 - Their `ItineraryUserAdmin` re-registers contrib's user admin to add inlines. Instead, add the
@@ -289,6 +341,105 @@ unique here) — replace them in the admin. Row counts match, both detail pages 
   (`callout-warning`, `badge-critical`), so a rename updates those tests too.
 - Add the trips templates to the Tailwind `@source` globs; retire their standalone npm build and
   `static/css/app.css`.
+
+**Phase 3.5 — move every app under `apps/`.** Status: not started. Branch `phase-3.5-apps-dir`.
+
+Do it before Phase 4: Phase 4 adds cross-app FKs and imports, and every one of those would
+otherwise need rewriting. The move is a **code-only change**. Labels are pinned (Phase 0.5 step 4)
+and most models set `db_table`, so table names, `django_migrations` rows, content types,
+permissions, `AUTH_USER_MODEL`, `"label.Model"` FK strings, URL namespaces, template names, tag
+libraries and management command names all stay the same. Only Python module paths change
+(`trips.views` → `apps.trips.views`). If any step suggests a database change, stop and ask James.
+
+What moves: every directory at the root with an `apps.py` — `core`, `accounts`, `notifications`,
+`media_app`, `approval_system`, `rewards`, `locations`, `activities`, `vendors`, `events`,
+`bucketlists`, `trips`, `reviews`, `recommendations`, `pages`, `admin_tools`, plus any other app
+found. What stays at the root: `config/`, `theme/` (django-tailwind finds it by
+`TAILWIND_APP_NAME = "theme"`), `templates/`, `scripts/`, `docs/`, `staticfiles/`, `manage.py`.
+
+1. **Baseline.** Start from a clean tree on the new branch. Take a `pg_dump` to
+   `~/db_backups/travel_site_pre_phase3.5_<timestamp>.dump` (nothing should write, but it's cheap).
+   Record, for comparison at the end:
+   - `python manage.py showmigrations > /tmp/sbl_showmigrations_before.txt`
+   - `sha256sum theme/static/css/dist/styles.css`
+   - `python scripts/check_layers.py` is clean and the full test suite passes (518 tests).
+   - Confirm every `apps.py` has an explicit `label`. If one doesn't, stop and ask — moving
+     it would change its label.
+2. **Move.** `mkdir apps && touch apps/__init__.py`, then `git mv <app> apps/` for each app.
+   Commit this as a pure-move commit (the tree won't run yet) so `git log --follow` keeps history.
+3. **`apps.py`.** In each, change `name = "<x>"` to `name = "apps.<x>"`. Do **not** touch
+   `label`.
+4. **Settings** (`config/settings/base.py`, and check `dev.py` / `prod.py`). Prefix module paths
+   with `apps.`: `INSTALLED_APPS` (keep whichever form each entry uses — `"apps.trips"` or
+   `"apps.trips.apps.TripsConfig"`), `MIDDLEWARE`, `TEMPLATES[...]["OPTIONS"]["context_processors"]`,
+   `AUTHENTICATION_BACKENDS`, and any other dotted path (logging handlers/filters, form renderer,
+   third-party settings). Leave `AUTH_USER_MODEL = "accounts.User"`, `TAILWIND_APP_NAME`,
+   `ROOT_URLCONF`, `WSGI_APPLICATION`, and URL-name settings (`LOGIN_URL` etc.) alone.
+5. **Imports and dotted-path strings in code** (everything except migrations). List hits with:
+   ```bash
+   APPS="core|accounts|notifications|media_app|approval_system|rewards|locations|activities|vendors|events|bucketlists|trips|reviews|recommendations|pages|admin_tools"
+   grep -rnE "^\s*(from|import) ($APPS)(\.|\s|$)|[\"']($APPS)\.[a-z_]+(\.[a-z_]+)*[\"']" \
+     --include=*.py --exclude-dir=migrations --exclude-dir=.venv --exclude-dir=node_modules apps config scripts
+   ```
+   - Rewrite `from <x>…` / `import <x>…` to `apps.<x>…`, including `AppConfig.ready()` signal
+     imports, `include("<x>.urls")` in `config/urls.py` and any app `urls.py`, and
+     `mock.patch("<x>.…")` targets in tests.
+   - For quoted strings, rewrite **only module paths** (Django imports them):
+     `"trips.urls"`, `"core.middleware.UserTimezoneMiddleware"`. **Leave label lookups alone**:
+     `"trips.Trip"`, `apps.get_model("trips", "Trip")`, permission strings such as
+     `"accounts.can_access_staff_dashboard"` (lowercase, but a label + codename, not a module),
+     `"pages:home"`, `"trips/trip_detail.html"`. Decide each string by what Django does with it,
+     not by its shape; don't run a blind `sed`.
+   - Relative imports within one app stay as they are. Add no `sys.path` changes.
+6. **Migrations.** Grep `apps/*/migrations/*.py` for serialized module paths and rewrite them
+   to `apps.<x>.…`:
+   ```bash
+   grep -rnE "^\s*import ($APPS)\.|\b($APPS)\.(models|utils|validators|fields|managers|storage)\b" apps/*/migrations/
+   ```
+   Typical hits: `import trips.models` with `trips.models.validate_timezone_name` (Phase 1 rewrote
+   these from `apps.trips.` — this reverses it), `upload_to=` / `default=` callables, custom fields,
+   `managers=[…]`, and non-model mixins in `bases=(…)`. Leave `to="<label>.<model>"`,
+   `dependencies=[("<label>", "…")]` and `swappable_dependency(settings.AUTH_USER_MODEL)` alone.
+   Do **not** regenerate, squash or reset migrations, even though Decision 2 allows it — it isn't
+   needed, and it would put the data loaded in Phase 2 at risk.
+7. **Tailwind.** In `theme/static_src/src/styles.css`, change the per-app `@source` globs to
+   cover `apps/*/templates` (paths are relative to that file, so mirror the existing pattern, e.g.
+   `@source "../../../apps/*/templates";`). Keep the top-level `templates/` glob. Run
+   `python manage.py tailwind build`; the dist CSS should hash the same as the baseline. A
+   difference means a template directory is no longer scanned — fix the glob and don't commit until
+   the hash matches (or the diff is explained).
+8. **Tooling, scripts and docs.**
+   - `scripts/check_layers.py`: discover apps under `apps/`; map imports of `apps.<x>` to `<x>`
+     for the `LAYERS` lookup (keep `LAYERS` keyed by label); match the concrete-`User` rule on
+     `apps.accounts.models`; flag bare `import <x>` / `from <x>` of a local app; and flag any
+     Django app directory (one with `apps.py`) at the repo root other than `config` and `theme`.
+     Its test is now `apps.core.tests.test_layers`.
+   - Grep `pyproject.toml`, `setup.cfg`, `.coveragerc`, `.pre-commit-config.yaml`, `.vscode/`,
+     `scripts/*.sh` and `Makefile` (whichever exist) for app names, and update first-party
+     settings (e.g. ruff/isort `known-first-party = ["apps", "config"]`).
+   - Update paths in `docs/architecture/app_dependencies.md` and any app-level docs that link to
+     other apps' files (`apps/approval_system/*.md`, `apps/accounts/docs/`).
+9. **Static files.** `python manage.py collectstatic --noinput`, then `git status staticfiles/`.
+   Expect no changes, since app static files are namespaced inside each app's `static/` folder.
+   Investigate any change before committing.
+10. **Verify** — all of these must hold:
+    - `python manage.py check` is clean.
+    - `python manage.py makemigrations --check --dry-run` says *No changes detected*. If it
+      proposes anything, stop: a label or `db_table` changed.
+    - `python manage.py showmigrations` diffs empty against `/tmp/sbl_showmigrations_before.txt`.
+    - `python manage.py remove_stale_contenttypes` finds nothing to remove. If it lists anything,
+      answer **no** and stop.
+    - `python scripts/check_layers.py` is clean.
+    - The full test suite passes (518 tests, about 12 minutes), including
+      `QueryCountTests` at 19 queries.
+    - `python manage.py audit_public_leak` exits 0.
+    - The step 5 and step 6 greps return nothing.
+    - `runserver` smoke test: log in, then open the home page, dashboard, a trip detail page, the
+      staff dashboard and the admin. Existing dev sessions are logged out by the move — each stores
+      the old auth backend path `accounts.backends.EmailOrUsernameBackend` — so logging in again is
+      expected, not a bug.
+11. **Close out.** Set this phase's status to done in this file, remove the "if there is no
+    `apps/` directory" note at the top, and confirm the paths in this file match the tree.
 
 **Phase 4 — integrate (incremental, each its own PR).**
 
