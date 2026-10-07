@@ -4,31 +4,31 @@
 {% block title %}{{ profile_user.get_full_name }}'s Profile{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="mt-6">
     <!-- Cover Photo -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card mb-3">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-12">
+            <div class="sbl-card mb-4">
                 {% if profile.cover_photo %}
-                    <img src="{{ profile.cover_photo.url }}" class="card-img-top" alt="Cover Photo" style="max-height: 300px; object-fit: cover;">
+                    <img src="{{ profile.cover_photo.url }}" class="w-full rounded-t-xl" alt="Cover Photo" style="max-height: 300px; object-fit: cover;">
                 {% else %}
-                    <div class="bg-secondary" style="height: 200px;"></div>
+                    <div class="bg-warm-500" style="height: 200px;"></div>
                 {% endif %}
                 
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2 text-center">
+                <div class="p-5">
+                    <div class="grid grid-cols-12 items-center">
+                        <div class="col-span-12 md:col-span-2 text-center">
                             {% if profile.avatar %}
-                                <img src="{{ profile.avatar.url }}" class="rounded-circle" alt="Avatar" style="width: 120px; height: 120px; object-fit: cover; margin-top: -60px; border: 3px solid white;">
+                                <img src="{{ profile.avatar.url }}" class="rounded-full" alt="Avatar" style="width: 120px; height: 120px; object-fit: cover; margin-top: -60px; border: 3px solid white;">
                             {% else %}
-                                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white" style="width: 120px; height: 120px; margin-top: -60px; border: 3px solid white; font-size: 48px;">
+                                <div class="rounded-full bg-earth-clay inline-flex items-center justify-center text-white" style="width: 120px; height: 120px; margin-top: -60px; border: 3px solid white; font-size: 48px;">
                                     {{ profile_user.first_name.0 }}{{ profile_user.last_name.0 }}
                                 </div>
                             {% endif %}
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-span-12 md:col-span-8">
                             <h2>{{ profile_user.get_full_name }}</h2>
-                            <p class="text-muted">@{{ profile_user.username }}</p>
+                            <p class="text-warm-500">@{{ profile_user.username }}</p>
                             {% if profile.home_city or profile.home_country %}
                                 <p><i class="bi bi-geo-alt"></i> {{ profile.home_city }}{% if profile.home_city and profile.home_country %}, {% endif %}{{ profile.home_country }}</p>
                             {% endif %}
@@ -36,12 +36,12 @@
                                 <p><i class="bi bi-pin-map"></i> Currently in: {{ profile.current_location }}</p>
                             {% endif %}
                         </div>
-                        <div class="col-md-2 text-end">
+                        <div class="col-span-12 md:col-span-2 text-right">
                             {% if is_own_profile %}
-                                <a href="{% url 'edit_profile' %}" class="btn btn-primary">
+                                <a href="{% url 'edit_profile' %}" class="sbl-btn sbl-btn-primary">
                                     <i class="bi bi-pencil"></i> Edit Profile
                                 </a>
-                                <a href="{% url 'edit_travel_preferences' %}" class="btn btn-secondary mt-2">
+                                <a href="{% url 'edit_travel_preferences' %}" class="sbl-btn sbl-btn-outline mt-2">
                                     <i class="bi bi-airplane"></i> Travel Prefs
                                 </a>
                             {% endif %}
@@ -52,12 +52,12 @@
         </div>
     </div>
     
-    <div class="row">
+    <div class="grid grid-cols-12">
         <!-- Left Column -->
-        <div class="col-md-4">
+        <div class="col-span-12 md:col-span-4">
             <!-- Bio -->
-            <div class="card mb-3">
-                <div class="card-body">
+            <div class="sbl-card mb-4">
+                <div class="p-5">
                     <h5>About</h5>
                     <p>{{ profile.bio|default:"No bio yet." }}</p>
                 </div>
@@ -65,10 +65,10 @@
             
             <!-- Travel Preferences (NEW) -->
             {% if travel_preferences and is_own_profile %}
-            <div class="card mb-3">
-                <div class="card-body">
+            <div class="sbl-card mb-4">
+                <div class="p-5">
                     <h5><i class="bi bi-airplane"></i> Travel Style</h5>
-                    <ul class="list-unstyled">
+                    <ul class="list-none">
                         <li><strong>Budget:</strong> {{ travel_preferences.get_budget_preference_display }}</li>
                         <li><strong>Pace:</strong> {{ travel_preferences.get_travel_pace_display }}</li>
                         <li><strong>Fitness:</strong> {{ travel_preferences.fitness_level }}/5</li>
@@ -76,7 +76,7 @@
                         <li class="mt-2">
                             <strong>Interests:</strong><br>
                             {% for style in travel_preferences.travel_styles %}
-                                <span class="badge bg-primary me-1">{{ style|title }}</span>
+                                <span class="sbl-badge sbl-badge-primary mr-1">{{ style|title }}</span>
                             {% endfor %}
                         </li>
                         {% endif %}
@@ -86,10 +86,10 @@
             {% endif %}
             
             <!-- Stats -->
-            <div class="card mb-3">
-                <div class="card-body">
+            <div class="sbl-card mb-4">
+                <div class="p-5">
                     <h5>Travel Stats</h5>
-                    <ul class="list-unstyled">
+                    <ul class="list-none">
                         <li><strong>Countries Visited:</strong> {{ profile.countries_visited_count }}</li>
                         <li><strong>Trips Completed:</strong> {{ profile.trips_completed_count }}</li>
                         <li><strong>Bucket List Items:</strong> {{ profile.bucket_list_completed_count }}</li>
@@ -99,8 +99,8 @@
             
             <!-- Social Links -->
             {% if profile.website or profile.instagram or profile.twitter %}
-            <div class="card mb-3">
-                <div class="card-body">
+            <div class="sbl-card mb-4">
+                <div class="p-5">
                     <h5>Connect</h5>
                     {% if profile.website %}
                         <p><a href="{{ profile.website }}" target="_blank"><i class="bi bi-globe"></i> Website</a></p>
@@ -117,11 +117,11 @@
         </div>
         
         <!-- Right Column - Activity Feed -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body">
+        <div class="col-span-12 md:col-span-8">
+            <div class="sbl-card">
+                <div class="p-5">
                     <h5>Recent Activity</h5>
-                    <p class="text-muted">Activity feed coming soon...</p>
+                    <p class="text-warm-500">Activity feed coming soon...</p>
                 </div>
             </div>
         </div>

@@ -29,34 +29,34 @@ class ProfileForm(forms.ModelForm):
         ]
         widgets = {
             'bio': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 4,
                 'placeholder': 'Tell us about yourself...'
             }),
-            'avatar': forms.FileInput(attrs={'class': 'form-control'}),
-            'cover_photo': forms.FileInput(attrs={'class': 'form-control'}),
+            'avatar': forms.FileInput(attrs={'class': 'sbl-input'}),
+            'cover_photo': forms.FileInput(attrs={'class': 'sbl-input'}),
             'home_country': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., United States'
             }),
             'home_city': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., New York'
             }),
             'current_location': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Where are you now?'
             }),
             'website': forms.URLInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'https://'
             }),
             'instagram': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': '@username'
             }),
             'twitter': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': '@username'
             }),
         }
@@ -76,16 +76,16 @@ class TravelPreferencesForm(forms.ModelForm):
             'mobility_restrictions',
         ]
         widgets = {
-            'budget_preference': forms.Select(attrs={'class': 'form-select'}),
+            'budget_preference': forms.Select(attrs={'class': 'sbl-input'}),
             'travel_styles': forms.CheckboxSelectMultiple(),
-            'travel_pace': forms.Select(attrs={'class': 'form-select'}),
+            'travel_pace': forms.Select(attrs={'class': 'sbl-input'}),
             'preferred_activities': forms.CheckboxSelectMultiple(),
             'fitness_level': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'min': 1,
                 'max': 5
             }),
-            'mobility_restrictions': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'mobility_restrictions': forms.CheckboxInput(attrs={'class': 'sbl-check'}),
         }
 
 COMMON_TIMEZONES = [
@@ -122,7 +122,7 @@ class UserRegistrationForm(UserCreationForm):
             )
         ],
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Username (letters, numbers, and _ only)'
         }),
         help_text='Your unique username for your profile URL'
@@ -131,7 +131,7 @@ class UserRegistrationForm(UserCreationForm):
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Email address'
         })
     )
@@ -140,7 +140,7 @@ class UserRegistrationForm(UserCreationForm):
         required=True,
         max_length=150,
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'First name'
         })
     )
@@ -149,7 +149,7 @@ class UserRegistrationForm(UserCreationForm):
         required=True,
         max_length=150,
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Last name'
         })
     )
@@ -157,7 +157,7 @@ class UserRegistrationForm(UserCreationForm):
     password1 = forms.CharField(
         label='Password',
         widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Password'
         })
     )
@@ -165,7 +165,7 @@ class UserRegistrationForm(UserCreationForm):
     password2 = forms.CharField(
         label='Confirm Password',
         widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Confirm password'
         })
     )
@@ -174,7 +174,7 @@ class UserRegistrationForm(UserCreationForm):
     request_vendor_role = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
+            'class': 'sbl-check'
         }),
         label='I want to apply to become a vendor',
         help_text='Your account will be created immediately, but vendor features require approval'
@@ -183,7 +183,7 @@ class UserRegistrationForm(UserCreationForm):
     request_content_provider_role = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
+            'class': 'sbl-check'
         }),
         label='I want to apply to become a content provider',
         help_text='Your account will be created immediately, but content provider features require approval'
@@ -192,7 +192,7 @@ class UserRegistrationForm(UserCreationForm):
     terms_accepted = forms.BooleanField(
         required=True,
         widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
+            'class': 'sbl-check'
         }),
         error_messages={
             'required': 'You must accept the terms and conditions to register.'
@@ -238,32 +238,32 @@ class ProfileForm(forms.ModelForm):
         ]
         widgets = {
             'bio': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 4,
                 'placeholder': 'Tell us about yourself...'
             }),
             'home_country': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., United States'
             }),
             'home_city': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., New York'
             }),
             'current_location': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Where are you now?'
             }),
             'website': forms.URLInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'https://...'
             }),
             'instagram': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': '@username'
             }),
             'twitter': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': '@username'
             }),
         }
@@ -289,9 +289,9 @@ class TravelPreferencesForm(forms.ModelForm):
             "mobility_restrictions",
         ]
         widgets = {
-            "budget_preference": forms.Select(attrs={"class": "form-control"}),
-            "travel_pace": forms.Select(attrs={"class": "form-control"}),
-            "fitness_level": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 5}),
+            "budget_preference": forms.Select(attrs={"class": "sbl-input"}),
+            "travel_pace": forms.Select(attrs={"class": "sbl-input"}),
+            "fitness_level": forms.NumberInput(attrs={"class": "sbl-input", "min": 1, "max": 5}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -329,13 +329,13 @@ class AccountSettingsForm(forms.ModelForm):
         label="Preferred Currency",
         choices=CURRENCY_CHOICES,
         help_text="Your default currency for budgets and expenses",
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs={"class": "sbl-input"}),
     )
 
     timezone = forms.ChoiceField(
         choices=[],
         required=True,
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs={"class": "sbl-input"}),
     )
 
     class Meta:
@@ -362,9 +362,9 @@ class AccountSettingsForm(forms.ModelForm):
             "allow_friend_requests",
         ]
         widgets = {
-            "language": forms.Select(attrs={"class": "form-control"}),
-            "units": forms.Select(attrs={"class": "form-control"}),
-            "theme": forms.Select(attrs={"class": "form-control"}),
+            "language": forms.Select(attrs={"class": "sbl-input"}),
+            "units": forms.Select(attrs={"class": "sbl-input"}),
+            "theme": forms.Select(attrs={"class": "sbl-input"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -399,26 +399,26 @@ class RoleRequestForm(forms.ModelForm):
             'supporting_documents',
         ]
         widgets = {
-            'requested_role': forms.Select(attrs={'class': 'form-control'}),
+            'requested_role': forms.Select(attrs={'class': 'sbl-input'}),
             'business_name': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Your business or brand name'
             }),
             'business_description': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 5,
                 'placeholder': 'Tell us about your business, experience, and why you want this role...'
             }),
             'website': forms.URLInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'https://your-website.com (optional)'
             }),
             'business_license': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'License number (if applicable)'
             }),
             'supporting_documents': forms.FileInput(attrs={
-                'class': 'form-control'
+                'class': 'sbl-input'
             }),
         }
     
@@ -457,7 +457,7 @@ class RoleRequestReviewForm(forms.Form):
     review_notes = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'rows': 3,
             'placeholder': 'Internal notes (optional)'
         }),
@@ -467,7 +467,7 @@ class RoleRequestReviewForm(forms.Form):
     rejection_reason = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'rows': 3,
             'placeholder': 'Reason for rejection (shown to user)'
         }),

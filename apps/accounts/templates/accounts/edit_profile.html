@@ -4,77 +4,77 @@
 {% block title %}Edit Profile{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header">
+<div class="mt-6">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-8 md:col-start-3">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h3>Edit Profile</h3>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.avatar.id_for_label }}" class="form-label">Profile Picture</label>
+                        <div class="mb-4">
+                            <label for="{{ form.avatar.id_for_label }}" class="sbl-label">Profile Picture</label>
                             {{ form.avatar }}
                             {% if form.avatar.errors %}
-                                <div class="text-danger">{{ form.avatar.errors }}</div>
+                                <div class="text-red-700">{{ form.avatar.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.cover_photo.id_for_label }}" class="form-label">Cover Photo</label>
+                        <div class="mb-4">
+                            <label for="{{ form.cover_photo.id_for_label }}" class="sbl-label">Cover Photo</label>
                             {{ form.cover_photo }}
                             {% if form.cover_photo.errors %}
-                                <div class="text-danger">{{ form.cover_photo.errors }}</div>
+                                <div class="text-red-700">{{ form.cover_photo.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.bio.id_for_label }}" class="form-label">Bio</label>
+                        <div class="mb-4">
+                            <label for="{{ form.bio.id_for_label }}" class="sbl-label">Bio</label>
                             {{ form.bio }}
                             {% if form.bio.errors %}
-                                <div class="text-danger">{{ form.bio.errors }}</div>
+                                <div class="text-red-700">{{ form.bio.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.home_country.id_for_label }}" class="form-label">Home Country</label>
+                        <div class="grid grid-cols-12">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.home_country.id_for_label }}" class="sbl-label">Home Country</label>
                                 {{ form.home_country }}
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.home_city.id_for_label }}" class="form-label">Home City</label>
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.home_city.id_for_label }}" class="sbl-label">Home City</label>
                                 {{ form.home_city }}
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.current_location.id_for_label }}" class="form-label">Current Location</label>
+                        <div class="mb-4">
+                            <label for="{{ form.current_location.id_for_label }}" class="sbl-label">Current Location</label>
                             {{ form.current_location }}
                         </div>
                         
-                        <h5 class="mt-4">Social Links</h5>
+                        <h5 class="mt-6">Social Links</h5>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.website.id_for_label }}" class="form-label">Website</label>
+                        <div class="mb-4">
+                            <label for="{{ form.website.id_for_label }}" class="sbl-label">Website</label>
                             {{ form.website }}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.instagram.id_for_label }}" class="form-label">Instagram</label>
+                        <div class="mb-4">
+                            <label for="{{ form.instagram.id_for_label }}" class="sbl-label">Instagram</label>
                             {{ form.instagram }}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.twitter.id_for_label }}" class="form-label">Twitter</label>
+                        <div class="mb-4">
+                            <label for="{{ form.twitter.id_for_label }}" class="sbl-label">Twitter</label>
                             {{ form.twitter }}
                         </div>
                         
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                        <div class="flex gap-2">
+                            <button type="submit" class="sbl-btn sbl-btn-primary">Save Changes</button>
+                            <a href="{% url 'profile' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
                         </div>
                     </form>
                 </div>

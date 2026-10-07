@@ -4,141 +4,141 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+<div class="mt-12">
+    <div class="grid grid-cols-12 justify-center">
+        <div class="col-span-12 md:col-span-6">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h3>Create Your Account</h3>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     <form method="post">
                         {% csrf_token %}
                         
                         {% if form.errors %}
-                            <div class="alert alert-danger">
+                            <div class="sbl-alert sbl-alert-danger">
                                 <strong>Please correct the errors below:</strong>
                                 {{ form.errors }}
                             </div>
                         {% endif %}
                         
                         <!-- USERNAME FIELD - This was missing! -->
-                        <div class="mb-3">
-                            <label for="{{ form.username.id_for_label }}" class="form-label">Username <span class="text-danger">*</span></label>
+                        <div class="mb-4">
+                            <label for="{{ form.username.id_for_label }}" class="sbl-label">Username <span class="text-red-700">*</span></label>
                             {{ form.username }}
-                            <small class="form-text text-muted">
+                            <small class="sbl-help text-warm-500">
                                 Your unique username (letters, numbers, and underscores only). This will be used in your profile URL.
                             </small>
                             {% if form.username.errors %}
-                                <div class="text-danger">{{ form.username.errors }}</div>
+                                <div class="text-red-700">{{ form.username.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.email.id_for_label }}" class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <div class="mb-4">
+                            <label for="{{ form.email.id_for_label }}" class="sbl-label">Email Address <span class="text-red-700">*</span></label>
                             {{ form.email }}
-                            <small class="form-text text-muted">
+                            <small class="sbl-help text-warm-500">
                                 You can use this email or your username to log in.
                             </small>
                             {% if form.email.errors %}
-                                <div class="text-danger">{{ form.email.errors }}</div>
+                                <div class="text-red-700">{{ form.email.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name <span class="text-danger">*</span></label>
+                        <div class="grid grid-cols-12">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.first_name.id_for_label }}" class="sbl-label">First Name <span class="text-red-700">*</span></label>
                                 {{ form.first_name }}
                                 {% if form.first_name.errors %}
-                                    <div class="text-danger">{{ form.first_name.errors }}</div>
+                                    <div class="text-red-700">{{ form.first_name.errors }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.last_name.id_for_label }}" class="sbl-label">Last Name <span class="text-red-700">*</span></label>
                                 {{ form.last_name }}
                                 {% if form.last_name.errors %}
-                                    <div class="text-danger">{{ form.last_name.errors }}</div>
+                                    <div class="text-red-700">{{ form.last_name.errors }}</div>
                                 {% endif %}
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.password1.id_for_label }}" class="form-label">Password <span class="text-danger">*</span></label>
-                            <div class="input-group">
+                        <div class="mb-4">
+                            <label for="{{ form.password1.id_for_label }}" class="sbl-label">Password <span class="text-red-700">*</span></label>
+                            <div class="flex">
                                 {{ form.password1 }}
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('{{ form.password1.id_for_label }}', this)">
+                                <button class="sbl-btn sbl-btn-outline" type="button" onclick="togglePassword('{{ form.password1.id_for_label }}', this)">
                                     <i class="bi bi-eye" id="eye-icon-{{ form.password1.id_for_label }}"></i>
                                 </button>
                             </div>
-                            <small class="form-text text-muted">
+                            <small class="sbl-help text-warm-500">
                                 Your password must contain at least 8 characters.
                             </small>
                             {% if form.password1.errors %}
-                                <div class="text-danger">{{ form.password1.errors }}</div>
+                                <div class="text-red-700">{{ form.password1.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                            <div class="input-group">
+                        <div class="mb-4">
+                            <label for="{{ form.password2.id_for_label }}" class="sbl-label">Confirm Password <span class="text-red-700">*</span></label>
+                            <div class="flex">
                                 {{ form.password2 }}
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('{{ form.password2.id_for_label }}', this)">
+                                <button class="sbl-btn sbl-btn-outline" type="button" onclick="togglePassword('{{ form.password2.id_for_label }}', this)">
                                     <i class="bi bi-eye" id="eye-icon-{{ form.password2.id_for_label }}"></i>
                                 </button>
                             </div>
                             {% if form.password2.errors %}
-                                <div class="text-danger">{{ form.password2.errors }}</div>
+                                <div class="text-red-700">{{ form.password2.errors }}</div>
                             {% endif %}
                         </div>
                         
                         <!-- Optional Role Requests -->
-                        <div class="mb-3">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title mb-3">
+                        <div class="mb-4">
+                            <div class="sbl-card bg-warm-50">
+                                <div class="p-5">
+                                    <h6 class="font-semibold text-warm-900 mb-4">
                                         <i class="bi bi-briefcase"></i> Professional Features (Optional)
                                     </h6>
-                                    <p class="card-text small text-muted mb-3">
+                                    <p class="text-sm text-warm-500 mb-4">
                                         Apply for additional capabilities. Your account will be created immediately, but these features require approval.
                                     </p>
                                     
-                                    <div class="form-check mb-2">
+                                    <div class="flex items-center gap-2 mb-2">
                                         {{ form.request_vendor_role }}
-                                        <label class="form-check-label" for="{{ form.request_vendor_role.id_for_label }}">
+                                        <label class="text-sm text-warm-700" for="{{ form.request_vendor_role.id_for_label }}">
                                             <strong>{{ form.request_vendor_role.label }}</strong>
                                         </label>
                                         {% if form.request_vendor_role.help_text %}
-                                            <small class="form-text text-muted d-block ms-4">{{ form.request_vendor_role.help_text }}</small>
+                                            <small class="sbl-help text-warm-500 block ml-6">{{ form.request_vendor_role.help_text }}</small>
                                         {% endif %}
                                     </div>
                                     
-                                    <div class="form-check">
+                                    <div class="flex items-center gap-2">
                                         {{ form.request_content_provider_role }}
-                                        <label class="form-check-label" for="{{ form.request_content_provider_role.id_for_label }}">
+                                        <label class="text-sm text-warm-700" for="{{ form.request_content_provider_role.id_for_label }}">
                                             <strong>{{ form.request_content_provider_role.label }}</strong>
                                         </label>
                                         {% if form.request_content_provider_role.help_text %}
-                                            <small class="form-text text-muted d-block ms-4">{{ form.request_content_provider_role.help_text }}</small>
+                                            <small class="sbl-help text-warm-500 block ml-6">{{ form.request_content_provider_role.help_text }}</small>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3 form-check">
+                        <div class="mb-4 flex items-center gap-2">
                             {{ form.terms_accepted }}
-                            <label class="form-check-label" for="{{ form.terms_accepted.id_for_label }}">
-                                I agree to the <a href="#" target="_blank">Terms and Conditions</a> <span class="text-danger">*</span>
+                            <label class="text-sm text-warm-700" for="{{ form.terms_accepted.id_for_label }}">
+                                I agree to the <a href="#" target="_blank">Terms and Conditions</a> <span class="text-red-700">*</span>
                             </label>
                             {% if form.terms_accepted.errors %}
-                                <div class="text-danger">{{ form.terms_accepted.errors }}</div>
+                                <div class="text-red-700">{{ form.terms_accepted.errors }}</div>
                             {% endif %}
                         </div>
                         
-                        <button type="submit" class="btn btn-primary w-100">Register</button>
+                        <button type="submit" class="sbl-btn sbl-btn-primary w-full">Register</button>
                     </form>
                     
-                    <div class="mt-3 text-center">
+                    <div class="mt-4 text-center">
                         <p>Already have an account? <a href="{% url 'login' %}">Log in</a></p>
                     </div>
                 </div>

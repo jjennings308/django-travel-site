@@ -7,23 +7,23 @@
 {% block title %}Add Rewards Membership{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
+<div class="my-12">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-8 md:col-start-3">
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
-                    <li class="breadcrumb-item active">Add Membership</li>
+                <ol class="flex flex-wrap items-center gap-1.5 text-sm text-warm-500">
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none active">Add Membership</li>
                 </ol>
             </nav>
 
-            <div class="card">
-                <div class="card-header bg-primary text-white">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-earth-clay text-white">
                     <h3 class="mb-0">Add Rewards Membership</h3>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     {% if programs_by_type %}
-                    <div class="alert alert-info">
+                    <div class="sbl-alert sbl-alert-info">
                         <strong>Available Programs:</strong>
                         {% for type_name, count in programs_by_type.items %}
                             {{ count }} {{ type_name }}{% if not forloop.last %}, {% endif %}
@@ -35,123 +35,123 @@
                         {% csrf_token %}
                         
                         {# Program Selection #}
-                        <div class="mb-3">
-                            <label for="{{ form.program.id_for_label }}" class="form-label">
-                                Rewards Program <span class="text-danger">*</span>
+                        <div class="mb-4">
+                            <label for="{{ form.program.id_for_label }}" class="sbl-label">
+                                Rewards Program <span class="text-red-700">*</span>
                             </label>
                             {{ form.program }}
                             {% if form.program.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="sbl-error block">
                                     {{ form.program.errors.0 }}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">{{ form.program.help_text }}</small>
+                            <small class="sbl-help text-warm-500">{{ form.program.help_text }}</small>
                         </div>
 
                         {# Member Number #}
-                        <div class="mb-3">
-                            <label for="{{ form.member_number.id_for_label }}" class="form-label">
-                                Membership Number <span class="text-danger">*</span>
+                        <div class="mb-4">
+                            <label for="{{ form.member_number.id_for_label }}" class="sbl-label">
+                                Membership Number <span class="text-red-700">*</span>
                             </label>
                             {{ form.member_number }}
                             {% if form.member_number.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="sbl-error block">
                                     {{ form.member_number.errors.0 }}
                                 </div>
                             {% endif %}
                         </div>
 
                         {# Member Name (Optional) #}
-                        <div class="mb-3">
-                            <label for="{{ form.member_name.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.member_name.id_for_label }}" class="sbl-label">
                                 Name on Account
                             </label>
                             {{ form.member_name }}
-                            <small class="form-text text-muted">Leave blank if same as your profile name</small>
+                            <small class="sbl-help text-warm-500">Leave blank if same as your profile name</small>
                         </div>
 
                         <hr>
 
                         <h5>Status & Balance (Optional)</h5>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.current_tier.id_for_label }}" class="form-label">
+                        <div class="grid grid-cols-12">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.current_tier.id_for_label }}" class="sbl-label">
                                     Current Tier
                                 </label>
                                 {{ form.current_tier }}
-                                <small class="form-text text-muted">e.g., Gold, Platinum</small>
+                                <small class="sbl-help text-warm-500">e.g., Gold, Platinum</small>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.tier_expires.id_for_label }}" class="form-label">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.tier_expires.id_for_label }}" class="sbl-label">
                                     Tier Expires
                                 </label>
                                 {{ form.tier_expires }}
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.points_balance.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.points_balance.id_for_label }}" class="sbl-label">
                                 Points/Miles Balance
                             </label>
                             {{ form.points_balance }}
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.username.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.username.id_for_label }}" class="sbl-label">
                                 Login Username
                             </label>
                             {{ form.username }}
-                            <small class="form-text text-muted">Optional - for your reference only</small>
+                            <small class="sbl-help text-warm-500">Optional - for your reference only</small>
                         </div>
 
                         <hr>
 
                         <h5>Preferences</h5>
 
-                        <div class="form-check mb-3">
+                        <div class="flex items-center gap-2 mb-4">
                             {{ form.is_primary }}
-                            <label class="form-check-label" for="{{ form.is_primary.id_for_label }}">
+                            <label class="text-sm text-warm-700" for="{{ form.is_primary.id_for_label }}">
                                 Mark as primary program of this type
                             </label>
-                            <small class="form-text text-muted d-block">
+                            <small class="sbl-help text-warm-500 block">
                                 This will be your preferred program for this category
                             </small>
                         </div>
 
-                        <div class="form-check mb-3">
+                        <div class="flex items-center gap-2 mb-4">
                             {{ form.show_on_profile }}
-                            <label class="form-check-label" for="{{ form.show_on_profile.id_for_label }}">
+                            <label class="text-sm text-warm-700" for="{{ form.show_on_profile.id_for_label }}">
                                 Show on public profile
                             </label>
                         </div>
 
-                        <div class="form-check mb-3">
+                        <div class="flex items-center gap-2 mb-4">
                             {{ form.notify_on_expiration }}
-                            <label class="form-check-label" for="{{ form.notify_on_expiration.id_for_label }}">
+                            <label class="text-sm text-warm-700" for="{{ form.notify_on_expiration.id_for_label }}">
                                 Notify me when tier is expiring
                             </label>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.expiration_notice_days.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.expiration_notice_days.id_for_label }}" class="sbl-label">
                                 Days before expiration to notify
                             </label>
                             {{ form.expiration_notice_days }}
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.notes.id_for_label }}" class="sbl-label">
                                 Notes
                             </label>
                             {{ form.notes }}
                         </div>
 
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
-                            <a href="{% url 'rewards:dashboard' %}" class="btn btn-outline-secondary">
+                        <div class="grid gap-2 md:flex md:justify-between mt-6">
+                            <a href="{% url 'rewards:dashboard' %}" class="sbl-btn sbl-btn-outline">
                                 Cancel
                             </a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="sbl-btn sbl-btn-primary">
                                 Add Membership
                             </button>
                         </div>
@@ -160,8 +160,8 @@
             </div>
 
             {# Browse Programs Link #}
-            <div class="text-center mt-4">
-                <p class="text-muted">
+            <div class="text-center mt-6">
+                <p class="text-warm-500">
                     Don't see your program? 
                     <a href="{% url 'rewards:programs_browse' %}">Browse all programs</a>
                     or contact support to request it.

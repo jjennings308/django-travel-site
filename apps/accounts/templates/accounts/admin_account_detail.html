@@ -4,23 +4,23 @@
 {% block title %}Account Details - {{ account_user.email }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-12">
+<div class="mt-6">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-12">
             <h2>Account Details</h2>
-            <a href="{% url 'staff:admin_account_list' %}" class="btn btn-secondary mb-3">← Back to List</a>
+            <a href="{% url 'staff:admin_account_list' %}" class="sbl-btn sbl-btn-outline mb-4">← Back to List</a>
         </div>
     </div>
     
-    <div class="row">
+    <div class="grid grid-cols-12">
         <!-- Basic Information -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">
+        <div class="col-span-12 md:col-span-6">
+            <div class="sbl-card mb-4">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h5>Basic Information</h5>
                 </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
+                <div class="p-5">
+                    <table class="sbl-table">
                         <tr>
                             <th>Email:</th>
                             <td>{{ account_user.email }}</td>
@@ -43,12 +43,12 @@
             
             <!-- Profile Information -->
             {% if profile %}
-            <div class="card mb-3">
-                <div class="card-header">
+            <div class="sbl-card mb-4">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h5>Profile</h5>
                 </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
+                <div class="p-5">
+                    <table class="sbl-table">
                         <tr>
                             <th>Bio:</th>
                             <td>{{ profile.bio|default:"No bio" }}</td>
@@ -72,17 +72,17 @@
         </div>
         
         <!-- Account Status -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">
+        <div class="col-span-12 md:col-span-6">
+            <div class="sbl-card mb-4">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h5>Account Status</h5>
                 </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
+                <div class="p-5">
+                    <table class="sbl-table">
                         <tr>
                             <th>Active:</th>
                             <td>
-                                <span class="badge bg-{{ stats.is_active|yesno:'success,danger' }}">
+                                <span class="sbl-badge sbl-badge-{{ stats.is_active|yesno:'success,danger' }}">
                                     {{ stats.is_active|yesno:"Yes,No" }}
                                 </span>
                             </td>
@@ -90,7 +90,7 @@
                         <tr>
                             <th>Verified:</th>
                             <td>
-                                <span class="badge bg-{{ stats.is_verified|yesno:'success,warning' }}">
+                                <span class="sbl-badge sbl-badge-{{ stats.is_verified|yesno:'success,warning' }}">
                                     {{ stats.is_verified|yesno:"Yes,No" }}
                                 </span>
                             </td>
@@ -98,7 +98,7 @@
                         <tr>
                             <th>Subscription:</th>
                             <td>
-                                <span class="badge bg-{{ stats.is_premium|yesno:'primary,secondary' }}">
+                                <span class="sbl-badge sbl-badge-{{ stats.is_premium|yesno:'primary,neutral' }}">
                                     {{ stats.is_premium|yesno:"Yes,No" }}
                                 </span>
                             </td>
@@ -130,20 +130,20 @@
                         {% csrf_token %}
                         {% if stats.is_active %}
                             <button type="submit" name="action" value="deactivate" 
-                                    class="btn btn-warning btn-sm"
+                                    class="sbl-btn sbl-btn-accent sbl-btn-sm"
                                     onclick="return confirm('Deactivate this user?')">
                                 Deactivate Account
                             </button>
                         {% else %}
                             <button type="submit" name="action" value="activate" 
-                                    class="btn btn-success btn-sm">
+                                    class="sbl-btn sbl-btn-secondary sbl-btn-sm">
                                 Activate Account
                             </button>
                         {% endif %}
                         
                         {% if not stats.is_verified %}
                             <button type="submit" name="action" value="verify" 
-                                    class="btn btn-info btn-sm">
+                                    class="sbl-btn sbl-btn-accent sbl-btn-sm">
                                 Verify Email
                             </button>
                         {% endif %}
@@ -153,12 +153,12 @@
             
             <!-- Preferences -->
             {% if preferences %}
-            <div class="card mb-3">
-                <div class="card-header">
+            <div class="sbl-card mb-4">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h5>Preferences</h5>
                 </div>
-                <div class="card-body">
-                    <table class="table table-borderless table-sm">
+                <div class="p-5">
+                    <table class="sbl-table">
                         <tr>
                             <th>Budget:</th>
                             <td>{{ preferences.get_budget_preference_display }}</td>

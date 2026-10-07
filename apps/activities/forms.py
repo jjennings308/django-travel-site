@@ -51,105 +51,105 @@ class ActivityCreateForm(forms.ModelForm):
         
         widgets = {
             'name': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'E.g., "See Kenny Chesney concert at Vegas Sphere"'
             }),
             'category': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'description': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 6,
                 'placeholder': 'Describe this activity in detail. What makes it special? What should people know?'
             }),
             'visibility': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'specificity_level': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'suggested_location': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'E.g., "Las Vegas, Nevada"'
             }),
             'suggested_timeframe': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'E.g., "Summer 2026" or "Weekends in April"'
             }),
             'suggested_date_range_start': forms.DateInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'type': 'date'
             }),
             'suggested_date_range_end': forms.DateInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'type': 'date'
             }),
             'skill_level': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'fitness_required': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'min': 1,
                 'max': 5
             }),
             'age_minimum': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'sbl-input'
             }),
             'age_maximum': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'sbl-input'
             }),
             'typical_duration': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Duration in minutes'
             }),
             'duration_category': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'cost_level': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'estimated_cost_min': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'step': '0.01',
                 'placeholder': '$'
             }),
             'estimated_cost_max': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'step': '0.01',
                 'placeholder': '$'
             }),
             'best_for': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'best_season': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., ["spring", "summer"]'
             }),
             'indoor_outdoor': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'equipment_needed': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 3,
                 'placeholder': 'List any equipment or gear needed'
             }),
             'booking_required': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
+                'class': 'sbl-check'
             }),
             'guide_required': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
+                'class': 'sbl-check'
             }),
             'wheelchair_accessible': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
+                'class': 'sbl-check'
             }),
             'suitable_for_children': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
+                'class': 'sbl-check'
             }),
             'risk_level': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'safety_notes': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 3,
                 'placeholder': 'Any safety considerations people should know about'
             }),
@@ -283,11 +283,11 @@ class ActivityEditForm(forms.ModelForm):
         ]
         
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 6}),
-            'equipment_needed': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'safety_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'name': forms.TextInput(attrs={'class': 'sbl-input'}),
+            'category': forms.Select(attrs={'class': 'sbl-input'}),
+            'description': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 6}),
+            'equipment_needed': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 3}),
+            'safety_notes': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -324,19 +324,19 @@ class ActivityQuickCreateForm(forms.ModelForm):
         
         widgets = {
             'name': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'What do you want to do?'
             }),
             'category': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
             'description': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 4,
                 'placeholder': 'Briefly describe this activity'
             }),
             'visibility': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'sbl-input'
             }),
         }
     

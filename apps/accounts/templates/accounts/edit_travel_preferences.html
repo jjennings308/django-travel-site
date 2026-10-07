@@ -4,75 +4,75 @@
 {% block title %}Travel Preferences{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-10 offset-md-1">
-            <div class="card">
-                <div class="card-header">
+<div class="mt-6">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-10 md:col-start-2">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold">
                     <h3><i class="bi bi-airplane"></i> Travel Preferences</h3>
-                    <p class="text-muted mb-0">Tell us about your travel style (shown on your profile)</p>
+                    <p class="text-warm-500 mb-0">Tell us about your travel style (shown on your profile)</p>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     <form method="post">
                         {% csrf_token %}
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.budget_preference.id_for_label }}" class="form-label">
+                        <div class="grid grid-cols-12">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.budget_preference.id_for_label }}" class="sbl-label">
                                     <i class="bi bi-cash-stack"></i> Budget Preference
                                 </label>
                                 {{ form.budget_preference }}
-                                <small class="text-muted d-block">What's your typical travel budget?</small>
+                                <small class="text-warm-500 block">What's your typical travel budget?</small>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.travel_pace.id_for_label }}" class="form-label">
+                            <div class="col-span-12 md:col-span-6 mb-4">
+                                <label for="{{ form.travel_pace.id_for_label }}" class="sbl-label">
                                     <i class="bi bi-speedometer"></i> Travel Pace
                                 </label>
                                 {{ form.travel_pace }}
-                                <small class="text-muted d-block">How do you like to travel?</small>
+                                <small class="text-warm-500 block">How do you like to travel?</small>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.fitness_level.id_for_label }}" class="form-label">
+                        <div class="mb-4">
+                            <label for="{{ form.fitness_level.id_for_label }}" class="sbl-label">
                                 <i class="bi bi-heart-pulse"></i> Fitness Level (1-5)
                             </label>
                             {{ form.fitness_level }}
-                            <small class="text-muted d-block">1 = Low activity, 5 = Very active</small>
+                            <small class="text-warm-500 block">1 = Low activity, 5 = Very active</small>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label">
+                        <div class="mb-4">
+                            <label class="sbl-label">
                                 <i class="bi bi-stars"></i> Travel Styles
                             </label>
-                            <div class="border rounded p-3 bg-light">
+                            <div class="border border-warm-200 rounded-lg p-4 bg-warm-50">
                                 {{ form.travel_styles }}
                             </div>
                             {% if form.travel_styles.help_text %}
-                                <small class="text-muted d-block mt-1">{{ form.travel_styles.help_text }}</small>
+                                <small class="text-warm-500 block mt-1">{{ form.travel_styles.help_text }}</small>
                             {% endif %}
                             {% for err in form.travel_styles.errors %}
-                                <div class="text-danger small">{{ err }}</div>
+                                <div class="text-red-700 text-sm">{{ err }}</div>
                             {% endfor %}
                         </div>
 
-                        <div class="mb-3 form-check">
+                        <div class="mb-4 flex items-center gap-2">
                             {{ form.mobility_restrictions }}
-                            <label class="form-check-label" for="{{ form.mobility_restrictions.id_for_label }}">
+                            <label class="text-sm text-warm-700" for="{{ form.mobility_restrictions.id_for_label }}">
                                 I have mobility restrictions
                             </label>
                         </div>
                         
-                        <div class="alert alert-info">
+                        <div class="sbl-alert sbl-alert-info">
                             <i class="bi bi-info-circle"></i> 
                             <strong>Why we ask:</strong> These preferences help us recommend trips and activities that match your style!
                         </div>
                         
-                        <div class="d-flex gap-2 mt-4">
-                            <button type="submit" class="btn btn-primary">
+                        <div class="flex gap-2 mt-6">
+                            <button type="submit" class="sbl-btn sbl-btn-primary">
                                 <i class="bi bi-check-lg"></i> Save Preferences
                             </button>
-                            <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                            <a href="{% url 'profile' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
                         </div>
                     </form>
                 </div>

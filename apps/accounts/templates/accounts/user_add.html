@@ -4,136 +4,136 @@
 {% block title %}Add User{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-9 col-xl-8">
+<div class="grid grid-cols-12 justify-center">
+  <div class="col-span-12 lg:col-span-9 xl:col-span-8">
 
-    <div class="card shadow-sm">
-      <div class="card-body">
+    <div class="sbl-card shadow-sm">
+      <div class="p-5">
 
-        <h1 class="h4 mb-4">Add User</h1>
+        <h1 class="text-xl font-semibold mb-6">Add User</h1>
 
         <form method="post" novalidate>
           {% csrf_token %}
 
           {% if form.non_field_errors %}
-            <div class="alert alert-danger">
+            <div class="sbl-alert sbl-alert-danger">
               {{ form.non_field_errors }}
             </div>
           {% endif %}
 
           <!-- Identity -->
-          <fieldset class="mb-4">
-            <legend class="h6">Identity</legend>
+          <fieldset class="mb-6">
+            <legend class="text-base font-semibold">Identity</legend>
 
-            <div class="mb-3">
-              <label class="form-label">Email</label>
+            <div class="mb-4">
+              <label class="sbl-label">Email</label>
               {{ form.email|add_class:"form-control" }}
               {% for error in form.email.errors %}
-                <div class="text-danger small">{{ error }}</div>
+                <div class="text-red-700 text-sm">{{ error }}</div>
               {% endfor %}
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">Username</label>
+            <div class="mb-4">
+              <label class="sbl-label">Username</label>
               {{ form.username|add_class:"form-control" }}
               {% for error in form.username.errors %}
-                <div class="text-danger small">{{ error }}</div>
+                <div class="text-red-700 text-sm">{{ error }}</div>
               {% endfor %}
             </div>
 
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">First name</label>
+            <div class="grid grid-cols-12">
+              <div class="col-span-12 md:col-span-6 mb-4">
+                <label class="sbl-label">First name</label>
                 {{ form.first_name|add_class:"form-control" }}
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Last name</label>
+              <div class="col-span-12 md:col-span-6 mb-4">
+                <label class="sbl-label">Last name</label>
                 {{ form.last_name|add_class:"form-control" }}
               </div>
             </div>
           </fieldset>
 
           <!-- Contact -->
-          <fieldset class="mb-4">
-            <legend class="h6">Contact</legend>
+          <fieldset class="mb-6">
+            <legend class="text-base font-semibold">Contact</legend>
 
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Phone number</label>
+            <div class="grid grid-cols-12">
+              <div class="col-span-12 md:col-span-6 mb-4">
+                <label class="sbl-label">Phone number</label>
                 {{ form.phone_number|add_class:"form-control" }}
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Date of birth</label>
+              <div class="col-span-12 md:col-span-6 mb-4">
+                <label class="sbl-label">Date of birth</label>
                 {{ form.date_of_birth|add_class:"form-control" }}
               </div>
             </div>
           </fieldset>
 
           <!-- Password -->
-          <fieldset class="mb-4">
-            <legend class="h6">Password</legend>
+          <fieldset class="mb-6">
+            <legend class="text-base font-semibold">Password</legend>
 
-            <div class="mb-3">
-              <label class="form-label">Password</label>
+            <div class="mb-4">
+              <label class="sbl-label">Password</label>
               {{ form.password1|add_class:"form-control" }}
               {% for error in form.password1.errors %}
-                <div class="text-danger small">{{ error }}</div>
+                <div class="text-red-700 text-sm">{{ error }}</div>
               {% endfor %}
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">Confirm password</label>
+            <div class="mb-4">
+              <label class="sbl-label">Confirm password</label>
               {{ form.password2|add_class:"form-control" }}
               {% for error in form.password2.errors %}
-                <div class="text-danger small">{{ error }}</div>
+                <div class="text-red-700 text-sm">{{ error }}</div>
               {% endfor %}
             </div>
           </fieldset>
 
           <!-- Status / Permissions -->
-          <fieldset class="mb-4">
-            <legend class="h6">Status & Permissions</legend>
+          <fieldset class="mb-6">
+            <legend class="text-base font-semibold">Status & Permissions</legend>
 
-            <div class="row">
-              <div class="col-md-4">
-                <div class="form-check mb-2">
+            <div class="grid grid-cols-12">
+              <div class="col-span-12 md:col-span-4">
+                <div class="flex items-center gap-2 mb-2">
                   {{ form.is_active|add_class:"form-check-input" }}
-                  <label class="form-check-label">Active</label>
+                  <label class="text-sm text-warm-700">Active</label>
                 </div>
-                <div class="form-check mb-2">
+                <div class="flex items-center gap-2 mb-2">
                   {{ form.is_verified|add_class:"form-check-input" }}
-                  <label class="form-check-label">Verified</label>
+                  <label class="text-sm text-warm-700">Verified</label>
                 </div>
-                <div class="form-check mb-2">
+                <div class="flex items-center gap-2 mb-2">
                   {{ form.is_premium|add_class:"form-check-input" }}
-                  <label class="form-check-label">Premium</label>
+                  <label class="text-sm text-warm-700">Premium</label>
                 </div>
               </div>
 
-              <div class="col-md-4">
-                <div class="form-check mb-2">
+              <div class="col-span-12 md:col-span-4">
+                <div class="flex items-center gap-2 mb-2">
                   {{ form.is_staff|add_class:"form-check-input" }}
-                  <label class="form-check-label">Staff</label>
+                  <label class="text-sm text-warm-700">Staff</label>
                 </div>
-                <div class="form-check mb-2">
+                <div class="flex items-center gap-2 mb-2">
                   {{ form.is_superuser|add_class:"form-check-input" }}
-                  <label class="form-check-label">Superuser</label>
+                  <label class="text-sm text-warm-700">Superuser</label>
                 </div>
               </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Profile visibility</label>
+              <div class="col-span-12 md:col-span-4">
+                <label class="sbl-label">Profile visibility</label>
                 {{ form.profile_visibility|add_class:"form-select" }}
               </div>
             </div>
           </fieldset>
 
           <!-- Actions -->
-          <div class="d-flex justify-content-end gap-2">
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+          <div class="flex justify-end gap-2">
+            <a href="{% url 'dashboard' %}" class="sbl-btn sbl-btn-outline">
               Cancel
             </a>
-            <button type="submit" class="btn btn-success">
+            <button type="submit" class="sbl-btn sbl-btn-secondary">
               Create User
             </button>
           </div>

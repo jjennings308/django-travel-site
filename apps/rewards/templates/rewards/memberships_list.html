@@ -9,26 +9,26 @@
 {% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row mb-4">
-        <div class="col-md-8">
+<div class="my-12">
+    <div class="grid grid-cols-12 mb-6">
+        <div class="col-span-12 md:col-span-8">
             <h1>My Rewards Memberships</h1>
-            <p class="text-muted">View and manage all your loyalty programs</p>
+            <p class="text-warm-500">View and manage all your loyalty programs</p>
         </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary">
+        <div class="col-span-12 md:col-span-4 text-right">
+            <a href="{% url 'rewards:add_membership' %}" class="sbl-btn sbl-btn-primary">
                 <i class="bi bi-plus-circle"></i> Add Membership
             </a>
         </div>
     </div>
 
     {# Filters #}
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label for="type" class="form-label">Filter by Type</label>
-                    <select name="type" id="type" class="form-select">
+    <div class="sbl-card mb-6">
+        <div class="p-5">
+            <form method="get" class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-4">
+                    <label for="type" class="sbl-label">Filter by Type</label>
+                    <select name="type" id="type" class="sbl-input">
                         <option value="">All Types</option>
                         {% for value, label in program_types %}
                         <option value="{{ value }}" {% if current_type == value %}selected{% endif %}>
@@ -37,9 +37,9 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="status" class="form-label">Filter by Status</label>
-                    <select name="status" id="status" class="form-select">
+                <div class="col-span-12 md:col-span-4">
+                    <label for="status" class="sbl-label">Filter by Status</label>
+                    <select name="status" id="status" class="sbl-input">
                         <option value="">All</option>
                         <option value="primary" {% if current_status == 'primary' %}selected{% endif %}>
                             Primary Programs
@@ -49,8 +49,8 @@
                         </option>
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                <div class="col-span-12 md:col-span-4 flex items-end">
+                    <button type="submit" class="sbl-btn sbl-btn-primary w-full">Apply Filters</button>
                 </div>
             </form>
         </div>
@@ -58,26 +58,26 @@
 
     {# Results #}
     {% if memberships %}
-    <div class="card">
-        <div class="card-header bg-light">
-            <div class="row align-items-center">
-                <div class="col">
+    <div class="sbl-card">
+        <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-warm-50">
+            <div class="grid grid-cols-12 items-center">
+                <div class="col-span-12">
                     <strong>{{ memberships.count }} Membership{{ memberships.count|pluralize }}</strong>
                 </div>
-                <div class="col-auto">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary" onclick="window.location.href='{% url 'rewards:dashboard' %}'">
+                <div class="col-span-auto">
+                    <div class="inline-flex gap-1" role="group">
+                        <button type="button" class="sbl-btn sbl-btn-outline" onclick="window.location.href='{% url 'rewards:dashboard' %}'">
                             <i class="bi bi-grid"></i> Grid
                         </button>
-                        <button type="button" class="btn btn-secondary active">
+                        <button type="button" class="sbl-btn sbl-btn-outline active">
                             <i class="bi bi-list"></i> List
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
+        <div class="overflow-x-auto">
+            <table class="sbl-table mb-0">
                 <thead>
                     <tr>
                         <th>Program</th>
@@ -96,7 +96,7 @@
                             <div>
                                 <strong>{{ membership.program.company }}</strong>
                                 <br>
-                                <small class="text-muted">{{ membership.program.name }}</small>
+                                <small class="text-warm-500">{{ membership.program.name }}</small>
                             </div>
                         </td>
                         <td>
@@ -104,21 +104,21 @@
                         </td>
                         <td>
                             {% if membership.current_tier %}
-                            <span class="badge bg-primary">{{ membership.current_tier }}</span>
+                            <span class="sbl-badge sbl-badge-primary">{{ membership.current_tier }}</span>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-warm-500">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if membership.points_balance %}
                             <span class="points-display">{{ membership.points_balance|floatformat:0 }}</span>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-warm-500">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if membership.tier_expires %}
-                            <span {% if membership.is_tier_expiring_soon %}class="text-warning fw-bold"{% endif %}
+                            <span {% if membership.is_tier_expiring_soon %}class="text-amber-600 font-bold"{% endif %}
                                   data-expiry-date="{{ membership.tier_expires|date:'Y-m-d' }}">
                                 {{ membership.tier_expires|date:"M d, Y" }}
                                 {% if membership.is_tier_expiring_soon %}
@@ -126,31 +126,31 @@
                                 {% endif %}
                             </span>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-warm-500">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if membership.is_primary %}
-                            <span class="badge badge-primary-membership">Primary</span>
+                            <span class="sbl-badge badge-primary-membership">Primary</span>
                             {% endif %}
                             {% if not membership.show_on_profile %}
-                            <span class="badge bg-secondary">Private</span>
+                            <span class="sbl-badge sbl-badge-neutral">Private</span>
                             {% endif %}
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="inline-flex gap-1" role="group">
                                 <a href="{% url 'rewards:membership_detail' membership.id %}" 
-                                   class="btn btn-outline-primary"
+                                   class="sbl-btn sbl-btn-outline"
                                    title="View Details">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <a href="{% url 'rewards:edit_membership' membership.id %}" 
-                                   class="btn btn-outline-secondary"
+                                   class="sbl-btn sbl-btn-outline"
                                    title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <button type="button" 
-                                        class="btn btn-outline-danger"
+                                        class="sbl-btn sbl-btn-outline-danger"
                                         title="Delete"
                                         data-confirm-delete
                                         data-program-name="{{ membership.program.name }}"
@@ -187,7 +187,7 @@
             {% endif %}
         </p>
         {% if not current_type and not current_status %}
-        <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary mt-3">
+        <a href="{% url 'rewards:add_membership' %}" class="sbl-btn sbl-btn-primary mt-4">
             <i class="bi bi-plus-circle"></i> Add Membership
         </a>
         {% endif %}

@@ -4,57 +4,57 @@
 {% block title %}Account Management{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-12">
+<div class="mt-6">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-12">
             <h2>Account Management</h2>
-            <p class="text-muted">View and manage all user accounts</p>
+            <p class="text-warm-500">View and manage all user accounts</p>
         </div>
     </div>
     
     <!-- Filters -->
-    <div class="card mb-3">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <input type="text" name="search" class="form-control" placeholder="Search by email or name" value="{{ search_query }}">
+    <div class="sbl-card mb-4">
+        <div class="p-5">
+            <form method="get" class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-3">
+                    <input type="text" name="search" class="sbl-input" placeholder="Search by email or name" value="{{ search_query }}">
                 </div>
-                <div class="col-md-2">
-                    <select name="verified" class="form-control">
+                <div class="col-span-12 md:col-span-2">
+                    <select name="verified" class="sbl-input">
                         <option value="">All Verified Status</option>
                         <option value="yes" {% if verified_filter == 'yes' %}selected{% endif %}>Verified</option>
                         <option value="no" {% if verified_filter == 'no' %}selected{% endif %}>Not Verified</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <select name="premium" class="form-control">
+                <div class="col-span-12 md:col-span-2">
+                    <select name="premium" class="sbl-input">
                         <option value="">All Premium Status</option>
                         <option value="yes" {% if premium_filter == 'yes' %}selected{% endif %}>Premium</option>
                         <option value="no" {% if premium_filter == 'no' %}selected{% endif %}>Free</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <select name="active" class="form-control">
+                <div class="col-span-12 md:col-span-2">
+                    <select name="active" class="sbl-input">
                         <option value="">All Active Status</option>
                         <option value="yes" {% if active_filter == 'yes' %}selected{% endif %}>Active</option>
                         <option value="no" {% if active_filter == 'no' %}selected{% endif %}>Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                <div class="col-span-12 md:col-span-2">
+                    <button type="submit" class="sbl-btn sbl-btn-primary w-full">Filter</button>
                 </div>
-                <div class="col-md-1">
-                    <a href="{% url 'staff:admin_account_list' %}" class="btn btn-secondary w-100">Clear</a>
+                <div class="col-span-12 md:col-span-1">
+                    <a href="{% url 'staff:admin_account_list' %}" class="sbl-btn sbl-btn-outline w-full">Clear</a>
                 </div>
             </form>
         </div>
     </div>
     
     <!-- Results -->
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
+    <div class="sbl-card">
+        <div class="p-5">
+            <div class="overflow-x-auto">
+                <table class="sbl-table">
                     <thead>
                         <tr>
                             <th>Email</th>
@@ -72,23 +72,23 @@
                             <td>{{ user.email }}</td>
                             <td>{{ user.get_full_name }}</td>
                             <td>
-                                <span class="badge bg-{{ user.is_active|yesno:'success,danger' }}">
+                                <span class="sbl-badge sbl-badge-{{ user.is_active|yesno:'success,danger' }}">
                                     {{ user.is_active|yesno:"Active,Inactive" }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ user.is_verified|yesno:'success,warning' }}">
+                                <span class="sbl-badge sbl-badge-{{ user.is_verified|yesno:'success,warning' }}">
                                     {{ user.is_verified|yesno:"Yes,No" }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ user.is_premium|yesno:'primary,secondary' }}">
+                                <span class="sbl-badge sbl-badge-{{ user.is_premium|yesno:'primary,neutral' }}">
                                     {{ user.is_premium|yesno:"Yes,No" }}
                                 </span>
                             </td>
                             <td>{{ user.created_at|date:"Y-m-d" }}</td>
                             <td>
-                                <a href="{% url 'staff:admin_account_detail' user.id %}" class="btn btn-sm btn-info">View</a>
+                                <a href="{% url 'staff:admin_account_detail' user.id %}" class="sbl-btn sbl-btn-sm sbl-btn-accent">View</a>
                             </td>
                         </tr>
                         {% empty %}

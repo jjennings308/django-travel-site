@@ -3,17 +3,17 @@
 /* ============================================
    Dashboard Stats Cards
    ============================================ */
-.rewards-stats .card {
+.rewards-stats .sbl-card {
     transition: transform 0.2s, box-shadow 0.2s;
     border: 1px solid #e0e0e0;
 }
 
-.rewards-stats .card:hover {
+.rewards-stats .sbl-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.rewards-stats .card h3 {
+.rewards-stats .sbl-card h3 {
     font-size: 2rem;
     font-weight: bold;
     margin-bottom: 0.5rem;
@@ -44,7 +44,7 @@
 .points-display {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #0d6efd;
+    color: #7A4E2D;
 }
 
 /* ============================================
@@ -97,7 +97,7 @@
     margin-right: 1rem;
 }
 
-.program-type-airline { color: #0d6efd; }
+.program-type-airline { color: #7A4E2D; }
 .program-type-hotel { color: #198754; }
 .program-type-car { color: #dc3545; }
 .program-type-train { color: #6f42c1; }
@@ -117,7 +117,7 @@
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-.program-card .card-title {
+.program-card .sbl-card-title {
     color: #212529;
     font-weight: 600;
 }
@@ -137,7 +137,7 @@
 
 .form-control:focus,
 .form-select:focus {
-    border-color: #0d6efd;
+    border-color: #7A4E2D;
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
@@ -219,7 +219,7 @@ code.member-number {
    Responsive Adjustments
    ============================================ */
 @media (max-width: 768px) {
-    .rewards-stats .card h3 {
+    .rewards-stats .sbl-card h3 {
         font-size: 1.5rem;
     }
     
@@ -261,7 +261,7 @@ code.member-number {
     width: 1rem;
     height: 1rem;
     border: 2px solid #f3f3f3;
-    border-top: 2px solid #0d6efd;
+    border-top: 2px solid #7A4E2D;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -315,25 +315,25 @@ code.member-number {
     width: 0.75rem;
     height: 0.75rem;
     border-radius: 50%;
-    background: #0d6efd;
+    background: #7A4E2D;
     border: 2px solid #fff;
-    box-shadow: 0 0 0 2px #0d6efd;
+    box-shadow: 0 0 0 2px #7A4E2D;
 }
 
 /* ============================================
    Card Header Gradients
    ============================================ */
-.card-header-gradient-blue {
+.sbl-card-header-gradient-blue {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 
-.card-header-gradient-green {
+.sbl-card-header-gradient-green {
     background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
     color: white;
 }
 
-.card-header-gradient-orange {
+.sbl-card-header-gradient-orange {
     background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
     color: white;
 }

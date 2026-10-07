@@ -7,52 +7,52 @@
 {% block title %}My Rewards Programs{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row mb-4">
-        <div class="col-md-8">
+<div class="my-12">
+    <div class="grid grid-cols-12 mb-6">
+        <div class="col-span-12 md:col-span-8">
             <h1>My Rewards Programs</h1>
-            <p class="text-muted">Manage your travel loyalty memberships</p>
+            <p class="text-warm-500">Manage your travel loyalty memberships</p>
         </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary">
+        <div class="col-span-12 md:col-span-4 text-right">
+            <a href="{% url 'rewards:add_membership' %}" class="sbl-btn sbl-btn-primary">
                 <i class="bi bi-plus-circle"></i> Add Membership
             </a>
         </div>
     </div>
 
     {# Stats Cards #}
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-primary">{{ stats.total_programs }}</h3>
-                    <p class="text-muted mb-0">Programs</p>
+    <div class="grid grid-cols-12 mb-6">
+        <div class="col-span-12 md:col-span-3">
+            <div class="sbl-card text-center">
+                <div class="p-5">
+                    <h3 class="text-earth-clay">{{ stats.total_programs }}</h3>
+                    <p class="text-warm-500 mb-0">Programs</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-success">{{ stats.total_points|floatformat:0|default:"—" }}</h3>
-                    <p class="text-muted mb-0">Total Points/Miles</p>
+        <div class="col-span-12 md:col-span-3">
+            <div class="sbl-card text-center">
+                <div class="p-5">
+                    <h3 class="text-emerald-700">{{ stats.total_points|floatformat:0|default:"—" }}</h3>
+                    <p class="text-warm-500 mb-0">Total Points/Miles</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-info">{{ stats.primary_programs }}</h3>
-                    <p class="text-muted mb-0">Primary Programs</p>
+        <div class="col-span-12 md:col-span-3">
+            <div class="sbl-card text-center">
+                <div class="p-5">
+                    <h3 class="text-sky-700">{{ stats.primary_programs }}</h3>
+                    <p class="text-warm-500 mb-0">Primary Programs</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="{% if stats.expiring_soon > 0 %}text-warning{% else %}text-secondary{% endif %}">
+        <div class="col-span-12 md:col-span-3">
+            <div class="sbl-card text-center">
+                <div class="p-5">
+                    <h3 class="{% if stats.expiring_soon > 0 %} text-amber-600 {% else %} text-warm-600 {% endif %}">
                         {{ stats.expiring_soon }}
                     </h3>
-                    <p class="text-muted mb-0">Expiring Soon</p>
+                    <p class="text-warm-500 mb-0">Expiring Soon</p>
                 </div>
             </div>
         </div>
@@ -60,14 +60,14 @@
 
     {# Expiring Alerts #}
     {% if expiring_soon %}
-    <div class="alert alert-warning" role="alert">
-        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Tier Status Expiring Soon</h5>
+    <div class="sbl-alert sbl-alert-warning" role="alert">
+        <h5 class="mb-1 font-semibold"><i class="bi bi-exclamation-triangle"></i> Tier Status Expiring Soon</h5>
         <ul class="mb-0">
             {% for membership in expiring_soon %}
             <li>
                 <strong>{{ membership.program.name }}</strong> - 
                 {{ membership.current_tier }} expires {{ membership.tier_expires }}
-                <a href="{% url 'rewards:edit_membership' membership.id %}" class="alert-link">Update</a>
+                <a href="{% url 'rewards:edit_membership' membership.id %}" class="sbl-alert-link">Update</a>
             </li>
             {% endfor %}
         </ul>
@@ -76,15 +76,15 @@
 
     {# No Memberships State #}
     {% if not memberships %}
-    <div class="card text-center py-5">
-        <div class="card-body">
+    <div class="sbl-card text-center py-12">
+        <div class="p-5">
             <i class="bi bi-award" style="font-size: 4rem; color: #ccc;"></i>
-            <h3 class="mt-3">No Rewards Memberships Yet</h3>
-            <p class="text-muted">Start tracking your airline miles, hotel points, and more!</p>
-            <a href="{% url 'rewards:add_membership' %}" class="btn btn-primary mt-3">
+            <h3 class="mt-4">No Rewards Memberships Yet</h3>
+            <p class="text-warm-500">Start tracking your airline miles, hotel points, and more!</p>
+            <a href="{% url 'rewards:add_membership' %}" class="sbl-btn sbl-btn-primary mt-4">
                 Add Your First Membership
             </a>
-            <a href="{% url 'rewards:programs_browse' %}" class="btn btn-outline-secondary mt-3 ms-2">
+            <a href="{% url 'rewards:programs_browse' %}" class="sbl-btn sbl-btn-outline mt-4 ml-2">
                 Browse Programs
             </a>
         </div>
@@ -92,8 +92,8 @@
     {% else %}
         {# Memberships by Type #}
         {% for type_name, type_memberships in memberships_by_type.items %}
-        <div class="card mb-4">
-            <div class="card-header bg-light">
+        <div class="sbl-card mb-6">
+            <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-warm-50">
                 <h4 class="mb-0">
                     {% if type_name == "Airline" %}<i class="bi bi-airplane"></i>
                     {% elif type_name == "Hotel" %}<i class="bi bi-building"></i>
@@ -105,49 +105,49 @@
                     {{ type_name }}
                 </h4>
             </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
+            <div class="p-5">
+                <div class="sbl-list">
                     {% for membership in type_memberships %}
-                    <div class="list-group-item">
-                        <div class="row align-items-center">
-                            <div class="col-md-5">
+                    <div class="sbl-list-item">
+                        <div class="grid grid-cols-12 items-center">
+                            <div class="col-span-12 md:col-span-5">
                                 <h5 class="mb-1">
                                     {{ membership.program.company }}
                                     {% if membership.is_primary %}
-                                    <span class="badge bg-success">Primary</span>
+                                    <span class="sbl-badge sbl-badge-success">Primary</span>
                                     {% endif %}
                                 </h5>
-                                <p class="text-muted mb-1">{{ membership.program.name }}</p>
-                                <small class="text-muted">Member #{{ membership.member_number }}</small>
+                                <p class="text-warm-500 mb-1">{{ membership.program.name }}</p>
+                                <small class="text-warm-500">Member #{{ membership.member_number }}</small>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-span-12 md:col-span-3">
                                 {% if membership.current_tier %}
                                 <div>
                                     <strong>Tier:</strong> 
-                                    <span class="badge bg-primary">{{ membership.current_tier }}</span>
+                                    <span class="sbl-badge sbl-badge-primary">{{ membership.current_tier }}</span>
                                 </div>
                                 {% endif %}
                                 {% if membership.tier_expires %}
-                                <small class="text-muted">
+                                <small class="text-warm-500">
                                     Expires: {{ membership.tier_expires|date:"M d, Y" }}
                                 </small>
                                 {% endif %}
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-span-12 md:col-span-2">
                                 {% if membership.points_balance %}
                                 <div>
                                     <strong>{{ membership.points_balance|floatformat:0 }}</strong>
-                                    <br><small class="text-muted">points/miles</small>
+                                    <br><small class="text-warm-500">points/miles</small>
                                 </div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-2 text-end">
+                            <div class="col-span-12 md:col-span-2 text-right">
                                 <a href="{% url 'rewards:membership_detail' membership.id %}" 
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="sbl-btn sbl-btn-sm sbl-btn-outline">
                                     View
                                 </a>
                                 <a href="{% url 'rewards:edit_membership' membership.id %}" 
-                                   class="btn btn-sm btn-outline-secondary">
+                                   class="sbl-btn sbl-btn-sm sbl-btn-outline">
                                     Edit
                                 </a>
                             </div>

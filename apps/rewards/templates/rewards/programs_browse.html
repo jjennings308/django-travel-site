@@ -7,15 +7,15 @@
 {% block title %}Browse Rewards Programs{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row mb-4">
-        <div class="col-md-8">
+<div class="my-12">
+    <div class="grid grid-cols-12 mb-6">
+        <div class="col-span-12 md:col-span-8">
             <h1>Browse Rewards Programs</h1>
-            <p class="text-muted">Explore travel loyalty programs to track</p>
+            <p class="text-warm-500">Explore travel loyalty programs to track</p>
         </div>
         {% if user.is_authenticated %}
-        <div class="col-md-4 text-end">
-            <a href="{% url 'rewards:dashboard' %}" class="btn btn-primary">
+        <div class="col-span-12 md:col-span-4 text-right">
+            <a href="{% url 'rewards:dashboard' %}" class="sbl-btn sbl-btn-primary">
                 My Rewards Dashboard
             </a>
         </div>
@@ -23,17 +23,17 @@
     </div>
 
     {# Search & Filter #}
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-8">
+    <div class="sbl-card mb-6">
+        <div class="p-5">
+            <form method="get" class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-8">
                     {{ form.search }}
                 </div>
-                <div class="col-md-3">
+                <div class="col-span-12 md:col-span-3">
                     {{ form.program_type }}
                 </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                <div class="col-span-12 md:col-span-1">
+                    <button type="submit" class="sbl-btn sbl-btn-primary w-full">Search</button>
                 </div>
             </form>
         </div>
@@ -42,8 +42,8 @@
     {# Programs by Type #}
     {% if programs_by_type %}
         {% for type_name, type_programs in programs_by_type.items %}
-        <div class="card mb-4">
-            <div class="card-header bg-light">
+        <div class="sbl-card mb-6">
+            <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-warm-50">
                 <h4 class="mb-0">
                     {% if type_name == "Airline" %}<i class="bi bi-airplane"></i>
                     {% elif type_name == "Hotel" %}<i class="bi bi-building"></i>
@@ -55,30 +55,30 @@
                     {{ type_name }} Programs
                 </h4>
             </div>
-            <div class="card-body">
-                <div class="row">
+            <div class="p-5">
+                <div class="grid grid-cols-12">
                     {% for program in type_programs %}
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ program.company }}</h5>
-                                <h6 class="card-subtitle mb-2 text-muted">{{ program.name }}</h6>
+                    <div class="col-span-12 md:col-span-6 mb-4">
+                        <div class="sbl-card h-full">
+                            <div class="p-5">
+                                <h5 class="font-semibold text-warm-900">{{ program.company }}</h5>
+                                <h6 class="text-sm text-warm-500 mb-2">{{ program.name }}</h6>
                                 {% if program.description %}
-                                <p class="card-text">{{ program.description|truncatewords:20 }}</p>
+                                <p class="">{{ program.description|truncatewords:20 }}</p>
                                 {% endif %}
                                 {% if program.tier_names %}
                                 <p class="mb-2">
-                                    <small class="text-muted">Tiers:</small>
+                                    <small class="text-warm-500">Tiers:</small>
                                     {% for tier in program.tier_names %}
-                                    <span class="badge bg-secondary">{{ tier }}</span>
+                                    <span class="sbl-badge sbl-badge-neutral">{{ tier }}</span>
                                     {% endfor %}
                                 </p>
                                 {% endif %}
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <small class="text-muted">
+                                <div class="flex justify-between items-center">
+                                    <small class="text-warm-500">
                                         <i class="bi bi-people"></i> {{ program.member_count }} member{{ program.member_count|pluralize }}
                                     </small>
-                                    <a href="{% url 'rewards:program_detail' program.id %}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{% url 'rewards:program_detail' program.id %}" class="sbl-btn sbl-btn-sm sbl-btn-outline">
                                         View Details
                                     </a>
                                 </div>
@@ -91,7 +91,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <div class="alert alert-info">
+        <div class="sbl-alert sbl-alert-info">
             No programs found. Try adjusting your search filters.
         </div>
     {% endif %}

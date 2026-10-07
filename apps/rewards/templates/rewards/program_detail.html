@@ -7,45 +7,45 @@
 {% block title %}{{ program.name }} - {{ program.company }}{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
+<div class="my-12">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-8 md:col-start-3">
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'rewards:programs_browse' %}">Programs</a></li>
-                    <li class="breadcrumb-item active">{{ program.name }}</li>
+                <ol class="flex flex-wrap items-center gap-1.5 text-sm text-warm-500">
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none"><a href="{% url 'rewards:programs_browse' %}">Programs</a></li>
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none active">{{ program.name }}</li>
                 </ol>
             </nav>
 
-            <div class="card">
-                <div class="card-header bg-primary text-white">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-earth-clay text-white">
                     <h2 class="mb-1">{{ program.company }}</h2>
                     <p class="mb-0">{{ program.name }}</p>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     {% if program.logo %}
-                    <div class="text-center mb-4">
+                    <div class="text-center mb-6">
                         <img src="{{ program.logo.url }}" alt="{{ program.name }}" style="max-height: 100px;">
                     </div>
                     {% endif %}
 
-                    <div class="mb-4">
+                    <div class="mb-6">
                         <h5>About This Program</h5>
                         {% if program.description %}
                         <p>{{ program.description }}</p>
                         {% else %}
-                        <p class="text-muted">No description available.</p>
+                        <p class="text-warm-500">No description available.</p>
                         {% endif %}
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-md-6">
+                    <div class="grid grid-cols-12 mb-6">
+                        <div class="col-span-12 md:col-span-6">
                             <h5>Program Details</h5>
-                            <table class="table">
+                            <table class="sbl-table">
                                 <tr>
                                     <th>Type:</th>
                                     <td>
-                                        <span class="badge bg-info">{{ program.get_program_type_display }}</span>
+                                        <span class="sbl-badge sbl-badge-info">{{ program.get_program_type_display }}</span>
                                     </td>
                                 </tr>
                                 <tr>
@@ -64,12 +64,12 @@
                                 {% endif %}
                             </table>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-span-12 md:col-span-6">
                             {% if program.tier_names %}
                             <h5>Tier Levels</h5>
-                            <div class="mb-3">
+                            <div class="mb-4">
                                 {% for tier in program.tier_names %}
-                                <span class="badge bg-secondary mb-1">{{ tier }}</span>
+                                <span class="sbl-badge sbl-badge-neutral mb-1">{{ tier }}</span>
                                 {% endfor %}
                             </div>
                             {% endif %}
@@ -78,30 +78,30 @@
 
                     {% if user.is_authenticated %}
                         {% if user_membership %}
-                        <div class="alert alert-success">
+                        <div class="sbl-alert sbl-alert-success">
                             <i class="bi bi-check-circle"></i> You're already a member of this program!
-                            <a href="{% url 'rewards:membership_detail' user_membership.id %}" class="alert-link">
+                            <a href="{% url 'rewards:membership_detail' user_membership.id %}" class="sbl-alert-link">
                                 View your membership
                             </a>
                         </div>
                         {% else %}
                         <div class="text-center">
                             <a href="{% url 'rewards:add_membership' %}?program={{ program.id }}" 
-                               class="btn btn-primary btn-lg">
+                               class="sbl-btn sbl-btn-primary sbl-btn-lg">
                                 <i class="bi bi-plus-circle"></i> Add This Membership
                             </a>
                         </div>
                         {% endif %}
                     {% else %}
-                    <div class="alert alert-info text-center">
-                        <a href="{% url 'login' %}?next={% url 'rewards:program_detail' program.id %}" class="alert-link">
+                    <div class="sbl-alert sbl-alert-info text-center">
+                        <a href="{% url 'login' %}?next={% url 'rewards:program_detail' program.id %}" class="sbl-alert-link">
                             Log in
                         </a> to add this program to your rewards dashboard
                     </div>
                     {% endif %}
 
-                    <div class="mt-4">
-                        <a href="{% url 'rewards:programs_browse' %}" class="btn btn-outline-secondary">
+                    <div class="mt-6">
+                        <a href="{% url 'rewards:programs_browse' %}" class="sbl-btn sbl-btn-outline">
                             <i class="bi bi-arrow-left"></i> Back to All Programs
                         </a>
                     </div>

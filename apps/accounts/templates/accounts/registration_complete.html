@@ -4,13 +4,13 @@
 {% block title %}Registration Complete{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 text-center">
-            <div class="card">
-                <div class="card-body">
+<div class="mt-12">
+    <div class="grid grid-cols-12 justify-center">
+        <div class="col-span-12 md:col-span-6 text-center">
+            <div class="sbl-card">
+                <div class="p-5">
                     <h2>Check Your Email!</h2>
-                    <p class="lead mt-3">
+                    <p class="text-lg text-warm-700 mt-4">
                         We've sent a verification link to your email address.
                     </p>
                     <p>
@@ -18,7 +18,7 @@
                         If you don't see the email, check your spam folder.
                     </p>
                     <hr>
-                    <p class="text-muted">
+                    <p class="text-warm-500">
                         Didn't receive the email? 
                         <a href="{% url 'resend_verification' %}">Resend verification email</a>
                     </p>

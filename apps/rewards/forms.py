@@ -27,40 +27,40 @@ class UserRewardsMembershipForm(forms.ModelForm):
         ]
         widgets = {
             'program': forms.Select(attrs={
-                'class': 'form-control'
+                'class': 'sbl-input'
             }),
             'member_number': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Membership number'
             }),
             'member_name': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Name on account (optional)'
             }),
             'current_tier': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'e.g., Gold, Platinum'
             }),
             'points_balance': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Current balance (optional)',
                 'min': 0
             }),
             'tier_expires': forms.DateInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'type': 'date'
             }),
             'username': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'placeholder': 'Login username (optional)'
             }),
             'notes': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'rows': 3,
                 'placeholder': 'Any notes about this membership...'
             }),
             'expiration_notice_days': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'sbl-input',
                 'min': 1
             }),
         }
@@ -141,14 +141,14 @@ class QuickAddRewardsForm(forms.Form):
     
     program = forms.ModelChoiceField(
         queryset=RewardsProgram.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-control'}),
+        widget=forms.Select(attrs={'class': 'sbl-input'}),
         label="Program"
     )
     
     member_number = forms.CharField(
         max_length=100,
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Membership number'
         })
     )
@@ -157,7 +157,7 @@ class QuickAddRewardsForm(forms.Form):
         required=False,
         max_length=50,
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Tier (optional)'
         })
     )
@@ -183,7 +183,7 @@ class RewardsProgramSearchForm(forms.Form):
     search = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={
-            'class': 'form-control',
+            'class': 'sbl-input',
             'placeholder': 'Search programs...'
         })
     )
@@ -191,5 +191,5 @@ class RewardsProgramSearchForm(forms.Form):
     program_type = forms.ChoiceField(
         required=False,
         choices=[('', 'All Types')] + list(RewardsProgramType.choices),
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'sbl-input'})
     )

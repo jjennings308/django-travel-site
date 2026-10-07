@@ -7,35 +7,35 @@
 {% block title %}{{ membership.program.name }} Details{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
+<div class="my-12">
+    <div class="grid grid-cols-12">
+        <div class="col-span-12 md:col-span-8 md:col-start-3">
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
-                    <li class="breadcrumb-item active">{{ membership.program.name }}</li>
+                <ol class="flex flex-wrap items-center gap-1.5 text-sm text-warm-500">
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none"><a href="{% url 'rewards:dashboard' %}">Rewards</a></li>
+                    <li class="after:ml-1.5 after:text-warm-400 after:content-['/'] last:after:content-none active">{{ membership.program.name }}</li>
                 </ol>
             </nav>
 
-            <div class="card">
-                <div class="card-header bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="sbl-card">
+                <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-warm-50">
+                    <div class="flex justify-between items-center">
                         <div>
                             <h3 class="mb-1">{{ membership.program.company }}</h3>
-                            <p class="text-muted mb-0">{{ membership.program.name }}</p>
+                            <p class="text-warm-500 mb-0">{{ membership.program.name }}</p>
                         </div>
                         <div>
                             {% if membership.is_primary %}
-                            <span class="badge bg-success">Primary</span>
+                            <span class="sbl-badge sbl-badge-success">Primary</span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
+                <div class="p-5">
+                    <div class="grid grid-cols-12 mb-6">
+                        <div class="col-span-12 md:col-span-6">
                             <h5>Membership Information</h5>
-                            <table class="table">
+                            <table class="sbl-table">
                                 <tr>
                                     <th>Member Number:</th>
                                     <td><code>{{ membership.member_number }}</code></td>
@@ -54,14 +54,14 @@
                                 {% endif %}
                             </table>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-span-12 md:col-span-6">
                             <h5>Status & Balance</h5>
-                            <table class="table">
+                            <table class="sbl-table">
                                 {% if membership.current_tier %}
                                 <tr>
                                     <th>Current Tier:</th>
                                     <td>
-                                        <span class="badge bg-primary">{{ membership.current_tier }}</span>
+                                        <span class="sbl-badge sbl-badge-primary">{{ membership.current_tier }}</span>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -71,7 +71,7 @@
                                     <td>
                                         {{ membership.tier_expires|date:"F d, Y" }}
                                         {% if membership.is_tier_expiring_soon %}
-                                        <span class="badge bg-warning">Expiring Soon</span>
+                                        <span class="sbl-badge sbl-badge-warning">Expiring Soon</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -87,46 +87,46 @@
                     </div>
 
                     {% if membership.notes %}
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <h5>Notes</h5>
-                        <div class="alert alert-light">
+                        <div class="sbl-alert sbl-alert-info">
                             {{ membership.notes|linebreaks }}
                         </div>
                     </div>
                     {% endif %}
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <h5>Settings</h5>
-                        <ul class="list-unstyled">
+                        <ul class="list-none">
                             <li>
-                                <i class="bi {% if membership.show_on_profile %}bi-check-circle text-success{% else %}bi-x-circle text-muted{% endif %}"></i>
+                                <i class="bi {% if membership.show_on_profile %} bi-check-circle text-emerald-700 {% else %} bi-x-circle text-warm-500 {% endif %}"></i>
                                 Show on public profile
                             </li>
                             <li>
-                                <i class="bi {% if membership.notify_on_expiration %}bi-check-circle text-success{% else %}bi-x-circle text-muted{% endif %}"></i>
+                                <i class="bi {% if membership.notify_on_expiration %} bi-check-circle text-emerald-700 {% else %} bi-x-circle text-warm-500 {% endif %}"></i>
                                 Expiration notifications ({{ membership.expiration_notice_days }} days)
                             </li>
                         </ul>
                     </div>
 
                     {% if membership.program.website %}
-                    <div class="mb-3">
-                        <a href="{{ membership.program.website }}" target="_blank" class="btn btn-outline-primary">
+                    <div class="mb-4">
+                        <a href="{{ membership.program.website }}" target="_blank" class="sbl-btn sbl-btn-outline">
                             <i class="bi bi-box-arrow-up-right"></i> Visit Program Website
                         </a>
                     </div>
                     {% endif %}
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
-                        <a href="{% url 'rewards:dashboard' %}" class="btn btn-outline-secondary">
+                    <div class="grid gap-2 md:flex md:justify-between mt-6">
+                        <a href="{% url 'rewards:dashboard' %}" class="sbl-btn sbl-btn-outline">
                             Back to Dashboard
                         </a>
-                        <a href="{% url 'rewards:edit_membership' membership.id %}" class="btn btn-primary">
+                        <a href="{% url 'rewards:edit_membership' membership.id %}" class="sbl-btn sbl-btn-primary">
                             Edit Membership
                         </a>
                     </div>
                 </div>
-                <div class="card-footer text-muted">
+                <div class="border-t border-warm-200 px-5 py-3 text-warm-500">
                     <small>
                         Added {{ membership.created_at|date:"F d, Y" }}
                         {% if membership.updated_at != membership.created_at %}
