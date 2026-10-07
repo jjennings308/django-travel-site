@@ -605,8 +605,8 @@ class MealAdmin(admin.ModelAdmin):
 
 @admin.register(TripGrant)
 class TripGrantAdmin(admin.ModelAdmin):
-    list_display = ("user", "trip", "granted_by", "granted_at")
-    list_filter = ("trip",)
+    list_display = ("user", "trip", "role", "granted_by", "granted_at")
+    list_filter = ("role", "trip")
     search_fields = ("user__username", "user__email", "trip__name")
     autocomplete_fields = ("user", "trip", "granted_by")
 

@@ -21,13 +21,15 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
+from trips.models import TripRole
 from trips.forms import (
     ROW_CELL_SEPARATOR,
     section_payload_form,
     validate_day_roster,
 )
-from trips.models import BookingTask, Day, Meal, Section, Trip, TripGrant
+from trips.models import BookingTask, Day, Meal, Section, Trip
+
+from trips.tests.helpers import give
 
 User = get_user_model()
 
@@ -54,7 +56,7 @@ class DayEditingFixture(TestCase):
         )
         # The role alone is not access: `visible_to` needs a grant *and* at
         # least viewer, so both have to be set or every test below is a 404.
-        self.grant(self.alice, Role.EDITOR, trip=self.trip)
+        self.grant(self.alice, TripRole.EDITOR, trip=self.trip)
 
     def make_trip(self, name="Other trip"):
         return Trip.objects.create(
@@ -62,11 +64,7 @@ class DayEditingFixture(TestCase):
         )
 
     def grant(self, user, *roles, trip=None):
-        for role in roles:
-            UserRole.objects.create(user=user, role=role, granted_by=self.staff)
-        if trip is not None:
-            TripGrant.objects.create(trip=trip, user=user, granted_by=self.staff)
-        return user
+        return give(user, *roles, trip=trip, granted_by=self.staff)
 
     def day_payload(self, **overrides):
         data = {
@@ -130,7 +128,7 @@ class DayCreateTests(DayEditingFixture):
         self.assertIsNone(response.context["form"]["date"].initial)
 
     def test_a_viewer_cannot_reach_the_page(self):
-        self.grant(make_user("vic"), Role.VIEWER, trip=self.trip)
+        self.grant(make_user("vic"), TripRole.VIEWER, trip=self.trip)
         self.client.force_login(User.objects.get(username="vic"))
         self.assertEqual(self.client.get(self.url()).status_code, 403)
 
@@ -271,7 +269,7 @@ class DayEditTests(DayEditingFixture):
         self.assertEqual(self.client.get(url).status_code, 404)
 
     def test_a_viewer_cannot_edit(self):
-        self.grant(make_user("vic"), Role.VIEWER, trip=self.trip)
+        self.grant(make_user("vic"), TripRole.VIEWER, trip=self.trip)
         self.client.force_login(User.objects.get(username="vic"))
         self.assertEqual(self.client.get(self.url()).status_code, 403)
 
@@ -315,7 +313,7 @@ class DayDeleteTests(DayEditingFixture):
         self.assertEqual(task.title, "Book train")
 
     def test_a_viewer_cannot_delete(self):
-        self.grant(make_user("vic"), Role.VIEWER, trip=self.trip)
+        self.grant(make_user("vic"), TripRole.VIEWER, trip=self.trip)
         self.client.force_login(User.objects.get(username="vic"))
         self.assertEqual(self.client.get(self.url()).status_code, 403)
 
@@ -415,7 +413,7 @@ class SectionViewTests(DayEditingFixture):
         self.assertEqual(self.client.get(url).status_code, 404)
 
     def test_a_viewer_cannot_edit(self):
-        self.grant(make_user("vic"), Role.VIEWER, trip=self.trip)
+        self.grant(make_user("vic"), TripRole.VIEWER, trip=self.trip)
         self.client.force_login(User.objects.get(username="vic"))
         self.assertEqual(self.client.get(self.edit_url()).status_code, 403)
 

@@ -96,7 +96,7 @@ from datetime import datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from accounts.models import ROLE_RANK, Role, effective_role
+from accounts.models import Role
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -203,10 +203,10 @@ class TripQuerySet(models.QuerySet):
         inactive account sees nothing at all, so deactivating someone takes
         effect immediately rather than at their next login.
 
-        Otherwise a trip qualifies on *both* counts: there is a grant, and the
-        user holds at least ``Viewer`` globally. Requiring both is what stops a
-        grant from stranding someone in a half state where a trip shows up in
-        their list but nothing on it will open.
+        Otherwise a trip qualifies when the user holds a grant on it. Every
+        grant carries a role and the weakest role can read, so a grant is
+        exactly read access — there is no half state where a trip shows up in
+        a list but nothing on it will open.
 
         Soft-deleted trips are excluded for everyone, staff included. Recovery
         goes through ``Trip.objects.deleted()`` in the admin, so there is one
@@ -217,13 +217,7 @@ class TripQuerySet(models.QuerySet):
             return live.none()
         if user.is_staff or user.is_superuser:
             return live
-        # Both conditions share one join on purpose. Split across two filter()
-        # calls they could pair a grant to one user with a role held by a
-        # different one, which would hand out access that neither fact supports.
-        return live.filter(
-            grants__user=user,
-            grants__user__roles__role__isnull=False,
-        ).distinct()
+        return live.filter(grants__user=user).distinct()
 
     def public(self, token):
         """The trip behind a public token, or an empty queryset.
@@ -632,9 +626,10 @@ class Trip(models.Model):
         are ``view``, ``comment``, ``edit``, ``delete``, ``restore`` and
         ``manage``.
 
-        Read access needs a grant *and* at least Viewer globally. ``comment`` and
-        ``edit`` additionally need the matching role. ``delete`` needs edit
-        class access *and* ownership — being the ``created_by`` of the trip —
+        Read access needs a grant on this trip; what else is allowed comes from
+        that grant's ``role`` (viewer < commentor < editor), so the same person
+        can edit one trip and only read another. ``delete`` needs an editor
+        grant *and* ownership — being the ``created_by`` of the trip —
         so an editor who was handed someone else's trip cannot remove it.
         ``restore`` and ``manage`` — changing who can reach this trip — stay
         staff-only: a deleted trip is invisible to everyone, so there is no
@@ -650,21 +645,10 @@ class Trip(models.Model):
         if user.is_staff or user.is_superuser:
             return {"view", "comment", "edit", "delete", "restore", "manage"}
 
-        allowed = set()
-        if not self.grants.filter(user=user).exists():
-            return allowed
-
-        held = effective_role(user)
-        if held is None:
-            return allowed
-        allowed.add("view")
-        if ROLE_RANK[held] <= ROLE_RANK[Role.COMMENTOR]:
-            allowed.add("comment")
-        if ROLE_RANK[held] <= ROLE_RANK[Role.EDITOR]:
-            allowed.add("edit")
-            if self.created_by_id == user.pk:
-                allowed.add("delete")
-        return allowed
+        role = (
+            self.grants.filter(user=user).values_list("role", flat=True).first()
+        )
+        return role_capabilities(role, owns=self.created_by_id == user.pk)
 
     def can(self, user, action):
         """Whether ``user`` may perform ``action`` on this trip."""
@@ -1346,13 +1330,14 @@ class Comment(models.Model):
 # Access control
 # --------------------------------------------------------------------------
 #
-# There are two axes here and they are deliberately different facts:
+# ``TripGrant`` is the access axis: one row per (trip, user), carrying the
+# role that person has on *that* trip (viewer < commentor < editor). Roles were
+# app-wide (``accounts.UserRole``) in the itinerary project and moved onto the
+# grant here, because this site has self-registration and one person can be an
+# editor of their own trip and only a reader of somebody else's.
 #
-# * ``UserRole`` is a user's app-wide standing — what kind of thing the person
-#   is allowed to do. It says nothing about *where*. It lives in
-#   ``accounts``, not here; only ``TripGrant`` is a trips concern.
-# * ``TripGrant`` says which trips a person can reach. It carries no role,
-#   because the role already lives on the user.
+# ``accounts.UserRole`` now holds only ``creator``: an app-wide "may create
+# trips" flag, granted by staff. It says nothing about any existing trip.
 #
 # Neither is ``Trip.travelers``. "Regan is on the trip" and "Regan can read the
 # trip" are unrelated facts: a trip can have six travelers and one reader, and a
@@ -1375,19 +1360,54 @@ def can_create_trip(user):
         return False
     if user.is_staff or user.is_superuser:
         return True
-    return effective_role(user) == Role.CREATOR
+    return user.roles.filter(role=Role.CREATOR).exists()
+
+
+class TripRole(models.TextChoices):
+    """What a grant lets its holder do on one trip, weakest to strongest.
+
+    A stronger role implies the ones below it: an editor can also comment and
+    read. Deleting additionally needs ownership (``Trip.created_by``), and
+    ``restore`` / ``manage`` stay staff-only — see ``Trip.capabilities_for``.
+    """
+
+    VIEWER = "viewer", "Viewer"
+    COMMENTOR = "commentor", "Commentor"
+    EDITOR = "editor", "Editor"
+
+
+TRIP_ROLE_RANK = {TripRole.VIEWER: 0, TripRole.COMMENTOR: 1, TripRole.EDITOR: 2}
+
+
+def role_capabilities(role, owns=False):
+    """The non-staff capability set for a grant ``role`` (``None``: no grant).
+
+    The one place the per-role rule lives: ``Trip.capabilities_for`` calls it
+    with the role it looked up, and the trip list calls it with roles fetched
+    for the whole page in one query.
+    """
+    if role is None:
+        return set()
+    rank = TRIP_ROLE_RANK[role]
+    allowed = {"view"}
+    if rank >= TRIP_ROLE_RANK[TripRole.COMMENTOR]:
+        allowed.add("comment")
+    if rank >= TRIP_ROLE_RANK[TripRole.EDITOR]:
+        allowed.add("edit")
+        if owns:
+            allowed.add("delete")
+    return allowed
 
 
 class TripGrant(models.Model):
-    """Permission for one user to reach one trip.
+    """Permission for one user to reach one trip, and what they may do there.
 
-    This is deliberately role-free. What a user may *do* once they can reach a
-    trip is their ``UserRole``; this only answers *which* trips they can see,
-    and it exists because a private trip should not be readable by every account
-    that exists.
+    ``role`` is per trip (see ``TripRole``): the same account can edit one trip
+    and only read another. A private trip should not be readable by every
+    account that exists, so no grant means no access at all.
 
-    The grant is one row, not a role, so revoking access is deleting the row and
-    leaves nothing half-revoked. ``granted_by`` records who let the person in,
+    The grant is one row, so revoking access is deleting the row and leaves
+    nothing half-revoked; changing what someone may do is changing ``role``. ``granted_by`` records who let the person in,
     which is worth keeping on a private trip carrying confirmation numbers.
     """
 
@@ -1396,6 +1416,12 @@ class TripGrant(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="trip_grants",
+    )
+    role = models.CharField(
+        max_length=16,
+        choices=TripRole.choices,
+        default=TripRole.VIEWER,
+        help_text="What this person may do on this trip.",
     )
     granted_at = models.DateTimeField(auto_now_add=True)
     granted_by = models.ForeignKey(
@@ -1415,4 +1441,4 @@ class TripGrant(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} → {self.trip}"
+        return f"{self.user} → {self.trip} ({self.get_role_display()})"

@@ -707,36 +707,25 @@ class UserPreferences(TimeStampedModel):
 
 
 # ============================================================================
-# APP-WIDE TRIP ROLES (moved from the itinerary project's accounts app)
+# APP-WIDE CAPABILITIES (from the itinerary project's accounts app)
 # ============================================================================
 
 class Role(models.TextChoices):
-    """App-wide capability ladder for trips, weakest to strongest.
+    """App-wide capabilities that are not about any one trip.
 
-    The ordering matters: a stronger role implies the ones below it, so an
-    ``Editor`` can also read and comment on anything they can reach. Which
-    trips a person can reach is ``trips.TripGrant``; this app never imports
-    ``trips``.
+    Only ``creator`` remains: permission to create trips, granted by staff.
+    What someone may do on a particular trip is the role on their
+    ``trips.TripGrant`` for it; this app never imports ``trips``.
     """
 
-    VIEWER = "viewer", "Viewer"
-    COMMENTOR = "commentor", "Commentor"
-    EDITOR = "editor", "Editor"
     CREATOR = "creator", "Creator"
 
 
-# Strongest to weakest, used to resolve a user's highest role.
-ROLE_LADDER = [Role.CREATOR, Role.EDITOR, Role.COMMENTOR, Role.VIEWER]
-ROLE_RANK = {role: index for index, role in enumerate(ROLE_LADDER)}
-
-
 class UserRole(models.Model):
-    """One app-wide capability held by a user.
+    """One app-wide capability held by a user (today only ``creator``).
 
-    A user may hold several — the uniqueness constraint is on user+role rather
-    than on user alone, so nothing stops someone being Viewer *and* Creator.
-    They resolve to the strongest role on the ladder, because a lone ``Editor``
-    who cannot read the trip they are editing is not a state worth supporting.
+    The uniqueness constraint is on user+role, so a user holds each capability
+    at most once.
     """
 
     user = models.ForeignKey(
@@ -765,17 +754,3 @@ class UserRole(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.get_role_display()}"
-
-
-def effective_role(user):
-    """The strongest :class:`Role` a user holds, or ``None`` if they hold none.
-
-    Returns the value rather than the ``UserRole`` row because the row carries
-    audit fields no permission check needs, and because it keeps callers from
-    caring how many rows a user happens to have.
-    """
-    if user is None or not user.is_authenticated or not user.is_active:
-        return None
-    if not user.roles.exists():
-        return None
-    return min(user.roles.values_list("role", flat=True), key=ROLE_RANK.get)

@@ -30,7 +30,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone as django_timezone
 
-from accounts.models import ROLE_RANK, Role, effective_role
 
 from .forms import (
     AddTravelerForm,
@@ -53,7 +52,9 @@ from .models import (
     Traveler,
     Trip,
     TripGrant,
+    TripRole,
     can_create_trip,
+    role_capabilities,
     comment_kind,
     comment_trip,
     COMMENT_TARGET_KINDS,
@@ -65,31 +66,36 @@ from .public import public_trip
 def _visible_capabilities(user, trips):
     """Attach per-row capabilities to trips the user can already read.
 
-    ``Trip.capabilities_for`` is the single place the rule lives, but it costs
-    three queries a call — grant exists, roles exists, roles values_list — and
-    this is a list page, so a loop over it would be three queries per trip.
+    ``Trip.capabilities_for`` costs a query a call, and this is a list page, so
+    calling it per row would be a query per trip. Instead the user's grant roles
+    for every listed trip are read in one query and fed to the same
+    ``role_capabilities`` rule ``capabilities_for`` uses. Staff get everything
+    without a grant.
 
-    Every trip passed here came out of ``Trip.objects.visible_to``, so the grant
-    is already known to exist and the only remaining question is the role, which
-    answers the same for every row. So the rule reduces to: staff get
-    everything; otherwise an Editor-or-stronger can edit, and can additionally
-    delete the trips they created.
-
-    This is a shortcut, not a second rule. ``TripListCapabilityTests`` in
-    test_access.py pins it against ``capabilities_for`` for every role, so the
-    two cannot quietly diverge.
+    ``ListCapabilityEquivalenceTests`` in test_edit_views.py pins this against
+    ``capabilities_for`` for every role, owned and not.
     """
+    trips = list(trips)
     staff = user.is_staff or user.is_superuser
-    role = effective_role(user)
-    editable = staff or (
-        role is not None and ROLE_RANK[role] <= ROLE_RANK[Role.EDITOR]
+    roles = (
+        {}
+        if staff
+        else dict(
+            TripGrant.objects.filter(
+                user=user, trip__in=[trip.pk for trip in trips]
+            ).values_list("trip_id", "role")
+        )
     )
     for trip in trips:
-        # Mirrors capabilities_for: ownership is necessary but not sufficient.
-        owns = trip.created_by_id == user.pk
+        if staff:
+            allowed = {"edit", "delete"}
+        else:
+            allowed = role_capabilities(
+                roles.get(trip.pk), owns=trip.created_by_id == user.pk
+            )
         trip.list_capabilities = {
-            "edit": editable,
-            "delete": staff or (editable and owns),
+            "edit": "edit" in allowed,
+            "delete": "delete" in allowed,
         }
     return trips
 
@@ -378,10 +384,12 @@ def trip_create(request):
         form.save_m2m()
         _add_new_traveler(trip, traveler_form)
 
-        # A creator who can make a trip but cannot read the result would create
-        # something that silently vanishes from their own list. Grant them
-        # access to what they just made.
-        TripGrant.objects.create(trip=trip, user=request.user, granted_by=request.user)
+        # A creator who can make a trip but cannot edit the result would create
+        # something they cannot finish, or that vanishes from their own list. Give
+        # them an editor grant on what they just made.
+        TripGrant.objects.create(
+            trip=trip, user=request.user, granted_by=request.user, role=TripRole.EDITOR
+        )
 
         messages.success(request, f"Created “{trip.name}”.")
         return redirect("trips:trip_detail", pk=trip.pk)

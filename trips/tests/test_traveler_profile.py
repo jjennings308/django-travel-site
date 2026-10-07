@@ -15,7 +15,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
+from trips.models import TripRole
 from trips.models import RewardsMembership, Traveler, Trip, TripGrant
 from trips.public import public_trip
 
@@ -246,8 +246,9 @@ class NoSidewaysLeakTests(TestCase):
             end_date=date(2026, 9, 19),
         )
         self.trip.travelers.add(traveler, Traveler.objects.get(user=self.bob))
-        UserRole.objects.create(user=self.bob, role=Role.EDITOR, granted_by=admin)
-        TripGrant.objects.create(trip=self.trip, user=self.bob, granted_by=admin)
+        TripGrant.objects.create(
+            trip=self.trip, user=self.bob, role=TripRole.EDITOR, granted_by=admin
+        )
 
     def test_the_trip_page_shows_the_name_not_the_numbers(self):
         self.client.force_login(self.bob)

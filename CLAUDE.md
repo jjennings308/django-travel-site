@@ -80,12 +80,15 @@ that matter most:
   (`content` is JSONB; per-type shapes in the `trips/models.py` docstring), `Meal`, `Lodging`,
   `TransportLeg`, `Confirmation`, `Contact`, `BookingTask`, `TripGrant`, generic `Comment`,
   `RewardsMembership`.
-- **Access is two axes.** `accounts.UserRole` is the app-wide ladder (viewer < commentor <
-  editor < creator; `effective_role()`); `trips.TripGrant` says which trips a person can reach.
-  Reading needs both. Views go through `Trip.objects.visible_to(user)` / `Trip.can(user, action)`
+- **Access is per trip.** A `trips.TripGrant` row (one per trip and user) carries the person's
+  `role` on that trip: `TripRole` viewer < commentor < editor; `role_capabilities()` is the rule.
+  No grant, no access. `accounts.UserRole` holds only `creator` ("may create trips", app-wide,
+  granted by staff); creating a trip gives its creator an editor grant. Delete needs an editor
+  grant *and* `created_by`; `restore` and `manage` (editing grants) are staff-only. (The itinerary
+  project had an app-wide role ladder; trips migration `0014` moved it onto the grants.) Views go through `Trip.objects.visible_to(user)` / `Trip.can(user, action)`
   / `Trip.capabilities_for(user)`: **404** with no grant, **403** when the trip is readable but
   the action is refused. `Trip.status`, `Trip.travelers` and booking-task names are never access
-  checks. Staff/superusers get everything. Trips are soft-deleted (`deleted_at`);
+  checks. Staff/superusers get everything without grants. Trips are soft-deleted (`deleted_at`);
   `visible_to` hides deleted trips from everyone, recovery is an admin action.
 - **Every account is a traveler.** `trips/signals.py` links or creates a `Traveler` on every
   user save (unique exact-name match only). Travel-profile data (passport, loyalty numbers) is on
@@ -167,9 +170,8 @@ itinerary app into this project (Phases 1–4). Work on a branch; do one phase p
    Phase 1 is drop-and-replace or needs a data migration.)
 2. Does this project have outside users or a production database? (Decides whether
    migration history can be reset in Phase 1.)
-3. Trip access model: keep itinerary's global role ladder, or move the role onto `TripGrant`
-   per trip (recommended, since this site has self-registration)? Phase 1 can lift the ladder
-   across unchanged either way; the change is its own step.
+3. ~~Trip access model~~ — done on branch `phase-1b-grant-roles`: role per `TripGrant`;
+   `creator` stays app-wide; sharing (grant management) stays staff-only for now.
 4. Rewards: one membership model owned by `rewards`, keyed to `Traveler` (recommended)?
    Phase 4 only.
 

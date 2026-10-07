@@ -34,6 +34,7 @@ from .models import (
     Traveler,
     Trip,
     TripGrant,
+    TripRole,
 )
 
 User = get_user_model()
@@ -90,10 +91,15 @@ def build_dashboard():
         linked=Count("id", filter=Q(user__isnull=False)),
         unlinked=Count("id", filter=Q(user__isnull=True)),
     )
-    roles = _breakdown(Role.choices, _grouped(UserRole.objects, "role"))
-    # Staff and superusers normally hold no UserRole row, so this is "accounts
-    # nobody has granted an app-wide capability" rather than "unconfigured".
-    users_without_role = User.objects.filter(roles__isnull=True).count()
+    # Trip access by role: one count per grant on a live trip. A person with
+    # grants on three trips is counted three times, once per trip.
+    roles = _breakdown(
+        TripRole.choices, _grouped(TripGrant.objects.filter(trip__in=live), "role")
+    )
+    creators = UserRole.objects.filter(role=Role.CREATOR).count()
+    # Staff need no grants, so this is "accounts that can reach no trip unless
+    # they are staff" rather than "unconfigured".
+    users_without_role = User.objects.filter(trip_grants__isnull=True).count()
 
     # -- trips ------------------------------------------------------------
     trips = {
@@ -172,6 +178,7 @@ def build_dashboard():
         "travelers": travelers,
         "roles": roles,
         "users_without_role": users_without_role,
+        "creators": creators,
         "trips": trips,
         "tasks": tasks,
         "content": content,

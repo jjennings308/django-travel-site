@@ -14,8 +14,11 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole, effective_role
+from accounts.models import Role, UserRole
+from trips.models import TripRole
 from trips.models import Day, Section, Traveler, Trip, TripGrant, can_create_trip
+
+from trips.tests.helpers import give
 
 User = get_user_model()
 
@@ -38,60 +41,65 @@ class AccessFixture(TestCase):
         self.taos = make_trip("Taos 2026", start_date=date(2026, 9, 12), end_date=date(2026, 9, 20))
 
     def give(self, user, *roles, trip=None):
-        for role in roles:
-            UserRole.objects.create(user=user, role=role, granted_by=self.admin)
-        if trip is not None:
-            TripGrant.objects.create(trip=trip, user=user, granted_by=self.admin)
-        return user
+        return give(user, *roles, trip=trip, granted_by=self.admin)
 
     def url(self, trip):
         return reverse("trips:trip_detail", args=[trip.pk])
 
 
-class EffectiveRoleTests(AccessFixture):
-    def test_no_roles_is_none(self):
-        self.assertIsNone(effective_role(self.alice))
+class GrantRoleTests(AccessFixture):
+    """The role lives on the grant, so it is per trip."""
 
-    def test_single_role_resolves_to_itself(self):
-        self.give(self.alice, Role.VIEWER)
-        self.assertEqual(effective_role(self.alice), Role.VIEWER)
+    def test_a_grant_defaults_to_viewer(self):
+        TripGrant.objects.create(trip=self.europe, user=self.alice, granted_by=self.admin)
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view"})
 
-    def test_several_roles_resolve_to_the_strongest(self):
-        # Stored as a set, but a lone Editor who could not read the trip they
-        # are editing is not a state worth supporting, so the ladder collapses.
-        self.give(self.alice, Role.VIEWER, Role.EDITOR, Role.COMMENTOR)
-        self.assertEqual(effective_role(self.alice), Role.EDITOR)
+    def test_roles_differ_per_trip(self):
+        # The reason the role moved: one person can edit their own trip and
+        # only read somebody else's.
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.taos)
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+        self.assertEqual(self.taos.capabilities_for(self.alice), {"view"})
 
-    def test_holding_every_role_is_the_same_as_creator(self):
-        self.give(self.alice, Role.VIEWER, Role.COMMENTOR, Role.EDITOR, Role.CREATOR)
-        self.assertEqual(effective_role(self.alice), Role.CREATOR)
-
-    def test_duplicate_role_rows_are_rejected(self):
-        # The uniqueness constraint is user+role, so the same role twice is a
-        # data error rather than a silently ignored second row.
-        self.give(self.alice, Role.VIEWER)
+    def test_one_grant_per_trip_and_user(self):
+        # Changing what someone may do is changing the role, not adding a row.
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         with self.assertRaises(Exception):
-            UserRole.objects.create(user=self.alice, role=Role.VIEWER, granted_by=self.admin)
+            TripGrant.objects.create(
+                trip=self.europe, user=self.alice, role=TripRole.EDITOR, granted_by=self.admin
+            )
 
-    def test_anonymous_user_has_no_role(self):
-        self.assertIsNone(effective_role(AnonymousUser()))
+    def test_changing_the_role_changes_the_capabilities(self):
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
+        TripGrant.objects.filter(trip=self.europe, user=self.alice).update(role=TripRole.EDITOR)
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+
+    def test_creator_is_the_only_app_wide_role(self):
+        self.assertEqual(Role.values, [Role.CREATOR])
+
+    def test_duplicate_creator_rows_are_rejected(self):
+        self.give(self.alice, Role.CREATOR)
+        with self.assertRaises(Exception):
+            UserRole.objects.create(user=self.alice, role=Role.CREATOR, granted_by=self.admin)
 
 
 class CapabilityTests(AccessFixture):
     def test_viewer_can_only_view(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.assertEqual(self.europe.capabilities_for(self.alice), {"view"})
 
     def test_commentor_can_view_and_comment(self):
-        self.give(self.alice, Role.COMMENTOR, trip=self.europe)
+        self.give(self.alice, TripRole.COMMENTOR, trip=self.europe)
         self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment"})
 
     def test_editor_can_view_comment_and_edit(self):
-        self.give(self.alice, Role.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
 
-    def test_creator_gets_everything_except_manage(self):
-        # manage is staff-only until trips have an owner; see the docstring.
+    def test_creator_with_an_editor_grant_gets_everything_except_manage(self):
+        # manage is staff-only; see the docstring. Being a creator adds nothing
+        # on an existing trip beyond its grant.
         self.give(self.alice, Role.CREATOR, trip=self.europe)
         self.assertEqual(
             self.europe.capabilities_for(self.alice), {"view", "comment", "edit"}
@@ -103,27 +111,21 @@ class CapabilityTests(AccessFixture):
             {"view", "comment", "edit", "delete", "restore", "manage"},
         )
 
-    def test_role_without_a_grant_grants_nothing(self):
-        # The important negative: an app-wide Editor has not been given this
-        # trip, so they cannot read it.
-        self.give(self.alice, Role.EDITOR)
-        self.assertEqual(self.europe.capabilities_for(self.alice), set())
-
-    def test_grant_without_a_role_grants_nothing(self):
-        # The other half: being handed a trip while holding no role leaves
-        # the trip unreadable, rather than half-open.
-        TripGrant.objects.create(trip=self.europe, user=self.alice, granted_by=self.admin)
+    def test_creator_without_a_grant_gets_nothing(self):
+        # The important negative: "may create trips" says nothing about a trip
+        # somebody else made and nobody has shared.
+        self.give(self.alice, Role.CREATOR)
         self.assertEqual(self.europe.capabilities_for(self.alice), set())
 
     def test_a_grant_is_scoped_to_its_own_trip(self):
-        self.give(self.alice, Role.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
         self.assertEqual(self.taos.capabilities_for(self.alice), set())
 
     def test_deactivating_an_account_revokes_access_immediately(self):
         # Not "at their next login" — the queryset checks is_active, so
         # deactivating someone takes effect without touching a session.
-        self.give(self.alice, Role.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertTrue(self.europe.can(self.alice, "edit"))
         self.alice.is_active = False
         self.alice.save()
@@ -133,7 +135,7 @@ class CapabilityTests(AccessFixture):
         self.assertEqual(self.europe.capabilities_for(AnonymousUser()), set())
 
     def test_can_is_the_boolean_form_of_capabilities(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.assertTrue(self.europe.can(self.alice, "view"))
         self.assertFalse(self.europe.can(self.alice, "edit"))
 
@@ -143,7 +145,7 @@ class CapabilityTests(AccessFixture):
         # building it.
         self.europe.status = Trip.Status.STARTING
         self.europe.save()
-        self.give(self.alice, Role.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertEqual(
             self.europe.capabilities_for(self.alice), {"view", "comment", "edit"}
         )
@@ -158,15 +160,15 @@ class CapabilityTests(AccessFixture):
 
 class VisibleToTests(AccessFixture):
     def test_granted_trip_is_visible(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.assertEqual(list(Trip.objects.visible_to(self.alice)), [self.europe])
 
     def test_ungranted_trip_is_hidden(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.assertNotIn(self.taos, Trip.objects.visible_to(self.alice))
 
-    def test_role_without_grant_sees_nothing(self):
-        self.give(self.alice, Role.EDITOR)
+    def test_creator_without_grant_sees_nothing(self):
+        self.give(self.alice, Role.CREATOR)
         self.assertEqual(list(Trip.objects.visible_to(self.alice)), [])
 
     def test_staff_sees_every_trip(self):
@@ -176,17 +178,16 @@ class VisibleToTests(AccessFixture):
         self.assertEqual(list(Trip.objects.visible_to(None)), [])
         self.assertEqual(list(Trip.objects.visible_to(AnonymousUser())), [])
 
-    def test_granted_twice_does_not_duplicate_the_trip(self):
-        # Two roles on one user would otherwise join twice and return the trip
-        # twice without distinct().
-        self.give(self.alice, Role.VIEWER, Role.EDITOR, trip=self.europe)
+    def test_other_users_grants_do_not_duplicate_the_trip(self):
+        # Several grants on one trip join several rows; distinct() keeps the
+        # reader's list to one entry per trip.
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
+        self.give(self.bob, TripRole.EDITOR, trip=self.europe)
         self.assertEqual(len(Trip.objects.visible_to(self.alice)), 1)
 
-    def test_a_role_held_by_a_different_user_does_not_leak_access(self):
-        # The join bug this guards: pairing Bob's grant with Alice's role
-        # would show Alice a trip nobody granted her.
-        self.give(self.alice, Role.EDITOR)
-        self.give(self.bob, Role.VIEWER, trip=self.europe)
+    def test_a_grant_held_by_a_different_user_does_not_leak_access(self):
+        self.give(self.alice, Role.CREATOR)
+        self.give(self.bob, TripRole.VIEWER, trip=self.europe)
         self.assertEqual(list(Trip.objects.visible_to(self.alice)), [])
         self.assertEqual(list(Trip.objects.visible_to(self.bob)), [self.europe])
 
@@ -200,8 +201,8 @@ class CanCreateTripTests(AccessFixture):
         self.give(self.alice, Role.CREATOR)
         self.assertTrue(can_create_trip(self.alice))
 
-    def test_editor_may_not_create(self):
-        self.give(self.alice, Role.EDITOR)
+    def test_an_editor_grant_does_not_allow_creating(self):
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertFalse(can_create_trip(self.alice))
 
     def test_staff_may_create(self):
@@ -218,13 +219,13 @@ class TripListViewTests(AccessFixture):
         self.assertIn(reverse("login"), response["Location"])
 
     def test_a_granted_trip_is_listed(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertContains(response, "Europe 2027")
 
     def test_an_ungranted_trip_is_not_listed(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertNotContains(response, "Taos 2026")
@@ -232,7 +233,7 @@ class TripListViewTests(AccessFixture):
     def test_draft_and_ready_are_labelled(self):
         self.europe.status = Trip.Status.READY_TO_GO
         self.europe.save()
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertContains(response, "Ready")
@@ -251,7 +252,7 @@ class TripListViewTests(AccessFixture):
         self.europe.travelers.add(ada)
         Day.objects.create(trip=self.europe, day_number=1, date=date(2027, 9, 17))
         Day.objects.create(trip=self.europe, day_number=2, date=date(2027, 9, 18))
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertContains(response, "Ada Lovelace")
@@ -262,7 +263,7 @@ class TripListViewTests(AccessFixture):
     def test_a_trip_with_no_days_still_renders_its_card(self):
         # days_count is a Count annotation: zero rows, but the card must not
         # treat that as absent information.
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertContains(response, "Days")
@@ -289,23 +290,23 @@ class TripDetailAccessTests(AccessFixture):
         self.assertIn(reverse("login"), response["Location"])
 
     def test_a_granted_trip_is_readable(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 200)
 
     def test_an_ungranted_trip_is_404_not_403(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         response = self.client.get(self.url(self.taos))
         self.assertEqual(response.status_code, 404)
 
-    def test_a_role_without_a_grant_is_still_404(self):
-        self.give(self.alice, Role.EDITOR)
+    def test_a_grant_on_another_trip_is_still_404(self):
+        self.give(self.alice, TripRole.EDITOR, trip=self.taos)
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 404)
 
-    def test_a_grant_without_a_role_is_still_404(self):
-        TripGrant.objects.create(trip=self.europe, user=self.alice, granted_by=self.admin)
+    def test_a_creator_without_a_grant_is_still_404(self):
+        self.give(self.alice, Role.CREATOR)
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 404)
 
@@ -314,7 +315,7 @@ class TripDetailAccessTests(AccessFixture):
         # able to read it.
         self.europe.status = Trip.Status.STARTING
         self.europe.save()
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 200)
 
@@ -328,7 +329,7 @@ class TripDetailAccessTests(AccessFixture):
         self.assertEqual(self.client.get(self.url(self.europe)).status_code, 404)
 
     def test_an_inactive_user_cannot_read_a_granted_trip(self):
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.alice.is_active = False
         self.alice.save()
         self.client.force_login(self.alice)
@@ -373,7 +374,7 @@ class OwnershipDeleteTests(AccessFixture):
     def test_an_editor_who_did_not_create_the_trip_may_not_delete_it(self):
         # Being handed someone else's trip to edit is not being handed
         # permission to remove it.
-        self.give(self.alice, Role.EDITOR, trip=self.europe)
+        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertFalse(self.europe.can(self.alice, "delete"))
 
     def test_the_creator_needs_edit_class_access_to_delete(self):
@@ -381,7 +382,7 @@ class OwnershipDeleteTests(AccessFixture):
         # been demoted to viewer is a viewer first.
         self.europe.created_by = self.alice
         self.europe.save(update_fields=["created_by"])
-        self.give(self.alice, Role.VIEWER, trip=self.europe)
+        self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         self.assertFalse(self.europe.can(self.alice, "delete"))
         self.assertTrue(self.europe.can(self.alice, "view"))
 
@@ -448,7 +449,7 @@ class SoftDeleteTests(AccessFixture):
     def test_a_deleted_trip_is_hidden_from_everyone_including_staff(self):
         self.taos.soft_delete()
         self.assertNotIn(self.taos, Trip.objects.visible_to(self.admin))
-        self.give(self.alice, Role.VIEWER, trip=self.taos)
+        self.give(self.alice, TripRole.VIEWER, trip=self.taos)
         self.assertNotIn(self.taos, Trip.objects.visible_to(self.alice))
 
     def test_a_deleted_trip_detail_page_is_404(self):

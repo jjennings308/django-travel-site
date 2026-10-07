@@ -164,12 +164,13 @@
         <div><dt>Superusers</dt><dd>{{ stats.accounts.superusers }}</dd></div>
         <div><dt>Never signed in</dt><dd>{{ stats.accounts.never_logged_in }}</dd></div>
       </dl>
-      <p class="card-kicker mt-6 mb-3">App-wide roles</p>
+      <p class="card-kicker mt-6 mb-3">Trip access by role</p>
       <div class="flex flex-wrap gap-2">
         {% for row in stats.roles %}
           <span class="chip gap-1.5">{{ row.label }} <span class="font-semibold tabular-nums text-zinc-900">{{ row.count }}</span></span>
         {% endfor %}
-        <span class="chip gap-1.5 border-dashed text-zinc-500">No role <span class="font-semibold tabular-nums text-zinc-700">{{ stats.users_without_role }}</span></span>
+        <span class="chip gap-1.5 border-dashed text-zinc-500">No grants <span class="font-semibold tabular-nums text-zinc-700">{{ stats.users_without_role }}</span></span>
+        <span class="chip gap-1.5">Can create trips <span class="font-semibold tabular-nums text-zinc-900">{{ stats.creators }}</span></span>
       </div>
     </section>
 

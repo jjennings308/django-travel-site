@@ -26,6 +26,7 @@ from trips.models import (
     Traveler,
     Trip,
     TripGrant,
+    TripRole,
 )
 
 User = get_user_model()
@@ -80,7 +81,6 @@ class DashboardAccessTests(TestCase):
 class DashboardStatsTests(TestCase):
     def setUp(self):
         self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234")
-        UserRole.objects.create(user=self.alice, role=Role.VIEWER)
         self.start = date(2027, 9, 17)
         self.europe = Trip.objects.create(
             name="Europe 2027",
@@ -149,6 +149,23 @@ class DashboardStatsTests(TestCase):
         self.assertEqual(stats["access"]["grants"], 1)
         self.assertEqual(stats["access"]["users_with_grants"], 1)
         self.assertEqual(stats["trips"]["without_grants"], 1)
+
+    def test_trip_access_is_counted_by_grant_role(self):
+        bob = User.objects.create_user("bob", "bob@example.com", "pw-1234")
+        TripGrant.objects.create(trip=self.europe, user=self.alice, role=TripRole.EDITOR)
+        TripGrant.objects.create(trip=self.taos, user=self.alice, role=TripRole.VIEWER)
+        TripGrant.objects.create(trip=self.europe, user=bob, role=TripRole.VIEWER)
+        UserRole.objects.create(user=bob, role=Role.CREATOR)
+        stats = build_dashboard()
+        counts = {row["label"]: row["count"] for row in stats["roles"]}
+        self.assertEqual(counts["Viewer"], 2)
+        self.assertEqual(counts["Editor"], 1)
+        self.assertEqual(counts["Commentor"], 0)
+        self.assertEqual(stats["creators"], 1)
+        self.assertEqual(
+            stats["users_without_role"],
+            User.objects.filter(trip_grants__isnull=True).count(),
+        )
 
     def test_unowned_trips_are_counted(self):
         self.assertEqual(build_dashboard()["trips"]["unowned"], 2)

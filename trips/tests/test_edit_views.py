@@ -12,7 +12,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
+from accounts.models import Role
+from trips.models import TripRole
 from trips.forms import TRIP_SUBSECTION_FORMSETS
 from trips.models import (
     BookingTask,
@@ -28,6 +29,8 @@ from trips.models import (
     can_create_trip,
 )
 from trips.views import _visible_capabilities
+
+from trips.tests.helpers import give
 
 User = get_user_model()
 
@@ -49,11 +52,7 @@ class TripEditingFixture(TestCase):
         )
 
     def give(self, user, *roles, trip=None):
-        for role in roles:
-            UserRole.objects.create(user=user, role=role, granted_by=self.staff)
-        if trip is not None:
-            TripGrant.objects.create(trip=trip, user=user, granted_by=self.staff)
-        return user
+        return give(user, *roles, trip=trip, granted_by=self.staff)
 
     def own(self, user, trip=None):
         """Make ``user`` the trip's creator, as creating it in the app would."""
@@ -124,7 +123,7 @@ class TripCreateTests(TripEditingFixture):
         self.assertContains(response, "New trip")
 
     def test_a_viewer_may_not_create(self):
-        self.give(self.alice, Role.VIEWER)
+        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
         self.client.force_login(self.alice)
         self.assertEqual(
             self.client.get(reverse("trips:trip_create")).status_code, 403
@@ -224,7 +223,7 @@ class TripCreateTests(TripEditingFixture):
 
 class TripEditTests(TripEditingFixture):
     def test_an_editor_may_save_their_trip(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         response = self.client.post(
             reverse("trips:trip_edit", args=[self.trip.pk]),
@@ -237,7 +236,7 @@ class TripEditTests(TripEditingFixture):
         self.assertEqual(self.trip.name, "Taos, revised")
 
     def test_a_commentor_may_not_edit(self):
-        self.give(self.alice, Role.COMMENTOR, trip=self.trip)
+        self.give(self.alice, TripRole.COMMENTOR, trip=self.trip)
         self.client.force_login(self.alice)
         # 403 not 404: she can already read the trip, so it is not a secret.
         self.assertEqual(
@@ -251,8 +250,9 @@ class TripEditTests(TripEditingFixture):
 
     def test_a_user_with_no_grant_gets_404_not_403(self):
         # The distinction the module docstring is about: an invisible trip must
-        # not be confirmed, even by its error code.
-        self.give(self.alice, Role.EDITOR)
+        # not be confirmed, even by its error code. Being able to create trips
+        # says nothing about this one.
+        self.give(self.alice, Role.CREATOR)
         self.client.force_login(self.alice)
         self.assertEqual(
             self.client.get(
@@ -263,7 +263,7 @@ class TripEditTests(TripEditingFixture):
 
     def test_editing_does_not_change_the_creator(self):
         self.own(self.alice)
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.client.post(
             reverse("trips:trip_edit", args=[self.trip.pk]),
@@ -273,7 +273,7 @@ class TripEditTests(TripEditingFixture):
         self.assertEqual(self.trip.created_by, self.alice)
 
     def test_a_traveler_can_be_added_while_editing(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.client.post(
             reverse("trips:trip_edit", args=[self.trip.pk]),
@@ -284,7 +284,7 @@ class TripEditTests(TripEditingFixture):
         )
 
     def test_a_deleted_trip_cannot_be_edited(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.trip.soft_delete()
         self.client.force_login(self.alice)
         self.assertEqual(
@@ -298,7 +298,7 @@ class TripEditTests(TripEditingFixture):
 class TripDeleteTests(TripEditingFixture):
     def test_the_creator_may_delete_their_trip(self):
         self.own(self.alice)
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         response = self.client.post(
             reverse("trips:trip_delete", args=[self.trip.pk])
@@ -308,7 +308,7 @@ class TripDeleteTests(TripEditingFixture):
         self.assertTrue(self.trip.is_deleted)
 
     def test_an_editor_who_did_not_create_the_trip_may_not_delete_it(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.assertEqual(
             self.client.get(
@@ -327,7 +327,7 @@ class TripDeleteTests(TripEditingFixture):
             day=day, section_type=Section.Type.FREE_TEXT, content={}
         )
         self.own(self.alice)
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.client.post(reverse("trips:trip_delete", args=[self.trip.pk]))
 
@@ -337,7 +337,7 @@ class TripDeleteTests(TripEditingFixture):
 
     def test_get_only_confirms_and_never_deletes(self):
         self.own(self.alice)
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         response = self.client.get(
             reverse("trips:trip_delete", args=[self.trip.pk])
@@ -396,14 +396,14 @@ class TripListLinkTests(TripEditingFixture):
     """The list offers actions only to those allowed to take them."""
 
     def test_a_viewer_is_offered_no_edit_or_delete(self):
-        self.give(self.alice, Role.VIEWER, trip=self.trip)
+        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertNotContains(response, reverse("trips:trip_edit", args=[self.trip.pk]))
         self.assertNotContains(response, reverse("trips:trip_delete", args=[self.trip.pk]))
 
     def test_an_editor_is_offered_edit_but_not_delete(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         response = self.client.get(reverse("trips:trip_list"))
         self.assertContains(response, reverse("trips:trip_edit", args=[self.trip.pk]))
@@ -418,7 +418,7 @@ class TripListLinkTests(TripEditingFixture):
         self.assertContains(response, reverse("trips:trip_delete", args=[self.trip.pk]))
 
     def test_only_a_creator_sees_the_new_trip_button(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.assertNotContains(
             self.client.get(reverse("trips:trip_list")),
@@ -432,7 +432,7 @@ class TripListLinkTests(TripEditingFixture):
         )
 
     def test_a_deleted_trip_leaves_the_list(self):
-        self.give(self.alice, Role.VIEWER, trip=self.trip)
+        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
         self.trip.soft_delete()
         self.client.force_login(self.alice)
         self.assertNotContains(
@@ -458,23 +458,21 @@ class ListCapabilityEquivalenceTests(TripEditingFixture):
             )
 
     def _check_every_role(self, trip):
-        """Grant once, then vary only the role.
+        """Grant once, then vary only the grant's role.
 
         Re-granting per role would hit the unique_trip_grant constraint, and
-        the ladder is the thing under test, not the grant.
+        the role is the thing under test, not the grant.
         """
-        TripGrant.objects.create(trip=trip, user=self.alice, granted_by=self.staff)
-        for role in Role.values:
+        grant = TripGrant.objects.create(trip=trip, user=self.alice, granted_by=self.staff)
+        for role in TripRole.values:
             with self.subTest(role=role):
-                UserRole.objects.create(
-                    user=self.alice, role=role, granted_by=self.staff
-                )
+                grant.role = role
+                grant.save(update_fields=["role"])
                 # Re-attach per iteration: the shortcut writes the attribute,
                 # and capabilities_for re-queries rather than caching, so
                 # comparing fresh against fresh is the honest comparison.
                 _visible_capabilities(self.alice, [trip])
                 self._assert_matches(self.alice, trip)
-                self.alice.roles.all().delete()
 
     def test_every_role_on_an_owned_trip(self):
         self._check_every_role(self.own(self.alice))
@@ -492,7 +490,7 @@ class ListCapabilityEquivalenceTests(TripEditingFixture):
 class CreateTripGuardTests(TripEditingFixture):
     def test_can_create_trip_is_still_the_gate(self):
         self.assertFalse(can_create_trip(self.alice))
-        self.give(self.alice, Role.EDITOR)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.assertFalse(can_create_trip(self.alice))
         self.give(self.alice, Role.CREATOR)
         self.assertTrue(can_create_trip(self.alice))
@@ -510,7 +508,7 @@ class TripSubsectionFormsetTests(TripEditingFixture):
         )
 
     def grant_editor(self):
-        self.give(self.alice, Role.EDITOR, trip=self.trip)
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         return self.alice
 
     def test_lodging_can_be_added(self):
@@ -795,7 +793,7 @@ class TripSubsectionFormsetTests(TripEditingFixture):
         self.assertEqual(self.trip.name, "Taos")
 
     def test_an_editor_may_not_reach_the_page_at_all(self):
-        self.give(self.alice, Role.VIEWER, trip=self.trip)
+        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
         self.client.force_login(self.alice)
         self.assertEqual(
             self.client.get(

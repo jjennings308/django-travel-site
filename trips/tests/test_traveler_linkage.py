@@ -22,7 +22,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import UserRole, effective_role
+from accounts.models import UserRole
 from trips.models import Day, Trip, TripGrant, Traveler
 from trips.tests.test_docx_import import build_document, run_import
 
@@ -148,7 +148,6 @@ class CreateAccountActionTests(TestCase):
         user = User.objects.get(username="debbie")
         self.assertEqual(UserRole.objects.filter(user=user).count(), 0)
         self.assertEqual(TripGrant.objects.filter(user=user).count(), 0)
-        self.assertIsNone(effective_role(user))
 
     def test_a_traveler_that_already_has_an_account_is_skipped(self):
         make_user("debbie", first_name="Debbie", last_name="Fowler")

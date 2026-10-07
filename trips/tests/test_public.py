@@ -22,7 +22,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
 from trips.models import (
     BookingTask,
     Comment,
@@ -420,7 +419,6 @@ class PublicModelTests(TestCase):
     def test_public_is_excluded_from_visible_to(self):
         # A token is not a grant. Holding one must not quietly grant app access.
         user = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
-        UserRole.objects.create(user=user, role=Role.VIEWER)
         trip = Trip.objects.create(
             name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
         )

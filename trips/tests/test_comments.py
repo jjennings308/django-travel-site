@@ -25,7 +25,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
+from trips.models import TripRole
 from trips.models import Comment, Day, Section, Trip, TripGrant
 
 User = get_user_model()
@@ -61,11 +61,13 @@ class CommentFixture(TestCase):
             content={"tone": "info", "text": "It is cold up there."},
         )
 
-        UserRole.objects.create(user=self.ada, role=Role.COMMENTOR)
-        UserRole.objects.create(user=self.bob, role=Role.COMMENTOR)
-        UserRole.objects.create(user=self.cara, role=Role.COMMENTOR)
-        TripGrant.objects.create(trip=self.trip, user=self.ada, granted_by=self.staff)
-        TripGrant.objects.create(trip=self.trip, user=self.bob, granted_by=self.staff)
+        # cara holds no grant, so she cannot reach the trip at all.
+        TripGrant.objects.create(
+            trip=self.trip, user=self.ada, role=TripRole.COMMENTOR, granted_by=self.staff
+        )
+        TripGrant.objects.create(
+            trip=self.trip, user=self.bob, role=TripRole.COMMENTOR, granted_by=self.staff
+        )
 
     def login(self, user):
         self.client.force_login(user)
@@ -109,10 +111,10 @@ class CommentAccessTests(CommentFixture):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response["Location"])
 
-    def test_a_user_with_a_grant_but_no_role_gets_a_404(self):
-        # No role at all means not readable, so the trip is invisible — and the
+    def test_a_user_without_a_grant_gets_a_404(self):
+        # No grant means not readable, so the trip is invisible — and the
         # invisible trip is a 404, not a 403 that would confirm it exists.
-        UserRole.objects.filter(user=self.bob).delete()
+        TripGrant.objects.filter(trip=self.trip, user=self.bob).delete()
         self.login(self.bob)
         response = self.client.post(
             reverse("trips:comment_create", args=["trip", self.trip.pk]),
@@ -123,7 +125,7 @@ class CommentAccessTests(CommentFixture):
 
     def test_a_viewer_with_a_grant_gets_403_not_404(self):
         # Readable but not allowed to comment: the one case that is a 403.
-        UserRole.objects.filter(user=self.bob).update(role=Role.VIEWER)
+        TripGrant.objects.filter(trip=self.trip, user=self.bob).update(role=TripRole.VIEWER)
         self.login(self.bob)
         response = self.client.post(
             reverse("trips:comment_create", args=["trip", self.trip.pk]),
@@ -265,9 +267,7 @@ class CommentEditTests(CommentFixture):
         self.assertContains(response, "Original")
 
     def test_someone_else_with_edit_access_cannot_rewrite_it(self):
-        from accounts.models import UserRole
-
-        UserRole.objects.create(user=self.bob, role=Role.EDITOR)
+        TripGrant.objects.filter(trip=self.trip, user=self.bob).update(role=TripRole.EDITOR)
         self.login(self.bob)
         response = self.client.post(
             reverse("trips:comment_edit", args=[self.comment.pk]),
@@ -490,7 +490,7 @@ class CommentRenderingTests(CommentFixture):
     def test_a_reader_who_cannot_comment_sees_no_thread_at_all(self):
         # Not "an empty heading and an empty list" — the block should not render,
         # because a viewer with nothing to say has nothing to look at.
-        UserRole.objects.filter(user=self.ada).update(role=Role.VIEWER)
+        TripGrant.objects.filter(trip=self.trip, user=self.ada).update(role=TripRole.VIEWER)
         self.login(self.ada)
         response = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertNotContains(response, "Nothing here yet.")
@@ -511,7 +511,7 @@ class CommentRenderingTests(CommentFixture):
         self.assertContains(response, 'class="no-print"')
 
     def test_a_viewer_without_the_comment_capability_sees_no_add_link(self):
-        UserRole.objects.filter(user=self.ada).update(role=Role.VIEWER)
+        TripGrant.objects.filter(trip=self.trip, user=self.ada).update(role=TripRole.VIEWER)
         self.login(self.ada)
         response = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertNotContains(

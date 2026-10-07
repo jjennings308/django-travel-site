@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, UserRole
+from trips.models import TripRole
 from trips.models import (
     BookingTask,
     Contact,
@@ -60,7 +60,6 @@ class DetailFixture(TestCase):
             "staffy", "staffy@example.com", "pw-1234-abcd", is_staff=True
         )
         cls.reader = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
-        UserRole.objects.create(user=cls.reader, role=Role.VIEWER)
 
         cls.trip = Trip.objects.create(
             name="Taos / Angel Fire",
@@ -69,7 +68,7 @@ class DetailFixture(TestCase):
             end_date=date(2026, 9, 19),
             status=Trip.Status.STARTING,
         )
-        TripGrant.objects.create(trip=cls.trip, user=cls.reader)
+        TripGrant.objects.create(trip=cls.trip, user=cls.reader, role=TripRole.VIEWER)
         cls.day = Day.objects.create(
             trip=cls.trip,
             day_number=1,
@@ -413,7 +412,7 @@ class QueryCountTests(DetailFixture):
             Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER)
             day.travelers.add(ada)
 
-        # 17, not 13: the comment threads add four fixed queries.
+        # The comment threads add a few fixed queries:
         #
         # * 1 for the four content types, fetched together with
         #   `get_for_models` — `get_for_model` is one query per model, so four
@@ -422,19 +421,19 @@ class QueryCountTests(DetailFixture):
         #   once. A `GenericPrefetch` cannot cover this: the targets are reached
         #   through three different relations, and querying per day would cost one
         #   query per day.
-        # * 2 for `Trip.can(user, "comment")` — the grant check and the role
-        #   lookup inside the existing rule. Deliberately not reimplemented here
-        #   to save a query; `can_create_trip` and the trip list already treat
-        #   `capabilities_for` as the single place the rule lives, and staff
-        #   would cost none of these two at all.
+        # * 1 for `Trip.can(user, "comment")` — the grant (and its role) lookup
+        #   inside the existing rule. Deliberately not reimplemented here; the
+        #   trip list and `can_create_trip` already treat `capabilities_for` as
+        #   the single place the rule lives, and staff would cost none at all.
+        #   (It was 2 when the role lived on the user, as `accounts.UserRole`.)
         #
-        # All four are fixed: the count does not move with the number of days,
+        # All are fixed: the count does not move with the number of days,
         # sections, meals or comments, which is the property being pinned.
         #
-        # 21 on this site, not 17: the site shell adds four fixed queries to
+        # 19 in all on this site, four of which are the site shell's, added to
         # every page — UserTimezoneMiddleware (user_preferences),
         # UserThemeMiddleware (account_settings), and the travel_preferences and
         # rewards context processors. None of them depends on the trip.
-        with self.assertNumQueries(21):
+        with self.assertNumQueries(19):
             response = self.get()
         self.assertEqual(response.status_code, 200)
