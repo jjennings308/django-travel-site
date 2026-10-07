@@ -1,7 +1,7 @@
 # bucketlists/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from activities.models import Activity
 from locations.models import City  # CORRECTED: Use City instead of Location
 from events.models import Event
@@ -12,7 +12,7 @@ class BucketListItem(TimeStampedModel):
     """User's bucket list items - references to activities, locations, or events they want to experience"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='bucket_list_items'
     )
@@ -252,7 +252,7 @@ class BucketListCategory(TimeStampedModel):
     """User-created categories to organize their bucket list"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='bucket_list_categories'
     )
@@ -317,7 +317,7 @@ class BucketListMilestone(TimeStampedModel):
     """Track user milestones and achievements"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='bucket_list_milestones'
     )

@@ -11,7 +11,6 @@ from django.utils import timezone
 from .models import Country, Region, City, POI, LocationStatus, CapitalType
 from media_app.models import Media
 from approval_system.models import ApprovalStatus
-from accounts.models import User
 from core.utils.breadcrumbs import BreadcrumbPatterns
 
 

@@ -1,7 +1,7 @@
 # media/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from taggit.managers import TaggableManager
@@ -104,7 +104,7 @@ class Media(TimeStampedModel):
     
     # Ownership and attribution
     uploaded_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='uploaded_media'
     )
@@ -288,7 +288,7 @@ class MediaAlbum(TimeStampedModel):
     """Albums/collections of media"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='media_albums'
     )

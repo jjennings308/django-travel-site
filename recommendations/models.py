@@ -1,7 +1,7 @@
 # recommendations/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from activities.models import Activity
 from locations.models import City
 from events.models import Event
@@ -113,7 +113,7 @@ class Recommendation(TimeStampedModel):
     """Generated recommendations for users"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='recommendations'
     )
@@ -282,7 +282,7 @@ class UserInterest(TimeStampedModel):
     """Track user interests for recommendations"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='interests'
     )
@@ -364,7 +364,7 @@ class RecommendationFeedback(TimeStampedModel):
     )
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='recommendation_feedback'
     )

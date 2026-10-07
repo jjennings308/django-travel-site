@@ -1,7 +1,7 @@
 # admin_tools/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
@@ -20,7 +20,7 @@ class ModerationQueue(TimeStampedModel):
     
     # Submitter
     submitted_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='submitted_for_moderation'
     )
@@ -75,7 +75,7 @@ class ModerationQueue(TimeStampedModel):
     
     # Review
     reviewed_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -93,7 +93,7 @@ class ModerationQueue(TimeStampedModel):
     
     # Escalation
     escalated_to = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -149,7 +149,7 @@ class ReportedContent(TimeStampedModel):
     
     # Reporter
     reporter = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='content_reports'
     )
@@ -208,7 +208,7 @@ class ReportedContent(TimeStampedModel):
     
     # Review
     reviewed_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -245,7 +245,7 @@ class UserActivityLog(TimeStampedModel):
     """Log of user activities for admin monitoring"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='activity_logs'
     )
@@ -387,7 +387,7 @@ class ModeratorNote(TimeStampedModel):
     
     # Author
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='moderator_notes'
     )
@@ -433,7 +433,7 @@ class AdminAction(TimeStampedModel):
     """Log of admin actions for audit trail"""
     
     admin = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='admin_actions'
     )

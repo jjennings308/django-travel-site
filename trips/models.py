@@ -1,7 +1,7 @@
 # trips/models.py
 from django.db import models
 from core.models import TimeStampedModel, SlugMixin
-from accounts.models import User
+from django.conf import settings
 from locations.models import City, Country
 from activities.models import Activity
 from vendors.models import Vendor
@@ -15,7 +15,7 @@ class Trip(TimeStampedModel, SlugMixin):
     
     # Ownership
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='trips'
     )
@@ -252,7 +252,7 @@ class TripCollaborator(TimeStampedModel):
         related_name='collaborators'
     )
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='collaborative_trips'
     )
@@ -269,7 +269,7 @@ class TripCollaborator(TimeStampedModel):
     )
     
     invited_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         related_name='trip_invitations_sent'

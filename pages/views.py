@@ -1,10 +1,11 @@
 # pages/views.py
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from accounts.models import User, Profile
+from accounts.models import Profile
 from trips.models import Trip
 from bucketlists.models import BucketListItem
 # from activities.models import Activity  # Uncomment when ready
@@ -19,7 +20,7 @@ def home(request):
     
     # Stats for homepage
     context = {
-        'total_users': User.objects.filter(is_active=True).count(),
+        'total_users': get_user_model().objects.filter(is_active=True).count(),
         'total_trips': Trip.objects.count(),
         'countries_count': Profile.objects.exclude(
             home_country__isnull=True

@@ -4,7 +4,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from core.models import TimeStampedModel, UUIDModel
-from accounts.models import User
+from django.conf import settings
 
 
 class RewardsProgramType(models.TextChoices):
@@ -86,7 +86,7 @@ class UserRewardsMembership(TimeStampedModel, UUIDModel):
     """User's membership in a rewards program"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='rewards_memberships'
     )

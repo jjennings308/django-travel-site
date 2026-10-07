@@ -1,7 +1,7 @@
 # notifications/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
@@ -119,7 +119,7 @@ class Notification(TimeStampedModel):
     """Individual notifications sent to users"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='notifications'
     )
@@ -254,7 +254,7 @@ class UserNotificationPreference(TimeStampedModel):
     """User preferences for notification types"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='notification_preferences'
     )
@@ -314,7 +314,7 @@ class NotificationDigest(TimeStampedModel):
     """Track digest notifications that have been sent"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='notification_digests'
     )
@@ -405,7 +405,7 @@ class PushDevice(TimeStampedModel):
     """User devices registered for push notifications"""
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='push_devices'
     )

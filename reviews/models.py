@@ -1,7 +1,7 @@
 # reviews/models.py
 from django.db import models
 from core.models import TimeStampedModel
-from accounts.models import User
+from django.conf import settings
 from vendors.models import Vendor
 from activities.models import Activity
 from events.models import Event
@@ -15,7 +15,7 @@ class Review(TimeStampedModel):
     
     # Reviewer
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='reviews'
     )
@@ -289,7 +289,7 @@ class ReviewResponse(TimeStampedModel):
     )
     
     responder = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='review_responses'
     )
@@ -337,7 +337,7 @@ class ReviewHelpful(TimeStampedModel):
     )
     
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='helpful_review_votes'
     )
@@ -367,7 +367,7 @@ class ReviewReport(TimeStampedModel):
     )
     
     reporter = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='review_reports'
     )
@@ -393,7 +393,7 @@ class ReviewReport(TimeStampedModel):
     # Moderation
     is_resolved = models.BooleanField(default=False)
     resolved_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
