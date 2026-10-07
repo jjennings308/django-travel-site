@@ -1,64 +1,16 @@
-{# templates/partials/_sidebar.html #}
-{% with current=request.resolver_match.view_name %}
-<nav class="sidebar-nav">
-  <ul class="nav flex-column gap-1">
-
-    <li class="nav-item">
-      <a class="nav-link {% if current == 'pages:dashboard' %}active{% endif %}"
-         href="{% url 'pages:dashboard' %}">
-        <i class="bi bi-speedometer2 me-2"></i>
-        Main
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current|slice:':11' == 'bucketlist:' %}active{% endif %}"
-         href="{% url 'bucketlists:dashboard' %}">
-        <i class="bi bi-list-check me-2"></i>
-        Bucket List
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current|slice:':11' == 'activities:' %}active{% endif %}"
-         href="{% url 'activities:activity_list' %}">
-        <i class="bi bi-signpost-2 me-2"></i>
-        Activities
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current|slice:':6' == 'trips:' %}active{% endif %}"
-         href="{% url 'trips:trip_list' %}">
-        <i class="bi bi-airplane me-2"></i>
-        Trips
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current|slice:':10' == 'locations:' %}active{% endif %}"
-         href="{% url 'locations:dashboard' %}">
-        <i class="bi bi-geo-alt me-2"></i>
-        Locations
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current|slice:':7' == 'events:' %}active{% endif %}"
-         href="{% url 'events:dashboard' %}">
-        <i class="bi bi-calendar-event me-2"></i>
-        Events
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if current == 'pages:about' %}active{% endif %}"
-         href="{% url 'pages:about' %}">
-        <i class="bi bi-info-circle me-2"></i>
-        About
-      </a>
-    </li>
-
+{# templates/partials/_sidebar.html — used by the desktop sidebar (base.html) and the mobile drawer #}
+{% with current=request.resolver_match.view_name|default:"" %}
+{% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" %}
+<nav aria-label="Main">
+  <ul class="flex flex-col gap-1">
+    <li><a class="{{ base }} {% if current == 'pages:dashboard' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:dashboard' %}"><i class="bi bi-speedometer2"></i>Main</a></li>
+    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>Bucket List</a></li>
+    <li><a class="{{ base }} {% if current|slice:':11' == 'activities:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'activities:activity_list' %}"><i class="bi bi-signpost-2"></i>Activities</a></li>
+    <li><a class="{{ base }} {% if current|slice:':6' == 'trips:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'trips:trip_list' %}"><i class="bi bi-airplane"></i>Trips</a></li>
+    <li><a class="{{ base }} {% if current|slice:':10' == 'locations:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'locations:dashboard' %}"><i class="bi bi-geo-alt"></i>Locations</a></li>
+    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:dashboard' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
+    <li><a class="{{ base }} {% if current == 'pages:about' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:about' %}"><i class="bi bi-info-circle"></i>About</a></li>
   </ul>
 </nav>
+{% endwith %}
 {% endwith %}

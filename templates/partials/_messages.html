@@ -1,10 +1,12 @@
+{# templates/partials/_messages.html — Django messages as dismissible Tailwind alerts #}
 {% if messages %}
-<div class="container mt-3">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
+<div class="mb-4 flex flex-col gap-2">
+  {% for message in messages %}
+  <div x-data="{ show: true }" x-show="show" role="alert"
+       class="flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-800{% elif message.level_tag == 'warning' %}border-amber-200 bg-amber-50 text-amber-800{% elif message.level_tag == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">
+    <span>{{ message }}</span>
+    <button type="button" class="opacity-60 hover:opacity-100" @click="show = false" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
+  </div>
+  {% endfor %}
 </div>
 {% endif %}

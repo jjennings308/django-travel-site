@@ -1,10 +1,18 @@
-<div class="offcanvas offcanvas-start print:hidden" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="mobileSidebarLabel">Navigation</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-  </div>
-
-  <div class="offcanvas-body p-0">
-    {% include "partials/_sidebar.html" %}
+{# templates/partials/_mobile_sidebar.html — slide-in navigation below lg; included by _header.html, whose x-data owns mobileNav #}
+<div x-show="mobileNav" x-cloak class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+  <div class="absolute inset-0 bg-warm-900/40" x-show="mobileNav" x-transition.opacity @click="mobileNav = false"></div>
+  <div class="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col bg-white shadow-xl"
+       x-show="mobileNav"
+       x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+    <div class="flex items-center justify-between border-b border-warm-200 px-4 py-3">
+      <span class="font-semibold text-warm-800">Navigation</span>
+      <button type="button" class="rounded-md p-1 text-warm-500 hover:bg-warm-100 hover:text-warm-900" @click="mobileNav = false" aria-label="Close navigation">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="overflow-y-auto p-3">
+      {% include "partials/_sidebar.html" %}
+    </div>
   </div>
 </div>

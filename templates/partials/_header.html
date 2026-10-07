@@ -1,101 +1,69 @@
 {% load static %}
-{# templates/partials/_header.html #}
-<header class="site-header border-bottom print:hidden">
-  <div class="container py-2">
-    <div class="d-flex align-items-center justify-content-between">
+{# templates/partials/_header.html — Tailwind + Alpine (no Bootstrap JS/CSS is loaded) #}
+<header class="border-b border-warm-200 bg-white print:hidden" x-data="{ mobileNav: false }" @keydown.escape.window="mobileNav = false">
+  <div class="container mx-auto flex items-center justify-between gap-4 px-4 py-2">
 
-      {# Left: Branding #}
-      <div class="branding">
-        <a href="{% url 'pages:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none mb-0">
-          <img
-            src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
-            alt="{{ SITE_NAME }}"
-            class="navbar_logo"
-            loading="eager"
-          >
-          <span class="visually-hidden">{{ SITE_NAME }}</span>
-        </a>
-      </div>
+    <div class="flex items-center gap-2">
+      {% if user.is_authenticated %}
+        {# Opens the mobile navigation drawer; the desktop sidebar is visible from lg up #}
+        <button type="button" class="rounded-md p-2 text-warm-600 hover:bg-warm-100 hover:text-warm-900 lg:hidden"
+                @click="mobileNav = true" aria-label="Open navigation" :aria-expanded="mobileNav">
+          <i class="bi bi-list text-2xl"></i>
+        </button>
+      {% endif %}
+      <a href="{% url 'pages:home' %}" class="flex items-center">
+        <img src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}" alt="{{ SITE_NAME }}" class="h-10 w-auto" loading="eager">
+      </a>
+    </div>
 
-      {# Right: User controls #}
-      <div class="d-flex align-items-center gap-2">
-        {% if user.is_authenticated %}
-          
-          {# Quick nav links - shown on larger screens #}
-          <nav class="d-none d-lg-flex align-items-center gap-2 me-2">
-            <a href="{% url 'pages:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Dashboard">
-              <i class="bi bi-speedometer2"></i>
-              <span class="ms-1 d-none d-xl-inline">Dashboard</span>
-            </a>
-            <a href="{% url 'bucketlists:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Bucket List">
-              <i class="bi bi-list-check"></i>
-              <span class="ms-1 d-none d-xl-inline">Bucket List</span>
-            </a>
-            <a href="{% url 'trips:trip_list' %}" class="btn btn-sm btn-link text-muted" title="Trips">
-              <i class="bi bi-airplane"></i>
-              <span class="ms-1 d-none d-xl-inline">Trips</span>
-            </a>
-          </nav>
-          
-          {# Admin link if staff #}
-          {% if user.is_staff %}
-            <a href="{% url 'admin:index' %}" class="btn btn-sm btn-link text-muted p-1" title="Admin">
-              <i class="bi bi-shield-lock"></i>
-            </a>
-          {% endif %}
+    <div class="flex items-center gap-1">
+      {% if user.is_authenticated %}
+        <nav class="hidden items-center gap-1 lg:flex">
+          <a href="{% url 'pages:dashboard' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Dashboard">
+            <i class="bi bi-speedometer2"></i><span class="hidden xl:inline">Dashboard</span>
+          </a>
+          <a href="{% url 'bucketlists:dashboard' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Bucket List">
+            <i class="bi bi-list-check"></i><span class="hidden xl:inline">Bucket List</span>
+          </a>
+          <a href="{% url 'trips:trip_list' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Trips">
+            <i class="bi bi-airplane"></i><span class="hidden xl:inline">Trips</span>
+          </a>
+        </nav>
 
-          {# User dropdown #}
-          <div class="dropdown">
-            <button class="btn btn-link text-dark p-1 d-flex align-items-center" type="button" 
-                    id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-circle fs-4"></i>
-              <span class="d-none d-md-inline ms-2">{{ user.username }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-              {# Mobile-only nav links in dropdown #}
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'pages:dashboard' %}">
-                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-              </a></li>
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'bucketlists:dashboard' %}">
-                <i class="bi bi-list-check me-2"></i>Bucket List
-              </a></li>
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'trips:trip_list' %}">
-                <i class="bi bi-airplane me-2"></i>Trips
-              </a></li>
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'activities:activity_list' %}">
-                <i class="bi bi-signpost-2 me-2"></i>Activities
-              </a></li>
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'locations:dashboard' %}">
-                <i class="bi bi-geo-alt me-2"></i>Locations
-              </a></li>
-              <li class="d-lg-none"><hr class="dropdown-divider"></li>
-              
-              {# Standard user menu items #}
-              <li><a class="dropdown-item" href="{% url 'profile' %}">
-                <i class="bi bi-person me-2"></i>Profile
-              </a></li>
-              <li><a class="dropdown-item" href="{% url 'settings' %}">
-                <i class="bi bi-gear me-2"></i>Settings
-              </a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <form method="post" action="{% url 'logout' %}" class="m-0">
-                  {% csrf_token %}
-                  <button type="submit" class="dropdown-item">
-                    <i class="bi bi-box-arrow-right me-2"></i>Logout
-                  </button>
-                </form>
-              </li>
-            </ul>
-          </div>
-
-        {% else %}
-          {# Not logged in #}
-          <a class="btn btn-sm btn-outline-primary me-1" href="{% url 'login' %}">Login</a>
-          <a class="btn btn-sm btn-primary" href="{% url 'register' %}">Sign Up</a>
+        {% if user.is_staff %}
+          <a href="{% url 'admin:index' %}" class="rounded-md p-2 text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Admin">
+            <i class="bi bi-shield-lock"></i>
+          </a>
         {% endif %}
-      </div>
 
+        {# User menu #}
+        <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+          <button type="button" class="flex items-center gap-2 rounded-md px-2 py-1.5 text-warm-700 hover:bg-warm-100"
+                  @click="open = !open" :aria-expanded="open" aria-haspopup="true">
+            <i class="bi bi-person-circle text-xl"></i>
+            <span class="hidden text-sm md:inline">{{ user.username }}</span>
+            <i class="bi bi-chevron-down text-xs"></i>
+          </button>
+          <div x-show="open" x-cloak x-transition.opacity
+               class="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-warm-200 bg-white py-1 text-sm shadow-lg">
+            <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'profile' %}"><i class="bi bi-person"></i>Profile</a>
+            <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'trips:traveler_profile' %}"><i class="bi bi-passport"></i>Travel profile</a>
+            <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'settings' %}"><i class="bi bi-gear"></i>Settings</a>
+            <div class="my-1 border-t border-warm-200"></div>
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="flex w-full items-center gap-2 px-4 py-2 text-left text-warm-700 hover:bg-warm-100"><i class="bi bi-box-arrow-right"></i>Logout</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <a class="rounded-md border border-earth-clay px-3 py-1.5 text-sm text-earth-clay hover:bg-earth-sand" href="{% url 'login' %}">Login</a>
+        <a class="rounded-md bg-earth-clay px-3 py-1.5 text-sm text-white hover:bg-earth-clay-dark" href="{% url 'register' %}">Sign Up</a>
+      {% endif %}
     </div>
   </div>
+
+  {% if user.is_authenticated %}
+    {% include "partials/_mobile_sidebar.html" %}
+  {% endif %}
 </header>

@@ -22,6 +22,9 @@
   <link rel="icon" type="image/png" sizes="16x16" href="{% static 'core/branding/png/favicon/favicon-16x16.png' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'core/branding/png/app/icon-180x180.png' %}">
 
+  {# Hide Alpine-controlled elements (dropdowns, drawer) until Alpine has started #}
+  <style>[x-cloak] { display: none !important; }</style>
+
   {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
 </head>
@@ -32,12 +35,8 @@
     {% include "partials/_header.html" %}
   {% endblock %}
   
-  {# Mobile sidebar (authenticated users only) #}
-  {% if user.is_authenticated %}
-    {% block navbar %}
-      {% include "partials/_mobile_sidebar.html" %}
-    {% endblock %}
-  {% endif %}
+  {# The mobile navigation drawer is part of the header (partials/_header.html). #}
+  {% block navbar %}{% endblock %}
   
   {# Main content area #}
   <main class="container mx-auto px-4 py-6">
