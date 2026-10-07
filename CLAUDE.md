@@ -139,7 +139,7 @@ itinerary app into this project (Phases 1–4). Work on a branch; do one phase p
 
 ### Phase 0 — prep
 
-Status: Django is on 6.1.2 (branch `phase-0-django-6.1`). The `pg_dump` backups have **not** been taken yet.
+Status: done. Django is on 6.1.2; both databases were dumped to `~/db_backups/*_20261007-133218.dump` (custom format, restore with `pg_restore`).
 
 - `pg_dump` both databases before anything else (this one's container, and `itinerary` on
   `localhost:5432` — command in the itinerary CLAUDE.md under "Database").
