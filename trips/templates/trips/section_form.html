@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if is_create %}Add section{% else %}Edit section{% endif %} — {{ trip.name }}
+{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a>
+  </nav>
+
+  <div class="page-header">
+    <h1 class="page-title">
+      {% if is_create %}Add a {{ section.section_type }} section{% else %}Edit section{% endif %}
+    </h1>
+  </div>
+
+  {% if unsupported_type %}
+    {% comment %}
+      A section type this UI has no payload form for. Reported rather than
+      refused, because the section still exists and still renders on the detail
+      page — refusing would make the rest of the day unreachable from here.
+    {% endcomment %}
+    <div class="note mt-4">
+      <p>
+        This section's type is <strong>{{ unsupported_type }}</strong>, which this
+        page has no fields for. Its content is unchanged and still shows on the
+        trip.
+      </p>
+      <p class="mt-2">
+        Edit it in the admin, or pick one of the types above.
+      </p>
+    </div>
+    <form method="post" class="mt-6">
+      {% csrf_token %}
+      <section class="form-section">{% include "trips/_form_fields.html" with form=form %}</section>
+      <div class="form-actions">
+        <button type="submit" class="btn">Save title and icon</button>
+        <a class="btn-quiet" href="{% url 'trips:day_edit' trip.pk day.pk %}">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <fieldset class="form-section">
+        <legend class="form-section-title float-left mb-4 w-full">
+          Content <span class="badge badge-mode ml-2 align-middle">{{ section.section_type }}</span>
+        </legend>
+        <div class="clear-left"></div>
+        {% if payload_form.non_field_errors %}
+          <div class="alert-error">{{ payload_form.non_field_errors }}</div>
+        {% endif %}
+        {% include "trips/_form_fields.html" with form=payload_form %}
+      </fieldset>
+
+      {% if options_formset %}
+        {% comment %}
+          choose_your_adventure's options are a list of dicts, which a textarea
+          cannot express without asking the reader to write JSON. It is a real
+          formset over plain forms — there is no model behind it.
+        {% endcomment %}
+        <fieldset class="form-section">
+          <legend class="form-section-title float-left mb-1 w-full">
+            Options
+          </legend>
+          <p class="form-section-lede clear-left">
+            The choices to pick between. Leave the blank row alone if you are not
+            adding one.
+          </p>
+          {% for of in options_formset %}
+            {% if of.errors %}<div class="alert-error">{{ of.errors }}</div>{% endif %}
+            <div class="mb-4 rounded-lg border border-zinc-200 bg-zinc-50/60 p-4 pb-0">
+              {% if options_formset.forms|length > 1 %}
+                <label class="mb-3 inline-flex items-center gap-2 text-sm font-normal text-zinc-600">
+                  <input type="checkbox" name="{{ of.prefix }}-DELETE" id="{{ of.prefix }}-DELETE">
+                  Remove this option
+                </label>
+              {% endif %}
+              {% include "trips/_form_fields.html" with form=of %}
+            </div>
+          {% endfor %}
+          {{ options_formset.management_form }}
+        </fieldset>
+      {% endif %}
+
+      <fieldset class="form-section">
+        <legend class="form-section-title float-left mb-4 w-full">
+          Appearance
+        </legend>
+        <div class="clear-left"></div>
+        {% include "trips/_form_fields.html" with form=form %}
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="submit" class="btn">{% if is_create %}Add section{% else %}Save section{% endif %}</button>
+        <a class="btn-quiet" href="{% url 'trips:day_edit' trip.pk day.pk %}">Cancel</a>
+        {% if not is_create %}
+          <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk section.pk %}">Delete section</a>
+        {% endif %}
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -189,7 +189,7 @@
             
             {% include "pages/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
             
-            {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:dashboard" icon="bi-airplane" color="primary" %}
+            {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:trip_list" icon="bi-airplane" color="primary" %}
             
             {% include "pages/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" color="secondary" %}
             
@@ -243,7 +243,7 @@
             <div class="dashboard-section">
                 <div class="section-header">
                     <h2 class="section-title">Upcoming Trips</h2>
-                    <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'trips:trip_list' %}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-plus-circle"></i> New Trip
                     </a>
                 </div>
@@ -253,7 +253,7 @@
                         {% if upcoming_trips %}
                             <div class="list-group list-group-flush">
                                 {% for trip in upcoming_trips %}
-                                <a href="{% url 'trips:detail' trip.id %}" class="list-group-item list-group-item-action">
+                                <a href="{% url 'trips:trip_detail' trip.pk %}" class="list-group-item list-group-item-action">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
                                             <h6 class="mb-1">{{ trip.name }}</h6>
@@ -273,7 +273,7 @@
                             <div class="text-center text-muted py-3">
                                 <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
                                 <p class="mb-2">No upcoming trips planned</p>
-                                <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-primary">
+                                <a href="{% url 'trips:trip_list' %}" class="btn btn-sm btn-primary">
                                     Plan Your First Trip
                                 </a>
                             </div>

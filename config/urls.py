@@ -19,6 +19,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from trips.views import public_trip_detail
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,8 +31,12 @@ urlpatterns = [
     path('activities/', include(('activities.urls', 'activities'), namespace='activities')),
     path('events/', include(('events.urls', 'events'), namespace='events')),
     path('locations/', include(('locations.urls', 'locations'), namespace='locations')),
-    path('trips/', include(('trips.urls', 'trips'), namespace='trips')),
+    path('trips/', include('trips.urls')),
     path('staff/', include(('accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
+    path('staff/trips/', include('trips.staff_urls')),
+    # Public, non-detailed trip summary behind a share token. Outside the trips:
+    # namespace because every URL there assumes a signed-in reader with a grant.
+    path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
     path('approval/', include('approval_system.urls')),
     path("__reload__/", include("django_browser_reload.urls")),
 ]

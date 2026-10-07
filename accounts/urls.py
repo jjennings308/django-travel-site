@@ -23,6 +23,14 @@ urlpatterns = [
         next_page='login'
     ), name='logout'),
     
+    # Password Change (signed in)
+    path('password-change/', auth_views.PasswordChangeView.as_view(
+        template_name='accounts/password_change_form.html'
+    ), name='password_change'),
+    path('password-change/done/', auth_views.PasswordChangeDoneView.as_view(
+        template_name='accounts/password_change_done.html'
+    ), name='password_change_done'),
+
     # Password Reset
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name="accounts/password_reset.html",

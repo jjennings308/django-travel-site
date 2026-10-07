@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{% if is_create %}Add a day{% else %}Day {{ day.day_number }}{% endif %} — {{ trip.name }}{% endblock %}
+
+{% block wrap_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_edit' trip.pk %}#day-{{ day.pk }}">{{ trip.name }}</a>
+  </nav>
+
+  <div class="page-header">
+    <h1 class="page-title">
+      {% if is_create %}Add a day to {{ trip.name }}{% else %}Day {{ day.day_number }} — {{ day.theme|default:"no theme" }}{% endif %}
+    </h1>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div class="alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <section class="form-section">
+      <h2 class="form-section-title">Day details</h2>
+      <p class="form-section-lede">When it is, what it is about, and who is there.</p>
+      {% include "trips/_form_fields.html" with form=form %}
+    </section>
+
+    {% if meal_formset %}
+      {% comment %}
+        Meals are a formset for the same reason the trip-level lists are: a
+        day's meals are read as part of the day, and saving them one at a time
+        would mean three submits to fix a typo in the third one.
+      {% endcomment %}
+      <p class="mt-8 mb-3 text-sm text-zinc-500">
+        Meals save together with the day above. Leave the blank row alone if you
+        are not adding a meal.
+      </p>
+      {% include "trips/_formset.html" with formset=meal_formset label="Meals" %}
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn">
+        {% if is_create %}Add day{% else %}Save day{% endif %}
+      </button>
+      <a class="btn-quiet" href="{% url 'trips:trip_edit' trip.pk %}">Cancel</a>
+    </div>
+  </form>
+
+  {% if not is_create %}
+    {% comment %}
+      Sections are linked, not embedded. Their payload shape varies per type —
+      a logistics table's rows are not a callout's text — so one table cannot
+      hold all five without showing every possible field on every row.
+    {% endcomment %}
+    <section class="form-section mt-10">
+      <h2 class="form-section-title">Sections</h2>
+      <p class="form-section-lede">
+        The day's content blocks. Each type is saved on its own page, because the
+        fields differ per type.
+      </p>
+
+      {% if sections %}
+        <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
+          {% for s in sections %}
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+              <span class="badge badge-mode">{{ s.section_type }}</span>
+              <a class="font-medium text-zinc-900 hover:text-accent-700" href="{% url 'trips:section_edit' trip.pk day.pk s.pk %}">
+                {{ s.title|default:s.section_type }}
+              </a>
+              <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ s.content_summary }}</span>
+              <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk s.pk %}">Delete</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state py-8">No sections yet.</p>
+      {% endif %}
+
+      <p class="card-kicker mt-6 mb-2">Add a section</p>
+      <div class="flex flex-wrap gap-2">
+        {% for st in section_types %}
+          <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:section_create' trip.pk day.pk st.value %}">
+            + {{ st.label }}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

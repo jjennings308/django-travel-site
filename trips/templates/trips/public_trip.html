@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% comment %}
+The public, non-detailed view of a trip.
+
+`public` is the dict from `trips/public.py` — never the Trip itself. There
+is no `{{ trip.name }}` to reach for here, and no `{{ trip.travelers }}`, which
+is the point: the template cannot print something the allowlist did not choose,
+because it was never handed anything to print.
+
+Do not add `|safe`, `{% for %}` over a model relation, or a query of your own. If
+something this page needs is missing, it belongs in the allowlist in
+`public.py` and in a test alongside it — not here.
+
+There is no `day.theme` either, though the absence looks like an oversight and
+is not: 4 of the 17 real Europe day themes leak a flight route or a traveller's
+first name. The reasoning is in `DAY_FIELDS`.
+{% endcomment %}
+
+{% block title %}{{ public.title }}{% endblock %}
+
+{% block content %}
+  <header class="hero">
+    <h1 class="hero-title">{{ public.title }}</h1>
+    <dl class="hero-meta">
+      <div>
+        <dt class="card-kicker">Dates</dt>
+        <dd>{{ public.start_date|date:"M j" }} &ndash; {{ public.end_date|date:"M j, Y" }}</dd>
+      </div>
+      <div>
+        <dt class="card-kicker">Nights</dt>
+        <dd>{{ public.nights }}</dd>
+      </div>
+      {% if public.destination %}
+        <div>
+          <dt class="card-kicker">Destination</dt>
+          <dd>{{ public.destination }}</dd>
+        </div>
+      {% endif %}
+      {% if public.budget %}
+        <div>
+          <dt class="card-kicker">Budget</dt>
+          <dd>{{ public.budget }}</dd>
+        </div>
+      {% endif %}
+    </dl>
+  </header>
+
+  {% if not public.days %}
+    <p class="note">No days have been planned yet.</p>
+  {% endif %}
+
+  {% for day in public.days %}
+    <section class="card mb-4 flex gap-4">
+      <div class="date-tile">
+        <span class="date-tile-month">{{ day.date|date:"M" }}</span>
+        <span class="date-tile-day">{{ day.date|date:"j" }}</span>
+      </div>
+      <div class="min-w-0 flex-1">
+      <h2 class="font-semibold text-zinc-900">
+        Day {{ day.day_number }}
+        <span class="font-normal text-zinc-500">&middot; {{ day.date|date:"l" }}</span>
+      </h2>
+
+      {% if day.activity_count %}
+        {% comment %}
+          A count, not a list. `Section.content` is free prose that names
+          travellers, so it is never serialized; see the allowlist in
+          `trips/public.py`. Adding the sections here would republish
+          "Afternoon — Olga Leads" and "Guest Name: James Jennings" to anyone
+          holding the link.
+        {% endcomment %}
+        <p class="mt-2 text-sm text-zinc-500">
+          {{ day.activity_count }} planned {% if day.activity_count == 1 %}activity{% else %}activities{% endif %}
+        </p>
+      {% endif %}
+
+      {% if day.meals %}
+        <div class="mt-3">
+          <h3 class="card-kicker">
+            {% if day.meals_included %}Meals included{% else %}Food{% endif %}
+          </h3>
+          <ul class="mt-1.5 space-y-1">
+            {% for meal in day.meals %}
+              <li class="text-sm text-zinc-700">
+                <span class="font-medium">{{ meal.name }}</span>
+                <span class="text-zinc-500">&middot; {{ meal.meal_type }}</span>
+                {% if meal.cuisine %}<span class="text-zinc-500">&middot; {{ meal.cuisine }}</span>{% endif %}
+                {% if meal.price_range %}<span class="text-zinc-500">&middot; {{ meal.price_range }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      </div>
+    </section>
+  {% endfor %}
+
+  <footer class="mt-10 border-t border-zinc-200 pt-4 text-sm text-zinc-500">
+    This is a summary. Travel details, bookings and confirmation numbers are not published.
+  </footer>
+{% endblock %}

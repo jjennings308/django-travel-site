@@ -1,0 +1,86 @@
+{% comment %}
+One inline formset as a stack of collapsible cards.
+
+Five of these on the trip edit page, so it is a partial rather than markup
+copied five times. It used to be a table, but lodging and transport are ten
+inputs wide and the table scrolled sideways; a card per row puts the fields in
+a two-column grid instead.
+
+Each row is a <details>: an existing row shows a one-line summary
+(`row.instance`, whose __str__ reads only its own columns, so no queries) and
+opens to edit; the blank extra row is the "Add" control. A row with errors is
+rendered open. A closed <details> still submits its inputs, and Django formset
+forms carry no `required` attribute, so a collapsed row cannot block a submit.
+
+`DELETE` is excluded from the field loop. Django adds it as a *visible* field
+on every form, so looping `visible_fields` naively renders the remove checkbox
+once in the body and again in the row header — two checkboxes with the same
+name, and clicking either deletes.
+
+Rows are rendered server-side. A formset that needs JavaScript to add a row is
+a formset that cannot be used without it, and this app has none: `extra=1`
+always leaves one blank row, and an untouched blank row is skipped on save
+rather than written as a row of NULLs.
+{% endcomment %}
+
+<fieldset class="form-section">
+  <legend class="form-section-title float-left mb-4 w-full">
+    {{ label }}
+    {% if formset.initial_form_count %}<span class="ml-1 font-normal text-zinc-400">{{ formset.initial_form_count }}</span>{% endif %}
+  </legend>
+
+  {{ formset.management_form }}
+  {% if formset.non_form_errors %}
+    <div class="alert-error clear-left">
+      <ul class="errorlist">{% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  <div class="clear-left space-y-2">
+    {% for row in formset %}
+      <details class="formset-row group" {% if row.errors %}open{% endif %}>
+        <summary class="formset-row-summary">
+          <svg class="size-4 shrink-0 text-zinc-400 transition group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.17 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+          {% if row.instance.pk %}
+            <span class="min-w-0 flex-1 truncate font-medium text-zinc-900">{{ row.instance }}</span>
+          {% else %}
+            <span class="flex-1 font-medium text-accent-700">Add new</span>
+          {% endif %}
+          {% if row.errors %}<span class="badge badge-critical">Needs fixing</span>{% endif %}
+        </summary>
+
+        <div class="formset-row-body">
+          {% if row.non_field_errors %}
+            <div class="alert-error"><ul class="errorlist">{% for error in row.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul></div>
+          {% endif %}
+          {% comment %}`id` is what ties a posted row back to its row. The parent FK is not rendered: an inline formset sets it from the parent itself, and posting it back would only be a value to trust.{% endcomment %}
+          {{ row.id }}
+          <div class="field-grid">
+            {% for field in row.visible_fields %}
+              {% if field.name != "DELETE" %}
+                <div class="mb-4">
+                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% if formset.can_delete and row.instance.pk %}
+            <label class="formset-row-delete">{{ row.DELETE }} Remove this one when I save</label>
+          {% endif %}
+        </div>
+      </details>
+    {% empty %}
+      <p class="py-2 text-sm text-zinc-500">Nothing yet.</p>
+    {% endfor %}
+  </div>
+
+  {% comment %}One datalist for the whole section, not one per row. The ids have to be unique in a document, so the rows share this rather than repeating it.{% endcomment %}
+  {% if formset.zone_suggestions %}
+    <datalist id="{{ formset.prefix }}-zone-suggestions">
+      {% for zone in formset.zone_suggestions %}<option value="{{ zone }}"></option>{% endfor %}
+    </datalist>
+  {% endif %}
+</fieldset>

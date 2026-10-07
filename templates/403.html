@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% comment %}
+A 403 here means the trip was already readable by this user — an invisible trip
+404s instead — so this page is about a permission, not about existence. It says
+so rather than implying the trip is missing.
+{% endcomment %}
+
+{% block title %}Not allowed{% endblock %}
+
+{% block wrap_class %}max-w-md{% endblock %}
+
+{% block content %}
+<div class="card mt-4 p-6 sm:mt-10 sm:p-8">
+<h1 class="mb-4 text-2xl font-semibold tracking-tight">Not allowed</h1>
+<p class="note">
+  You can read this trip but not make that change. If you need to, ask whoever
+  administers access.
+</p>
+<p class="mt-6"><a class="link-quiet" href="{% url 'trips:trip_list' %}">Back to your trips</a></p>
+</div>
+{% endblock %}

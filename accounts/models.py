@@ -1,4 +1,5 @@
 # accounts/models.py
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
@@ -703,3 +704,78 @@ class UserPreferences(TimeStampedModel):
     
     def __str__(self):
         return f"Preferences: {self.user.username}"
+
+
+# ============================================================================
+# APP-WIDE TRIP ROLES (moved from the itinerary project's accounts app)
+# ============================================================================
+
+class Role(models.TextChoices):
+    """App-wide capability ladder for trips, weakest to strongest.
+
+    The ordering matters: a stronger role implies the ones below it, so an
+    ``Editor`` can also read and comment on anything they can reach. Which
+    trips a person can reach is ``trips.TripGrant``; this app never imports
+    ``trips``.
+    """
+
+    VIEWER = "viewer", "Viewer"
+    COMMENTOR = "commentor", "Commentor"
+    EDITOR = "editor", "Editor"
+    CREATOR = "creator", "Creator"
+
+
+# Strongest to weakest, used to resolve a user's highest role.
+ROLE_LADDER = [Role.CREATOR, Role.EDITOR, Role.COMMENTOR, Role.VIEWER]
+ROLE_RANK = {role: index for index, role in enumerate(ROLE_LADDER)}
+
+
+class UserRole(models.Model):
+    """One app-wide capability held by a user.
+
+    A user may hold several — the uniqueness constraint is on user+role rather
+    than on user alone, so nothing stops someone being Viewer *and* Creator.
+    They resolve to the strongest role on the ladder, because a lone ``Editor``
+    who cannot read the trip they are editing is not a state worth supporting.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="roles",
+    )
+    role = models.CharField(max_length=16, choices=Role.choices)
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "user_roles"
+        ordering = ["user", "role"]
+        verbose_name = "user role"
+        verbose_name_plural = "user roles"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "role"], name="unique_user_role"),
+        ]
+
+    def __str__(self):
+        return f"{self.user}: {self.get_role_display()}"
+
+
+def effective_role(user):
+    """The strongest :class:`Role` a user holds, or ``None`` if they hold none.
+
+    Returns the value rather than the ``UserRole`` row because the row carries
+    audit fields no permission check needs, and because it keeps callers from
+    caring how many rows a user happens to have.
+    """
+    if user is None or not user.is_authenticated or not user.is_active:
+        return None
+    if not user.roles.exists():
+        return None
+    return min(user.roles.values_list("role", flat=True), key=ROLE_RANK.get)

@@ -25,8 +25,7 @@ python manage.py test locations         # one app
 python manage.py test locations.tests.SomeTestCase.test_method   # single test
 ```
 
-Only `core` (layer check), `accounts` and `pages` have tests so far, each as a `tests/` package; the other apps' `tests.py` files are empty stubs. That changes with the itinerary merge (see "Work plan"):
-its `trips` test suite comes across, and new tests should follow its pattern — a `tests/` package per
+`trips` (from the itinerary merge), `core` (layer check), `accounts` and `pages` have tests, each as a `tests/` package; the other apps' `tests.py` files are empty stubs. New tests should follow the `trips` pattern — a `tests/` package per
 app, Django's built-in runner, no pytest.
 
 **Database:** Postgres runs in a Docker container named `postgres`. Connection settings come from `.env` (see `.env.example`), which `config/settings/base.py` loads with python-dotenv. To reset the database (it takes a backup to `~/db_backups` first):
@@ -69,6 +68,43 @@ User-submitted content inherits the `approval_system.models.Approvable` mixin. I
 - Detail and list views pass `breadcrumb_list` (built with `core.utils.breadcrumbs`) to `partials/_breadcrumbs.html`.
 - Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with DaisyUI and the forms and typography plugins installed. The brand palette (`earth-*` clay/olive/ochre/sage and `warm-50..900`) is defined in `tailwind.config.js`. It is also hand-written as `!important` utility classes in `styles.css`, because v4 does not read the JS config unless it is loaded with `@config`. If you add a new brand-color utility, make sure it really reaches the built CSS.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
+
+### Trips (`trips`, merged from the itinerary project)
+
+The itinerary project's `trips` app replaced ours in Phase 1. Its own CLAUDE.md
+(`~/projects/itinerary/code/CLAUDE.md`) is the long-form reference; read the relevant section
+there before changing the docx importers, section payloads, formsets or the dashboard. The rules
+that matter most:
+
+- **Models:** `Traveler` (roster person, optional `user` link), `Trip`, `Day`, `Section`
+  (`content` is JSONB; per-type shapes in the `trips/models.py` docstring), `Meal`, `Lodging`,
+  `TransportLeg`, `Confirmation`, `Contact`, `BookingTask`, `TripGrant`, generic `Comment`,
+  `RewardsMembership`.
+- **Access is two axes.** `accounts.UserRole` is the app-wide ladder (viewer < commentor <
+  editor < creator; `effective_role()`); `trips.TripGrant` says which trips a person can reach.
+  Reading needs both. Views go through `Trip.objects.visible_to(user)` / `Trip.can(user, action)`
+  / `Trip.capabilities_for(user)`: **404** with no grant, **403** when the trip is readable but
+  the action is refused. `Trip.status`, `Trip.travelers` and booking-task names are never access
+  checks. Staff/superusers get everything. Trips are soft-deleted (`deleted_at`);
+  `visible_to` hides deleted trips from everyone, recovery is an admin action.
+- **Every account is a traveler.** `trips/signals.py` links or creates a `Traveler` on every
+  user save (unique exact-name match only). Travel-profile data (passport, loyalty numbers) is on
+  `Traveler` and visible only to that person and staff (`Traveler.is_private_to`).
+- **Public view:** `/public/<uuid:token>/` (`public_trip`) renders `trips/public.py`'s
+  allowlisted dict, never a `Trip`; sections, themes, lodging, transport, confirmations and
+  travellers are omitted on purpose. `manage.py audit_public_leak` checks the real data (exit 1
+  on a certain leak).
+- **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
+  `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
+- **The detail page is printed to PDF** and holds a fixed query count (21 here: 17 for the
+  page plus 4 from this site's middleware/context processors); `test_detail.QueryCountTests`
+  pins it.
+- **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
+  `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
+  with role and trip-access inlines is registered from `trips/admin.py`.
+- Management commands: `import_itinerary` (docx, dry run unless `--apply`), `dedupe_travelers`,
+  `audit_public_leak`, `unescape_html`. Tests: `python manage.py test trips` (about 12 minutes
+  for the whole suite).
 
 ## Dependency layers
 
@@ -125,7 +161,7 @@ The violations found at commit `ddd00d7` (`core` → `accounts`/`trips`/`bucketl
 Two pieces of work, in this order: tidy the dependency layers (Phase 0.5), then merge the
 itinerary app into this project (Phases 1–4). Work on a branch; do one phase per branch/PR.
 
-**Open decisions — stop and ask James before the step that depends on one:**
+**Decisions** (1–3 answered 2026-10-07: 1 = nothing to keep, drop and replace; 2 = no outside users or production database, migration history may be reset; 3 = move the role onto `TripGrant` per trip, as its own step after Phase 1). **Still open — stop and ask James before the step that depends on it:**
 
 1. Does anything in this project's current `trips*` tables need keeping? (Decides whether
    Phase 1 is drop-and-replace or needs a data migration.)
@@ -189,7 +225,10 @@ Why the two cannot simply coexist:
 - **CSS.** DaisyUI here already defines `.card`, `.badge`, `.btn`, `.hero`, `.avatar`, `.alert`,
   `.stat`, which their component layer also defines.
 
-**Phase 1 — replace `trips` (lift and shift).**
+**Phase 1 — replace `trips` (lift and shift).** Status: done on branch `phase-1-trips`; dev
+DB migrated, all 518 tests pass. Auth tests moved to `accounts/tests/test_auth.py`; password
+change pages added to `accounts`; staff-lands-on-dashboard login behaviour dropped.
+
 
 - Remove our `trips` app. What imports it today: `reviews/models.py` (FK; and
   `reviews/0001_initial` depends on `('trips', '0001_initial')`), `recommendations/models.py`,
@@ -226,7 +265,7 @@ Why the two cannot simply coexist:
 - Do **not** rebuild from `.docx` with `import_itinerary` — that discards every admin edit made
   since the original import.
 - Verify: row counts per table match, every trip detail page renders, the detail page stays at
-  17 queries, `audit_public_leak` exits 0, existing `public_token` links resolve.
+  21 queries (see the Trips section), `audit_public_leak` exits 0, existing `public_token` links resolve.
 
 **Phase 3 — styling.**
 

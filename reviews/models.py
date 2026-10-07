@@ -238,7 +238,7 @@ class Review(TimeStampedModel):
         elif self.location:
             return self.location.name
         elif self.trip:
-            return self.trip.title
+            return self.trip.name
         elif self.review_type == 'site':
             return "Website"
         return "Unknown"

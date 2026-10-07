@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Travel profile{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Travel profile</h1>
+      <p class="page-subtitle">{{ traveler.name }}</p>
+    </div>
+  </div>
+
+  <p class="note flex items-start gap-2">
+    <svg class="mt-0.5 size-4 shrink-0 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+    <span>Only you and site staff can see this page. Nothing here appears on a trip, to the people you travel with, or on a shared link.</span>
+  </p>
+
+  {% if form.non_field_errors %}
+    <div class="alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <section class="form-section">
+      <h2 class="form-section-title">Preferences</h2>
+      <p class="form-section-lede">What to ask for when someone books for you.</p>
+      <div class="field-grid">
+        {% for field in form.preference_fields %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+            {{ field.errors }}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h2 class="form-section-title">Trusted traveler &amp; passport</h2>
+      <p class="form-section-lede">Numbers airlines ask for at booking.</p>
+      <div class="field-grid">
+        {% for field in form.document_fields %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+            {{ field.errors }}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <p class="mt-8 mb-3 text-sm text-zinc-500">Rewards programs save together with the profile above. Leave the blank row alone if you are not adding one.</p>
+    {% include "trips/_formset.html" with formset=memberships label="Rewards programs" %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn">Save profile</button>
+      <a class="btn-quiet" href="{% url 'trips:trip_list' %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

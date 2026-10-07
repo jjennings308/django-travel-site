@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% comment %}
+Post, edit or delete a comment.
+
+Shared by ``comment_create`` and ``comment_edit``: the only difference between
+them is whether ``comment`` is set and whether the form has something in it.
+{% endcomment %}
+
+{% block title %}
+  {% if comment %}Edit comment{% else %}Add a comment{% endif %} — {{ trip.name }}
+{% endblock %}
+
+{% block content %}
+  <nav class="crumbs"><a href="{{ return_url }}">{{ trip.name }}</a></nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{% if comment %}Edit comment{% else %}Add a comment{% endif %}</h1>
+      <p class="page-subtitle">on {{ trip.name }}</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-section">
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <div class="mt-2 flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ return_url }}">Cancel</a>
+      {% if comment %}
+        <button type="submit" name="action" value="delete" class="link-quiet ml-auto cursor-pointer font-medium hover:text-red-700">
+          Delete
+        </button>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if comment %}
+    <p class="text-sm text-zinc-500">
+      Posted {{ comment.created_at|date:"j M Y, H:i" }} by
+      {{ comment.author.get_username }}. Deleting removes it for everyone.
+    </p>
+  {% endif %}
+{% endblock %}

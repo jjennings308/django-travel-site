@@ -1,0 +1,54 @@
+{% comment %}
+Comment thread for one object.
+
+Included with an explicit ``comments`` list rather than queried in the template,
+so the page's query count is a known number. The caller is responsible for
+prefetching; a bare ``comment_set.all`` here would be one query per day.
+
+Renders nothing when there are no comments *and* the reader cannot add one — a
+viewer with nothing to say should not be shown an empty heading and an empty
+list on every day of the trip.
+
+Usage:
+  {% include "trips/_comments.html" with comment_kind="trip" comment_pk=trip.pk comments=trip_comments can_comment=True %}
+{% endcomment %}
+{% if comments or can_comment %}
+<section id="comments-{{ comment_kind }}-{{ comment_pk }}" class="mt-8 scroll-mt-24">
+  <h2 class="grid-label">
+    {{ heading|default:"Comments" }}{% if comments %} ({{ comments|length }}){% endif %}
+  </h2>
+
+  {% if comments %}
+    <ul class="space-y-3">
+      {% for comment in comments %}
+        <li id="comment-{{ comment.pk }}" class="comment scroll-mt-24">
+          <span class="avatar ring-0">{{ comment.author.get_full_name|default:comment.author.get_username|slice:":1" }}</span>
+          <div class="comment-body">
+            <p class="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
+              <span class="text-sm font-semibold text-zinc-900">{{ comment.author.get_full_name|default:comment.author.get_username }}</span>
+              <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"j M Y, H:i" }}</time>
+              {% if comment.edited_at %}
+                <span class="text-zinc-400">(edited)</span>
+              {% endif %}
+              {% if comment.can_edit %}
+                <a class="no-print link-quiet ml-auto text-xs" href="{% url 'trips:comment_edit' comment.pk %}">Edit</a>
+              {% endif %}
+            </p>
+            <p class="mt-1.5 text-sm whitespace-pre-line text-zinc-700">{{ comment.body }}</p>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-zinc-500">Nothing here yet.</p>
+  {% endif %}
+
+  {% if can_comment %}
+    <p class="no-print mt-4">
+      <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:comment_create' comment_kind comment_pk %}#body">
+        Add a comment
+      </a>
+    </p>
+  {% endif %}
+</section>
+{% endif %}

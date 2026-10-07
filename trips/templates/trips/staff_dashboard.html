@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Site dashboard{% endblock %}
+
+{% block wrap_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <p class="card-kicker text-accent-600">Staff</p>
+      <h1 class="page-title mt-1">Site dashboard</h1>
+      <p class="page-subtitle flex items-center gap-2">
+        <span class="relative inline-flex size-2" aria-hidden="true"><span class="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex size-2 rounded-full bg-emerald-500"></span></span>
+        Whole-site totals &middot; generated {{ stats.generated_at|date:"M j, Y H:i" }} UTC
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a class="btn-quiet" href="{% url 'trips:trip_list' %}">
+        <svg class="-ml-0.5 size-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+        Trips
+      </a>
+      <a class="btn-quiet" href="{% url 'admin:index' %}">
+        <svg class="-ml-0.5 size-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+        Django admin
+      </a>
+    </div>
+  </div>
+
+  {# Headline figures. Each tile is a link to the admin list behind it. #}
+  <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="card card-link stat-tile">
+      <span class="stat-icon"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+      <div>
+        <a href="{% url 'admin:accounts_user_changelist' %}" class="stretched card-kicker">Accounts</a>
+        <p class="stat-value mt-1">{{ stats.accounts.total }}</p>
+      </div>
+      <p class="stat-foot">{{ stats.accounts.active }} active &middot; {{ stats.accounts.staff }} staff</p>
+    </div>
+    <div class="card card-link stat-tile">
+      <span class="stat-icon"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></span>
+      <div>
+        <a href="{% url 'admin:trips_traveler_changelist' %}" class="stretched card-kicker">Travelers</a>
+        <p class="stat-value mt-1">{{ stats.travelers.total }}</p>
+      </div>
+      <p class="stat-foot">{{ stats.travelers.linked }} with an account &middot; {{ stats.travelers.unlinked }} without</p>
+    </div>
+    <div class="card card-link stat-tile">
+      <span class="stat-icon"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg></span>
+      <div>
+        <a href="{% url 'trips:trip_list' %}" class="stretched card-kicker">Live trips</a>
+        <p class="stat-value mt-1">{{ stats.trips.total }}</p>
+      </div>
+      <p class="stat-foot">{{ stats.trips.ready }} ready &middot; {{ stats.trips.upcoming }} upcoming</p>
+    </div>
+    <div class="card card-link stat-tile">
+      <span class="stat-icon {% if stats.tasks.overdue %}bg-red-50 text-red-600 ring-red-100{% endif %}"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+      <div>
+        <a href="{% url 'admin:trips_bookingtask_changelist' %}?done__exact=0" class="stretched card-kicker">Outstanding tasks</a>
+        <p class="stat-value mt-1">{{ stats.tasks.outstanding }}</p>
+      </div>
+      <p class="stat-foot">
+        {% if stats.tasks.overdue %}<span class="font-medium text-red-700">{{ stats.tasks.overdue }} overdue</span>{% else %}None overdue{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    {# Status is an ordered pipeline, so it is one bar whose segments add up to every live trip. #}
+    <section class="card lg:col-span-2">
+      <div class="panel-head">
+        <h2 class="panel-title">Planning pipeline</h2>
+        <span class="text-xs text-zinc-500">{{ stats.trips.total }} live trip{{ stats.trips.total|pluralize }}</span>
+      </div>
+      <div class="segbar" role="img" aria-label="Trips by planning status">
+        {% for row in stats.trips.by_status %}
+          {% if row.count %}<div class="seg seg-{{ row.value }}" style="width: {{ row.share|stringformat:'s' }}%" title="{{ row.label }}: {{ row.count }}"></div>{% endif %}
+        {% endfor %}
+      </div>
+      <dl class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {% for row in stats.trips.by_status %}
+          <div>
+            <dt class="flex items-center gap-2 text-xs text-zinc-500"><span class="swatch seg-{{ row.value }}" aria-hidden="true"></span>{{ row.label }}</dt>
+            <dd class="mt-1 text-xl font-semibold tracking-tight text-zinc-900">{{ row.count }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+      <dl class="mt-5 grid grid-cols-3 gap-4 rounded-lg bg-zinc-50 px-4 py-3 text-sm">
+        <div>
+          <dt class="card-kicker">Upcoming</dt>
+          <dd class="mt-0.5 font-medium">{{ stats.trips.upcoming }}</dd>
+        </div>
+        <div>
+          <dt class="card-kicker">Past</dt>
+          <dd class="mt-0.5 font-medium">{{ stats.trips.past }}</dd>
+        </div>
+        <div>
+          <dt class="card-kicker">Public pages</dt>
+          <dd class="mt-0.5 font-medium">{{ stats.trips.public }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    {# Only the figures that mean someone should act; an all-zero list collapses to "All clear". #}
+    <section class="card">
+      <div class="panel-head">
+        <h2 class="panel-title">Needs attention</h2>
+      </div>
+      {% if stats.tasks.overdue or stats.trips.without_grants or stats.accounts.never_logged_in or stats.trips.deleted %}
+        <ul class="space-y-0.5">
+          {% if stats.tasks.overdue %}
+            <li><a class="attention-row" href="{% url 'admin:trips_bookingtask_changelist' %}?done__exact=0"><span class="attention-dot bg-red-500"></span><span class="flex-1">Overdue booking task{{ stats.tasks.overdue|pluralize }}</span><span class="font-semibold tabular-nums text-zinc-900">{{ stats.tasks.overdue }}</span></a></li>
+          {% endif %}
+          {% if stats.trips.without_grants %}
+            <li><a class="attention-row" href="{% url 'admin:trips_trip_changelist' %}"><span class="attention-dot bg-amber-500"></span><span class="flex-1">Trip{{ stats.trips.without_grants|pluralize }} no one has been granted</span><span class="font-semibold tabular-nums text-zinc-900">{{ stats.trips.without_grants }}</span></a></li>
+          {% endif %}
+          {% if stats.accounts.never_logged_in %}
+            <li><a class="attention-row" href="{% url 'admin:accounts_user_changelist' %}"><span class="attention-dot bg-sky-500"></span><span class="flex-1">Account{{ stats.accounts.never_logged_in|pluralize }} never signed in</span><span class="font-semibold tabular-nums text-zinc-900">{{ stats.accounts.never_logged_in }}</span></a></li>
+          {% endif %}
+          {% if stats.trips.deleted %}
+            <li><a class="attention-row" href="{% url 'admin:trips_trip_changelist' %}?deleted=yes"><span class="attention-dot bg-zinc-400"></span><span class="flex-1">Deleted trip{{ stats.trips.deleted|pluralize }}, recoverable</span><span class="font-semibold tabular-nums text-zinc-900">{{ stats.trips.deleted }}</span></a></li>
+          {% endif %}
+        </ul>
+      {% else %}
+        <div class="flex flex-col items-center py-6 text-center">
+          <span class="inline-flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+          <p class="mt-3 text-sm font-medium text-zinc-700">All clear</p>
+          <p class="mt-0.5 text-xs text-zinc-500">Nothing overdue or unreachable.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-3">
+    <section class="card">
+      <div class="panel-head">
+        <h2 class="panel-title">Booking tasks</h2>
+        <span class="text-xs text-zinc-500">{{ stats.tasks.done_pct }}% done</span>
+      </div>
+      <div class="meter h-2"><div class="meter-fill bg-emerald-500" style="width: {{ stats.tasks.done_pct }}%"></div></div>
+      <p class="mt-2 text-xs text-zinc-500">{{ stats.tasks.completed }} of {{ stats.tasks.total }} done &middot; {{ stats.tasks.trips_with_outstanding }} trip{{ stats.tasks.trips_with_outstanding|pluralize }} with work left</p>
+      <p class="card-kicker mt-6 mb-3">Outstanding by priority</p>
+      <ul class="space-y-3">
+        {% for row in stats.tasks.by_priority %}
+          <li>
+            <div class="flex items-baseline justify-between gap-3 text-sm">
+              <span class="text-zinc-700">{{ row.label }}</span>
+              <span class="font-medium tabular-nums text-zinc-900">{{ row.count }}</span>
+            </div>
+            <div class="meter mt-1.5"><div class="meter-fill meter-fill-p{{ row.value }}" style="width: {{ row.pct }}%"></div></div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <h2 class="panel-title">People</h2>
+        <a class="link-quiet text-xs" href="{% url 'admin:accounts_user_changelist' %}">Manage</a>
+      </div>
+      <dl class="stat-list">
+        <div><dt>Active accounts</dt><dd>{{ stats.accounts.active }}</dd></div>
+        <div><dt>Inactive</dt><dd>{{ stats.accounts.inactive }}</dd></div>
+        <div><dt>Staff</dt><dd>{{ stats.accounts.staff }}</dd></div>
+        <div><dt>Superusers</dt><dd>{{ stats.accounts.superusers }}</dd></div>
+        <div><dt>Never signed in</dt><dd>{{ stats.accounts.never_logged_in }}</dd></div>
+      </dl>
+      <p class="card-kicker mt-6 mb-3">App-wide roles</p>
+      <div class="flex flex-wrap gap-2">
+        {% for row in stats.roles %}
+          <span class="chip gap-1.5">{{ row.label }} <span class="font-semibold tabular-nums text-zinc-900">{{ row.count }}</span></span>
+        {% endfor %}
+        <span class="chip gap-1.5 border-dashed text-zinc-500">No role <span class="font-semibold tabular-nums text-zinc-700">{{ stats.users_without_role }}</span></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <h2 class="panel-title">Access &amp; sharing</h2>
+        <a class="link-quiet text-xs" href="{% url 'admin:trips_tripgrant_changelist' %}">Grants</a>
+      </div>
+      <dl class="stat-list">
+        <div><dt>Trip grants</dt><dd>{{ stats.access.grants }}</dd></div>
+        <div><dt>Accounts with a grant</dt><dd>{{ stats.access.users_with_grants }}</dd></div>
+        <div><dt>Trips with no grants</dt><dd>{{ stats.trips.without_grants }}</dd></div>
+        <div><dt>Unowned trips</dt><dd>{{ stats.trips.unowned }}</dd></div>
+        <div><dt>Public pages</dt><dd>{{ stats.trips.public }}</dd></div>
+        <div><dt>Deleted (recoverable)</dt><dd>{{ stats.trips.deleted }}</dd></div>
+      </dl>
+    </section>
+  </div>
+
+  <section class="card mb-10">
+    <div class="panel-head">
+      <h2 class="panel-title">Content</h2>
+      <span class="text-xs text-zinc-500">{{ stats.content.comments_recent }} comment{{ stats.content.comments_recent|pluralize }} in the last 7 days</span>
+    </div>
+    <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-4">
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Days</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.days }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Sections</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.sections }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Meals</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.meals }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Lodging</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.lodging }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Transport legs</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.transport }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Confirmations</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.confirmations }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Contacts</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.contacts }}</dd></div>
+      <div class="bg-white px-4 py-3"><dt class="card-kicker">Comments</dt><dd class="mt-1 text-xl font-semibold tracking-tight">{{ stats.content.comments }}</dd></div>
+    </dl>
+    <p class="card-kicker mt-6 mb-3">Sections by type</p>
+    <ul class="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+      {% for row in stats.sections_by_type %}
+        <li>
+          <div class="flex items-baseline justify-between gap-3 text-sm">
+            <span class="text-zinc-700">{{ row.label }}</span>
+            <span class="font-medium tabular-nums text-zinc-900">{{ row.count }}</span>
+          </div>
+          <div class="meter mt-1.5"><div class="meter-fill" style="width: {{ row.pct }}%"></div></div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section>
+    <h2 class="grid-label">Recently updated trips</h2>
+    {% if stats.recent_trips %}
+      <ul class="card-grid">
+        {% for trip in stats.recent_trips %}
+          <li class="card card-link">
+            <div class="flex items-start gap-4">
+              <div class="date-tile">
+                <span class="date-tile-month">{{ trip.start_date|date:"M" }}</span>
+                <span class="date-tile-day">{{ trip.start_date|date:"j" }}</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <a href="{% url 'trips:trip_detail' trip.pk %}" class="stretched card-title leading-snug">{{ trip.name }}</a>
+                  {% if trip.is_ready %}
+                    <span class="badge badge-ready shrink-0">Ready</span>
+                  {% else %}
+                    <span class="badge badge-draft shrink-0">Draft</span>
+                  {% endif %}
+                </div>
+                <p class="mt-1 text-sm text-zinc-500">
+                  {{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }}{% if trip.destination %} &middot; {{ trip.destination }}{% endif %}
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+                  <span>{{ trip.get_status_display }}</span>
+                  {% if trip.outstanding_task_count %}
+                    <span class="font-medium text-amber-700">{{ trip.outstanding_task_count }} outstanding task{{ trip.outstanding_task_count|pluralize }}</span>
+                  {% else %}
+                    <span>No outstanding tasks</span>
+                  {% endif %}
+                  <span>Updated {{ trip.updated_at|timesince }} ago</span>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">No live trips yet.</div>
+    {% endif %}
+  </section>
+{% endblock %}

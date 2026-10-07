@@ -31,7 +31,7 @@
               <i class="bi bi-list-check"></i>
               <span class="ms-1 d-none d-xl-inline">Bucket List</span>
             </a>
-            <a href="{% url 'trips:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Trips">
+            <a href="{% url 'trips:trip_list' %}" class="btn btn-sm btn-link text-muted" title="Trips">
               <i class="bi bi-airplane"></i>
               <span class="ms-1 d-none d-xl-inline">Trips</span>
             </a>
@@ -59,7 +59,7 @@
               <li class="d-lg-none"><a class="dropdown-item" href="{% url 'bucketlists:dashboard' %}">
                 <i class="bi bi-list-check me-2"></i>Bucket List
               </a></li>
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'trips:dashboard' %}">
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'trips:trip_list' %}">
                 <i class="bi bi-airplane me-2"></i>Trips
               </a></li>
               <li class="d-lg-none"><a class="dropdown-item" href="{% url 'activities:activity_list' %}">

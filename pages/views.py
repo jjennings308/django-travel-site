@@ -21,7 +21,7 @@ def home(request):
     # Stats for homepage
     context = {
         'total_users': get_user_model().objects.filter(is_active=True).count(),
-        'total_trips': Trip.objects.count(),
+        'total_trips': Trip.objects.live().count(),
         'countries_count': Profile.objects.exclude(
             home_country__isnull=True
         ).values('home_country').distinct().count(),
@@ -36,13 +36,16 @@ def dashboard(request):
     
     # Quick stats for header
     bucket_list_count = BucketListItem.objects.filter(user=user).count()
-    trips_count = Trip.objects.filter(user=user).count()
+    # Trip access goes through visible_to: grants plus the role ladder.
+    visible_trips = Trip.objects.visible_to(user)
+    trips_count = visible_trips.count()
     
-    # Countries visited - from completed trips
-    countries_visited = Trip.objects.filter(
-        user=user,
-        status='completed'
-    ).values('countries').distinct().count()
+    # Destinations of trips that have ended. Trip.destination is free text
+    # until it becomes a locations FK (work plan, Phase 4).
+    today = timezone.now().date()
+    countries_visited = visible_trips.filter(
+        end_date__lt=today
+    ).exclude(destination='').values('destination').distinct().count()
     
     # Attach counts to user object for template
     user.bucket_list_items_count = bucket_list_count
@@ -67,14 +70,12 @@ def dashboard(request):
         })
     
     # Recent trips
-    recent_trips = Trip.objects.filter(
-        user=user
-    ).order_by('-created_at')[:3]
+    recent_trips = visible_trips.order_by('-created_at')[:3]
     
     for trip in recent_trips:
         recent_activities.append({
             'title': 'Created Trip',
-            'description': trip.title,
+            'description': trip.name,
             'created_at': trip.created_at,
             'icon': 'bi-airplane',
             'color_class': '#2563eb',  # Primary color
@@ -85,11 +86,8 @@ def dashboard(request):
     recent_activities = recent_activities[:5]  # Keep only 5 most recent
     
     # Upcoming Trips
-    today = timezone.now().date()
-    upcoming_trips = Trip.objects.filter(
-        user=user,
-        start_date__gte=today,
-        status__in=['planning', 'booked']  # Only show active upcoming trips
+    upcoming_trips = visible_trips.filter(
+        start_date__gte=today
     ).order_by('start_date')[:3]
     
     # Add days_until for each trip

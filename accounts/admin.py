@@ -8,7 +8,7 @@ from zoneinfo import available_timezones, ZoneInfo
 
 from .models import (
     User, Profile, TravelPreferences, AccountSettings,
-    RoleRequest, VendorProfile, ContentProviderProfile
+    RoleRequest, VendorProfile, ContentProviderProfile, UserRole
 )
 
 # AccountSettingsForm supplies the ISO 4217 currency choices
@@ -438,3 +438,36 @@ class ContentProviderProfileAdmin(admin.ModelAdmin):
     )
     
     readonly_fields = ("created_at", "updated_at")
+
+
+# ============================================================================
+# App-wide trip roles
+# ============================================================================
+
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    """An app-wide trip capability, assigned to a person rather than a trip.
+
+    Editing normally happens inline on the user; the user admin with the role
+    and trip-grant inlines is registered from ``trips.admin`` so this app does
+    not import ``trips``.
+    """
+
+    list_display = ("user", "role", "granted_by", "granted_at")
+    list_filter = ("role",)
+    search_fields = ("user__username", "user__email")
+    autocomplete_fields = ("user", "granted_by")
+
+
+class UserRoleInline(admin.TabularInline):
+    """Roles editable from the user, so a person's standing is one page.
+
+    ``fk_name`` is required because ``UserRole`` points at the user model twice.
+    """
+
+    model = UserRole
+    fk_name = "user"
+    extra = 1
+    autocomplete_fields = ("granted_by",)
+    verbose_name = "app role"
+    verbose_name_plural = "app roles"

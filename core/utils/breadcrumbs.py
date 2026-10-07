@@ -13,8 +13,8 @@ def trip_detail(request, trip_id):
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
             ('Dashboard', 'pages:dashboard'),
-            ('Trips', 'trips:dashboard'),
-            (trip.title, None)  # None = current page
+            ('Trips', 'trips:trip_list'),
+            (trip.name, None)  # None = current page
         ])
     }
     return render(request, 'trips/trip_detail.html', context)
@@ -41,15 +41,15 @@ def build_breadcrumbs(crumbs):
         # Simple breadcrumbs
         build_breadcrumbs([
             ('Home', 'pages:home'),
-            ('Trips', 'trips:dashboard'),
+            ('Trips', 'trips:trip_list'),
             ('My Trip', None)
         ])
         
         # With URL kwargs
         build_breadcrumbs([
             ('Home', 'pages:home'),
-            ('Trips', 'trips:dashboard'),
-            ('Trip Detail', ('trips:detail', {'trip_id': 123})),
+            ('Trips', 'trips:trip_list'),
+            ('Trip Detail', ('trips:trip_detail', {'pk': 123})),
             ('Edit', None)
         ])
     """
@@ -110,8 +110,8 @@ class BreadcrumbPatterns:
         """Dashboard > Trips > Trip Name"""
         return build_breadcrumbs([
             ('Dashboard', 'pages:dashboard'),
-            ('Trips', 'trips:dashboard'),
-            (trip.title, None)
+            ('Trips', 'trips:trip_list'),
+            (trip.name, None)
         ])
     
     @staticmethod
@@ -119,8 +119,8 @@ class BreadcrumbPatterns:
         """Dashboard > Trips > Trip Name > Edit"""
         return build_breadcrumbs([
             ('Dashboard', 'pages:dashboard'),
-            ('Trips', 'trips:dashboard'),
-            (trip.title, ('trips:detail', {'trip_id': trip.id})),
+            ('Trips', 'trips:trip_list'),
+            (trip.name, ('trips:trip_detail', {'pk': trip.pk})),
             ('Edit', None)
         ])
     
@@ -353,8 +353,8 @@ def trip_booking(request, trip_id):
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
             ('Dashboard', 'pages:dashboard'),
-            ('Trips', 'trips:dashboard'),
-            (trip.title, ('trips:detail', {'trip_id': trip.id})),
+            ('Trips', 'trips:trip_list'),
+            (trip.name, ('trips:trip_detail', {'pk': trip.pk})),
             ('Book Flights', None)
         ])
     }

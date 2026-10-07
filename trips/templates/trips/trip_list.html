@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Your trips{% endblock %}
+
+{% block wrap_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Your trips</h1>
+      <p class="page-subtitle">
+        {% if trips %}{{ trips|length }} trip{{ trips|length|pluralize }}{% else %}Nothing planned yet{% endif %}
+      </p>
+    </div>
+    {% if can_create %}
+      <a class="btn" href="{% url 'trips:trip_create' %}">
+        <svg class="-ml-0.5 size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+        New trip
+      </a>
+    {% endif %}
+  </div>
+
+  {% if is_staff_view %}
+    <p class="note">
+      You are staff, so this is every trip, not just the ones you have been
+      given access to.
+    </p>
+  {% endif %}
+
+  {% if trips %}
+    <ul class="card-grid">
+      {% for trip in trips %}
+        <li class="card card-link flex flex-col">
+          <div class="flex items-start gap-4">
+            {% if trip.start_date %}
+              <div class="date-tile">
+                <span class="date-tile-month">{{ trip.start_date|date:"M" }}</span>
+                <span class="date-tile-day">{{ trip.start_date|date:"j" }}</span>
+              </div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                {# .stretched makes the whole card the link to the trip. #}
+                <a href="{% url 'trips:trip_detail' trip.pk %}" class="stretched card-title text-lg leading-snug">{{ trip.name }}</a>
+                {% if trip.is_ready %}
+                  <span class="badge badge-ready shrink-0">Ready</span>
+                {% else %}
+                  <span class="badge badge-draft shrink-0">Draft</span>
+                {% endif %}
+              </div>
+              <p class="mt-1 text-sm text-zinc-500">
+                {{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }} &middot; {{ trip.nights }} nights
+                {% if trip.destination %}<br>{{ trip.destination }}{% endif %}
+              </p>
+            </div>
+          </div>
+
+          <dl class="mt-5 grid grid-cols-2 gap-3 rounded-lg bg-zinc-50 px-4 py-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt class="card-kicker">Days</dt>
+              <dd class="mt-0.5 font-medium">{{ trip.days_count }}</dd>
+            </div>
+            <div>
+              <dt class="card-kicker">Booking tasks</dt>
+              <dd class="mt-0.5 font-medium {% if trip.outstanding_booking_tasks %}text-amber-700{% endif %}">
+                {% if trip.outstanding_booking_tasks %}
+                  {{ trip.outstanding_booking_tasks }} outstanding
+                {% else %}
+                  None outstanding
+                {% endif %}
+              </dd>
+            </div>
+            {% if trip.budget %}
+              <div>
+                <dt class="card-kicker">Budget</dt>
+                <dd class="mt-0.5 font-medium">{{ trip.get_budget_display }}</dd>
+              </div>
+            {% endif %}
+            {% if trip.structure %}
+              <div>
+                <dt class="card-kicker">Style</dt>
+                <dd class="mt-0.5 font-medium">{{ trip.get_structure_display }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+
+          <div class="mt-auto flex items-center justify-between gap-3 pt-5">
+            {% if trip.travelers.all %}
+              <div class="flex min-w-0 items-center gap-2.5">
+                <div class="flex shrink-0 -space-x-2" aria-hidden="true">
+                  {% for traveler in trip.travelers.all|slice:":4" %}<span class="avatar">{{ traveler.name|slice:":1" }}</span>{% endfor %}
+                </div>
+                <p class="truncate text-sm text-zinc-600">
+                  {% for traveler in trip.travelers.all %}{{ traveler.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </p>
+              </div>
+            {% else %}
+              <span></span>
+            {% endif %}
+
+            {# Capabilities are attached per row by the view; asking here would be three queries a row. #}
+            {% if trip.list_capabilities.edit or trip.list_capabilities.delete %}
+              <div class="relative z-10 flex shrink-0 gap-3">
+                {% if trip.list_capabilities.edit %}
+                  <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit</a>
+                {% endif %}
+                {% if trip.list_capabilities.delete %}
+                  <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:trip_delete' trip.pk %}">Delete</a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      <svg class="mx-auto mb-3 size-10 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+      <p class="font-medium text-zinc-700">No trips yet</p>
+      <p class="mt-1">Trips appear here once someone gives you access to one.</p>
+    </div>
+  {% endif %}
+{% endblock %}
