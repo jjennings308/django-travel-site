@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'admin_tools',
     'rewards',
     'approval_system',
+    'pages',
     'theme',
 ]
 
@@ -183,8 +184,8 @@ MEDIA_ROOT = BASE_DIR / "uploads"
 AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'core:dashboard'
-LOGOUT_REDIRECT_URL = 'core:home'
+LOGIN_REDIRECT_URL = 'pages:dashboard'
+LOGOUT_REDIRECT_URL = 'pages:home'
 
 DEFAULT_FROM_EMAIL = 'no-reply@sharebucketlist.com'
 

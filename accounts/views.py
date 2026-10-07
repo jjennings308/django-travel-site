@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 def register(request):
     """Handle user registration"""
     if request.user.is_authenticated and not request.user.can_access_staff:
-        return redirect('core:home')
+        return redirect('pages:home')
     
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -225,7 +225,7 @@ def profile_view(request, username=None):
     if profile_user != request.user:
         if profile_user.profile_visibility == 'private':
             messages.error(request, 'This profile is private.')
-            return redirect('core:home')
+            return redirect('pages:home')
     
     try:
         profile = profile_user.profile

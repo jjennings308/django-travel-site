@@ -1,4 +1,4 @@
-# core/views.py
+# pages/views.py
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.db.models import Count, Q
@@ -15,7 +15,7 @@ def home(request):
     """Pre-login home page"""
     # Redirect authenticated users to dashboard
     if request.user.is_authenticated:
-        return redirect('core:dashboard')
+        return redirect('pages:dashboard')
     
     # Stats for homepage
     context = {
@@ -25,7 +25,7 @@ def home(request):
             home_country__isnull=True
         ).values('home_country').distinct().count(),
     }
-    return render(request, 'home.html', context)
+    return render(request, 'pages/home.html', context)
 
 
 @login_required
@@ -143,9 +143,9 @@ def dashboard(request):
         'recommendations': recommendations,
     }
     
-    return render(request, 'core/dashboard.html', context)
+    return render(request, 'pages/dashboard.html', context)
 
 
 def about(request):
     """About page"""
-    return render(request, 'core/about.html')
+    return render(request, 'pages/about.html')

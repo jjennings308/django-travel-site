@@ -184,18 +184,18 @@
         
         <div class="row g-4">
             {% if user.is_superuser or user.can_access_staff %}
-            {% include "core/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}
+            {% include "pages/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}
             {% endif %}
             
-            {% include "core/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
+            {% include "pages/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
             
-            {% include "core/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:dashboard" icon="bi-airplane" color="primary" %}
+            {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:dashboard" icon="bi-airplane" color="primary" %}
             
-            {% include "core/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" color="secondary" %}
+            {% include "pages/partials/dashboard_card.html" with title="Rewards" description="Programs and memberships" url_name="rewards:dashboard" icon="bi-gift" color="secondary" %}
             
-            {% include "core/partials/dashboard_card.html" with title="Activities" description="Find things to do" url_name="activities:activity_list" icon="bi-activity" color="success" %}
+            {% include "pages/partials/dashboard_card.html" with title="Activities" description="Find things to do" url_name="activities:activity_list" icon="bi-activity" color="success" %}
             
-            {% include "core/partials/dashboard_card.html" with title="Locations" description="Explore destinations" url_name="locations:dashboard" icon="bi-geo-alt" color="info" %}
+            {% include "pages/partials/dashboard_card.html" with title="Locations" description="Explore destinations" url_name="locations:dashboard" icon="bi-geo-alt" color="info" %}
         </div>
     </div>
     

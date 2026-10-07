@@ -6,7 +6,7 @@
 
       {# Logo/Branding #}
       <div>
-        <a href="{% url 'core:home' %}" class="flex items-center text-decoration-none">
+        <a href="{% url 'pages:home' %}" class="flex items-center text-decoration-none">
           <img src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
                alt="{{ SITE_NAME }}"
                class="h-12 w-auto"
@@ -20,7 +20,7 @@
         {% if user.is_authenticated %}
           
           {# User is logged in #}
-          <a href="{% url 'core:dashboard' %}" 
+          <a href="{% url 'pages:dashboard' %}" 
              class="text-warm-700 hover:text-earth-clay font-medium transition-colors">
             Dashboard
           </a>

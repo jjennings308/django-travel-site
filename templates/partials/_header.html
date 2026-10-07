@@ -6,7 +6,7 @@
 
       {# Left: Branding #}
       <div class="branding">
-        <a href="{% url 'core:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none mb-0">
+        <a href="{% url 'pages:home' %}" class="site-title navbar-brand d-flex align-items-center text-decoration-none mb-0">
           <img
             src="{% static 'core/branding/png/sbl-logo-navbar-600x120.png' %}"
             alt="{{ SITE_NAME }}"
@@ -23,7 +23,7 @@
           
           {# Quick nav links - shown on larger screens #}
           <nav class="d-none d-lg-flex align-items-center gap-2 me-2">
-            <a href="{% url 'core:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Dashboard">
+            <a href="{% url 'pages:dashboard' %}" class="btn btn-sm btn-link text-muted" title="Dashboard">
               <i class="bi bi-speedometer2"></i>
               <span class="ms-1 d-none d-xl-inline">Dashboard</span>
             </a>
@@ -53,7 +53,7 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
               {# Mobile-only nav links in dropdown #}
-              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'core:dashboard' %}">
+              <li class="d-lg-none"><a class="dropdown-item" href="{% url 'pages:dashboard' %}">
                 <i class="bi bi-speedometer2 me-2"></i>Dashboard
               </a></li>
               <li class="d-lg-none"><a class="dropdown-item" href="{% url 'bucketlists:dashboard' %}">

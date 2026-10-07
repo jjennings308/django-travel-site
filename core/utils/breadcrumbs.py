@@ -12,7 +12,7 @@ def trip_detail(request, trip_id):
     context = {
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Trips', 'trips:dashboard'),
             (trip.title, None)  # None = current page
         ])
@@ -30,7 +30,7 @@ def build_breadcrumbs(crumbs):
     Args:
         crumbs: List of tuples (title, url_name_or_path)
                 url_name_or_path can be:
-                - A URL name string (e.g., 'core:dashboard')
+                - A URL name string (e.g., 'pages:dashboard')
                 - A full path (e.g., '/trips/123/')
                 - None (for current page - no link)
     
@@ -40,14 +40,14 @@ def build_breadcrumbs(crumbs):
     Examples:
         # Simple breadcrumbs
         build_breadcrumbs([
-            ('Home', 'core:home'),
+            ('Home', 'pages:home'),
             ('Trips', 'trips:dashboard'),
             ('My Trip', None)
         ])
         
         # With URL kwargs
         build_breadcrumbs([
-            ('Home', 'core:home'),
+            ('Home', 'pages:home'),
             ('Trips', 'trips:dashboard'),
             ('Trip Detail', ('trips:detail', {'trip_id': 123})),
             ('Edit', None)
@@ -94,14 +94,14 @@ class BreadcrumbPatterns:
     def dashboard_only():
         """Just the dashboard"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard')
+            ('Dashboard', 'pages:dashboard')
         ])
     
     @staticmethod
     def trips_list():
         """Dashboard > Trips"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Trips', None)
         ])
     
@@ -109,7 +109,7 @@ class BreadcrumbPatterns:
     def trip_detail(trip):
         """Dashboard > Trips > Trip Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Trips', 'trips:dashboard'),
             (trip.title, None)
         ])
@@ -118,7 +118,7 @@ class BreadcrumbPatterns:
     def trip_edit(trip):
         """Dashboard > Trips > Trip Name > Edit"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Trips', 'trips:dashboard'),
             (trip.title, ('trips:detail', {'trip_id': trip.id})),
             ('Edit', None)
@@ -128,7 +128,7 @@ class BreadcrumbPatterns:
     def bucketlist():
         """Dashboard > Bucket List"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Bucket List', None)
         ])
     
@@ -136,7 +136,7 @@ class BreadcrumbPatterns:
     def activities_list():
         """Dashboard > Activities"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Activities', None)
         ])
     
@@ -144,7 +144,7 @@ class BreadcrumbPatterns:
     def activity_detail(activity):
         """Dashboard > Activities > Activity Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Activities', 'activities:dashboard'),
             (activity.name, None)
         ])
@@ -153,7 +153,7 @@ class BreadcrumbPatterns:
     def locations_dashboard():
         """Dashboard > Locations"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', None)
         ])
            
@@ -161,7 +161,7 @@ class BreadcrumbPatterns:
     def countries_list():
         """Dashboard > Locations > Countries"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Countries', None)
         ])
@@ -170,7 +170,7 @@ class BreadcrumbPatterns:
     def country_add():
         """Dashboard > Locations > Countries > Add Country"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Countries', 'locations:country_list'),
             ('Add Country', None)
@@ -180,7 +180,7 @@ class BreadcrumbPatterns:
     def country_detail(country):
         """Dashboard > Locations > Countries > Country Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Countries', 'locations:country_list'),
             (country.name, None)
@@ -190,7 +190,7 @@ class BreadcrumbPatterns:
     def country_edit(country):
         """Dashboard > Locations > Countries > Country Name > Edit"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Countries', 'locations:country_list'),
             (country.name, ('locations:country_detail', {'slug': country.slug})),
@@ -201,7 +201,7 @@ class BreadcrumbPatterns:
     def regions_list():
         """Dashboard > Locations > Regions"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Regions', None)
         ])
@@ -210,7 +210,7 @@ class BreadcrumbPatterns:
     def region_add():
         """Dashboard > Locations > Regions > Add Region"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Regions', 'locations:region_list'),
             ('Add Region', None)
@@ -220,7 +220,7 @@ class BreadcrumbPatterns:
     def region_detail(region):
         """Dashboard > Locations > Regions > Region Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Regions', 'locations:region_list'),
             (region.name, None)
@@ -230,7 +230,7 @@ class BreadcrumbPatterns:
     def region_edit(region):
         """Dashboard > Locations > Regions > Region Name > Edit"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Regions', 'locations:region_list'),
             (region.name, ('locations:region_detail', {'slug': region.slug})),
@@ -241,7 +241,7 @@ class BreadcrumbPatterns:
     def cities_list():
         """Dashboard > Locations > Cities"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Cities', None)
         ])
@@ -250,7 +250,7 @@ class BreadcrumbPatterns:
     def city_add():
         """Dashboard > Locations > Cities > Add City"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Cities', 'locations:city_list'),
             ('Add City', None)
@@ -260,7 +260,7 @@ class BreadcrumbPatterns:
     def city_detail(city):
         """Dashboard > Locations > Cities > City Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Cities', 'locations:city_list'),
             (city.name, None)
@@ -270,7 +270,7 @@ class BreadcrumbPatterns:
     def city_edit(city):
         """Dashboard > Locations > Cities > City Name > Edit"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('Cities', 'locations:city_list'),
             (city.name, ('locations:city_detail', {'slug': city.slug})),
@@ -281,7 +281,7 @@ class BreadcrumbPatterns:
     def pois_list():
         """Dashboard > Locations > POIs"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('POIs', None)
         ])
@@ -290,7 +290,7 @@ class BreadcrumbPatterns:
     def poi_add():
         """Dashboard > Locations > POIs > Add POI"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('POIs', 'locations:poi_list'),
             ('Add POI', None)
@@ -300,7 +300,7 @@ class BreadcrumbPatterns:
     def poi_detail(poi):
         """Dashboard > Locations > POIs > POI Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('POIs', 'locations:poi_list'),
             (poi.name, None)
@@ -310,7 +310,7 @@ class BreadcrumbPatterns:
     def poi_edit(poi):
         """Dashboard > Locations > POIs > POI Name > Edit"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Locations', 'locations:dashboard'),
             ('POIs', 'locations:city_list'),
             (poi.name, ('locations:poi_detail', {'slug': poi.slug})),
@@ -321,7 +321,7 @@ class BreadcrumbPatterns:
     def events_list():
         """Dashboard > Events"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Events', None)
         ])
     
@@ -329,7 +329,7 @@ class BreadcrumbPatterns:
     def event_detail(event):
         """Dashboard > Events > Event Name"""
         return build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Events', 'events:dashboard'),
             (event.title, None)
         ])
@@ -352,7 +352,7 @@ def trip_booking(request, trip_id):
     context = {
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
-            ('Dashboard', 'core:dashboard'),
+            ('Dashboard', 'pages:dashboard'),
             ('Trips', 'trips:dashboard'),
             (trip.title, ('trips:detail', {'trip_id': trip.id})),
             ('Book Flights', None)
