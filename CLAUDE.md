@@ -259,6 +259,14 @@ change pages added to `accounts`; staff-lands-on-dashboard login behaviour dropp
 
 **Phase 2 — move the data.**
 
+Status: done 2026-10-07. 250 objects loaded (2 trips, 7 travelers, 7 grants, 6 roles, no
+comments); accounts debbie, henry, john, regan and sara created with their itinerary password
+hashes. Accounts with no email got `<username>@noemail.invalid` placeholders (`User.email` is
+unique here) — replace them in the admin. Row counts match, both detail pages render,
+`audit_public_leak` exits 0; neither trip had a public token. Backup taken first:
+`~/db_backups/travel_site_pre_phase2_20261007-145050.dump`.
+
+
 - Create `accounts.User` rows for their six people and `admin` with the **same usernames**.
 - `dumpdata trips accounts.userrole --natural-foreign --natural-primary` from itinerary,
   `loaddata` here. Natural keys carry `Comment.content_type` and user FKs by username.
