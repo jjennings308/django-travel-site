@@ -1,0 +1,30 @@
+# systemd unit for the ShareBucketList (travel_site) Gunicorn server.
+# Install: sudo cp deploy/travel_site.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now travel_site
+# Logs:    journalctl -u travel_site -f   (prod.py logs to stderr)
+#
+# Assumes the repo is cloned to /var/www/travel_site (the repo root is the Django
+# project; manage.py lives there) with a virtualenv at .venv and a .env file.
+# EnvironmentFile is parsed by systemd, not python-dotenv: lines starting with #
+# are ignored and $ is not expanded. Django-generated secret keys parse fine.
+[Unit]
+Description=ShareBucketList (travel_site) Gunicorn daemon
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/travel_site
+RuntimeDirectory=travel_site
+Environment="DJANGO_SETTINGS_MODULE=config.settings.prod"
+EnvironmentFile=/var/www/travel_site/.env
+ExecStart=/var/www/travel_site/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/run/travel_site/travel_site.sock \
+    --access-logfile - \
+    config.wsgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

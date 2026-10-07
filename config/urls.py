@@ -38,8 +38,12 @@ urlpatterns = [
     # namespace because every URL there assumes a signed-in reader with a grant.
     path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
     path('approval/', include('apps.approval_system.urls')),
-    path("__reload__/", include("django_browser_reload.urls")),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# django-browser-reload is a dev-only package (installed by dev.py, absent from
+# requirements.txt), so its URLs exist only when the app is installed.
+if "django_browser_reload" in settings.INSTALLED_APPS:
+    urlpatterns += [path("__reload__/", include("django_browser_reload.urls"))]

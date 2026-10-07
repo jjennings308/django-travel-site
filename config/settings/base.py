@@ -24,11 +24,12 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECERT_KEY", 'django-insecure-goess*l(+m4(pf(@99$2s*-nz6%n((&206@iw@rk=d!kfkgtq(')
+# The fallback is for local development only; prod.py refuses to start without
+# a real DJANGO_SECRET_KEY. (This read "DJANGO_SECERT_KEY" until the
+# prod-readiness branch, so the .env value was silently ignored.)
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-only-not-for-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
-# ALLOWED_HOSTS = []
 
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
@@ -79,7 +80,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.core.middleware.UserTimezoneMiddleware',
     'apps.core.middleware.UserThemeMiddleware',
-    'django_browser_reload.middleware.BrowserReloadMiddleware',
 ]
 
 CACHES = {

@@ -75,6 +75,34 @@ python manage.py migrate
 
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
+## Deploying (staging / production)
+
+`config.settings.prod` refuses to start without a real `DJANGO_SECRET_KEY` (≥ 50 chars, not
+`django-insecure…`) and `DJANGO_ALLOWED_HOSTS`. It assumes nginx terminates TLS and sets
+`X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER`), redirects to HTTPS, uses secure cookies, starts
+HSTS low (`SECURE_HSTS_SECONDS`, default 3600) and logs to stderr (systemd journal).
+`security.W005` / `W021` (HSTS subdomains/preload) are silenced on purpose until HTTPS is proven on
+the real domain. `django-browser-reload` is dev-only (`dev.py`; not in `requirements.txt`), and its
+`/__reload__/` URLs exist only when it is installed.
+
+On a Debian box (repo at `/var/www/travel_site`, where `manage.py` is):
+
+```bash
+git clone git@github.com:jjennings308/django-travel-site.git /var/www/travel_site && cd /var/www/travel_site
+cp .env.example .env        # set DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS,
+                            # SITE_URL, DJANGO_DEBUG=False, POSTGRES_*, EMAIL_HOST_USER/PASSWORD
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+sudo chown www-data:www-data .env uploads
+export DJANGO_SETTINGS_MODULE=config.settings.prod
+.venv/bin/python manage.py check --deploy && .venv/bin/python manage.py migrate
+.venv/bin/python manage.py collectstatic --noinput
+sudo cp deploy/travel_site.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now travel_site
+sudo cp deploy/nginx-travel_site.conf /etc/nginx/sites-available/travel_site   # edit server_name/certs, symlink, nginx -t, reload
+```
+
+The built Tailwind CSS is committed, so the box needs no Node. Verify with
+`DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py check --deploy` (expect "no issues (2 silenced)").
+
 ## Architecture
 
 ### Settings and URLs
