@@ -42,17 +42,14 @@ breadcrumbs = [
 {% endcomment %}
 
 {% if breadcrumbs %}
-<nav aria-label="breadcrumb" class="mb-3">
-  <ol class="breadcrumb mb-0">
+<nav aria-label="Breadcrumb" class="mb-4 text-sm print:hidden">
+  <ol class="flex flex-wrap items-center gap-1.5 text-warm-500">
     {% for crumb in breadcrumbs %}
+      {% if not forloop.first %}<li aria-hidden="true"><i class="bi bi-chevron-right text-xs text-warm-400"></i></li>{% endif %}
       {% if forloop.last %}
-        {# Current page - no link #}
-        <li class="breadcrumb-item active" aria-current="page">{{ crumb.title }}</li>
+        <li class="font-medium text-warm-800" aria-current="page">{{ crumb.title }}</li>
       {% else %}
-        {# Clickable breadcrumb #}
-        <li class="breadcrumb-item">
-          <a href="{{ crumb.url }}" class="text-decoration-none">{{ crumb.title }}</a>
-        </li>
+        <li><a href="{{ crumb.url }}" class="hover:text-earth-clay">{{ crumb.title }}</a></li>
       {% endif %}
     {% endfor %}
   </ol>

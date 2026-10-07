@@ -9,73 +9,69 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="py-6">
     <!-- Header -->
-    <div class="card shadow-sm mb-4 overflow-hidden">
+    <div class="sbl-card shadow-sm mb-6 overflow-hidden">
         {% if region.featured_media %}
-            <div class="position-relative" style="height: 300px;">
-                <img src="{{ region.featured_media.file.url }}" alt="{{ region.name }}" class="w-100 h-100" style="object-fit: cover;">
-                <div class="position-absolute bottom-0 start-0 end-0 p-4" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
-                    <h1 class="display-4 fw-bold text-white mb-0">{{ region.name }}</h1>
-                    <p class="h5 text-white-50 mb-0">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
+            <div class="relative" style="height: 300px;">
+                <img src="{{ region.featured_media.file.url }}" alt="{{ region.name }}" class="w-full h-full" style="object-fit: cover;">
+                <div class="absolute bottom-0 left-0 right-0 p-6" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                    <h1 class="text-4xl font-bold text-white mb-0">{{ region.name }}</h1>
+                    <p class="text-lg font-semibold text-white/70 mb-0">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
                 </div>
             </div>
         {% else %}
-            <div class="bg-gradient bg-success d-flex align-items-center justify-content-center" style="height: 300px;">
+            <div class="bg-emerald-600 flex items-center justify-center" style="height: 300px;">
                 <div class="text-center">
                     <i class="bi bi-map text-white" style="font-size: 6rem; opacity: 0.5;"></i>
-                    <h1 class="display-4 fw-bold text-white mt-3">{{ region.name }}</h1>
-                    <p class="h5 text-white-50">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
+                    <h1 class="text-4xl font-bold text-white mt-4">{{ region.name }}</h1>
+                    <p class="text-lg font-semibold text-white/70">{{ region.country.flag_emoji }} {{ region.country.name }}</p>
                 </div>
             </div>
         {% endif %}
         
-        <span class="badge position-absolute top-0 end-0 m-3 fs-6
-            {% if region.approval_status == 'approved' %}bg-success
-            {% elif region.approval_status == 'pending' %}bg-warning text-dark
-            {% elif region.approval_status == 'rejected' %}bg-danger
-            {% else %}bg-secondary{% endif %}">
+        <span class="sbl-badge absolute top-0 right-0 m-4 text-base {% if region.approval_status == 'approved' %} sbl-badge-success {% elif region.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif region.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
             {{ region.get_approval_status_display }}
         </span>
     </div>
 
-    <div class="row g-4">
+    <div class="grid grid-cols-12 gap-6">
         <!-- Main Content -->
-        <div class="col-lg-8">
+        <div class="col-span-12 lg:col-span-8">
             {% if region.description %}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h3 class="h4 fw-bold mb-3">About</h3>
-                        <p class="lead">{{ region.description }}</p>
+                <div class="sbl-card shadow-sm mb-6">
+                    <div class="p-5">
+                        <h3 class="text-xl font-semibold font-bold mb-4">About</h3>
+                        <p class="text-lg text-warm-700">{{ region.description }}</p>
                     </div>
                 </div>
             {% endif %}
 
             <!-- Cities -->
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h3 class="h4 fw-bold mb-3">Cities in {{ region.name }}</h3>
+            <div class="sbl-card shadow-sm">
+                <div class="p-5">
+                    <h3 class="text-xl font-semibold font-bold mb-4">Cities in {{ region.name }}</h3>
                     {% if cities %}
-                        <div class="row g-3">
+                        <div class="grid grid-cols-12 gap-4">
                             {% for city in cities %}
-                                <div class="col-md-6">
-                                    <a href="{% url 'locations:city_detail' city.slug %}" class="text-decoration-none">
-                                        <div class="d-flex align-items-center p-3 bg-light rounded hover-bg-light">
+                                <div class="col-span-12 md:col-span-6">
+                                    <a href="{% url 'locations:city_detail' city.slug %}" class="no-underline">
+                                        <div class="flex items-center p-4 bg-warm-50 rounded-lg hover:bg-warm-50">
                                             {% if city.featured_media %}
-                                                <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="rounded me-3" style="width: 64px; height: 64px; object-fit: cover;">
+                                                <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="rounded-lg mr-4" style="width: 64px; height: 64px; object-fit: cover;">
                                             {% else %}
-                                                <div class="bg-info bg-opacity-25 rounded d-flex align-items-center justify-content-center me-3" style="width: 64px; height: 64px;">
-                                                    <i class="bi bi-buildings text-info fs-3"></i>
+                                                <div class="bg-sky-500/25 rounded-lg flex items-center justify-center mr-4" style="width: 64px; height: 64px;">
+                                                    <i class="bi bi-buildings text-sky-700 text-2xl"></i>
                                                 </div>
                                             {% endif %}
-                                            <div class="flex-grow-1">
-                                                <h5 class="mb-1 text-dark">{{ city.name }}</h5>
+                                            <div class="grow">
+                                                <h5 class="mb-1 text-warm-900">{{ city.name }}</h5>
                                                 {% if city.population %}
-                                                    <p class="mb-0 small text-muted">Population: {{ city.population|intcomma }}</p>
+                                                    <p class="mb-0 text-sm text-warm-500">Population: {{ city.population|intcomma }}</p>
                                                 {% endif %}
                                             </div>
                                             {% if city.is_capital %}
-                                                <span class="badge bg-warning text-dark">Capital</span>
+                                                <span class="sbl-badge sbl-badge-warning text-warm-900">Capital</span>
                                             {% endif %}
                                         </div>
                                     </a>
@@ -83,39 +79,39 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-muted">No cities added yet for this region.</p>
+                        <p class="text-warm-500">No cities added yet for this region.</p>
                     {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- Sidebar -->
-        <div class="col-lg-4">
+        <div class="col-span-12 lg:col-span-4">
             <!-- Quick Info -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5 class="card-title fw-bold mb-3">Quick Info</h5>
+            <div class="sbl-card shadow-sm mb-6">
+                <div class="p-5">
+                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Quick Info</h5>
                     <dl class="mb-0">
-                        <div class="mb-3">
-                            <dt class="text-muted small mb-1">Country</dt>
-                            <dd class="h5 mb-0">
-                                <a href="{% url 'locations:country_detail' region.country.slug %}" class="text-decoration-none">
+                        <div class="mb-4">
+                            <dt class="text-warm-500 text-sm mb-1">Country</dt>
+                            <dd class="text-lg font-semibold mb-0">
+                                <a href="{% url 'locations:country_detail' region.country.slug %}" class="no-underline">
                                     {{ region.country.flag_emoji }} {{ region.country.name }}
                                 </a>
                             </dd>
                         </div>
                         
                         {% if region.code %}
-                            <div class="mb-3">
-                                <dt class="text-muted small mb-1">Region Code</dt>
-                                <dd class="h5 mb-0">{{ region.code }}</dd>
+                            <div class="mb-4">
+                                <dt class="text-warm-500 text-sm mb-1">Region Code</dt>
+                                <dd class="text-lg font-semibold mb-0">{{ region.code }}</dd>
                             </div>
                         {% endif %}
                         
                         {% if region.latitude and region.longitude %}
                             <div class="mb-0">
-                                <dt class="text-muted small mb-1">Coordinates</dt>
-                                <dd class="small mb-0">{{ region.latitude }}, {{ region.longitude }}</dd>
+                                <dt class="text-warm-500 text-sm mb-1">Coordinates</dt>
+                                <dd class="text-sm mb-0">{{ region.latitude }}, {{ region.longitude }}</dd>
                             </div>
                         {% endif %}
                     </dl>
@@ -123,23 +119,23 @@
             </div>
 
             <!-- Stats -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5 class="card-title fw-bold mb-3">Statistics</h5>
-                    <div class="d-flex justify-content-between mb-0">
-                        <span class="text-muted">Cities</span>
-                        <span class="h5 mb-0">{{ region.city_count }}</span>
+            <div class="sbl-card shadow-sm mb-6">
+                <div class="p-5">
+                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
+                    <div class="flex justify-between mb-0">
+                        <span class="text-warm-500">Cities</span>
+                        <span class="text-lg font-semibold mb-0">{{ region.city_count }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Actions -->
             {% if user.is_staff or region.submitted_by == user %}
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold mb-3">Actions</h5>
-                        <a href="{% url 'locations:region_list' %}" class="btn btn-success w-100">
-                            <i class="bi bi-arrow-left me-2"></i>Back to Regions
+                <div class="sbl-card shadow-sm">
+                    <div class="p-5">
+                        <h5 class="font-semibold text-warm-900 font-bold mb-4">Actions</h5>
+                        <a href="{% url 'locations:region_list' %}" class="sbl-btn sbl-btn-secondary w-full">
+                            <i class="bi bi-arrow-left mr-2"></i>Back to Regions
                         </a>
                     </div>
                 </div>
@@ -148,9 +144,4 @@
     </div>
 </div>
 
-<style>
-.hover-bg-light:hover {
-    background-color: #e9ecef !important;
-}
-</style>
 {% endblock %}

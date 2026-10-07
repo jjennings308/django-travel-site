@@ -1,0 +1,8 @@
+{# templates/partials/_pagination.html — pass page_obj; {% querystring %} keeps the current filters in the links #}
+{% if page_obj.has_other_pages %}
+<nav aria-label="Pagination" class="mt-6 flex items-center justify-center gap-2 text-sm">
+  {% if page_obj.has_previous %}<a class="sbl-btn sbl-btn-outline sbl-btn-sm" href="{% querystring page=page_obj.previous_page_number %}"><i class="bi bi-chevron-left"></i>Previous</a>{% endif %}
+  <span class="px-2 text-warm-500">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="sbl-btn sbl-btn-outline sbl-btn-sm" href="{% querystring page=page_obj.next_page_number %}">Next<i class="bi bi-chevron-right"></i></a>{% endif %}
+</nav>
+{% endif %}

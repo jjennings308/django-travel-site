@@ -8,29 +8,29 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-4" style="max-width: 900px;">
-    <div class="mb-4">
-        <h1 class="display-4 fw-bold mb-2">Add New City</h1>
-        <p class="text-muted">Submit a new city for approval</p>
+<div class="py-6" style="max-width: 900px;">
+    <div class="mb-6">
+        <h1 class="text-4xl font-bold mb-2">Add New City</h1>
+        <p class="text-warm-500">Submit a new city for approval</p>
     </div>
 
-    <form method="post" class="card shadow-sm">
-        <div class="card-body p-4">
+    <form method="post" class="sbl-card shadow-sm">
+        <div class="p-5 p-6">
             {% csrf_token %}
             
             <!-- Basic Information -->
-            <div class="mb-5">
-                <h3 class="h4 fw-bold mb-3">Basic Information</h3>
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
                 
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">City Name <span class="text-danger">*</span></label>
-                        <input type="text" name="name" required class="form-control" placeholder="e.g., New York">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">City Name <span class="text-red-700">*</span></label>
+                        <input type="text" name="name" required class="sbl-input" placeholder="e.g., New York">
                     </div>
                     
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
-                        <select name="country" id="country-select" required class="form-select">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Country <span class="text-red-700">*</span></label>
+                        <select name="country" id="country-select" required class="sbl-input">
                             <option value="">Select Country</option>
                             {% for country in countries %}
                                 <option value="{{ country.id }}">{{ country.flag_emoji }} {{ country.name }}</option>
@@ -38,16 +38,16 @@
                         </select>
                     </div>
                     
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Region/State</label>
-                        <select name="region" id="region-select" class="form-select">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Region/State</label>
+                        <select name="region" id="region-select" class="sbl-input">
                             <option value="">Select Region (Optional)</option>
                         </select>
                     </div>
                     
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Capital Type</label>
-                        <select name="capital_type" class="form-select">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Capital Type</label>
+                        <select name="capital_type" class="sbl-input">
                             <option value="">Not a capital</option>
                             {% for value, label in capital_types %}
                                 <option value="{{ value }}">{{ label }}</option>
@@ -55,89 +55,89 @@
                         </select>
                     </div>
                     
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Population</label>
-                        <input type="number" name="population" class="form-control" placeholder="e.g., 8336000">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Population</label>
+                        <input type="number" name="population" class="sbl-input" placeholder="e.g., 8336000">
                     </div>
                     
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea name="description" rows="4" class="form-control" placeholder="Brief description of the city..."></textarea>
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Description</label>
+                        <textarea name="description" rows="4" class="sbl-input" placeholder="Brief description of the city..."></textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Geographic Information -->
-            <div class="mb-5">
-                <h3 class="h4 fw-bold mb-3">Geographic Information</h3>
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Information</h3>
                 
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Latitude <span class="text-danger">*</span></label>
-                        <input type="number" name="latitude" step="0.000001" required class="form-control" placeholder="e.g., 40.7128">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12 md:col-span-4">
+                        <label class="sbl-label font-semibold">Latitude <span class="text-red-700">*</span></label>
+                        <input type="number" name="latitude" step="0.000001" required class="sbl-input" placeholder="e.g., 40.7128">
                     </div>
                     
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Longitude <span class="text-danger">*</span></label>
-                        <input type="number" name="longitude" step="0.000001" required class="form-control" placeholder="e.g., -74.0060">
+                    <div class="col-span-12 md:col-span-4">
+                        <label class="sbl-label font-semibold">Longitude <span class="text-red-700">*</span></label>
+                        <input type="number" name="longitude" step="0.000001" required class="sbl-input" placeholder="e.g., -74.0060">
                     </div>
                     
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Elevation (meters)</label>
-                        <input type="number" name="elevation_m" step="0.01" class="form-control" placeholder="e.g., 10">
+                    <div class="col-span-12 md:col-span-4">
+                        <label class="sbl-label font-semibold">Elevation (meters)</label>
+                        <input type="number" name="elevation_m" step="0.01" class="sbl-input" placeholder="e.g., 10">
                     </div>
                     
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Timezone</label>
-                        <input type="text" name="timezone" class="form-control" placeholder="e.g., America/New_York">
+                    <div class="col-span-12">
+                        <label class="sbl-label font-semibold">Timezone</label>
+                        <input type="text" name="timezone" class="sbl-input" placeholder="e.g., America/New_York">
                     </div>
                 </div>
             </div>
 
             <!-- Travel Information -->
-            <div class="mb-5">
-                <h3 class="h4 fw-bold mb-3">Travel Information</h3>
+            <div class="mb-12">
+                <h3 class="text-xl font-semibold font-bold mb-4">Travel Information</h3>
                 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Best Time to Visit</label>
-                        <input type="text" name="best_time_to_visit" class="form-control" placeholder="e.g., Spring (March-May) and Fall (Sept-Nov)">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Best Time to Visit</label>
+                        <input type="text" name="best_time_to_visit" class="sbl-input" placeholder="e.g., Spring (March-May) and Fall (Sept-Nov)">
                     </div>
                     
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Average Daily Budget (USD)</label>
-                        <input type="number" name="average_daily_budget" step="0.01" class="form-control" placeholder="e.g., 150.00">
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="sbl-label font-semibold">Average Daily Budget (USD)</label>
+                        <input type="number" name="average_daily_budget" step="0.01" class="sbl-input" placeholder="e.g., 150.00">
                     </div>
                 </div>
             </div>
 
             <!-- Featured Media -->
-            <div class="mb-4">
-                <h3 class="h4 fw-bold mb-3">Featured Media</h3>
-                <p class="text-muted small mb-3">Select an image to represent this city</p>
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <p class="text-warm-500 text-sm mb-4">Select an image to represent this city</p>
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
                 
-                <div id="selected-media" class="d-none mb-3">
-                    <div class="position-relative d-inline-block">
-                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded" style="height: 200px;">
-                        <button type="button" onclick="clearSelectedMedia()" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2">
+                <div id="selected-media" class="hidden mb-4">
+                    <div class="relative inline-block">
+                        <img id="selected-media-preview" src="" alt="Selected media" class="rounded-lg" style="height: 200px;">
+                        <button type="button" onclick="clearSelectedMedia()" class="sbl-btn sbl-btn-danger sbl-btn-sm absolute top-0 right-0 m-2">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
                 </div>
                 
-                <div id="media-grid" class="row g-3">
+                <div id="media-grid" class="grid grid-cols-12 gap-4">
                     {% for media in user_media %}
-                        <div class="col-6 col-md-4 col-lg-2">
-                            <div class="media-item border rounded overflow-hidden" style="cursor: pointer; height: 120px;" 
+                        <div class="col-span-6 md:col-span-4 lg:col-span-2">
+                            <div class="media-item border border-warm-200 rounded-lg overflow-hidden" style="cursor: pointer; height: 120px;" 
                                  onclick="selectMedia({{ media.id }}, '{{ media.file.url }}')" 
                                  id="media-{{ media.id }}">
-                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-100 h-100" style="object-fit: cover;">
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="w-full h-full" style="object-fit: cover;">
                             </div>
                         </div>
                     {% empty %}
-                        <div class="col-12 text-center py-4 text-muted">
+                        <div class="col-span-12 text-center py-6 text-warm-500">
                             <p>No media uploaded yet. Upload images in your media library first.</p>
                         </div>
                     {% endfor %}
@@ -145,9 +145,9 @@
             </div>
 
             <!-- Submit -->
-            <div class="d-flex justify-content-between align-items-center pt-4 border-top">
-                <a href="{% url 'locations:city_list' %}" class="btn btn-link text-muted text-decoration-none">Cancel</a>
-                <button type="submit" class="btn btn-primary btn-lg px-5">
+            <div class="flex justify-between items-center pt-6 border-t border-warm-200">
+                <a href="{% url 'locations:city_list' %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
+                <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
                     Submit for Approval
                 </button>
             </div>
@@ -161,11 +161,11 @@
     border: 2px solid transparent !important;
 }
 .media-item:hover {
-    border-color: #0d6efd !important;
+    border-color: #7A4E2D !important;
     opacity: 0.8;
 }
 .media-item.selected {
-    border-color: #0d6efd !important;
+    border-color: #7A4E2D !important;
 }
 </style>
 
@@ -201,7 +201,7 @@ document.getElementById('country-select').addEventListener('change', function() 
 function selectMedia(mediaId, mediaUrl) {
     document.getElementById('featured_media_id').value = mediaId;
     document.getElementById('selected-media-preview').src = mediaUrl;
-    document.getElementById('selected-media').classList.remove('d-none');
+    document.getElementById('selected-media').classList.remove('hidden');
     
     document.querySelectorAll('[id^="media-"]').forEach(el => {
         el.classList.remove('selected');
@@ -211,7 +211,7 @@ function selectMedia(mediaId, mediaUrl) {
 
 function clearSelectedMedia() {
     document.getElementById('featured_media_id').value = '';
-    document.getElementById('selected-media').classList.add('d-none');
+    document.getElementById('selected-media').classList.add('hidden');
     document.querySelectorAll('[id^="media-"]').forEach(el => {
         el.classList.remove('selected');
     });

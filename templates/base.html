@@ -54,6 +54,7 @@
       {# wrap_class lets a page ask for a max width. Both default to nothing. #}
       <section class="flex-1 min-w-0 {% block content_class %}{% endblock %}">
         <div class="mx-auto {% block wrap_class %}{% endblock %}">
+          {% block breadcrumbs %}{% endblock %}
           {% include "partials/_messages.html" %}
           {% block content %}{% endblock %}
         </div>

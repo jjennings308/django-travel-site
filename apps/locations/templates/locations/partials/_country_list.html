@@ -10,13 +10,13 @@
         {% for country in countries %}
             {% if use_icons %}
                 {# Use flag-icons library (crisp SVG) #}
-                <span class="badge bg-secondary me-1 mb-1" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
+                <span class="sbl-badge sbl-badge-neutral mr-1 mb-1" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
                     <span class="{{ country|country_flag_icon }}" style="margin-right: 0.5rem;"></span>
                     {{ country.name }}
                 </span>
             {% else %}
                 {# Use Unicode emoji flags #}
-                <span class="badge bg-secondary me-1 mb-1 emoji-flag" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
+                <span class="sbl-badge sbl-badge-neutral mr-1 mb-1 emoji-flag" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
                     {{ country|country_display:"flag_name" }}
                 </span>
             {% endif %}
@@ -25,7 +25,7 @@
 
 {% elif style == 'list' %}
     {# Display as a bulleted list #}
-    <ul class="country-list list-unstyled mb-0">
+    <ul class="country-list list-none mb-0">
         {% for country in countries %}
             <li class="mb-2">
                 {% if use_icons %}
@@ -35,7 +35,7 @@
                 {% endif %}
                 <strong>{{ country.name }}</strong>
                 {% if country.continent %}
-                    <small class="text-muted">({{ country.continent }})</small>
+                    <small class="text-warm-500">({{ country.continent }})</small>
                 {% endif %}
             </li>
         {% endfor %}
@@ -55,11 +55,11 @@
 
 {% elif style == 'grid' %}
     {# Display as a grid #}
-    <div class="row g-3">
+    <div class="grid grid-cols-12 gap-4">
         {% for country in countries %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100">
-                    <div class="card-body text-center">
+            <div class="col-span-12 md:col-span-6 lg:col-span-4">
+                <div class="sbl-card h-full">
+                    <div class="p-5 text-center">
                         {% if use_icons %}
                             <span class="{{ country|country_flag_icon }}" style="font-size: 4rem;"></span>
                         {% else %}
@@ -67,7 +67,7 @@
                         {% endif %}
                         <h6 class="mt-2">{{ country.name }}</h6>
                         {% if country.continent %}
-                            <small class="text-muted">{{ country.continent }}</small>
+                            <small class="text-warm-500">{{ country.continent }}</small>
                         {% endif %}
                     </div>
                 </div>
