@@ -45,15 +45,19 @@
       
       {# Desktop sidebar (authenticated users only) #}
       {% if user.is_authenticated %}
-        <aside class="hidden lg:block w-64 flex-shrink-0">
+        <aside class="hidden lg:block w-64 flex-shrink-0 print:hidden">
           {% include "partials/_sidebar.html" %}
         </aside>
       {% endif %}
       
       {# Main content #}
-      <section class="flex-1 min-w-0">
-        {% include "partials/_messages.html" %}
-        {% block content %}{% endblock %}
+      {# content_class lets an app scope its own components (trips: "trips-ui"); #}
+      {# wrap_class lets a page ask for a max width. Both default to nothing. #}
+      <section class="flex-1 min-w-0 {% block content_class %}{% endblock %}">
+        <div class="mx-auto {% block wrap_class %}{% endblock %}">
+          {% include "partials/_messages.html" %}
+          {% block content %}{% endblock %}
+        </div>
       </section>
       
     </div>

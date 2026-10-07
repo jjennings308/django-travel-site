@@ -66,7 +66,8 @@ User-submitted content inherits the `approval_system.models.Approvable` mixin. I
 ### Templates and styling
 - Site-level templates are in `templates/`: `base.html` (Tailwind app shell with header, sidebar and messages), `base_marketing.html` (public pages), `partials/` and `components/`. App templates extend `base.html`. Reusable pieces are included with `{% include 'components/cards/stat_card.html' with color="clay" ... %}`; see `templates/components/README.md`.
 - Detail and list views pass `breadcrumb_list` (built with `core.utils.breadcrumbs`) to `partials/_breadcrumbs.html`.
-- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with DaisyUI and the forms and typography plugins installed. The brand palette (`earth-*` clay/olive/ochre/sage and `warm-50..900`) is defined in `tailwind.config.js`. It is also hand-written as `!important` utility classes in `styles.css`, because v4 does not read the JS config unless it is loaded with `@config`. If you add a new brand-color utility, make sure it really reaches the built CSS.
+- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the forms and typography plugins. DaisyUI is in `package.json` but not loaded (no `@plugin`). `@source` globs cover `templates/` and every app's templates; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The older hand-written `!important` utilities in `styles.css` predate the `@source`/`@theme` fix and can be pruned. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` after template or CSS changes.
+- **Trips pages are scoped.** Every trips template extends `trips/base_trips.html`, which sets `content_class` = `trips-ui` (and a default `wrap_class` width) on `base.html`'s content area. The itinerary component layer (`.card`, `.btn`, `.badge-*`, `.callout-*`, `.chip`, form controls) and its `@media print` rules are written as `.trips-ui …` in `styles.css`, so they never restyle other apps' templates. Tests assert those class names. Site header, sidebars and footer carry `print:hidden`.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
 
 ### Trips (`trips`, merged from the itinerary project)
@@ -99,8 +100,8 @@ that matter most:
   on a certain leak).
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
-- **The detail page is printed to PDF** and holds a fixed query count (21 here: 17 for the
-  page plus 4 from this site's middleware/context processors); `test_detail.QueryCountTests`
+- **The detail page is printed to PDF** and holds a fixed query count (19 here, 4 of them from this site's
+  middleware/context processors); `test_detail.QueryCountTests`
   pins it.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
@@ -275,9 +276,10 @@ unique here) — replace them in the admin. Row counts match, both detail pages 
 - Do **not** rebuild from `.docx` with `import_itinerary` — that discards every admin edit made
   since the original import.
 - Verify: row counts per table match, every trip detail page renders, the detail page stays at
-  21 queries (see the Trips section), `audit_public_leak` exits 0, existing `public_token` links resolve.
+  19 queries (see the Trips section), `audit_public_leak` exits 0, existing `public_token` links resolve.
 
-**Phase 3 — styling.**
+**Phase 3 — styling.** Status: done on branch `phase-3-styling` (scoped under `.trips-ui` rather than renaming classes, so no test changes). Remaining: compare a browser-printed trip PDF against the itinerary site by eye; the itinerary's own npm build and `app.css` retire with that repo (Phase 4).
+
 
 - Port their component layer (`.card`, `.chip`, `.callout*`, `.badge-*`, …) and the
   `@media print` rules into `theme/static_src/src/styles.css`; map their `accent` tokens onto the

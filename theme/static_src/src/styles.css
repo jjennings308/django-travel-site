@@ -1,5 +1,50 @@
 @import "tailwindcss";
 
+/* Tailwind 4 only generates utilities for classes it finds in the @source
+   files. Paths are relative to this file (theme/static_src/src/): the site
+   templates, every app's templates, and the theme's own. Before these globs the
+   build scanned nothing, which is why the utilities block below was written by
+   hand; it can shrink now that the classes are generated. */
+@source "../../../templates/**/*.html";
+@source "../../../*/templates/**/*.html";
+@source "../../templates/**/*.html";
+
+/* Brand palette as theme colours, so bg-earth-clay, text-warm-700, ... are
+   generated like any Tailwind colour (v4 does not read tailwind.config.js). */
+@theme {
+  --color-earth-clay: #7A4E2D;
+  --color-earth-clay-dark: #5A371F;
+  --color-earth-tan: #B98255;
+  --color-earth-sand: #F3E7DB;
+  --color-earth-olive: #556B2F;
+  --color-earth-olive-dark: #3E5121;
+  --color-earth-sage: #8CA66B;
+  --color-earth-ochre: #C58B2A;
+  --color-earth-ochre-dark: #9A6A1E;
+
+  --color-warm-50: #FAF7F2;
+  --color-warm-100: #F3EEE6;
+  --color-warm-200: #E7DED2;
+  --color-warm-300: #D4C7B8;
+  --color-warm-400: #B9AA99;
+  --color-warm-500: #8B7D71;
+  --color-warm-600: #6F6258;
+  --color-warm-700: #564B43;
+  --color-warm-800: #3D342E;
+  --color-warm-900: #2A231E;
+
+  /* The trips components say `accent`, never a hue, so the brand colour lives
+     in these lines: clay, light to dark (300-500 interpolated, 400 = tan). */
+  --color-accent-50: #FBF6F1;
+  --color-accent-100: #F3E7DB;
+  --color-accent-200: #E4CDB6;
+  --color-accent-300: #CFA987;
+  --color-accent-400: #B98255;
+  --color-accent-500: #9A673F;
+  --color-accent-600: #7A4E2D;
+  --color-accent-700: #5A371F;
+}
+
 @layer utilities {
   /* ========================================
      GRID UTILITIES - CRITICAL
@@ -369,4 +414,535 @@
   .border-warm-700 { border-color: #564B43 !important; }
   .my-8 { margin-top: 2rem !important; margin-bottom: 2rem !important; }
   .text-warm-400 { color: #B9AA99 !important; }
+}
+
+
+/* ==========================================================================
+   TRIPS
+   Ported from the itinerary project's static/css/tailwind.css (work plan,
+   Phase 3), every selector scoped under .trips-ui. trips/base_trips.html puts
+   that class on the content area of every trips page, so these generic names
+   (.card, .btn, .badge, form controls) style the trips pages only and leave
+   the rest of the site's templates alone. Class names are load-bearing: the
+   trips tests assert card, chip, badge-* and callout-* verbatim. Print is the
+   real output for the trip detail page; the site header, sidebar and footer
+   carry print:hidden in base.html.
+   ========================================================================== */
+
+@layer base {
+  .trips-ui {
+    font-feature-settings: "cv11", "ss01";
+  }
+  /* Times, prices and confirmation codes line up in a column. */
+  .trips-ui dd,
+  .trips-ui td {
+    font-variant-numeric: tabular-nums;
+  }
+  .trips-ui :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-500;
+  }
+}
+
+@layer components {
+  /* ------------------------------------------------------------- page chrome */
+  .trips-ui .page-header {
+    @apply mb-8 flex flex-wrap items-end justify-between gap-4;
+  }
+  .trips-ui .page-title {
+    @apply text-3xl font-semibold tracking-tight text-zinc-900;
+  }
+  .trips-ui .page-subtitle {
+    @apply mt-1 text-sm text-zinc-500;
+  }
+  .trips-ui .crumbs {
+    @apply mb-3 flex flex-wrap items-center gap-1.5 text-sm text-zinc-500;
+  }
+  .trips-ui .crumbs a {
+    @apply hover:text-zinc-900;
+  }
+
+  .trips-ui .note {
+    @apply mb-6 rounded-lg border border-zinc-200 bg-zinc-100/60 px-3.5 py-2.5 text-sm text-zinc-600;
+  }
+
+  .trips-ui .alert-error {
+    @apply mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800;
+  }
+
+  /* ------------------------------------------------------------------ badges */
+  .trips-ui .badge {
+    @apply inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-zinc-600;
+  }
+  .trips-ui .badge-ready {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700 before:mr-1.5 before:size-1.5 before:rounded-full before:bg-emerald-500 before:content-[''];
+  }
+  .trips-ui .badge-draft {
+    @apply border-amber-200 bg-amber-50 text-amber-700 before:mr-1.5 before:size-1.5 before:rounded-full before:bg-amber-500 before:content-[''];
+  }
+  .trips-ui .badge-mode {
+    @apply border-zinc-200 bg-zinc-100 text-zinc-600;
+  }
+  /* Booking-task priority. Same shape as the other badges — colour is the only
+     variable, so a glance down "Still to book" ranks the work. */
+  .trips-ui .badge-critical {
+    @apply border-red-200 bg-red-50 text-red-700;
+  }
+  .trips-ui .badge-high {
+    @apply border-amber-200 bg-amber-50 text-amber-700;
+  }
+  .trips-ui .badge-medium {
+    @apply border-sky-200 bg-sky-50 text-sky-700;
+  }
+  .trips-ui .badge-low {
+    @apply border-zinc-200 bg-zinc-100 text-zinc-600;
+  }
+
+  /* Traveler names as chips. Deliberately not `.badge`: that uppercases, which
+     mangles proper names. */
+  .trips-ui .chip {
+    @apply inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-0.5 text-sm text-zinc-700;
+  }
+
+  /* Initial-letter discs for people. Overlap with `-space-x-2` on the parent. */
+  .trips-ui .avatar {
+    @apply inline-flex size-7 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-700 uppercase ring-2 ring-white;
+  }
+
+  /* ----------------------------------------------------------------- buttons */
+  .trips-ui .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-700;
+  }
+  .trips-ui .btn-quiet {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-900;
+  }
+  .trips-ui .btn-danger {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700;
+  }
+  .trips-ui .link-quiet {
+    @apply text-sm text-zinc-500 transition hover:text-accent-700;
+  }
+
+  /* ------------------------------------------------------------------- forms */
+  .trips-ui form p {
+    @apply mb-4;
+  }
+  .trips-ui form label {
+    @apply mb-1.5 block text-sm font-medium text-zinc-700;
+  }
+  /* Help text that {{ form.as_p }} emits next to a field. */
+  .trips-ui form .helptext {
+    @apply mt-1 block text-xs text-zinc-500;
+  }
+  /* Every text-ish control, not just the three types the auth pages happen to
+     use. The trip form adds date, number, select and textarea, and a control
+     with no rule here renders unstyled rather than broken, which is easy to
+     miss. `select[multiple]` is the traveler roster control, so it is styled
+     with the rest instead of left as a bare box. */
+  .trips-ui form input[type="text"],
+  .trips-ui form input[type="email"],
+  .trips-ui form input[type="password"],
+  .trips-ui form input[type="date"],
+  .trips-ui form input[type="datetime-local"],
+  .trips-ui form input[type="time"],
+  .trips-ui form input[type="number"],
+  .trips-ui form input[type="url"],
+  .trips-ui form input[type="tel"],
+  .trips-ui form select,
+  .trips-ui form textarea {
+    @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs transition placeholder:text-zinc-400 focus:border-accent-500 focus:ring-3 focus:ring-accent-500/15 focus:outline-none;
+  }
+  .trips-ui form select:not([multiple]) {
+    @apply appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2371717a'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  }
+  .trips-ui form select[multiple] {
+    @apply py-1;
+  }
+  .trips-ui form textarea {
+    @apply min-h-24;
+  }
+  .trips-ui form input[type="checkbox"],
+  .trips-ui form input[type="radio"] {
+    @apply mr-2 size-4 align-middle accent-accent-600;
+  }
+
+  .trips-ui ul.errorlist {
+    @apply mt-1.5 list-none p-0 text-sm text-red-700;
+  }
+  /* as_p puts the errorlist before the field it is about. */
+  .trips-ui ul.errorlist + p input,
+  .trips-ui ul.errorlist + p select,
+  .trips-ui ul.errorlist + p textarea {
+    @apply border-red-400;
+  }
+
+  /* Short fields sit two to a row; anything multi-line takes the full width.
+     Works on as_p's <p>s and on _form_fields.html's <div>s alike. */
+  .trips-ui .field-grid {
+    @apply grid gap-x-5 sm:grid-cols-2;
+  }
+  .trips-ui .field-grid > :has(textarea, select[multiple]),
+  .trips-ui .field-grid > ul.errorlist {
+    @apply sm:col-span-2;
+  }
+
+  /* A titled block of a form. Stacked rather than side-by-side, because the
+     formsets inside some of them are wide tables. */
+  .trips-ui .form-section {
+    @apply mb-6 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6;
+  }
+  .trips-ui .form-section-title {
+    @apply text-base font-semibold text-zinc-900;
+  }
+  .trips-ui .form-section-lede {
+    @apply mt-1 mb-5 text-sm text-zinc-500;
+  }
+  .trips-ui .form-section > fieldset + fieldset {
+    @apply mt-6 border-t border-zinc-100 pt-5;
+  }
+  /* Save/Cancel stay in reach on a long edit page. No JS: plain sticky. */
+  .trips-ui .form-actions {
+    @apply sticky bottom-0 z-10 -mx-1 mt-8 flex flex-wrap items-center gap-3 border-t border-zinc-200 bg-zinc-50/90 px-1 py-4 backdrop-blur;
+  }
+
+  /* Formset and list tables. A table is still the right shape for rows of
+     aligned inputs with no JavaScript; this just makes it read as a grid. */
+  .trips-ui .data-grid {
+    @apply w-full text-left text-sm;
+  }
+  .trips-ui .data-grid th {
+    @apply border-b border-zinc-200 px-2 py-2 text-[11px] font-semibold tracking-wider whitespace-nowrap text-zinc-500 uppercase;
+  }
+  .trips-ui .data-grid td {
+    @apply border-b border-zinc-100 px-2 py-2 align-top;
+  }
+  .trips-ui .data-grid tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .trips-ui .data-grid td input:not([type="checkbox"]),
+  .trips-ui .data-grid td select,
+  .trips-ui .data-grid td textarea {
+    @apply min-w-32 py-1.5;
+  }
+  .trips-ui .data-grid td textarea {
+    @apply min-h-10;
+  }
+  /* One formset row: a <details> card. Closed, it is a one-line summary;
+     open, it is the field grid. The blank extra row is the "Add new" one. */
+  .trips-ui .formset-row {
+    @apply rounded-lg border border-zinc-200 bg-white transition open:border-zinc-300 open:shadow-sm;
+  }
+  .trips-ui .formset-row-summary {
+    @apply flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-4 py-3 text-sm select-none hover:bg-zinc-50 [&::-webkit-details-marker]:hidden;
+  }
+  .trips-ui .formset-row[open] > .formset-row-summary {
+    @apply rounded-b-none border-b border-zinc-100;
+  }
+  .trips-ui .formset-row-body {
+    @apply px-4 pt-4 pb-1;
+  }
+  .trips-ui .formset-row-delete {
+    @apply mb-4 flex! w-fit cursor-pointer items-center gap-0.5 rounded-md px-2 py-1 font-normal text-red-700 hover:bg-red-50;
+  }
+  .trips-ui .scroll-x {
+    @apply -mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6;
+  }
+
+  /* -------------------------------------------------------------------- cards */
+  /* Card grids replace the old compact tables on the list and detail pages.
+     The tables could only show as many columns as fit; a card has room for
+     the fields the tables had no column for — cost, notes, rates, duration.
+     The shadow is screen-only: print strips it back to the border. */
+  .trips-ui .card {
+    @apply rounded-xl border border-zinc-200 bg-white p-5 shadow-sm;
+  }
+  /* A whole-card link: the title's ::after stretches over the card, and any
+     other control in the card needs `relative z-10` to stay clickable. */
+  .trips-ui .card-link {
+    @apply relative transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md;
+  }
+  .trips-ui .card-link .stretched::after {
+    @apply absolute inset-0 rounded-xl content-[''];
+  }
+  .trips-ui .card-grid {
+    @apply grid gap-4 sm:grid-cols-2;
+  }
+  .trips-ui .card-kicker {
+    @apply text-[11px] font-semibold tracking-wider text-zinc-500 uppercase;
+  }
+  .trips-ui .card-title {
+    @apply font-semibold text-zinc-900;
+  }
+  /* Subsection headings above a card grid ("Food", "Confirmations", …):
+     same voice as card-kicker, with a hairline running to the edge so the
+     label and the cards read as one unit. */
+  .trips-ui .grid-label {
+    @apply mb-3 flex items-center gap-3 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase after:h-px after:flex-1 after:bg-zinc-200 after:content-[''];
+  }
+  .trips-ui .reference {
+    @apply rounded-xl border border-zinc-200 bg-white p-5 shadow-sm;
+  }
+
+  /* A calendar tile: month over day-of-month. Used for a trip's start on the
+     list and for each day on the detail page. */
+  .trips-ui .date-tile {
+    @apply flex size-12 shrink-0 flex-col items-center justify-center rounded-lg border border-zinc-200 bg-white leading-none shadow-xs;
+  }
+  .trips-ui .date-tile-month {
+    @apply text-[10px] font-semibold tracking-wider text-accent-600 uppercase;
+  }
+  .trips-ui .date-tile-day {
+    @apply mt-0.5 text-lg font-semibold text-zinc-900;
+  }
+
+  .trips-ui .empty-state {
+    @apply rounded-xl border border-dashed border-zinc-300 px-6 py-14 text-center text-sm text-zinc-500;
+  }
+
+  /* ---------------------------------------------------------------- itinerary */
+  /* Print is the primary output, so these are about page flow first: days
+     start on a fresh sheet, and a block of content is never split across a
+     page boundary. scroll-mt clears the sticky header plus the day nav. */
+  .trips-ui .day {
+    @apply mb-14 scroll-mt-32;
+  }
+  .trips-ui .day-header {
+    @apply mb-6 flex items-center gap-4;
+  }
+  .trips-ui .day-heading {
+    @apply text-xl font-semibold tracking-tight text-zinc-900;
+  }
+  .trips-ui .day-meta {
+    @apply mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-500;
+  }
+  .trips-ui .day-nav {
+    @apply sticky top-14 z-20 -mx-5 mb-10 flex gap-1.5 overflow-x-auto border-b border-zinc-200 bg-zinc-50/90 px-5 py-2.5 backdrop-blur [scrollbar-color:var(--color-zinc-300)_transparent] [scrollbar-width:thin];
+  }
+  .trips-ui .day-nav a {
+    @apply shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium whitespace-nowrap text-zinc-600 transition hover:border-accent-200 hover:bg-accent-50 hover:text-accent-700;
+  }
+  .trips-ui .section {
+    @apply mb-5;
+  }
+  .trips-ui .section-title {
+    @apply mb-2 flex items-baseline gap-2 font-semibold text-zinc-900;
+  }
+  .trips-ui .prose-block p {
+    @apply mb-3 leading-relaxed text-zinc-700 last:mb-0;
+  }
+  /* Callouts are cards with a tone stripe, not tinted panels: a tinted
+     background reads as a printing fault, while a colored left border
+     survives print and still carries the tone. The tint below is screen-only
+     and stripped in print. The callout-* class names are load-bearing —
+     tests assert them — so the tone lives there. */
+  .trips-ui .callout {
+    @apply mb-5 rounded-xl border border-l-4 border-zinc-200 bg-white px-4 py-3 text-sm leading-relaxed text-zinc-700;
+  }
+  .trips-ui .callout-info {
+    @apply border-l-sky-500 bg-sky-50/40;
+  }
+  .trips-ui .callout-warning {
+    @apply border-l-amber-500 bg-amber-50/40;
+  }
+  .trips-ui .callout-critical {
+    @apply border-l-red-500 bg-red-50/40;
+  }
+
+  .trips-ui .hero {
+    @apply mb-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8;
+  }
+  .trips-ui .hero-title {
+    @apply text-3xl font-semibold tracking-tight text-balance text-zinc-900 sm:text-4xl;
+  }
+  .trips-ui .hero-meta {
+    @apply mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-zinc-100 pt-5 sm:grid-cols-4;
+  }
+  .trips-ui .hero-meta dd {
+    @apply mt-1 text-sm font-medium text-zinc-900;
+  }
+
+  /* ---------------------------------------------------------------- dashboard */
+  /* KPI tiles: an icon well, a headline number, one line of context. */
+  .trips-ui .stat-tile {
+    @apply flex flex-col gap-3;
+  }
+  .trips-ui .stat-icon {
+    @apply inline-flex size-9 items-center justify-center rounded-lg bg-accent-50 text-accent-600 ring-1 ring-accent-100;
+  }
+  .trips-ui .stat-value {
+    @apply text-3xl font-semibold tracking-tight text-zinc-900 tabular-nums;
+  }
+  .trips-ui .stat-foot {
+    @apply text-xs text-zinc-500;
+  }
+  /* A titled dashboard panel: kicker heading with an optional link on the right. */
+  .trips-ui .panel-head {
+    @apply mb-4 flex items-center justify-between gap-3;
+  }
+  .trips-ui .panel-title {
+    @apply text-sm font-semibold text-zinc-900;
+  }
+  /* Label/value rows with hairlines between them. */
+  .trips-ui .stat-list {
+    @apply divide-y divide-zinc-100 text-sm;
+  }
+  .trips-ui .stat-list > * {
+    @apply flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0;
+  }
+  .trips-ui .stat-list dt {
+    @apply text-zinc-500;
+  }
+  .trips-ui .stat-list dd {
+    @apply font-medium text-zinc-900;
+  }
+  /* A single-value bar. The fill colour is the only variable. */
+  .trips-ui .meter {
+    @apply h-1.5 overflow-hidden rounded-full bg-zinc-100;
+  }
+  .trips-ui .meter-fill {
+    @apply h-full rounded-full bg-accent-500;
+  }
+  /* Priority fills match the priority badges, so a bar and a badge agree. */
+  .trips-ui .meter-fill-p1 {
+    @apply bg-red-500;
+  }
+  .trips-ui .meter-fill-p2 {
+    @apply bg-amber-500;
+  }
+  .trips-ui .meter-fill-p3 {
+    @apply bg-sky-500;
+  }
+  .trips-ui .meter-fill-p4 {
+    @apply bg-zinc-400;
+  }
+  /* Trip status as one segmented bar. Status is an ordered pipeline, so the
+     segments are one hue stepping light to dark rather than four unrelated
+     colours. The 2px gap keeps neighbouring segments distinct. */
+  .trips-ui .segbar {
+    @apply flex h-3 gap-0.5 overflow-hidden rounded-full bg-zinc-100;
+  }
+  .trips-ui .seg {
+    @apply h-full first:rounded-l-full last:rounded-r-full;
+  }
+  .trips-ui .seg-starting {
+    @apply bg-accent-200;
+  }
+  .trips-ui .seg-fleshing_out {
+    @apply bg-accent-300;
+  }
+  .trips-ui .seg-confirming {
+    @apply bg-accent-500;
+  }
+  .trips-ui .seg-ready_to_go {
+    @apply bg-accent-700;
+  }
+  .trips-ui .swatch {
+    @apply inline-block size-2.5 shrink-0 rounded-sm;
+  }
+  /* "Needs attention" rows: a toned dot, a sentence, a count, a chevron. */
+  .trips-ui .attention-row {
+    @apply -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-zinc-700 transition hover:bg-zinc-50;
+  }
+  .trips-ui .attention-dot {
+    @apply size-2 shrink-0 rounded-full;
+  }
+
+  /* ------------------------------------------------------------------ comments */
+  .trips-ui .comment {
+    @apply flex gap-3;
+  }
+  .trips-ui .comment-body {
+    @apply flex-1 rounded-xl rounded-tl-sm border border-zinc-200 bg-white px-4 py-3;
+  }
+}
+
+@media print {
+  .trips-ui .no-print,
+  .trips-ui .day-nav,
+  .trips-ui .form-actions {
+    display: none !important;
+  }
+
+  .trips-ui {
+    background: #fff;
+    color: #000;
+    font-size: 11pt;
+  }
+
+  .trips-ui > div {
+    max-width: none;
+    padding: 0;
+  }
+
+  .trips-ui a {
+    text-decoration: none;
+    color: #000;
+  }
+
+  /* Screen polish off: shadows, tints and lifts read as printing faults. The
+     borders stay, and they are what the card shape was on paper anyway. */
+  .trips-ui .card,
+  .trips-ui .hero,
+  .trips-ui .reference,
+  .trips-ui .callout,
+  .trips-ui .note,
+  .trips-ui .date-tile {
+    box-shadow: none !important;
+    background: #fff !important;
+    transform: none !important;
+  }
+  .trips-ui .hero {
+    padding: 0 0 1rem;
+    border: 0;
+    border-radius: 0;
+  }
+  .trips-ui .note {
+    border-width: 0 0 0 2px;
+    border-radius: 0;
+  }
+
+  /* Without this a section can straddle a page break and continue mid-sentence. */
+  .trips-ui section,
+  .trips-ui li,
+  .trips-ui tr,
+  .trips-ui .card,
+  .trips-ui .callout {
+    break-inside: avoid;
+  }
+
+  .trips-ui h1,
+  .trips-ui h2,
+  .trips-ui h3,
+  .trips-ui .day-header,
+  .trips-ui .grid-label {
+    break-after: avoid;
+  }
+
+  /* Card grids collapse to one column on paper. A two-column grid prints
+     with awkward half-empty rows once the page margin is applied, and the
+     stacked form is what the old tables were anyway. */
+  .trips-ui .card-grid {
+    display: block;
+  }
+  .trips-ui .card {
+    margin-bottom: 0.6rem;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Each day starts on a fresh sheet. The first one does not, or the trip
+     overview would sit alone on a page of its own. */
+  .trips-ui .day {
+    break-before: page;
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  .trips-ui .day:first-of-type {
+    break-before: auto;
+  }
+
+  /* Links are useful on screen and noise on paper, but a confirmation number
+     is a number someone reads off the page, so it stays. */
+  .trips-ui a[href]::after {
+    content: none;
+  }
 }

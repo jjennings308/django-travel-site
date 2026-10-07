@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% comment %}
+Every trips page extends this. "trips-ui" scopes the trips component styles (.card, .btn, .badge, ... in theme/static_src/src/styles.css) to these pages, so they do not restyle the rest of the site's templates that use the same class names. Pages override wrap_class for a wider layout.
+{% endcomment %}
+{% block content_class %}trips-ui{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
