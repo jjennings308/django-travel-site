@@ -27,6 +27,8 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_O
 SITE_URL = os.environ.get("SITE_URL", "https://www.sharebucketlist.com")
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Name the mail server explicitly (use "localhost" for a local relay); no silent default.
+EMAIL_HOST = _required("EMAIL_HOST")
 
 # --- HTTPS behind nginx -------------------------------------------------------
 # nginx terminates TLS and sets X-Forwarded-Proto; trusting it makes

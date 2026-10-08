@@ -90,7 +90,7 @@ On a Debian box (repo at `/var/www/travel_site`, where `manage.py` is):
 ```bash
 git clone git@github.com:jjennings308/django-travel-site.git /var/www/travel_site && cd /var/www/travel_site
 cp .env.example .env        # set DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS,
-                            # SITE_URL, DJANGO_DEBUG=False, POSTGRES_*, EMAIL_HOST_USER/PASSWORD
+                            # SITE_URL, DJANGO_DEBUG=False, POSTGRES_*, EMAIL_* (that box's SMTP provider)
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 sudo chown www-data:www-data .env uploads
 export DJANGO_SETTINGS_MODULE=config.settings.prod
@@ -106,7 +106,7 @@ The built Tailwind CSS is committed, so the box needs no Node. Verify with
 ## Architecture
 
 ### Settings and URLs
-- `config/settings/{base,dev,prod}.py`. `base.py` reads env vars, including the SMTP settings (`EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` from `.env`; never put credentials in settings files). `dev.py` and `prod.py` override `DEBUG`, `ALLOWED_HOSTS`, `SITE_URL` and `EMAIL_BACKEND`.
+- `config/settings/{base,dev,prod}.py`. `base.py` reads env vars, including all outgoing-mail settings (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`/`EMAIL_USE_SSL`, `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`); the provider differs per machine, so never hard-code it, and never put credentials in settings files. `dev.py` and `prod.py` override `DEBUG`, `ALLOWED_HOSTS`, `SITE_URL` and `EMAIL_BACKEND`.
 - `config/urls.py` mounts each app under its own namespace (`pages:` for home/dashboard/about, `locations:`, `activities:`, `trips:`, `bucketlists:`, `events:`, `rewards:`, `staff:`) with `include("apps.<name>.urls")`. Use namespaced names with `reverse` and `{% url %}`. `apps.accounts.urls` (login, register and so on) is not namespaced. Staff-only views live in `apps/accounts/staff_urls.py` under `/staff/`.
 - `AUTH_USER_MODEL = 'accounts.User'` (a label reference — no `apps.` prefix). Login accepts a username or an email (`apps.accounts.backends.EmailOrUsernameBackend`).
 - Settings that hold **module paths** (`INSTALLED_APPS`, `MIDDLEWARE`, `TEMPLATES` context processors, `AUTHENTICATION_BACKENDS`, logging handlers) use `apps.<name>.…`. Settings that hold **labels** (`AUTH_USER_MODEL`, `"label.Model"` strings, permission strings like `"accounts.can_access_staff_dashboard"`) do not.

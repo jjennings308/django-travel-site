@@ -187,15 +187,26 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'pages:dashboard'
 LOGOUT_REDIRECT_URL = 'pages:home'
 
-DEFAULT_FROM_EMAIL = 'no-reply@sharebucketlist.com'
+# Outgoing mail. Every value comes from the environment (.env), so each machine
+# can use its own provider; credentials never go in code. dev.py / prod.py pick
+# EMAIL_BACKEND, and prod.py requires EMAIL_HOST to be set explicitly.
+def _env_flag(name, default):
+    return os.environ.get(name, default).lower() in ("true", "1", "yes")
 
-# SMTP (smtp2go). Credentials come from the environment (.env), never from code.
-# dev.py / prod.py choose EMAIL_BACKEND; these apply whenever the SMTP backend is used.
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "mail.smtp2go.com")
+
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_TLS = _env_flag("EMAIL_USE_TLS", "True")    # STARTTLS, usually port 587
+EMAIL_USE_SSL = _env_flag("EMAIL_USE_SSL", "False")   # implicit TLS, usually port 465
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("Set only one of EMAIL_USE_TLS / EMAIL_USE_SSL (port 587 -> TLS, 465 -> SSL).")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
+# The provider may only accept a From address on a domain verified with it.
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@sharebucketlist.com")
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)  # sender of error mails to ADMINS
 
 SITE_NAME = 'ShareBucketList'
 SITE_TAGLINE = 'Plan it. Live it. Share it.'
