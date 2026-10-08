@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">{{ title }}</h1>
+    {% if not user.is_staff %}<p class="sbl-page-subtitle">New events are reviewed before they appear publicly. You can see yours meanwhile under My events.</p>{% endif %}
+  </header>
+  <form method="post" class="space-y-6" x-data="{ allDay: {{ form.is_all_day.value|yesno:'true,false' }}, free: {{ form.is_free.value|yesno:'true,false' }} }">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">The event</h2>
+      {% include "events/partials/_field.html" with field=form.name %}
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+        {% include "events/partials/_field.html" with field=form.category %}
+        {% include "events/partials/_field.html" with field=form.event_type %}
+      </div>
+      {% include "events/partials/_field.html" with field=form.short_description %}
+      {% include "events/partials/_field.html" with field=form.description %}
+      {% include "events/partials/_field.html" with field=form.organizer %}
+    </section>
+
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">When</h2>
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+        {% include "events/partials/_field.html" with field=form.start_date %}
+        {% include "events/partials/_field.html" with field=form.end_date %}
+      </div>
+      <label class="mb-4 flex items-center gap-2 text-sm text-warm-700">{{ form.is_all_day }} <span @click="allDay = !allDay">All day</span></label>
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2" x-show="!allDay" x-cloak>
+        {% include "events/partials/_field.html" with field=form.start_time %}
+        {% include "events/partials/_field.html" with field=form.end_time %}
+      </div>
+      <p class="sbl-help">Times are local to the event.</p>
+    </section>
+
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">Where</h2>
+      {% include "events/partials/_field.html" with field=form.city %}
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+        {% include "events/partials/_field.html" with field=form.venue_name %}
+        {% include "events/partials/_field.html" with field=form.venue_address %}
+      </div>
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+        {% include "events/partials/_field.html" with field=form.indoor_outdoor %}
+        {% include "events/partials/_field.html" with field=form.age_restriction %}
+      </div>
+    </section>
+
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">Tickets &amp; links</h2>
+      <label class="mb-4 flex items-center gap-2 text-sm text-warm-700">{{ form.is_free }} <span>Free event</span></label>
+      <div class="grid grid-cols-1 gap-x-4 md:grid-cols-3" x-show="!free" x-cloak>
+        {% include "events/partials/_field.html" with field=form.ticket_price_min %}
+        {% include "events/partials/_field.html" with field=form.ticket_price_max %}
+        {% include "events/partials/_field.html" with field=form.currency %}
+      </div>
+      {% include "events/partials/_field.html" with field=form.ticket_url %}
+      {% include "events/partials/_field.html" with field=form.website %}
+      {% include "events/partials/_field.html" with field=form.what_to_bring %}
+    </section>
+
+    <div class="flex justify-end gap-2">
+      <a href="{% if event %}{% url 'events:event_detail' event.slug %}{% else %}{% url 'events:event_list' %}{% endif %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+      <button type="submit" class="sbl-btn sbl-btn-primary">{% if event %}Save{% elif user.is_staff %}Publish event{% else %}Submit for review{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

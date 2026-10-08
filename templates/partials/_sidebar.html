@@ -8,7 +8,7 @@
     <li><a class="{{ base }} {% if current|slice:':11' == 'activities:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'activities:activity_list' %}"><i class="bi bi-signpost-2"></i>Activities</a></li>
     <li><a class="{{ base }} {% if current|slice:':6' == 'trips:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'trips:trip_list' %}"><i class="bi bi-airplane"></i>Trips</a></li>
     <li><a class="{{ base }} {% if current|slice:':10' == 'locations:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'locations:dashboard' %}"><i class="bi bi-geo-alt"></i>Locations</a></li>
-    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:dashboard' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
+    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:event_list' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
     <li><a class="{{ base }} {% if current == 'pages:about' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:about' %}"><i class="bi bi-info-circle"></i>About</a></li>
   </ul>
 </nav>

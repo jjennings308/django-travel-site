@@ -1,9 +1,12 @@
 # events/models.py
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.locations.models import City, POI
 from apps.activities.models import Activity, ActivityCategory
+from apps.approval_system.models import Approvable, ApprovalStatus
 from django.utils import timezone
 
 
@@ -44,8 +47,31 @@ class EventCategory(TimeStampedModel, SlugMixin):
         super().save(*args, **kwargs)
 
 
-class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin):
-    """Scheduled events"""
+class EventQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        """Events ``user`` may see: approved ones, plus their own at any stage; staff see all."""
+        if user is not None and user.is_authenticated and user.is_staff:
+            return self
+        approved = Q(approval_status=ApprovalStatus.APPROVED)
+        if user is not None and user.is_authenticated:
+            return self.filter(approved | Q(created_by=user))
+        return self.filter(approved)
+
+
+class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
+    """Scheduled events. User-submitted events are visible only to their creator (and
+    staff) until approved through the approval system, like activities."""
+
+    objects = EventQuerySet.as_manager()
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_events',
+        help_text="Who added this event (blank for admin-created events)",
+    )
     
     # Basic information
     name = models.CharField(max_length=200)
@@ -331,6 +357,22 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin):
     def __str__(self):
         return f"{self.name} ({self.start_date})"
     
+    def is_visible_to(self, user):
+        if user is not None and user.is_authenticated and (user.is_staff or user == self.created_by):
+            return True
+        return self.approval_status == ApprovalStatus.APPROVED
+
+    def can_edit(self, user):
+        """Creator until approved; staff always (same rule as activities)."""
+        if user is None or not user.is_authenticated:
+            return False
+        if user.is_staff:
+            return True
+        return user == self.created_by and self.approval_status != ApprovalStatus.APPROVED
+
+    def can_delete(self, user):
+        return self.can_edit(user)
+
     @property
     def is_upcoming(self):
         """Check if event is in the future"""

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Delete {{ event.name }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl sbl-card p-6 text-center">
+  <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-red-100 text-2xl text-red-700"><i class="bi bi-trash"></i></div>
+  <h1 class="mb-2 text-2xl font-bold text-warm-900">Delete this event?</h1>
+  <p class="mb-1 text-lg font-semibold text-warm-800">“{{ event.name }}”</p>
+  <p class="mb-6 text-warm-600">This can't be undone. Bucket-list items that point at it are removed too.</p>
+  <form method="post" class="flex justify-center gap-2">{% csrf_token %}
+    <a href="{% url 'events:event_detail' event.slug %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+    <button type="submit" class="sbl-btn sbl-btn-danger">Delete event</button>
+  </form>
+</div>
+{% endblock %}

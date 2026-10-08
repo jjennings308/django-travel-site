@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Events{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="sbl-page-title">Events</h1>
+    <p class="sbl-page-subtitle">Festivals, concerts, games and more, wherever you're headed.</p>
+  </div>
+  {% if user.is_authenticated %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'events:my_events' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-person"></i>My events</a>
+      <a href="{% url 'events:event_add' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>Add an event</a>
+    </div>
+  {% endif %}
+</header>
+
+<form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
+  <div class="md:col-span-2"><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
+  <div><label class="sbl-label" for="when">When</label>
+    <select id="when" name="when" class="sbl-input"><option value="upcoming" {% if when == 'upcoming' %}selected{% endif %}>Upcoming</option><option value="past" {% if when == 'past' %}selected{% endif %}>Past</option></select></div>
+  <div><label class="sbl-label" for="category">Category</label>
+    <select id="category" name="category" class="sbl-input"><option value="">All</option>{% for c in categories %}<option value="{{ c.slug }}" {% if filters.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="country">Country</label>
+    <select id="country" name="country" class="sbl-input"><option value="">All</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="flex items-center justify-between gap-3 md:block">
+    <label class="mb-2 flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="free" value="1" class="sbl-check" {% if filters.free %}checked{% endif %}>Free only</label>
+    <button type="submit" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-funnel"></i>Filter</button>
+  </div>
+</form>
+
+{% if page_obj %}
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {% for event in page_obj %}{% include "events/partials/_event_card.html" %}{% endfor %}
+  </div>
+  {% include "partials/_pagination.html" %}
+{% else %}
+  <div class="sbl-card p-10 text-center text-warm-500">
+    <i class="bi bi-calendar-x mb-2 block text-4xl"></i>
+    <p class="mb-4">No {{ when }} events match.{% if user.is_authenticated %} Know of one?{% endif %}</p>
+    {% if user.is_authenticated %}<a href="{% url 'events:event_add' %}" class="sbl-btn sbl-btn-primary">Add an event</a>{% endif %}
+  </div>
+{% endif %}
+{% endblock %}

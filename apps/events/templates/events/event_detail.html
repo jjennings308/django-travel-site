@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ event.name }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+{% if event.approval_status != 'approved' %}
+  <div class="sbl-alert {% if event.approval_status == 'rejected' %}sbl-alert-danger{% else %}sbl-alert-warning{% endif %} mb-6">
+    <span class="font-semibold">{{ event.get_approval_status_display }}.</span>
+    {% if event.approval_status == 'pending' %}Only you and our team can see this event until it's approved.{% elif event.approval_status == 'rejected' %}This event wasn't approved. You can edit it and it will be sent for review again.{% elif event.approval_status == 'changes_requested' %}Changes were requested. Edit the event and it will be re-submitted.{% else %}Not yet submitted.{% endif %}
+  </div>
+{% endif %}
+
+<header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <div class="mb-2 flex flex-wrap gap-1.5">
+      <span class="sbl-badge sbl-badge-primary">{% if event.category.icon %}<i class="bi {{ event.category.icon }}"></i>{% endif %}{{ event.category.name }}</span>
+      {% if event.is_free %}<span class="sbl-badge sbl-badge-success">Free</span>{% endif %}
+      {% if event.status != 'scheduled' %}<span class="sbl-badge sbl-badge-danger">{{ event.get_status_display }}</span>{% endif %}
+    </div>
+    <h1 class="sbl-page-title">{{ event.name }}</h1>
+    {% if event.short_description %}<p class="sbl-page-subtitle">{{ event.short_description }}</p>{% endif %}
+  </div>
+  <div class="flex flex-wrap gap-2">
+    {% if can_edit %}<a href="{% url 'events:event_edit' event.slug %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-pencil"></i>Edit</a>{% endif %}
+    {% if can_delete %}<a href="{% url 'events:event_delete' event.slug %}" class="sbl-btn sbl-btn-outline-danger"><i class="bi bi-trash"></i>Delete</a>{% endif %}
+  </div>
+</header>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">About</h2>
+      <div class="whitespace-pre-line text-warm-800">{{ event.description }}</div>
+      {% if event.status == 'cancelled' and event.cancellation_reason %}<p class="sbl-alert sbl-alert-danger mt-4">{{ event.cancellation_reason }}</p>{% endif %}
+    </section>
+    {% if performers %}
+      <section class="sbl-card p-6">
+        <h2 class="sbl-section-title">Line-up</h2>
+        <ul class="sbl-list">
+          {% for p in performers %}
+            <li class="sbl-list-item flex items-center justify-between gap-3">
+              <span><span class="font-medium text-warm-900">{{ p.name }}</span>{% if p.is_headliner %} <span class="sbl-badge sbl-badge-warning">Headliner</span>{% endif %}</span>
+              {% if p.performance_time %}<span class="text-sm text-warm-500">{{ p.performance_time|time:"g:i A" }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+    {% if event.what_to_bring %}
+      <section class="sbl-card p-6"><h2 class="sbl-section-title">What to bring</h2><p class="whitespace-pre-line text-warm-800">{{ event.what_to_bring }}</p></section>
+    {% endif %}
+  </div>
+
+  <aside class="space-y-6">
+    <section class="sbl-card p-5">
+      <dl class="space-y-4 text-sm">
+        <div><dt class="text-xs uppercase tracking-wide text-warm-500">When</dt>
+          <dd class="font-medium text-warm-900">{{ event.start_date|date:"D, M j, Y" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"D, M j, Y" }}{% endif %}</dd>
+          <dd class="text-warm-600">{% if event.is_all_day %}All day{% elif event.start_time %}{{ event.start_time|time:"g:i A" }}{% if event.end_time %} – {{ event.end_time|time:"g:i A" }}{% endif %}{% endif %} <span class="text-warm-400">(local time)</span></dd></div>
+        <div><dt class="text-xs uppercase tracking-wide text-warm-500">Where</dt>
+          <dd class="font-medium text-warm-900">{{ event.venue_name|default:event.city.name }}</dd>
+          {% if event.venue_address %}<dd class="text-warm-600">{{ event.venue_address }}</dd>{% endif %}
+          <dd><a class="sbl-link" href="{% url 'locations:city_detail' event.city.slug %}">{{ event.city.name }}, {{ event.city.country.name }}</a></dd></div>
+        <div><dt class="text-xs uppercase tracking-wide text-warm-500">Tickets</dt>
+          <dd class="text-warm-900">{% if event.is_free %}Free{% elif event.ticket_price_min %}{{ event.currency }} {{ event.ticket_price_min }}{% if event.ticket_price_max and event.ticket_price_max != event.ticket_price_min %} – {{ event.ticket_price_max }}{% endif %}{% else %}See organiser{% endif %}{% if event.sold_out %} · <span class="text-red-700">Sold out</span>{% endif %}</dd>
+          {% if event.ticket_url %}<dd class="mt-1"><a class="sbl-btn sbl-btn-primary sbl-btn-sm" href="{{ event.ticket_url }}" target="_blank" rel="noopener noreferrer">Tickets <i class="bi bi-box-arrow-up-right"></i></a></dd>{% endif %}</div>
+        {% if event.organizer %}<div><dt class="text-xs uppercase tracking-wide text-warm-500">Organiser</dt><dd class="text-warm-900">{{ event.organizer }}</dd></div>{% endif %}
+        <div><dt class="text-xs uppercase tracking-wide text-warm-500">Details</dt>
+          <dd class="text-warm-700">{{ event.get_event_type_display }}{% if event.indoor_outdoor %} · {{ event.get_indoor_outdoor_display }}{% endif %}{% if event.age_restriction %} · {{ event.get_age_restriction_display }}{% endif %}</dd></div>
+        {% if event.website %}<div><dt class="text-xs uppercase tracking-wide text-warm-500">Website</dt><dd><a class="sbl-link break-all" href="{{ event.website }}" target="_blank" rel="noopener noreferrer">{{ event.website }}</a></dd></div>{% endif %}
+      </dl>
+    </section>
+    {% if event.created_by %}<p class="text-xs text-warm-500">Added by @{{ event.created_by.username }}</p>{% endif %}
+  </aside>
+</div>
+{% endblock %}

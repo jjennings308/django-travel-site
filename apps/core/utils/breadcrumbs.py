@@ -330,7 +330,7 @@ class BreadcrumbPatterns:
         """Dashboard > Events > Event Name"""
         return build_breadcrumbs([
             ('Dashboard', 'pages:dashboard'),
-            ('Events', 'events:dashboard'),
+            ('Events', 'events:event_list'),
             (event.title, None)
         ])
 

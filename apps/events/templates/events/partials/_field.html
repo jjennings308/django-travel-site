@@ -1,0 +1,7 @@
+{# events/partials/_field.html — label, widget, help and errors for one bound field; pass field= #}
+<div class="mb-4">
+  <label for="{{ field.id_for_label }}" class="sbl-label">{{ field.label }}{% if field.field.required %} <span class="text-red-700">*</span>{% endif %}</label>
+  {{ field }}
+  {% if field.help_text %}<p class="sbl-help">{{ field.help_text|safe }}</p>{% endif %}
+  {% for error in field.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+</div>
