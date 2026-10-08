@@ -215,6 +215,7 @@
                     <h2 class="mb-4 font-bold text-warm-900">Actions</h2>
                     <div class="grid gap-2">
                         {% include "partials/_bucket_add_button.html" with kind="activity" obj=activity button_class="w-full" %}
+                        {% include "partials/_activity_dates_links.html" with button_class="w-full" %}
                         {% if is_bookmarked %}
                             <form method="post" action="{% url 'activities:activity_unbookmark' activity.slug %}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-outline w-full"><i class="bi bi-bookmark-fill text-earth-ochre"></i>Bookmarked · remove</button></form>
                         {% else %}

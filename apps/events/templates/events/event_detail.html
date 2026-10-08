@@ -19,6 +19,7 @@
       {% if event.status != 'scheduled' %}<span class="sbl-badge sbl-badge-danger">{{ event.get_status_display }}</span>{% endif %}
     </div>
     <h1 class="sbl-page-title">{{ event.name }}</h1>
+    {% if event.related_activity %}<p class="mt-1 text-sm text-warm-600"><i class="bi bi-signpost-2"></i> A date for <a class="sbl-link" href="{% url 'activities:activity_detail' event.related_activity.slug %}">{{ event.related_activity.name }}</a> · <a class="sbl-link" href="{% url 'events:event_list' %}?activity={{ event.related_activity.slug }}">other dates</a></p>{% endif %}
     {% if event.short_description %}<p class="sbl-page-subtitle">{{ event.short_description }}</p>{% endif %}
   </div>
   <div class="flex flex-wrap gap-2">

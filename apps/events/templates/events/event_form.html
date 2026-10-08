@@ -15,6 +15,7 @@
 
     <section class="sbl-card p-6">
       <h2 class="sbl-section-title">The event</h2>
+      {% include "events/partials/_field.html" with field=form.related_activity %}
       {% include "events/partials/_field.html" with field=form.name %}
       <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         {% include "events/partials/_field.html" with field=form.category %}

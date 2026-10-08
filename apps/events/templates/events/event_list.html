@@ -17,7 +17,14 @@
   {% endif %}
 </header>
 
+{% if activity %}
+  <div class="sbl-alert sbl-alert-info mb-6 flex flex-wrap items-center justify-between gap-2">
+    <span>Dates for <a class="sbl-link font-semibold" href="{% url 'activities:activity_detail' activity.slug %}">{{ activity.name }}</a></span>
+    <span class="flex gap-2">{% if user.is_authenticated %}<a class="sbl-btn sbl-btn-primary sbl-btn-sm" href="{% url 'events:event_add' %}?activity={{ activity.pk }}"><i class="bi bi-calendar-plus"></i>Add a date</a>{% endif %}<a class="sbl-btn sbl-btn-outline sbl-btn-sm" href="{% url 'events:event_list' %}">All events</a></span>
+  </div>
+{% endif %}
 <form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
+  {% if activity %}<input type="hidden" name="activity" value="{{ activity.slug }}">{% endif %}
   <div class="md:col-span-2"><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
   <div><label class="sbl-label" for="when">When</label>
     <select id="when" name="when" class="sbl-input"><option value="upcoming" {% if when == 'upcoming' %}selected{% endif %}>Upcoming</option><option value="past" {% if when == 'past' %}selected{% endif %}>Past</option></select></div>

@@ -4,7 +4,9 @@ from django import forms
 from apps.approval_system.models import ApprovalStatus
 from apps.locations.models import City, Country
 
-from .models import Event, EventCategory
+from apps.activities.models import Activity, ActivityCategory
+
+from .models import Event
 
 INPUT = {"class": "sbl-input"}
 
@@ -16,7 +18,7 @@ class EventForm(forms.ModelForm):
     class Meta:
         model = Event
         fields = [
-            "name", "category", "short_description", "description",
+            "related_activity", "name", "category", "short_description", "description",
             "city", "country", "location_text", "venue_name", "venue_address",
             "start_date", "end_date", "is_all_day", "start_time", "end_time",
             "event_type", "organizer", "indoor_outdoor", "age_restriction",
@@ -58,7 +60,12 @@ class EventForm(forms.ModelForm):
             approval_status=ApprovalStatus.APPROVED).order_by("name")
         self.fields["country"].empty_label = "Choose a country…"
         self.fields["location_text"].label = "City / town"
-        self.fields["category"].queryset = EventCategory.objects.all()
+        self.fields["category"].queryset = ActivityCategory.objects.filter(is_active=True)
+        self.fields["category"].required = False  # falls back to the activity's category
+        self.fields["related_activity"].queryset = Activity.get_public_activities().order_by("name")
+        self.fields["related_activity"].label = "This is a date for (activity)"
+        self.fields["related_activity"].empty_label = "Not tied to an activity"
+        self.fields["related_activity"].help_text = "e.g. Oktoberfest 2027 is a date for the Oktoberfest activity."
         # These have model defaults but aren't blank=True; don't make users fill them in.
         for name in ("event_type", "age_restriction", "currency"):
             self.fields[name].required = False
@@ -69,6 +76,12 @@ class EventForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if not cleaned.get("category"):
+            activity = cleaned.get("related_activity")
+            if activity:
+                cleaned["category"] = activity.category
+            else:
+                self.add_error("category", "Choose a category (or the activity this is a date for).")
         # Either a catalogue city, or (city not listed) a country plus the town name.
         if cleaned.get("city"):
             cleaned["country"], cleaned["location_text"] = None, ""

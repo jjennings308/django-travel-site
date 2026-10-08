@@ -3,7 +3,7 @@ from django.contrib import admin
 
 from apps.approval_system.admin import ApprovableAdminMixin
 
-from .models import Event, EventCategory, EventPerformer, EventTag
+from .models import Event, EventPerformer, EventTag
 
 
 class EventPerformerInline(admin.TabularInline):
@@ -44,12 +44,6 @@ class EventAdmin(ApprovableAdminMixin, admin.ModelAdmin):
         }),
     )
 
-
-@admin.register(EventCategory)
-class EventCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'icon', 'display_order']
-    list_editable = ['display_order']
-    prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(EventTag)

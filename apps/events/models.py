@@ -10,43 +10,6 @@ from apps.approval_system.models import Approvable, ApprovalStatus
 from django.utils import timezone
 
 
-class EventCategory(TimeStampedModel, SlugMixin):
-    """Event categories"""
-    
-    name = models.CharField(
-        max_length=100,
-        unique=True,
-        help_text="E.g., Music, Sports, Arts, Food & Drink, Conference"
-    )
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True)
-    display_order = models.IntegerField(default=0)
-    
-    # Link to activity category if relevant
-    related_activity_category = models.ForeignKey(
-        ActivityCategory,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='event_categories',
-        help_text="Related activity category"
-    )
-    
-    class Meta:
-        db_table = 'event_categories'
-        verbose_name_plural = 'Event Categories'
-        ordering = ['display_order', 'name']
-    
-    def __str__(self):
-        return self.name
-    
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            from apps.core.utils import generate_unique_slug
-            self.slug = generate_unique_slug(EventCategory, self.name, self.id)
-        super().save(*args, **kwargs)
-
-
 class EventQuerySet(models.QuerySet):
     def visible_to(self, user):
         """Events ``user`` may see: approved ones, plus their own at any stage; staff see all."""
@@ -75,8 +38,10 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     
     # Basic information
     name = models.CharField(max_length=200)
+    # Shared with activities: one category list for ideas (activities) and their
+    # dated occurrences (events). See activities.0008 / events.0005.
     category = models.ForeignKey(
-        EventCategory,
+        ActivityCategory,
         on_delete=models.PROTECT,
         related_name='events'
     )

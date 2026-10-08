@@ -6,7 +6,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.approval_system.models import ApprovalStatus
-from apps.events.models import Event, EventCategory
+from apps.activities.models import ActivityCategory
+from apps.events.models import Event
 from apps.locations.models import City, Country
 
 User = get_user_model()
@@ -21,7 +22,7 @@ class EventFixture(TestCase):
         country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
         self.city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2,
                                         approval_status=ApprovalStatus.APPROVED)
-        self.music = EventCategory.objects.get(name="Music")  # seeded by migration 0003
+        self.music = ActivityCategory.objects.get(name="Music")  # shared list, seeded by activities 0008
 
     def make(self, name, status=ApprovalStatus.APPROVED, start=None, **kw):
         return Event.objects.create(name=name, category=self.music, description="d", city=self.city,
@@ -201,3 +202,47 @@ class UnlistedCityTests(EventFixture):
         Event.objects.filter(name="Jazz Night").update(approval_status=ApprovalStatus.APPROVED)
         response = self.client.get(reverse("events:event_list") + "?country=austria")
         self.assertContains(response, "Jazz Night")
+
+
+class ActivityLinkTests(EventFixture):
+    def setUp(self):
+        super().setUp()
+        from apps.activities.models import Activity
+        self.festival = ActivityCategory.objects.get(name="Festival")
+        self.okto = Activity.objects.create(category=self.festival, name="Oktoberfest", description="Beer and brass bands.",
+                                            created_by=self.bob, visibility="public", approval_status=ApprovalStatus.APPROVED)
+
+    def test_add_a_date_prefills_from_the_activity(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse("events:event_add") + f"?activity={self.okto.pk}")
+        self.assertContains(response, 'value="Oktoberfest"')
+        self.assertContains(response, f'<option value="{self.okto.pk}" selected>')
+
+    def test_event_inherits_category_from_activity(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse("events:event_add"), self.payload(name="Oktoberfest 2027", category="", related_activity=self.okto.pk))
+        event = Event.objects.get(name="Oktoberfest 2027")
+        self.assertEqual((event.related_activity, event.category), (self.okto, self.festival))
+
+    def test_category_or_activity_required(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse("events:event_add"), self.payload(category=""))
+        self.assertContains(response, "Choose a category")
+
+    def test_dates_for_an_activity(self):
+        self.make("Oktoberfest 2027", related_activity=self.okto)
+        self.make("Unrelated Gig")
+        response = self.client.get(reverse("events:event_list") + f"?activity={self.okto.slug}")
+        self.assertContains(response, "Dates for")
+        self.assertContains(response, "Oktoberfest 2027")
+        self.assertNotContains(response, "Unrelated Gig")
+
+    def test_activity_page_links_to_its_dates(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse("activities:activity_detail", args=[self.okto.slug]))
+        self.assertContains(response, reverse("events:event_list") + f"?activity={self.okto.slug}")
+        self.assertContains(response, reverse("events:event_add") + f"?activity={self.okto.pk}")
+
+    def test_event_page_names_its_activity(self):
+        event = self.make("Oktoberfest 2027", related_activity=self.okto)
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "A date for")

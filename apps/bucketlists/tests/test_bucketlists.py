@@ -7,7 +7,7 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.bucketlists.models import BucketListCategory, BucketListItem
-from apps.events.models import Event, EventCategory
+from apps.events.models import Event
 from apps.locations.models import POI, City, Country
 
 User = get_user_model()
@@ -25,7 +25,7 @@ class BucketFixture(TestCase):
         cat = ActivityCategory.objects.create(name="Hiking", slug="hiking")
         self.activity = Activity.objects.create(category=cat, name="Ridge Walk", description="d", created_by=self.bob,
                                                 visibility="public", approval_status=ApprovalStatus.APPROVED)
-        self.event = Event.objects.create(name="Jazz Night", category=EventCategory.objects.get(name="Music"),
+        self.event = Event.objects.create(name="Jazz Night", category=ActivityCategory.objects.get(name="Music"),
                                           description="d", city=self.city, start_date=date.today() + timedelta(days=9),
                                           approval_status=ApprovalStatus.APPROVED)
         self.client.force_login(self.alice)

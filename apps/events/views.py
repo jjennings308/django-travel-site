@@ -9,18 +9,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 
+from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.locations.models import City, Country
 
 from .forms import EventForm
-from .models import Event, EventCategory
+from .models import Event
 
 
 def _visible_event_or_404(request, slug):
     """404 (not 403) for an event this user may not see, so its existence isn't revealed."""
     event = get_object_or_404(
-        Event.objects.select_related("category", "city__country", "country", "poi", "created_by"), slug=slug
+        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity"), slug=slug
     )
     if not event.is_visible_to(request.user):
         raise Http404
@@ -41,6 +42,10 @@ def event_list(request):
         when = "upcoming"
         events = events.filter(end_date__gte=today).order_by("start_date", "start_time")
 
+    activity = None
+    if request.GET.get("activity"):
+        activity = get_object_or_404(Activity.get_public_activities(), slug=request.GET["activity"])
+        events = events.filter(related_activity=activity)
     category = request.GET.get("category")
     if category:
         events = events.filter(category__slug=category)
@@ -63,9 +68,10 @@ def event_list(request):
     ).distinct().order_by("name")
     return render(request, "events/event_list.html", {
         "page_obj": page_obj,
-        "categories": EventCategory.objects.all(),
+        "categories": ActivityCategory.objects.filter(is_active=True),
         "countries": countries,
         "when": when,
+        "activity": activity,
         "filters": {"category": category or "", "country": country or "", "free": bool(request.GET.get("free")), "q": q},
         "breadcrumb_list": build_breadcrumbs([("Events", None)]),
     })
@@ -98,7 +104,14 @@ def my_events(request):
 
 @login_required
 def event_add(request):
-    form = EventForm(request.POST or None)
+    initial = {}
+    if request.GET.get("activity"):
+        # "Add a date" from an activity page: pre-fill from the activity.
+        activity = Activity.get_public_activities().filter(pk=request.GET["activity"]).first()
+        if activity:
+            initial = {"related_activity": activity, "name": activity.name, "category": activity.category,
+                       "short_description": activity.short_description, "description": activity.description}
+    form = EventForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         event = form.save(commit=False)
         event.created_by = request.user

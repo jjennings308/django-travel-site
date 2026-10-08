@@ -1,0 +1,6 @@
+{# templates/partials/_activity_dates_links.html — on an activity page: its dated occurrences (events). Pass activity=. Uses `url … as` so the activities app renders without the events app. #}
+{% url 'events:event_list' as events_url %}{% url 'events:event_add' as add_event_url %}
+{% if events_url %}
+<a href="{{ events_url }}?activity={{ activity.slug }}" class="sbl-btn sbl-btn-outline {{ button_class|default:'' }}"><i class="bi bi-calendar-event"></i>See dates</a>
+{% if user.is_authenticated %}<a href="{{ add_event_url }}?activity={{ activity.pk }}" class="sbl-btn sbl-btn-outline {{ button_class|default:'' }}"><i class="bi bi-calendar-plus"></i>Add a date</a>{% endif %}
+{% endif %}
