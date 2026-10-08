@@ -45,13 +45,24 @@ class BucketListItem(TimeStampedModel):
         help_text="Event to attend"
     )
 
-    poi = models.ForeignKey(
+    pois = models.ManyToManyField(
         POI,
-        on_delete=models.CASCADE,
+        blank=True,
+        related_name='bucket_list_items',
+        db_table='bucket_list_item_pois',
+        help_text="Places / points of interest to visit (one item can cover several)"
+    )
+
+    # The trip planned for this item (set by "Plan a trip"). One trip can serve
+    # several items. The FK lives here, not on Trip, so trips never depends on
+    # bucketlists (CLAUDE.md, "Dependency layers": bucketlists -> trips).
+    trip = models.ForeignKey(
+        'trips.Trip',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='bucket_list_items',
-        help_text="Place / point of interest to visit"
+        help_text="Trip planned for this item"
     )
 
     categories = models.ManyToManyField(
@@ -83,6 +94,11 @@ class BucketListItem(TimeStampedModel):
         null=True,
         blank=True,
         help_text="When user hopes to complete this"
+    )
+    target_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last day of the planned dates (blank = a single day)"
     )
     target_season = models.CharField(
         max_length=20,
@@ -208,46 +224,49 @@ class BucketListItem(TimeStampedModel):
         ]
     
     def __str__(self):
-        if self.custom_title:
-            return f"{self.user.username}'s: {self.custom_title}"
-        elif self.activity:
-            return f"{self.user.username}'s: {self.activity.name}"
-        elif self.city:  # CORRECTED
-            return f"{self.user.username}'s: {self.city.name}"
-        elif self.event:
-            return f"{self.user.username}'s: {self.event.name}"
-        elif self.poi:
-            return f"{self.user.username}'s: {self.poi.name}"
-        return f"{self.user.username}'s bucket list item"
-    
+        return f"{self.user.username}'s: {self.title}"
+
+    def _poi_list(self):
+        """The item's POIs (uses a prefetch when there is one; [] before the first save)."""
+        return list(self.pois.all()) if self.pk else []
+
     @property
     def title(self):
-        """Get the display title for this item"""
+        """Display title: the custom title, else the linked activity / city / event / POIs."""
         if self.custom_title:
             return self.custom_title
-        elif self.activity:
-            return self.activity.name
-        elif self.city:  # CORRECTED
-            return self.city.name
-        elif self.event:
-            return self.event.name
-        elif self.poi:
-            return self.poi.name
+        for kind in ("activity", "city", "event"):
+            if getattr(self, f"{kind}_id"):
+                return getattr(self, kind).name
+        pois = self._poi_list()
+        if pois:
+            return " & ".join(p.name for p in pois[:3]) + (f" +{len(pois) - 3}" if len(pois) > 3 else "")
         return "Untitled Item"
 
-    # The catalogue object this item points at (None for custom items).
+    # What the item is about ("the idea"). An activity item may also carry a dated
+    # event of that activity (item.event); an event with no activity stands alone.
+    # A POI item may name several POIs and may have its own custom_title.
     TARGET_KINDS = ("activity", "city", "poi", "event")
 
     @property
     def kind(self):
-        for kind in self.TARGET_KINDS:
-            if getattr(self, f"{kind}_id"):
-                return kind
+        if self.activity_id:
+            return "activity"
+        if self.city_id:
+            return "city"
+        if self.event_id:
+            return "event"
+        if self._poi_list():
+            return "poi"
         return "custom"
 
     @property
     def target(self):
-        return getattr(self, self.kind) if self.kind != "custom" else None
+        """The catalogue object the item is about (the first POI for a POI item)."""
+        kind = self.kind
+        if kind == "poi":
+            return self._poi_list()[0]
+        return getattr(self, kind) if kind != "custom" else None
 
     @property
     def target_url(self):
@@ -257,7 +276,53 @@ class BucketListItem(TimeStampedModel):
                  "poi": "locations:poi_detail", "event": "events:event_detail"}
         target = self.target
         return reverse(names[self.kind], args=[target.slug]) if target is not None else None
-    
+
+    # Lifecycle: an idea -> it has dates (an event, or the item's own target dates)
+    # -> a trip is being planned for it -> done.
+    STAGES = {"idea": "Idea", "dated": "Dated", "trip": "Trip planned", "done": "Done"}
+
+    @property
+    def live_trip(self):
+        """The planned trip, unless it has since been (soft-)deleted."""
+        trip = self.trip if self.trip_id else None
+        return trip if trip is not None and trip.deleted_at is None else None
+
+    @property
+    def stage(self):
+        if self.status == "completed":
+            return "done"
+        if self.live_trip:
+            return "trip"
+        if self.event_id or self.target_date:
+            return "dated"
+        return "idea"
+
+    @property
+    def stage_label(self):
+        return self.STAGES[self.stage]
+
+    @property
+    def dates(self):
+        """(start, end) of the item's dates: the event's, else its own target dates."""
+        if self.event_id:
+            return self.event.start_date, self.event.end_date or self.event.start_date
+        if self.target_date:
+            return self.target_date, self.target_end_date or self.target_date
+        return None, None
+
+    @property
+    def place(self):
+        """Where it happens, as text for a trip's destination ("" if unknown)."""
+        if self.event_id:
+            return self.event.place_name
+        if self.city_id:
+            return f"{self.city.name}, {self.city.country.name}"
+        cities = []
+        for poi in self._poi_list():
+            if poi.city.name not in cities:
+                cities.append(poi.city.name)
+        return " & ".join(cities)
+
     @property
     def is_completed(self):
         """Check if item is completed"""
@@ -275,21 +340,20 @@ class BucketListItem(TimeStampedModel):
         self.save()
     
     def clean(self):
-        """Validate that exactly one content reference is set (or custom_title)"""
+        """One "what": an activity, a city, an event on its own, POIs, or a custom title.
+
+        POIs are many-to-many, so they are checked by the form, not here. An activity
+        item may also carry an event, but only a date *of that activity*.
+        """
         from django.core.exceptions import ValidationError
-        
-        references = sum([
-            bool(self.activity),
-            bool(self.city),
-            bool(self.event),
-            bool(self.poi),
-            bool(self.custom_title)
-        ])
-        
-        if references == 0:
-            raise ValidationError('Must specify activity, city, place, event, or custom title')
-        elif references > 1:
-            raise ValidationError('Can only specify one of: activity, city, place, event, or custom title')
+
+        whats = [bool(self.activity_id), bool(self.city_id), bool(self.event_id and not self.activity_id)]
+        if sum(whats) > 1:
+            raise ValidationError('Can only specify one of: activity, city or event')
+        if self.event_id and self.activity_id and self.event.related_activity_id != self.activity_id:
+            raise ValidationError('That event is not a date of this activity')
+        if self.target_end_date and self.target_date and self.target_end_date < self.target_date:
+            raise ValidationError({'target_end_date': 'The end date is before the start date'})
 
 
 class BucketListCategory(TimeStampedModel):

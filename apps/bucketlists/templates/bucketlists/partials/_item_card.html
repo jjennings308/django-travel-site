@@ -7,8 +7,8 @@
         {% if item.target_url %}<a href="{{ item.target_url }}" class="hover:text-earth-clay">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}
       </h3>
       <p class="text-xs text-warm-500">
-        {% if item.kind == 'activity' %}<i class="bi bi-signpost-2"></i> Activity{% elif item.kind == 'city' %}<i class="bi bi-buildings"></i> {{ item.city.country.name }}{% elif item.kind == 'poi' %}<i class="bi bi-geo-alt"></i> {{ item.poi.city.name }}{% elif item.kind == 'event' %}<i class="bi bi-calendar-event"></i> {{ item.event.start_date|date:"M j, Y" }}{% else %}<i class="bi bi-stars"></i> Personal goal{% endif %}
-        {% if item.target_date %} · by {{ item.target_date|date:"M Y" }}{% elif item.target_season %} · {{ item.get_target_season_display }}{% endif %}
+        {% if item.kind == 'activity' %}<i class="bi bi-signpost-2"></i> Activity{% elif item.kind == 'city' %}<i class="bi bi-buildings"></i> {{ item.city.country.name }}{% elif item.kind == 'poi' %}<i class="bi bi-geo-alt"></i> {% with n=item.pois.all|length %}{% if n > 1 %}{{ n }} places · {% endif %}{% endwith %}{{ item.place }}{% elif item.kind == 'event' %}<i class="bi bi-calendar-event"></i> {{ item.event.start_date|date:"M j, Y" }}{% else %}<i class="bi bi-stars"></i> Personal goal{% endif %}
+        {% if item.kind == 'activity' and item.event %} · <i class="bi bi-calendar-event"></i> {{ item.event.start_date|date:"M j, Y" }}{% elif item.target_date %} · {% if item.target_end_date %}{{ item.target_date|date:"M j" }}–{{ item.target_end_date|date:"M j, Y" }}{% else %}by {{ item.target_date|date:"M Y" }}{% endif %}{% elif item.target_season %} · {{ item.get_target_season_display }}{% endif %}
       </p>
     </div>
     <span class="sbl-badge shrink-0 {% if item.status == 'completed' %}sbl-badge-success{% elif item.status == 'abandoned' %}sbl-badge-neutral{% elif item.status == 'wishlist' %}sbl-badge-primary{% else %}sbl-badge-info{% endif %}">{{ item.get_status_display }}</span>
@@ -17,6 +17,12 @@
     <p class="mb-2 text-sm text-emerald-800"><i class="bi bi-check-circle-fill"></i> Done {{ item.completed_date|date:"M j, Y" }}{% if item.user_rating %} · {% for _ in "x"|ljust:item.user_rating %}★{% endfor %}{% endif %}</p>
     {% if item.completion_notes %}<p class="mb-2 line-clamp-2 text-sm text-warm-600">“{{ item.completion_notes }}”</p>{% endif %}
   {% elif item.custom_description %}<p class="mb-2 line-clamp-2 text-sm text-warm-600">{{ item.custom_description }}</p>{% endif %}
+  {% if owner and item.stage != 'done' %}
+    <p class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+      <span class="rounded-full bg-warm-100 px-2 py-0.5 text-warm-600" title="Stage">{{ item.stage_label }}</span>
+      {% with trip=item.live_trip %}{% if trip %}<a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> {{ trip.name }}</a>{% else %}<a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> Plan a trip</a>{% endif %}{% endwith %}
+    </p>
+  {% endif %}
   <div class="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
     <span class="text-xs text-warm-500" title="Priority">{% for _ in "x"|ljust:item.priority %}<i class="bi bi-fire text-earth-ochre"></i>{% endfor %}</span>
     {% for c in item.categories.all %}<span class="sbl-badge" style="background-color: {{ c.color }}22; color: {{ c.color }};">{% if c.icon %}{% if 'bi-' in c.icon %}<i class="bi {{ c.icon }}"></i>{% else %}{{ c.icon }}{% endif %} {% endif %}{{ c.name }}</span>{% endfor %}

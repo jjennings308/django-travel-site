@@ -9,6 +9,7 @@ from apps.approval_system.models import ApprovalStatus
 from apps.bucketlists.models import BucketListCategory, BucketListItem
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country
+from apps.trips.models import Trip, TripGrant, TripRole
 
 User = get_user_model()
 
@@ -48,10 +49,11 @@ class AddTests(BucketFixture):
             with self.subTest(kind=kind):
                 url = reverse("bucketlists:quick_add", args=[kind, obj.pk])
                 first = self.client.post(url)
-                item = BucketListItem.objects.get(user=self.alice, **{kind: obj})
+                field = "pois" if kind == "poi" else kind
+                item = BucketListItem.objects.get(user=self.alice, **{field: obj})
                 self.assertRedirects(first, reverse("bucketlists:item_edit", args=[item.pk]))
                 self.client.post(url)  # second click: no duplicate
-                self.assertEqual(BucketListItem.objects.filter(user=self.alice, **{kind: obj}).count(), 1)
+                self.assertEqual(BucketListItem.objects.filter(user=self.alice, **{field: obj}).count(), 1)
                 self.assertEqual((item.kind, item.title), (kind, obj.name))
 
     def test_cannot_add_hidden_things(self):
@@ -168,3 +170,125 @@ class ButtonTests(BucketFixture):
     def test_no_button_when_signed_out(self):
         self.client.logout()
         self.assertNotContains(self.client.get(reverse("events:event_detail", args=[self.event.slug])), "Add to bucket list")
+
+
+class LifecycleTests(BucketFixture):
+    """idea -> dated -> trip -> done, for activity, POI and custom items."""
+
+    def setUp(self):
+        super().setUp()
+        self.okto = Activity.objects.create(category=ActivityCategory.objects.get(name="Festival"), name="Oktoberfest",
+                                            description="d", created_by=self.bob, visibility="public",
+                                            approval_status=ApprovalStatus.APPROVED)
+        self.okto_2027 = Event.objects.create(
+            name="Oktoberfest 2027", category=self.okto.category, related_activity=self.okto, description="d",
+            city=self.city, start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
+            approval_status=ApprovalStatus.APPROVED)
+        self.fountain = POI.objects.create(name="Fountain", slug="fountain", city=self.city, latitude=1, longitude=2,
+                                           approval_status=ApprovalStatus.APPROVED)
+
+    def edit(self, item, **data):
+        base = {"status": item.status, "priority": item.priority}
+        return self.client.post(reverse("bucketlists:item_edit", args=[item.pk]), {**base, **data})
+
+    def test_activity_item_gets_dated_by_picking_an_event(self):
+        self.client.post(reverse("bucketlists:quick_add", args=["activity", self.okto.pk]))
+        item = BucketListItem.objects.get(user=self.alice)
+        self.assertEqual((item.kind, item.stage), ("activity", "idea"))
+        page = self.client.get(reverse("bucketlists:item_edit", args=[item.pk]))
+        self.assertContains(page, "Oktoberfest 2027")  # offered as a date
+        self.assertNotContains(page, "Jazz Night")  # not a date of this activity
+        self.edit(item, event=self.okto_2027.pk)
+        item.refresh_from_db()
+        self.assertEqual((item.kind, item.event, item.stage), ("activity", self.okto_2027, "dated"))
+
+    def test_cannot_pick_another_activitys_event(self):
+        item = BucketListItem.objects.create(user=self.alice, activity=self.okto)
+        self.edit(item, event=self.event.pk)
+        item.refresh_from_db()
+        self.assertIsNone(item.event)
+
+    def test_adding_an_event_dates_the_activity_item(self):
+        item = BucketListItem.objects.create(user=self.alice, activity=self.okto)
+        self.client.post(reverse("bucketlists:quick_add", args=["event", self.okto_2027.pk]))
+        self.assertEqual(BucketListItem.objects.filter(user=self.alice).count(), 1)
+        item.refresh_from_db()
+        self.assertEqual(item.event, self.okto_2027)
+
+    def test_adding_an_event_of_an_activity_starts_an_activity_item(self):
+        self.client.post(reverse("bucketlists:quick_add", args=["event", self.okto_2027.pk]))
+        item = BucketListItem.objects.get(user=self.alice)
+        self.assertEqual((item.activity, item.event, item.kind, item.title), (self.okto, self.okto_2027, "activity", "Oktoberfest"))
+
+    def test_poi_item_holds_several_pois_and_target_dates(self):
+        self.client.post(reverse("bucketlists:quick_add", args=["poi", self.poi.pk]))
+        item = BucketListItem.objects.get(user=self.alice)
+        self.assertContains(self.client.get(reverse("bucketlists:item_edit", args=[item.pk])), "Fountain")
+        self.edit(item, pois=[self.poi.pk, self.fountain.pk], custom_title="", target_date="2027-06-01",
+                  target_end_date="2027-06-05")
+        item = BucketListItem.objects.get(pk=item.pk)
+        self.assertEqual(set(item.pois.all()), {self.poi, self.fountain})
+        self.assertEqual((item.kind, item.stage, item.place), ("poi", "dated", "Testville"))
+        self.assertIn("Fountain", item.title)
+        self.assertEqual(item.dates, (date(2027, 6, 1), date(2027, 6, 5)))
+        # the POI page's button now finds this item rather than starting another
+        self.client.post(reverse("bucketlists:quick_add", args=["poi", self.fountain.pk]))
+        self.assertEqual(BucketListItem.objects.filter(user=self.alice).count(), 1)
+
+    def test_poi_item_needs_a_poi(self):
+        item = BucketListItem.objects.create(user=self.alice)
+        item.pois.add(self.poi)
+        self.edit(item, pois=[])
+        self.assertEqual(list(item.pois.all()), [self.poi])
+
+    def test_end_date_before_start_is_refused(self):
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Surf")
+        response = self.edit(item, custom_title="Surf", target_date="2027-06-05", target_end_date="2027-06-01")
+        self.assertContains(response, "before the start date")
+
+    def test_plan_a_trip_from_an_event_dated_item(self):
+        """Any signed-in user (alice has no creator role) can start a trip from their item."""
+        item = BucketListItem.objects.create(user=self.alice, activity=self.okto, event=self.okto_2027)
+        url = reverse("bucketlists:plan_trip", args=[item.pk])
+        page = self.client.get(url)
+        self.assertContains(page, 'value="2027-09-18"')
+        self.assertContains(page, 'value="2027-10-03"')
+        self.assertContains(page, "Testville, Testland")
+        response = self.client.post(url, {"name": "Oktoberfest 2027", "destination": "Testville, Testland",
+                                          "start_date": "2027-09-18", "end_date": "2027-10-03"})
+        trip = Trip.objects.get()
+        self.assertRedirects(response, reverse("trips:trip_edit", args=[trip.pk]))
+        self.assertEqual((trip.created_by, trip.start_date), (self.alice, date(2027, 9, 18)))
+        self.assertEqual(TripGrant.objects.get(trip=trip).role, TripRole.EDITOR)
+        self.assertTrue(trip.travelers.filter(user=self.alice).exists())
+        item.refresh_from_db()
+        self.assertEqual((item.trip, item.stage, item.status), (trip, "trip", "planning"))
+        self.assertEqual(self.client.get(reverse("trips:trip_detail", args=[trip.pk])).status_code, 200)
+        # a second visit goes to the trip instead of starting another
+        self.assertRedirects(self.client.get(url), reverse("trips:trip_detail", args=[trip.pk]))
+        self.assertEqual(Trip.objects.count(), 1)
+
+    def test_plan_a_trip_needs_dates_and_ownership(self):
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Surf")
+        url = reverse("bucketlists:plan_trip", args=[item.pk])
+        self.client.post(url, {"name": "Surf", "start_date": "2027-06-05", "end_date": "2027-06-01"})
+        self.assertFalse(Trip.objects.exists())
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_deleted_trip_falls_back_a_stage(self):
+        trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Surf", target_date=date(2027, 1, 1), trip=trip)
+        self.assertEqual(item.stage, "trip")
+        trip.soft_delete()
+        item = BucketListItem.objects.get(pk=item.pk)
+        self.assertEqual(item.stage, "dated")
+        self.assertContains(self.client.get(reverse("bucketlists:dashboard")), reverse("bucketlists:plan_trip", args=[item.pk]))
+
+    def test_dashboard_shows_stage_and_trip_link(self):
+        trip = Trip.objects.create(name="Surf trip", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
+        TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.EDITOR)
+        BucketListItem.objects.create(user=self.alice, custom_title="Surf", trip=trip)
+        page = self.client.get(reverse("bucketlists:dashboard"))
+        self.assertContains(page, "Trip planned")
+        self.assertContains(page, reverse("trips:trip_detail", args=[trip.pk]))

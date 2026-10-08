@@ -53,6 +53,7 @@ graph TD
     bucketlists --> activities
     bucketlists --> events
     bucketlists --> locations
+    bucketlists --> trips
 
     trips --> activities
     trips --> events

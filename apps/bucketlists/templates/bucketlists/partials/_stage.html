@@ -1,0 +1,18 @@
+{# bucketlists/partials/_stage.html — the item's lifecycle (idea → dated → trip → done) and the next step; pass item= #}
+<div class="mb-4 flex flex-wrap items-center gap-3">
+  <ol class="flex flex-wrap items-center gap-1 text-xs" aria-label="Stage">
+    {% for key, label in item.STAGES.items %}
+      <li class="flex items-center gap-1">
+        {% if not forloop.first %}<i class="bi bi-chevron-right text-warm-400"></i>{% endif %}
+        <span class="rounded-full px-2.5 py-1 {% if key == item.stage %}bg-earth-clay font-semibold text-white{% else %}bg-warm-100 text-warm-500{% endif %}">{{ label }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+  {% with trip=item.live_trip %}
+    {% if trip %}
+      <a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-airplane"></i>{{ trip.name }}</a>
+    {% elif item.stage != 'done' %}
+      <a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-btn sbl-btn-accent sbl-btn-sm"><i class="bi bi-airplane"></i>Plan a trip</a>
+    {% endif %}
+  {% endwith %}
+</div>

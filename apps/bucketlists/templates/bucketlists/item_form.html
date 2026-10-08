@@ -7,16 +7,31 @@
 <div class="mx-auto max-w-2xl">
   <header class="mb-6">
     <h1 class="sbl-page-title">{{ title }}</h1>
+    {% if item %}{% include "bucketlists/partials/_stage.html" %}{% endif %}
     {% if target %}<p class="sbl-page-subtitle">{% if kind == 'activity' %}Activity{% elif kind == 'city' %}City{% elif kind == 'poi' %}Place{% else %}Event{% endif %}: <a class="sbl-link" href="{% if item %}{{ item.target_url }}{% elif kind == 'activity' %}{% url 'activities:activity_detail' target.slug %}{% elif kind == 'city' %}{% url 'locations:city_detail' target.slug %}{% elif kind == 'poi' %}{% url 'locations:poi_detail' target.slug %}{% else %}{% url 'events:event_detail' target.slug %}{% endif %}">{{ target }}</a></p>{% endif %}
   </header>
   <form method="post" class="sbl-card space-y-1 p-6">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
-    {% if form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_description %}{% endif %}
+    {% if form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_title %}{% endif %}
+    {% if form.custom_description %}{% include "events/partials/_field.html" with field=form.custom_description %}{% endif %}
+    {% if form.pois %}
+      <div class="mb-4">
+        <p class="sbl-label">{{ form.pois.label }}</p>
+        <div class="grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">{% for cb in form.pois %}<label class="flex items-center gap-2 text-sm text-warm-700">{{ cb.tag }} {{ cb.choice_label }}</label>{% endfor %}</div>
+        {% if form.pois.errors %}<p class="sbl-error">{{ form.pois.errors|join:" " }}</p>{% endif %}
+        <p class="sbl-help">Places in the same city. To add one from somewhere else, use “Add to bucket list” on its page.</p>
+      </div>
+    {% endif %}
+    {% if form.event %}
+      {% include "events/partials/_field.html" with field=form.event %}
+      {% if item.activity or target %}{% url 'events:event_add' as add_date_url %}{% if add_date_url %}<p class="sbl-help -mt-3 mb-4">Not listed? <a class="sbl-link" href="{{ add_date_url }}?activity={{ item.activity_id|default:target.pk }}">Add a date for it</a>.</p>{% endif %}{% endif %}
+    {% endif %}
     <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
       {% include "events/partials/_field.html" with field=form.status %}
       {% include "events/partials/_field.html" with field=form.priority %}
       {% include "events/partials/_field.html" with field=form.target_date %}
+      {% include "events/partials/_field.html" with field=form.target_end_date %}
       {% include "events/partials/_field.html" with field=form.target_season %}
       {% include "events/partials/_field.html" with field=form.estimated_budget %}
       {% include "events/partials/_field.html" with field=form.budget_currency %}

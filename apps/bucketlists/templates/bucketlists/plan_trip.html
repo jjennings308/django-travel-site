@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Plan a trip · {{ item.title }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">Plan a trip</h1>
+    <p class="sbl-page-subtitle">For “{{ item.title }}”{% if item.event %} — {{ item.event.name }}, {{ item.event.start_date|date:"M j, Y" }}{% endif %}. Start with the basics; flights, lodging and the day-by-day plan come next.</p>
+  </header>
+  <form method="post" class="sbl-card p-6">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    {% include "events/partials/_field.html" with field=form.name %}
+    {% include "events/partials/_field.html" with field=form.destination %}
+    <div class="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+      {% include "events/partials/_field.html" with field=form.start_date %}
+      {% include "events/partials/_field.html" with field=form.end_date %}
+    </div>
+    {% if not item.event and not item.target_date %}<p class="sbl-help mb-4">Trip dates can change later.</p>{% endif %}
+    <div class="flex justify-end gap-2 border-t border-warm-200 pt-5">
+      <a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+      <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-airplane"></i>Start the trip</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

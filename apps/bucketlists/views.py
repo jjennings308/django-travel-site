@@ -2,9 +2,11 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -13,8 +15,9 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
 from apps.locations.models import POI, City
+from apps.trips.models import Traveler, Trip, TripGrant, TripRole
 
-from .forms import BucketListItemForm, CategoryForm, CompleteItemForm
+from .forms import BucketListItemForm, CategoryForm, CompleteItemForm, PlanTripForm
 from .models import BucketListCategory, BucketListItem
 
 ACTIVE_STATUSES = ("researching", "planning", "booked", "in_progress")
@@ -40,21 +43,45 @@ def _target_for(kind, pk, user):
     return obj
 
 
-def _own_item(request, pk):
-    return get_object_or_404(
-        BucketListItem.objects.select_related("activity", "city__country", "poi__city", "event"),
-        pk=pk, user=request.user,
+def _items():
+    """Bucket items with everything the cards and titles touch."""
+    return (
+        BucketListItem.objects
+        .select_related("activity", "city__country", "event__city__country", "event__country", "trip")
+        .prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city").order_by("name")))
     )
+
+
+def _own_item(request, pk):
+    return get_object_or_404(_items(), pk=pk, user=request.user)
+
+
+def _find_or_start(user, kind, target):
+    """The user's existing item for ``target``, or an unsaved new one, and whether it exists.
+
+    Adding a dated event of an activity already on the list dates that item
+    rather than starting a second one (Oktoberfest -> Oktoberfest 2027).
+    """
+    mine = BucketListItem.objects.filter(user=user)
+    if kind == "poi":
+        existing = mine.filter(pois=target).first()
+        return (existing, True) if existing else (BucketListItem(user=user), False)
+    existing = mine.filter(**{kind: target}).first()
+    if existing:
+        return existing, True
+    if kind == "event" and target.related_activity_id:
+        undated = mine.filter(activity_id=target.related_activity_id, event__isnull=True).first()
+        if undated:
+            undated.event = target
+            return undated, False
+        return BucketListItem(user=user, activity_id=target.related_activity_id, event=target), False
+    return BucketListItem(user=user, **{kind: target}), False
 
 
 @login_required
 def dashboard(request):
     """The user's bucket list, with progress and filters."""
-    items = (
-        BucketListItem.objects.filter(user=request.user)
-        .select_related("activity", "city__country", "poi__city", "event")
-        .prefetch_related("categories")
-    )
+    items = _items().filter(user=request.user).prefetch_related("categories")
     all_items = items
     status = request.GET.get("status", "")
     if status == "active":
@@ -70,7 +97,7 @@ def dashboard(request):
     if q:
         items = items.filter(
             Q(custom_title__icontains=q) | Q(activity__name__icontains=q) | Q(city__name__icontains=q)
-            | Q(poi__name__icontains=q) | Q(event__name__icontains=q) | Q(personal_notes__icontains=q)
+            | Q(pois__name__icontains=q) | Q(event__name__icontains=q) | Q(personal_notes__icontains=q)
         )
     sort = request.GET.get("sort", "priority")
     items = items.order_by(*SORTS.get(sort, SORTS["priority"])).distinct()
@@ -91,24 +118,30 @@ def dashboard(request):
     })
 
 
+def _kind_of(item, pois):
+    return "poi" if pois else item.kind
+
+
 @login_required
 def item_add(request):
     """Add a custom item, or (with ?activity= / ?city= / ?poi= / ?event=) a linked one."""
     kind = next((k for k in BucketListItem.TARGET_KINDS if request.GET.get(k)), None)
     target = _target_for(kind, request.GET[kind], request.user) if kind else None
+    item, pois = BucketListItem(user=request.user), []
     if target is not None:
-        existing = BucketListItem.objects.filter(user=request.user, **{kind: target}).first()
-        if existing:
-            messages.info(request, f"“{existing.title}” is already on your bucket list.")
-            return redirect("bucketlists:item_edit", pk=existing.pk)
-    form = BucketListItemForm(request.POST or None, user=request.user, linked=target is not None)
+        item, exists = _find_or_start(request.user, kind, target)
+        if exists:
+            messages.info(request, f"“{item.title}” is already on your bucket list.")
+            return redirect("bucketlists:item_edit", pk=item.pk)
+        if item.pk:  # an undated activity item gets this event's date
+            item.save(update_fields=["event"])
+            messages.success(request, f"“{item.title}” now has a date: {target}.")
+            return redirect("bucketlists:item_edit", pk=item.pk)
+        pois = [target] if kind == "poi" else []
+    form = BucketListItemForm(request.POST or None, instance=item, user=request.user,
+                              kind=_kind_of(item, pois), pois=pois)
     if request.method == "POST" and form.is_valid():
-        item = form.save(commit=False)
-        item.user = request.user
-        if target is not None:
-            setattr(item, kind, target)
-        item.save()
-        form.save_m2m()
+        item = form.save()
         messages.success(request, f"Added “{item.title}” to your bucket list.")
         return redirect("bucketlists:dashboard")
     return render(request, "bucketlists/item_form.html", {
@@ -122,18 +155,25 @@ def item_add(request):
 def quick_add(request, kind, pk):
     """One-click add from an activity / city / POI / event page."""
     target = _target_for(kind, pk, request.user)
-    item, created = BucketListItem.objects.get_or_create(user=request.user, **{kind: target})
-    if created:
-        messages.success(request, f"Added “{item.title}” to your bucket list. Add a date or notes any time.")
-    else:
+    item, exists = _find_or_start(request.user, kind, target)
+    if exists:
         messages.info(request, f"“{item.title}” is already on your bucket list.")
+    else:
+        dated = item.pk is not None
+        item.save()
+        if kind == "poi":
+            item.pois.add(target)
+        if dated:
+            messages.success(request, f"“{item.title}” now has a date: {target}.")
+        else:
+            messages.success(request, f"Added “{item.title}” to your bucket list. Add a date or notes any time.")
     return redirect("bucketlists:item_edit", pk=item.pk)
 
 
 @login_required
 def item_edit(request, pk):
     item = _own_item(request, pk)
-    form = BucketListItemForm(request.POST or None, instance=item, user=request.user, linked=item.kind != "custom")
+    form = BucketListItemForm(request.POST or None, instance=item, user=request.user, kind=item.kind)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Saved.")
@@ -141,6 +181,42 @@ def item_edit(request, pk):
     return render(request, "bucketlists/item_form.html", {
         "form": form, "item": item, "target": item.target, "kind": item.kind, "title": item.title,
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), (item.title, None)]),
+    })
+
+
+@login_required
+def plan_trip(request, pk):
+    """Start a trip for a bucket-list item, pre-filled from its dates and place.
+
+    Open to any signed-in user (not only the ``creator`` role): the trip is
+    their own plan for their own goal. As in ``trips.views.trip_create`` the
+    creator gets an editor grant, which is what lets them open and finish it.
+    """
+    item = _own_item(request, pk)
+    if item.live_trip:
+        return redirect("trips:trip_detail", pk=item.trip_id)
+    start, end = item.dates
+    title = item.title if not start or str(start.year) in item.title else f"{item.title} {start.year}"
+    form = PlanTripForm(request.POST or None, initial={
+        "name": title, "destination": item.place, "start_date": start, "end_date": end,
+    })
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            trip = Trip.objects.create(created_by=request.user, **form.cleaned_data)
+            TripGrant.objects.create(trip=trip, user=request.user, granted_by=request.user, role=TripRole.EDITOR)
+            traveler = Traveler.objects.filter(user=request.user).first()
+            if traveler:
+                trip.travelers.add(traveler)
+            item.trip = trip
+            if item.status in ("wishlist", "researching"):
+                item.status = "planning"
+            item.save(update_fields=["trip", "status", "updated_at"])
+        messages.success(request, f"Started “{trip.name}”. Add flights, lodging and the rest here.")
+        return redirect("trips:trip_edit", pk=trip.pk)
+    return render(request, "bucketlists/plan_trip.html", {
+        "form": form, "item": item,
+        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"),
+                                              (item.title, reverse("bucketlists:item_edit", args=[item.pk])), ("Plan a trip", None)]),
     })
 
 
@@ -214,8 +290,7 @@ def public_list(request, username):
     if not is_owner and owner.profile_visibility != "public":
         raise Http404
     items = (
-        BucketListItem.objects.filter(user=owner, is_public=True).exclude(status="abandoned")
-        .select_related("activity", "city__country", "poi__city", "event")
+        _items().filter(user=owner, is_public=True).exclude(status="abandoned")
         .order_by("status", "-priority", "-completed_date")
     )
     done = [i for i in items if i.status == "completed"]

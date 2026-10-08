@@ -37,6 +37,7 @@ SAME_LAYER_ALLOWED = {
     ("vendors", "locations"),
     ("events", "locations"),
     ("events", "activities"),
+    ("bucketlists", "trips"),
     ("reviews", "trips"),
     ("recommendations", "trips"),
 }
