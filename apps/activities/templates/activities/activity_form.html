@@ -89,54 +89,57 @@
                             </div>
                         </div>
 
-                        {# Suggested Details Section #}
+                        {# Where & when: catalogue place (region/city filtered by country via locations/country_filter.js) and how often it happens #}
                         <div class="sbl-card mb-6">
                             <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                                <h5 class="mb-0">Suggested Details (Optional)</h5>
-                                <small class="text-warm-500">These help when creating specific events later</small>
+                                <h5 class="mb-0">Where &amp; when (optional)</h5>
+                                <small class="text-warm-500">Pick the place from our list so people can plan a trip to it. Each year's actual dates are added as events.</small>
                             </div>
                             <div class="p-5">
-                                <div class="grid grid-cols-12">
-                                    <div class="col-span-12 md:col-span-6 mb-4">
-                                        <label for="{{ form.suggested_location.id_for_label }}" class="sbl-label">
-                                            Suggested Location
-                                        </label>
+                                <div class="grid grid-cols-12 gap-x-4">
+                                    <div class="col-span-12 md:col-span-4 mb-4">
+                                        <label for="{{ form.country.id_for_label }}" class="sbl-label">{{ form.country.label }}</label>
+                                        {{ form.country }}
+                                        {% for error in form.country.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+                                    </div>
+                                    <div class="col-span-12 md:col-span-4 mb-4">
+                                        <label for="{{ form.region.id_for_label }}" class="sbl-label">{{ form.region.label }}</label>
+                                        {{ form.region }}
+                                        {% for error in form.region.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+                                    </div>
+                                    <div class="col-span-12 md:col-span-4 mb-4">
+                                        <label for="{{ form.city.id_for_label }}" class="sbl-label">{{ form.city.label }}</label>
+                                        {{ form.city }}
+                                        {% for error in form.city.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+                                    </div>
+                                    <div class="col-span-12  mb-4">
+                                        <label for="{{ form.suggested_location.id_for_label }}" class="sbl-label">{{ form.suggested_location.label }}</label>
                                         {{ form.suggested_location }}
-                                        {% if form.suggested_location.errors %}
-                                            <div class="text-red-700">{{ form.suggested_location.errors }}</div>
-                                        {% endif %}
+                                        {% for error in form.suggested_location.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
                                     </div>
-
                                     <div class="col-span-12 md:col-span-6 mb-4">
-                                        <label for="{{ form.suggested_timeframe.id_for_label }}" class="sbl-label">
-                                            Suggested Timeframe
-                                        </label>
+                                        <label for="{{ form.recurrence.id_for_label }}" class="sbl-label">{{ form.recurrence.label }}</label>
+                                        {{ form.recurrence }}
+                                        {% for error in form.recurrence.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+                                    </div>
+                                    <div class="col-span-12 md:col-span-6 mb-4">
+                                        <label for="{{ form.suggested_timeframe.id_for_label }}" class="sbl-label">{{ form.suggested_timeframe.label }}</label>
                                         {{ form.suggested_timeframe }}
-                                        {% if form.suggested_timeframe.errors %}
-                                            <div class="text-red-700">{{ form.suggested_timeframe.errors }}</div>
-                                        {% endif %}
+                                        {% for error in form.suggested_timeframe.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
                                     </div>
-                                </div>
-
-                                <div class="grid grid-cols-12">
+                                    <div class="col-span-12 mb-4">
+                                        <p class="sbl-label">{{ form.usual_months.label }}</p>
+                                        <div class="grid grid-cols-3 gap-x-4 gap-y-1 sm:grid-cols-4 md:grid-cols-6">{% for cb in form.usual_months %}<label class="flex items-center gap-2 text-sm text-warm-700">{{ cb.tag }} {{ cb.choice_label|slice:":3" }}</label>{% endfor %}</div>
+                                    </div>
                                     <div class="col-span-12 md:col-span-6 mb-4">
-                                        <label for="{{ form.suggested_date_range_start.id_for_label }}" class="sbl-label">
-                                            Date Range Start
-                                        </label>
+                                        <label for="{{ form.suggested_date_range_start.id_for_label }}" class="sbl-label">{{ form.suggested_date_range_start.label }}</label>
                                         {{ form.suggested_date_range_start }}
-                                        {% if form.suggested_date_range_start.errors %}
-                                            <div class="text-red-700">{{ form.suggested_date_range_start.errors }}</div>
-                                        {% endif %}
+                                        {% for error in form.suggested_date_range_start.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
                                     </div>
-
                                     <div class="col-span-12 md:col-span-6 mb-4">
-                                        <label for="{{ form.suggested_date_range_end.id_for_label }}" class="sbl-label">
-                                            Date Range End
-                                        </label>
+                                        <label for="{{ form.suggested_date_range_end.id_for_label }}" class="sbl-label">{{ form.suggested_date_range_end.label }}</label>
                                         {{ form.suggested_date_range_end }}
-                                        {% if form.suggested_date_range_end.errors %}
-                                            <div class="text-red-700">{{ form.suggested_date_range_end.errors }}</div>
-                                        {% endif %}
+                                        {% for error in form.suggested_date_range_end.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
                                     </div>
                                 </div>
                             </div>
@@ -312,3 +315,5 @@
 </div>
 
 {% endblock %}
+
+{% block extra_js %}<script src="{% static 'locations/country_filter.js' %}"></script>{% endblock %}

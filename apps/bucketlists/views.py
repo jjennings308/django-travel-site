@@ -47,7 +47,8 @@ def _items():
     """Bucket items with everything the cards and titles touch."""
     return (
         BucketListItem.objects
-        .select_related("activity", "city__country", "event__city__country", "event__country", "trip")
+        .select_related("activity__city", "activity__region", "activity__country", "city__country",
+                        "event__city__country", "event__country", "trip")
         .prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city").order_by("name")))
     )
 

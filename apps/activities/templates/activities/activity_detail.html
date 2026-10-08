@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-{# Activity detail. An activity is an undated idea; its location is the free-text suggested_location (activities have no city/region FKs). #}
+{# Activity detail. An activity is an undated idea; each dated occurrence (e.g. one per year) is an Event listed under Dates via the activity.events reverse relation. #}
 <div class="py-6">
     <header class="sbl-card mb-6 overflow-hidden">
         <div class="bg-earth-clay px-6 py-10 text-white">
@@ -17,12 +17,10 @@
                 {% if activity.category.icon %}{% if 'bi-' in activity.category.icon %}<i class="bi {{ activity.category.icon }}"></i>{% else %}{{ activity.category.icon }}{% endif %} {% endif %}{{ activity.category.name }}
             </p>
             <h1 class="text-4xl font-bold md:text-5xl">{{ activity.name }}</h1>
-            {% if activity.suggested_location or activity.suggested_timeframe %}
-                <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-lg text-white/90">
-                    {% if activity.suggested_location %}<span><i class="bi bi-geo-alt"></i> {{ activity.suggested_location }}</span>{% endif %}
-                    {% if activity.suggested_timeframe %}<span><i class="bi bi-calendar3"></i> {{ activity.suggested_timeframe }}</span>{% endif %}
-                </p>
-            {% endif %}
+            <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-lg text-white/90">
+                {% if activity.place_name %}<span><i class="bi bi-geo-alt"></i> {{ activity.place_name }}</span>{% endif %}
+                {% if activity.recurrence != 'anytime' or activity.usual_months %}<span><i class="bi bi-arrow-repeat"></i> {{ activity.get_recurrence_display }}{% if activity.usual_months %} · {{ activity.usual_months_display }}{% endif %}</span>{% endif %}
+            </p>
         </div>
         {% if activity.approval_status != 'approved' or activity.visibility != 'public' %}
             <div class="flex flex-wrap gap-2 px-6 py-3">
@@ -40,6 +38,26 @@
                     <p class="whitespace-pre-line text-lg text-warm-700">{{ activity.description }}</p>
                 </section>
             {% endif %}
+
+            {% now "Y-m-d" as today %}
+            <section class="sbl-card p-5">
+                <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-xl font-semibold text-warm-900">Dates</h2>
+                    {% if activity.recurrence == 'yearly' %}<p class="text-sm text-warm-500">Happens every year{% if activity.usual_months %}, usually {{ activity.usual_months_display }}{% endif %}. Each year is its own event.</p>{% endif %}
+                </div>
+                {% with events=activity.events.all %}
+                    <ul class="divide-y divide-warm-200">
+                        {% for event in events %}{% if event.approval_status == 'approved' or event.created_by == user or user.is_staff %}
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2 {% if event.start_date|date:'Y-m-d' < today %}text-warm-500{% endif %}">
+                                <a href="{% url 'events:event_detail' event.slug %}" class="sbl-link font-medium">{{ event.name }}</a>
+                                <span class="text-sm">{{ event.start_date|date:"M j" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"M j" }}{% endif %}, {{ event.start_date|date:"Y" }}{% if event.start_date|date:'Y-m-d' < today %} · past{% elif event.approval_status != 'approved' %} · {{ event.get_approval_status_display }}{% endif %}</span>
+                            </li>
+                        {% endif %}{% empty %}
+                            <li class="py-2 text-sm text-warm-500">No dates yet. Use “Add a date” when this year's are announced.</li>
+                        {% endfor %}
+                    </ul>
+                {% endwith %}
+            </section>
 
             <section class="sbl-card p-5">
                 <h2 class="mb-4 text-xl font-semibold text-warm-900">Details</h2>
@@ -79,7 +97,13 @@
                 <h2 class="mb-4 font-bold text-warm-900">Quick Info</h2>
                 <dl class="space-y-4">
                     <div><dt class="text-sm text-warm-500">Category</dt><dd>{{ activity.category.name }}</dd></div>
-                    <div><dt class="text-sm text-warm-500">Where</dt><dd>{{ activity.suggested_location|default:"Anywhere" }}</dd></div>
+                    <div><dt class="text-sm text-warm-500">Where</dt><dd>
+                        {% if activity.city %}<a class="sbl-link" href="{% url 'locations:city_detail' activity.city.slug %}">{{ activity.city.name }}</a>{% if activity.region or activity.country %}, {% endif %}{% endif %}
+                        {% if activity.region %}<a class="sbl-link" href="{% url 'locations:region_detail' activity.region.slug %}">{{ activity.region.name }}</a>{% if activity.country %}, {% endif %}{% endif %}
+                        {% if activity.country %}<a class="sbl-link" href="{% url 'locations:country_detail' activity.country.slug %}">{{ activity.country.name }}</a>{% endif %}
+                        {% if not activity.city and not activity.region and not activity.country %}{{ activity.suggested_location|default:"Anywhere" }}{% elif activity.suggested_location %}<br><span class="text-sm text-warm-500">{{ activity.suggested_location }}</span>{% endif %}
+                    </dd></div>
+                    <div><dt class="text-sm text-warm-500">How often</dt><dd>{{ activity.get_recurrence_display }}{% if activity.usual_months %}<br><span class="text-sm text-warm-500">Usually {{ activity.usual_months_display }}</span>{% endif %}</dd></div>
                     {% if activity.suggested_timeframe or activity.suggested_date_range_start %}
                         <div><dt class="text-sm text-warm-500">When</dt><dd>{% if activity.suggested_timeframe %}{{ activity.suggested_timeframe }}{% endif %}{% if activity.suggested_date_range_start %}{% if activity.suggested_timeframe %}<br>{% endif %}{{ activity.suggested_date_range_start|date:"M j, Y" }}{% if activity.suggested_date_range_end %} – {{ activity.suggested_date_range_end|date:"M j, Y" }}{% endif %}{% endif %}</dd></div>
                     {% endif %}

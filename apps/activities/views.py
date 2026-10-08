@@ -68,7 +68,8 @@ def activity_list(request):
 
 def activity_detail(request, slug):
     """View a single activity"""
-    activity = get_object_or_404(Activity, slug=slug)
+    activity = get_object_or_404(
+        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country'), slug=slug)
     
     # Check visibility
     if not activity.is_visible_to(request.user):

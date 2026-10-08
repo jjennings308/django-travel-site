@@ -244,6 +244,53 @@ class ActivityLinkTests(EventFixture):
         self.assertContains(response, 'value="Oktoberfest"')
         self.assertContains(response, f'<option value="{self.okto.pk}" selected>')
 
+    def test_add_a_date_prefills_the_activitys_city(self):
+        self.okto.city = self.city
+        self.okto.save()
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse("events:event_add") + f"?activity={self.okto.pk}")
+        self.assertContains(response, f'<option value="{self.city.pk}" selected>')
+
+    def test_yearly_activity_event_offers_next_years_dates(self):
+        self.okto.recurrence = "yearly"
+        self.okto.save()
+        this_year = Event.objects.create(
+            name="Oktoberfest 2027", category=self.festival, related_activity=self.okto, description="Beer.",
+            city=self.city, start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
+            approval_status=ApprovalStatus.APPROVED)
+        self.client.force_login(self.alice)
+        detail = reverse("events:event_detail", args=[this_year.slug])
+        copy_url = reverse("events:event_add") + f"?copy={this_year.pk}"
+        self.assertContains(self.client.get(detail), "Add 2028 dates")
+        form = self.client.get(copy_url)
+        for text in ('value="Oktoberfest 2028"', 'value="2028-09-18"', 'value="2028-10-03"', f'<option value="{self.okto.pk}" selected>'):
+            self.assertContains(form, text)
+        # once next year's exists, the button links to it instead
+        Event.objects.create(name="Oktoberfest 2028", category=self.festival, related_activity=self.okto,
+                             description="Beer.", city=self.city, start_date=date(2028, 9, 16),
+                             approval_status=ApprovalStatus.APPROVED)
+        page = self.client.get(detail)
+        self.assertContains(page, "2028 dates")
+        self.assertNotContains(page, "Add 2028 dates")
+
+    def test_activity_page_lists_each_years_event(self):
+        for year, status, by in ((2026, ApprovalStatus.APPROVED, self.bob), (2027, ApprovalStatus.APPROVED, self.bob),
+                                 (2028, ApprovalStatus.PENDING, self.bob)):
+            Event.objects.create(name=f"Oktoberfest {year}", category=self.festival, related_activity=self.okto,
+                                 description="d", city=self.city, start_date=date(year, 9, 18),
+                                 approval_status=status, created_by=by)
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse("activities:activity_detail", args=[self.okto.slug]))
+        self.assertContains(page, "Oktoberfest 2026")
+        self.assertContains(page, "Oktoberfest 2027")
+        self.assertNotContains(page, "Oktoberfest 2028")  # pending, someone else's
+
+    def test_one_off_activity_has_no_next_year(self):
+        event = Event.objects.create(name="Gig", category=self.festival, related_activity=self.okto, description="d",
+                                     city=self.city, start_date=date(2027, 1, 1), approval_status=ApprovalStatus.APPROVED)
+        self.client.force_login(self.alice)
+        self.assertNotContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "2028 dates")
+
     def test_event_inherits_category_from_activity(self):
         self.client.force_login(self.alice)
         self.client.post(reverse("events:event_add"), self.payload(name="Oktoberfest 2027", category="", related_activity=self.okto.pk))

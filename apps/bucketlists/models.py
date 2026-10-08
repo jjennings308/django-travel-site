@@ -317,6 +317,8 @@ class BucketListItem(TimeStampedModel):
             return self.event.place_name
         if self.city_id:
             return f"{self.city.name}, {self.city.country.name}"
+        if self.activity_id:
+            return self.activity.place_name
         cities = []
         for poi in self._poi_list():
             if poi.city.name not in cities:

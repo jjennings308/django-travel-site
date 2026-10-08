@@ -3,9 +3,55 @@ from django import forms
 from django.utils import timezone
 from .models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
+from apps.locations.models import City, Country, Region
+from apps.locations.widgets import CountryTaggedSelect
+
+PLACE_AND_TIMING_FIELDS = ['country', 'region', 'city', 'recurrence', 'usual_months']
 
 
-class ActivityCreateForm(forms.ModelForm):
+class PlaceAndTimingMixin:
+    """Where (country / region / city, filtered by country in the browser) and how
+    often (recurrence + usual months) for the activity forms."""
+
+    def setup_place_and_timing(self):
+        # Built here, not declared on the class: a plain mixin's declared fields are
+        # not collected by the form metaclass.
+        self.fields['usual_months'] = forms.TypedMultipleChoiceField(
+            choices=Activity.MONTHS, coerce=int, required=False, label="Usual months",
+            widget=forms.CheckboxSelectMultiple(attrs={'class': 'sbl-check'}),
+        )
+        approved = {'approval_status': ApprovalStatus.APPROVED}
+        self.fields['country'].queryset = Country.objects.filter(**approved).order_by('name')
+        self.fields['region'].queryset = Region.objects.order_by('name')
+        self.fields['city'].queryset = City.objects.filter(**approved).order_by('name')
+        self.fields['country'].widget.attrs['class'] = 'sbl-input'
+        for name in ('region', 'city'):
+            self.fields[name].widget = CountryTaggedSelect(attrs={'class': 'sbl-input'})
+            self.fields[name].widget.choices = self.fields[name].choices
+        self.fields['recurrence'].widget.attrs['class'] = 'sbl-input'
+        self.fields['suggested_location'].label = 'Or a place not in our list'
+        self.fields['suggested_timeframe'].label = 'Timing notes'
+        for name in PLACE_AND_TIMING_FIELDS:
+            self.fields[name].required = False
+        if self.instance.pk:
+            self.initial['usual_months'] = self.instance.usual_months or []
+
+    def clean(self):
+        cleaned = super().clean()
+        country, region, city = (cleaned.get(k) for k in ('country', 'region', 'city'))
+        if city and country and city.country_id != country.pk:
+            self.add_error('city', f"{city.name} is not in {country.name}.")
+        if region and country and region.country_id != country.pk:
+            self.add_error('region', f"{region.name} is not in {country.name}.")
+        if city and region and city.region_id and city.region_id != region.pk:
+            self.add_error('region', f"{city.name} is in {city.region.name}.")
+        if not cleaned.get('recurrence'):
+            cleaned['recurrence'] = 'anytime'
+        cleaned['usual_months'] = sorted(set(cleaned.get('usual_months') or []))
+        return cleaned
+
+
+class ActivityCreateForm(PlaceAndTimingMixin, forms.ModelForm):
     """Form for users to create their own activities"""
     
     # Allow users to add tags
@@ -24,7 +70,12 @@ class ActivityCreateForm(forms.ModelForm):
             'description',
             'visibility',
             'specificity_level',
+            'country',
+            'region',
+            'city',
             'suggested_location',
+            'recurrence',
+            'usual_months',
             'suggested_timeframe',
             'suggested_date_range_start',
             'suggested_date_range_end',
@@ -164,6 +215,7 @@ class ActivityCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.setup_place_and_timing()
         
         # Filter categories to only those that allow user submissions
         self.fields['category'].queryset = ActivityCategory.objects.filter(
@@ -173,7 +225,12 @@ class ActivityCreateForm(forms.ModelForm):
         
         # Make some fields optional for quick creation
         optional_fields = [
+            'country',
+            'region',
+            'city',
             'suggested_location',
+            'recurrence',
+            'usual_months',
             'suggested_timeframe',
             'suggested_date_range_start',
             'suggested_date_range_end',
@@ -240,7 +297,7 @@ class ActivityCreateForm(forms.ModelForm):
         return activity
 
 
-class ActivityEditForm(forms.ModelForm):
+class ActivityEditForm(PlaceAndTimingMixin, forms.ModelForm):
     """Form for editing existing activities"""
     
     tags = forms.ModelMultipleChoiceField(
@@ -257,7 +314,12 @@ class ActivityEditForm(forms.ModelForm):
             'name',
             'description',
             'specificity_level',
+            'country',
+            'region',
+            'city',
             'suggested_location',
+            'recurrence',
+            'usual_months',
             'suggested_timeframe',
             'suggested_date_range_start',
             'suggested_date_range_end',
@@ -292,6 +354,7 @@ class ActivityEditForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setup_place_and_timing()
         
         # Set initial tags
         if self.instance and self.instance.pk:

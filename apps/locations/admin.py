@@ -3,24 +3,14 @@ from django import forms
 from django.contrib import admin
 from apps.approval_system.admin import ApprovableAdminMixin
 from .models import Country, Region, City, POI
-
-
-class RegionByCountrySelect(forms.Select):
-    """Region <select> whose options carry data-country, so
-    locations/admin/region_by_country.js can show only the chosen country's regions."""
-
-    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subindex, attrs)
-        if value:
-            option["attrs"]["data-country"] = value.instance.country_id
-        return option
+from .widgets import CountryTaggedSelect
 
 
 class CityAdminForm(forms.ModelForm):
     class Meta:
         model = City
         fields = "__all__"
-        widgets = {"region": RegionByCountrySelect}
+        widgets = {"region": CountryTaggedSelect}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -208,7 +198,7 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     form = CityAdminForm
 
     class Media:
-        js = ['locations/admin/region_by_country.js']
+        js = ['locations/country_filter.js']
     
     fieldsets = (
         ('Basic Information', {

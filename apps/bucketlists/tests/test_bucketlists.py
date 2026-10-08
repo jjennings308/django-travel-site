@@ -270,6 +270,12 @@ class LifecycleTests(BucketFixture):
         self.assertRedirects(self.client.get(url), reverse("trips:trip_detail", args=[trip.pk]))
         self.assertEqual(Trip.objects.count(), 1)
 
+    def test_plan_a_trip_from_an_undated_activity_uses_its_place(self):
+        self.okto.city = self.city
+        self.okto.save()
+        item = BucketListItem.objects.create(user=self.alice, activity=self.okto)
+        self.assertContains(self.client.get(reverse("bucketlists:plan_trip", args=[item.pk])), "Testville, Testland")
+
     def test_plan_a_trip_needs_dates_and_ownership(self):
         item = BucketListItem.objects.create(user=self.alice, custom_title="Surf")
         url = reverse("bucketlists:plan_trip", args=[item.pk])

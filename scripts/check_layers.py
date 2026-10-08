@@ -34,6 +34,7 @@ LAYERS = {
 # Same-layer imports the table allows (importer -> imported). Layer 5 may import anything.
 SAME_LAYER_ALLOWED = {
     ("approval_system", "notifications"),
+    ("activities", "locations"),
     ("vendors", "locations"),
     ("events", "locations"),
     ("events", "activities"),

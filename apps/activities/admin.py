@@ -40,6 +40,8 @@ class ActivityAdmin(admin.ModelAdmin):
         'approval_status',
         'source',
         'category',
+        'recurrence',
+        'country',
         'specificity_level',
         'skill_level',
         'cost_level',
@@ -100,14 +102,19 @@ class ActivityAdmin(admin.ModelAdmin):
             ),
             'classes': ('collapse',),
         }),
-        ('Suggested Details', {
+        ('Where & when', {
             'fields': (
+                'country',
+                'region',
+                'city',
                 'suggested_location',
+                'recurrence',
+                'usual_months',
                 'suggested_timeframe',
                 'suggested_date_range_start',
                 'suggested_date_range_end',
             ),
-            'classes': ('collapse',),
+            'description': 'Choosing a city fills in its region and country on save. Each dated occurrence (e.g. one per year) is an Event linked to this activity.',
         }),
         ('Activity Details', {
             'fields': (

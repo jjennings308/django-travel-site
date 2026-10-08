@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -77,6 +78,19 @@ def event_list(request):
     })
 
 
+def _next_year_link(event, user):
+    """For an event of a yearly activity: next year's event if it exists (visible to
+    ``user``), else the pre-filled add URL. None when it doesn't apply."""
+    activity = event.related_activity
+    if activity is None or activity.recurrence != "yearly" or not user.is_authenticated:
+        return None
+    year = event.start_date.year + 1
+    existing = Event.objects.visible_to(user).filter(related_activity=activity, start_date__year=year).first()
+    if existing:
+        return {"year": year, "event": existing}
+    return {"year": year, "add_url": f"{reverse('events:event_add')}?copy={event.pk}"}
+
+
 def event_detail(request, slug):
     event = _visible_event_or_404(request, slug)
     return render(request, "events/event_detail.html", {
@@ -84,6 +98,7 @@ def event_detail(request, slug):
         "performers": event.performers.all(),
         "can_edit": event.can_edit(request.user),
         "can_delete": event.can_delete(request.user),
+        "next_year": _next_year_link(event, request.user),
         "city_choices": (
             City.objects.filter(country=event.country, approval_status=ApprovalStatus.APPROVED).order_by("name")
             if request.user.is_staff and event.needs_city_link and event.country_id else None
@@ -106,15 +121,47 @@ def my_events(request):
     })
 
 
+def _next_year(day):
+    """The same date a year later (Feb 29 -> Feb 28)."""
+    if day is None:
+        return None
+    try:
+        return day.replace(year=day.year + 1)
+    except ValueError:
+        return day.replace(year=day.year + 1, day=28)
+
+
+def _next_year_name(name, year):
+    """'Oktoberfest 2027' -> 'Oktoberfest 2028'; a name without the year gets it appended."""
+    return name.replace(str(year), str(year + 1)) if str(year) in name else f"{name} {year + 1}"
+
+
+def _copy_initial(source):
+    """Form initial for next year's occurrence of ``source`` (same details, dates +1 year)."""
+    initial = {name: getattr(source, name) for name in EventForm._meta.fields}
+    initial.update(
+        name=_next_year_name(source.name, source.start_date.year),
+        start_date=_next_year(source.start_date), end_date=_next_year(source.end_date),
+    )
+    return initial
+
+
 @login_required
 def event_add(request):
     initial = {}
-    if request.GET.get("activity"):
+    if request.GET.get("copy"):
+        # "Add next year's dates" from an event: a recurring activity has one event per year.
+        source = Event.objects.visible_to(request.user).filter(pk=request.GET["copy"]).first()
+        if source:
+            initial = _copy_initial(source)
+    elif request.GET.get("activity"):
         # "Add a date" from an activity page: pre-fill from the activity.
         activity = Activity.get_public_activities().filter(pk=request.GET["activity"]).first()
         if activity:
             initial = {"related_activity": activity, "name": activity.name, "category": activity.category,
-                       "short_description": activity.short_description, "description": activity.description}
+                       "short_description": activity.short_description, "description": activity.description,
+                       "city": activity.city, "country": None if activity.city_id else activity.country,
+                       "location_text": "" if activity.city_id else activity.suggested_location}
     form = EventForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         event = form.save(commit=False)

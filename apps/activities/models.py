@@ -4,6 +4,7 @@ from django.conf import settings
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.approval_system.models import Approvable, ApprovalStatus
+from apps.locations.models import City, Country, Region
 
 
 class ActivityCategory(TimeStampedModel, SlugMixin):
@@ -137,16 +138,54 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         help_text="How specific is this activity description?"
     )
     
-    # Optional: Suggested details that could turn this into an event
+    # Where it happens (all optional: "See Kenny Chesney" tours, "Go skydiving" is
+    # anywhere). Choosing a city fills in its region and country (see save()).
+    # suggested_location is free text for a place not in the catalogue.
+    country = models.ForeignKey(
+        Country, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='activities', help_text="Country it happens in"
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='activities', help_text="Region / state it happens in"
+    )
+    city = models.ForeignKey(
+        City, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='activities', help_text="City it happens in"
+    )
     suggested_location = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Suggested location (e.g., 'Vegas Sphere')"
+        help_text="Place, if it isn't in our list of cities (e.g., 'Vegas Sphere')"
+    )
+
+    # When it happens. An activity is undated; each dated occurrence is an Event
+    # (Event.related_activity), so a yearly activity like Oktoberfest has one
+    # event per year (Oktoberfest 2026, Oktoberfest 2027).
+    RECURRENCE_CHOICES = [
+        ('anytime', 'Any time'),
+        ('yearly', 'Every year'),
+        ('seasonal', 'Several times a year'),
+        ('once', 'One-off'),
+    ]
+    recurrence = models.CharField(
+        max_length=12,
+        choices=RECURRENCE_CHOICES,
+        default='anytime',
+        help_text="How often it happens"
+    )
+    MONTHS = [(i, m) for i, m in enumerate(
+        ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+         'August', 'September', 'October', 'November', 'December'], start=1)]
+    usual_months = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Months it usually happens in (1-12)"
     )
     suggested_timeframe = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Suggested timeframe (e.g., 'Summer 2026')"
+        help_text="Timing notes (e.g., 'Mid September to the first Sunday in October')"
     )
     suggested_date_range_start = models.DateField(
         null=True,
@@ -385,6 +424,13 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
             slug_base = '-'.join(slug_parts)
             self.slug = generate_unique_slug(Activity, slug_base, self.id)
         
+        # A city implies its region and country; a region implies its country.
+        if self.city_id:
+            self.region_id = self.city.region_id or self.region_id
+            self.country_id = self.city.country_id
+        elif self.region_id:
+            self.country_id = self.region.country_id
+
         # Auto-set short description if empty
         if not self.short_description and self.description:
             self.short_description = self.description[:297] + '...' if len(self.description) > 300 else self.description
@@ -396,6 +442,18 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         
         super().save(*args, **kwargs)
     
+    @property
+    def place_name(self):
+        """'City, Region, Country' (as far as known), else the free-text location."""
+        parts = [x.name for x in (self.city, self.region, self.country) if x is not None]
+        return ", ".join(parts) or self.suggested_location
+
+    @property
+    def usual_months_display(self):
+        names = dict(self.MONTHS)
+        months = sorted(int(m) for m in self.usual_months or [])
+        return ", ".join(names[m] for m in months if m in names)
+
     # Visibility helpers
     def is_visible_to(self, user):
         """Check if this activity is visible to a given user"""

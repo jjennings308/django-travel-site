@@ -36,4 +36,4 @@ class CityAdminRegionTests(TestCase):
         self.client.force_login(admin)
         page = self.client.get(reverse("admin:locations_city_change", args=[self.city.pk]))
         self.assertContains(page, f'data-country="{self.italy.pk}"')
-        self.assertContains(page, "locations/admin/region_by_country.js")
+        self.assertContains(page, "locations/country_filter.js")

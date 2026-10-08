@@ -74,6 +74,7 @@ graph TD
     locations --> approval_system
     locations --> media_app
     activities --> approval_system
+    activities --> locations
     vendors --> locations
     events --> locations
     events --> activities
