@@ -6,3 +6,6 @@ scripts/*.log
 *$py.class
 /uploads/*
 !/uploads/.gitkeep
+
+# collectstatic output: built on each machine, never committed
+/staticfiles/

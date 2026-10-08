@@ -24,7 +24,7 @@ apps/              # every project Django app; apps/__init__.py makes it a packa
 templates/         # site shell only: base.html, base_marketing.html, partials/, components/
 scripts/           # check_layers.py, reset_db.sh
 docs/              # architecture diagrams
-staticfiles/       # collectstatic output (committed)
+staticfiles/       # collectstatic output (git-ignored; built on each machine)
 ```
 
 Nothing that is a Django app (has an `apps.py`) belongs at the root except `config` and `theme`.
@@ -40,7 +40,7 @@ pip install -r requirements-dev.txt    # dev: requirements.txt + django-tailwind
 python manage.py runserver
 python manage.py tailwind start         # Tailwind watcher (theme/static_src, npm run dev) — dev settings only
 python manage.py tailwind build         # production CSS -> theme/static/css/dist/styles.css
-python manage.py collectstatic          # -> staticfiles/ (committed to git)
+python manage.py collectstatic          # -> staticfiles/ (git-ignored build output)
 
 python manage.py makemigrations <label> && python manage.py migrate   # label, e.g. "trips"
 python manage.py test                   # all apps
@@ -85,7 +85,21 @@ HSTS low (`SECURE_HSTS_SECONDS`, default 3600) and logs to stderr (systemd journ
 the real domain. `django-browser-reload` is dev-only (`dev.py`; not in `requirements.txt`), and its
 `/__reload__/` URLs exist only when it is installed.
 
-On a Debian box (repo at `/var/www/travel_site`, where `manage.py` is):
+**Live:** https://sharebucketlist.com on `james@tazcomputer.com` (shared Debian 13 box that also hosts
+soho, score, tazcomputer, umami, excalidraw). Repo at `/var/www/travel_site` (owner www-data,
+group-writable; `james` is in group www-data), gunicorn 2 workers as `travel_site.service` on
+`/run/travel_site/travel_site.sock`, nginx site `/etc/nginx/sites-available/sharebucketlist.com`
+(certbot TLS, `www` -> apex), Postgres 17 database/role `travel_site` on 127.0.0.1, outbound mail
+via smtp2go. `sudo` there needs a password, so service/nginx changes are run by James.
+
+**Deploying an update:** push to `main`, then on the server `bash /var/www/travel_site/scripts/deploy.sh`
+(pull, requirements, `check --deploy`, `pg_dump` + migrate when migrations are pending,
+`collectstatic --clear`, restart, live check). Production uses `ManifestStaticFilesStorage`:
+CSS/JS are served under content-hashed names, so a restart after `collectstatic` is required and a
+`{% static %}` path that doesn't exist is a 500 (not a broken image) — check new static references
+exist. `staticfiles/` is build output and is not committed; never rely on files that exist only there.
+
+First-time setup on a fresh Debian box (repo at `/var/www/travel_site`, where `manage.py` is):
 
 ```bash
 git clone git@github.com:jjennings308/django-travel-site.git /var/www/travel_site && cd /var/www/travel_site

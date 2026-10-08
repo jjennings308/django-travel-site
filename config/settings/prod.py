@@ -26,6 +26,17 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_O
 
 SITE_URL = os.environ.get("SITE_URL", "https://www.sharebucketlist.com")
 
+# --- Static files ----------------------------------------------------------------
+# collectstatic writes content-hashed copies (styles.<hash>.css) plus a manifest, and
+# {% static %} links the hashed name, so every CSS/JS change gets a new URL and
+# browsers can cache /static/ safely. Requires `collectstatic` after each deploy and
+# a restart (the manifest is read at startup); a {% static %} path that does not
+# exist raises an error instead of silently 404ing.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"},
+}
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 # Name the mail server explicitly (use "localhost" for a local relay); no silent default.
 EMAIL_HOST = _required("EMAIL_HOST")
