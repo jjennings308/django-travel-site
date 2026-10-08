@@ -201,6 +201,8 @@ class LifecycleTests(BucketFixture):
         self.edit(item, event=self.okto_2027.pk)
         item.refresh_from_db()
         self.assertEqual((item.kind, item.event, item.stage), ("activity", self.okto_2027, "dated"))
+        self.okto_2027.refresh_from_db()
+        self.assertEqual(self.okto_2027.bucket_list_count, 1)  # counted when the date is picked, not only on create
 
     def test_cannot_pick_another_activitys_event(self):
         item = BucketListItem.objects.create(user=self.alice, activity=self.okto)
@@ -292,3 +294,72 @@ class LifecycleTests(BucketFixture):
         page = self.client.get(reverse("bucketlists:dashboard"))
         self.assertContains(page, "Trip planned")
         self.assertContains(page, reverse("trips:trip_detail", args=[trip.pk]))
+
+
+class GoalCatalogueTests(BucketFixture):
+    """Steering "Add a goal" toward the catalogue, and linking a goal afterwards."""
+
+    def setUp(self):
+        super().setUp()
+        self.goal = BucketListItem.objects.create(
+            user=self.alice, custom_title="Walk the ridge", custom_description="With the dog",
+            personal_notes="Spring", target_date=date(2027, 4, 1), status="researching")
+        cat = BucketListCategory.objects.create(user=self.alice, name="Outdoors")
+        self.goal.categories.add(cat)
+
+    def suggest(self, q):
+        return self.client.get(reverse("bucketlists:suggest"), {"q": q}).json()["results"]
+
+    def test_suggest_finds_visible_catalogue_entries(self):
+        names = {(r["kind"], r["name"]) for r in self.suggest("ridge walk")}
+        self.assertEqual(names, {("activity", "Ridge Walk")})
+        self.assertEqual({r["kind"] for r in self.suggest("test")}, {"city"})
+        self.assertEqual(self.suggest("bridge")[0]["add_url"], reverse("bucketlists:item_add") + f"?poi={self.poi.pk}")
+        self.assertEqual(self.suggest("ri"), [])  # too short
+
+    def test_suggest_hides_unapproved_entries(self):
+        self.activity.approval_status = ApprovalStatus.PENDING
+        self.activity.save()
+        self.event.approval_status = ApprovalStatus.PENDING
+        self.event.created_by = self.bob
+        self.event.save()
+        self.assertEqual(self.suggest("ridge walk"), [])
+        self.assertEqual(self.suggest("jazz"), [])
+
+    def test_add_page_offers_suggestions_and_edit_page_the_link_box(self):
+        self.assertContains(self.client.get(reverse("bucketlists:item_add")), reverse("bucketlists:suggest"))
+        self.assertContains(self.client.get(reverse("bucketlists:item_edit", args=[self.goal.pk])), "Link to the catalogue")
+
+    def test_link_goal_to_activity_keeps_everything(self):
+        self.client.post(reverse("bucketlists:link_item", args=[self.goal.pk]), {"target": f"activity:{self.activity.pk}"})
+        item = BucketListItem.objects.get(pk=self.goal.pk)
+        self.assertEqual((item.kind, item.title, item.custom_title, item.custom_description), ("activity", "Ridge Walk", "", ""))
+        self.assertEqual((item.personal_notes, item.target_date, item.status), ("Spring\n\nWith the dog", date(2027, 4, 1), "researching"))
+        self.assertEqual(item.categories.count(), 1)
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.bucket_list_count, 1)
+        self.assertNotContains(self.client.get(reverse("bucketlists:item_edit", args=[item.pk])), "Link to the catalogue")
+        item.delete()
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.bucket_list_count, 0)
+
+    def test_link_goal_to_poi_keeps_its_name(self):
+        self.client.post(reverse("bucketlists:link_item", args=[self.goal.pk]), {"target": f"poi:{self.poi.pk}"})
+        item = BucketListItem.objects.get(pk=self.goal.pk)
+        self.assertEqual((item.kind, item.title, list(item.pois.all())), ("poi", "Walk the ridge", [self.poi]))
+
+    def test_link_refuses_a_duplicate(self):
+        BucketListItem.objects.create(user=self.alice, city=self.city)
+        self.client.post(reverse("bucketlists:link_item", args=[self.goal.pk]), {"target": f"city:{self.city.pk}"})
+        self.goal.refresh_from_db()
+        self.assertEqual((self.goal.kind, self.goal.custom_title), ("custom", "Walk the ridge"))
+
+    def test_link_is_owner_only_and_checks_the_target(self):
+        url = reverse("bucketlists:link_item", args=[self.goal.pk])
+        self.assertEqual(self.client.post(url, {"target": "nonsense:1"}).status_code, 404)
+        self.event.approval_status = ApprovalStatus.PENDING
+        self.event.created_by = self.bob
+        self.event.save()
+        self.assertEqual(self.client.post(url, {"target": f"event:{self.event.pk}"}).status_code, 404)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(url, {"target": f"city:{self.city.pk}"}).status_code, 404)

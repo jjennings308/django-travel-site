@@ -10,10 +10,37 @@
     {% if item %}{% include "bucketlists/partials/_stage.html" %}{% endif %}
     {% if target %}<p class="sbl-page-subtitle">{% if kind == 'activity' %}Activity{% elif kind == 'city' %}City{% elif kind == 'poi' %}Place{% else %}Event{% endif %}: <a class="sbl-link" href="{% if item %}{{ item.target_url }}{% elif kind == 'activity' %}{% url 'activities:activity_detail' target.slug %}{% elif kind == 'city' %}{% url 'locations:city_detail' target.slug %}{% elif kind == 'poi' %}{% url 'locations:poi_detail' target.slug %}{% else %}{% url 'events:event_detail' target.slug %}{% endif %}">{{ target }}</a></p>{% endif %}
   </header>
-  <form method="post" class="sbl-card space-y-1 p-6">
+  {% url 'bucketlists:suggest' as suggest_url %}
+  <script>
+    // Catalogue matches for a goal title (bucketlists:suggest); used by the add-goal hint and the link box.
+    function sblSuggest(url) {
+      return {
+        results: [],
+        async lookup(q) {
+          q = (q || "").trim();
+          if (q.length < 3) { this.results = []; return; }
+          try {
+            const r = await fetch(url + "?q=" + encodeURIComponent(q), { headers: { Accept: "application/json" } });
+            this.results = r.ok ? (await r.json()).results : [];
+          } catch (e) { this.results = []; }
+        },
+      };
+    }
+  </script>
+  <form method="post" class="sbl-card space-y-1 p-6"{% if not item and not target %} x-data="sblSuggest('{{ suggest_url }}')" @input.debounce.400ms="$event.target.name === 'custom_title' && lookup($event.target.value)"{% endif %}>
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
     {% if form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_title %}{% endif %}
+    {% if not item and not target %}
+      <div x-show="results.length" x-cloak class="sbl-alert sbl-alert-info mb-4">
+        <p class="mb-2 text-sm font-medium">Is it one of these? Adding it from the catalogue fills in the place and dates when you plan a trip.</p>
+        <ul class="space-y-1 text-sm">
+          <template x-for="r in results" :key="r.kind + r.pk">
+            <li><a class="sbl-link font-medium" :href="r.add_url" x-text="r.name"></a> <span class="text-xs text-warm-500" x-text="r.detail"></span></li>
+          </template>
+        </ul>
+      </div>
+    {% endif %}
     {% if form.custom_description %}{% include "events/partials/_field.html" with field=form.custom_description %}{% endif %}
     {% if form.pois %}
       <div class="mb-4">
@@ -55,5 +82,24 @@
       </div>
     </div>
   </form>
+  {% if item and kind == 'custom' %}
+    <section class="sbl-card mt-6 p-6" x-data="sblSuggest('{{ suggest_url }}')" x-init="lookup('{{ item.custom_title|escapejs }}')">
+      <h2 class="text-lg font-semibold text-warm-900"><i class="bi bi-link-45deg"></i> Link to the catalogue</h2>
+      <p class="sbl-help">If this goal is an activity, event, city or place we list, link it. Your notes, dates, status and categories stay; the item gains the place and dates for planning a trip.</p>
+      <input type="search" class="sbl-input mt-3" value="{{ item.custom_title }}" placeholder="Search activities, events, cities, places" aria-label="Search the catalogue" @input.debounce.400ms="lookup($event.target.value)">
+      <form method="post" action="{% url 'bucketlists:link_item' item.pk %}" class="mt-2">
+        {% csrf_token %}
+        <ul class="divide-y divide-warm-200">
+          <template x-for="r in results" :key="r.kind + r.pk">
+            <li class="flex items-center justify-between gap-3 py-2">
+              <span class="min-w-0"><span class="font-medium text-warm-900" x-text="r.name"></span> <span class="text-xs text-warm-500" x-text="r.detail"></span></span>
+              <button type="submit" name="target" :value="r.kind + ':' + r.pk" class="sbl-btn sbl-btn-outline sbl-btn-sm shrink-0">Link</button>
+            </li>
+          </template>
+        </ul>
+        <p x-show="!results.length" class="sbl-help">No matches. Try another word, at least 3 letters.</p>
+      </form>
+    </section>
+  {% endif %}
 </div>
 {% endblock %}

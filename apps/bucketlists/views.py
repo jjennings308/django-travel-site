@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -218,6 +218,81 @@ def plan_trip(request, pk):
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"),
                                               (item.title, reverse("bucketlists:item_edit", args=[item.pk])), ("Plan a trip", None)]),
     })
+
+
+SUGGEST_LIMIT = 4
+
+
+@login_required
+def suggest(request):
+    """Catalogue matches for a goal's title, as JSON: activities, upcoming events,
+    cities and places the user may see. Used to steer "Add a goal" toward a linked
+    item, and to link an existing goal."""
+    q = request.GET.get("q", "").strip()
+    if len(q) < 3:
+        return JsonResponse({"results": []})
+    add = reverse("bucketlists:item_add")
+    results = []
+    for a in Activity.get_public_activities().filter(name__icontains=q).select_related("category").order_by("name")[:SUGGEST_LIMIT]:
+        results.append({"kind": "activity", "pk": a.pk, "name": a.name, "detail": f"Activity · {a.category.name}"})
+    events = (Event.objects.visible_to(request.user).filter(name__icontains=q, start_date__gte=timezone.now().date())
+              .select_related("city__country", "country").order_by("start_date")[:SUGGEST_LIMIT])
+    for e in events:
+        results.append({"kind": "event", "pk": e.pk, "name": e.name,
+                        "detail": f"Event · {e.start_date:%b} {e.start_date.day}, {e.start_date.year} · {e.place_name}"})
+    approved = {"approval_status": ApprovalStatus.APPROVED, "name__icontains": q}
+    for c in City.objects.filter(**approved).select_related("country").order_by("name")[:SUGGEST_LIMIT]:
+        results.append({"kind": "city", "pk": c.pk, "name": c.name, "detail": f"City · {c.country.name}"})
+    for p in POI.objects.filter(**approved).select_related("city").order_by("name")[:SUGGEST_LIMIT]:
+        results.append({"kind": "poi", "pk": p.pk, "name": p.name, "detail": f"Place · {p.city.name}"})
+    for r in results:
+        r["add_url"] = f"{add}?{r['kind']}={r['pk']}"
+    return JsonResponse({"results": results})
+
+
+@login_required
+@require_POST
+def link_item(request, pk):
+    """Turn a custom goal into a linked one (activity / event / city / POI), keeping
+    its notes, dates, status and categories. The free-text description moves into
+    the personal notes so nothing typed is lost."""
+    item = _own_item(request, pk)
+    if item.kind != "custom":
+        messages.info(request, "This item is already linked.")
+        return redirect("bucketlists:item_edit", pk=item.pk)
+    kind, _, target_pk = request.POST.get("target", "").partition(":")
+    if kind not in BucketListItem.TARGET_KINDS or not target_pk.isdigit():
+        raise Http404
+    target = _target_for(kind, int(target_pk), request.user)
+
+    others = BucketListItem.objects.filter(user=request.user).exclude(pk=item.pk)
+    if kind == "poi":
+        clash = others.filter(pois=target)
+    elif kind == "event" and target.related_activity_id:
+        clash = others.filter(Q(event=target) | Q(activity_id=target.related_activity_id))
+    else:
+        clash = others.filter(**{kind: target})
+    clash = clash.first()
+    if clash:
+        messages.error(request, f"“{clash.title}” is already on your bucket list. Edit that one, or remove this goal.")
+        return redirect("bucketlists:item_edit", pk=item.pk)
+
+    old_title = item.title
+    with transaction.atomic():
+        if kind == "event" and target.related_activity_id:
+            item.activity_id, item.event = target.related_activity_id, target
+        elif kind != "poi":
+            setattr(item, kind, target)
+        if item.custom_description:
+            item.personal_notes = "\n\n".join(x for x in (item.personal_notes, item.custom_description) if x)
+            item.custom_description = ""
+        if kind != "poi":  # a POI goal keeps its title as the goal's name
+            item.custom_title = ""
+        item.save()
+        if kind == "poi":
+            item.pois.add(target)
+    messages.success(request, f"Linked “{old_title}” to {target.name}.")
+    return redirect("bucketlists:item_edit", pk=item.pk)
 
 
 @login_required
