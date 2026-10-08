@@ -14,7 +14,7 @@
         {% if show_status %}{% include "approval_system/partials/_status.html" with obj=event %}{% endif %}
       </div>
       <h3 class="truncate text-lg font-semibold text-warm-900">{{ event.name }}</h3>
-      <p class="text-sm text-warm-500"><i class="bi bi-geo-alt"></i> {% if event.venue_name %}{{ event.venue_name }}, {% endif %}{{ event.city.name }}, {{ event.city.country.name }}</p>
+      <p class="text-sm text-warm-500"><i class="bi bi-geo-alt"></i> {% if event.venue_name %}{{ event.venue_name }}, {% endif %}{{ event.place_name }}</p>
       {% if event.short_description %}<p class="mt-2 line-clamp-2 text-sm text-warm-600">{{ event.short_description }}</p>{% endif %}
     </div>
   </a>

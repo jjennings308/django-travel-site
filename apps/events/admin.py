@@ -16,7 +16,7 @@ class EventPerformerInline(admin.TabularInline):
 class EventAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     list_display = ['name', 'category', 'city', 'start_date', 'status', 'created_by', 'is_featured']
     list_filter = ['category', 'status', 'is_featured', 'is_verified', 'start_date']
-    search_fields = ['name', 'description', 'city__name', 'venue_name', 'created_by__username']
+    search_fields = ['name', 'description', 'city__name', 'location_text', 'venue_name', 'created_by__username']
     date_hierarchy = 'start_date'
     autocomplete_fields = ['city']
     readonly_fields = ['created_by', 'view_count', 'bucket_list_count', 'attendance_count']
@@ -27,7 +27,8 @@ class EventAdmin(ApprovableAdminMixin, admin.ModelAdmin):
             'fields': ('name', 'category', 'event_type', 'description', 'short_description', 'organizer')
         }),
         ('Location', {
-            'fields': ('city', 'poi', 'venue_name', 'venue_address', 'latitude', 'longitude')
+            'fields': ('city', 'country', 'location_text', 'poi', 'venue_name', 'venue_address', 'latitude', 'longitude'),
+            'description': 'Either a catalogue city, or country + location text when the city is not listed yet.'
         }),
         ('Timing', {
             'fields': ('start_date', 'end_date', 'start_time', 'end_time', 'timezone', 'is_all_day')

@@ -41,7 +41,18 @@
 
     <section class="sbl-card p-6">
       <h2 class="sbl-section-title">Where</h2>
-      {% include "events/partials/_field.html" with field=form.city %}
+      <div x-data="{ unlisted: {% if form.location_text.value %}true{% else %}false{% endif %} }">
+        <div x-show="!unlisted">{% include "events/partials/_field.html" with field=form.city %}</div>
+        <div x-show="unlisted" x-cloak class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+          {% include "events/partials/_field.html" with field=form.country %}
+          {% include "events/partials/_field.html" with field=form.location_text %}
+          {% if form.city.errors %}<p class="sbl-error md:col-span-2 -mt-2 mb-3">{{ form.city.errors|join:" " }}</p>{% endif %}
+        </div>
+        <label class="mb-4 flex items-center gap-2 text-sm text-warm-700">
+          <input type="checkbox" class="sbl-check" x-model="unlisted" @change="if (unlisted) { $root.querySelector('[name=city]').value = '' } else { $root.querySelector('[name=location_text]').value = '' }">
+          City not listed? Enter the country and town instead. We'll add the city.
+        </label>
+      </div>
       <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         {% include "events/partials/_field.html" with field=form.venue_name %}
         {% include "events/partials/_field.html" with field=form.venue_address %}

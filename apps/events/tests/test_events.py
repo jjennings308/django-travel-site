@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
@@ -121,3 +122,82 @@ class SubmitAndEditTests(EventFixture):
 
     def test_add_requires_login(self):
         self.assertEqual(self.client.get(reverse("events:event_add")).status_code, 302)
+
+
+class UnlistedCityTests(EventFixture):
+    def setUp(self):
+        super().setUp()
+        self.austria = Country.objects.create(name="Austria", slug="austria", iso_code="AT", iso3_code="AUT",
+                                              continent="Europe", approval_status=ApprovalStatus.APPROVED)
+
+    def submit_unlisted(self, **over):
+        self.client.force_login(self.alice)
+        data = self.payload(city="", country=self.austria.pk, location_text="Hallstatt")
+        data.update(over)
+        return self.client.post(reverse("events:event_add"), data)
+
+    def test_user_can_submit_with_a_typed_city(self):
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.assertIsNone(event.city)
+        self.assertEqual((event.place_name, event.needs_city_link), ("Hallstatt, Austria", True))
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "Hallstatt, Austria")
+
+    def test_city_or_country_and_town_is_required(self):
+        response = self.submit_unlisted(country="", location_text="")
+        self.assertContains(response, "Choose a city, or tick")
+        response = self.submit_unlisted(location_text="")
+        self.assertContains(response, "Choose a city, or tick")
+        self.assertFalse(Event.objects.exists())
+
+    def test_database_refuses_an_event_without_any_location(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Event.objects.create(name="Nowhere", category=self.music, description="d", start_date=TODAY)
+
+    def test_choosing_a_city_clears_typed_location(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse("events:event_add"), self.payload(country=self.austria.pk, location_text="Hallstatt"))
+        event = Event.objects.get(name="Jazz Night")
+        self.assertEqual((event.city, event.country, event.location_text), (self.city, None, ""))
+
+    def test_staff_link_to_existing_city(self):
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        graz = City.objects.create(name="Graz", slug="graz-at", country=self.austria, latitude=47, longitude=15,
+                                   approval_status=ApprovalStatus.APPROVED)
+        self.client.force_login(self.staff)
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "City not in the catalogue")
+        self.client.post(reverse("events:event_link_city", args=[event.slug]), {"city": graz.pk})
+        event.refresh_from_db()
+        self.assertEqual((event.city, event.country, event.location_text), (graz, None, ""))
+
+    def test_staff_create_city_and_link(self):
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.client.force_login(self.staff)
+        self.client.post(reverse("events:event_link_city", args=[event.slug]),
+                         {"name": "Hallstatt", "latitude": "47.562", "longitude": "13.649"})
+        event.refresh_from_db()
+        self.assertEqual((event.city.name, event.city.country, event.city.approval_status),
+                         ("Hallstatt", self.austria, ApprovalStatus.APPROVED))
+
+    def test_bad_coordinates_create_nothing(self):
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.client.force_login(self.staff)
+        self.client.post(reverse("events:event_link_city", args=[event.slug]), {"name": "Hallstatt", "latitude": "999", "longitude": "x"})
+        self.assertFalse(City.objects.filter(name="Hallstatt").exists())
+
+    def test_only_staff_can_link(self):
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.client.force_login(self.alice)
+        self.client.post(reverse("events:event_link_city", args=[event.slug]), {"name": "X", "latitude": "1", "longitude": "1"})
+        event.refresh_from_db()
+        self.assertIsNone(event.city)
+
+    def test_country_filter_includes_unlinked_events(self):
+        self.submit_unlisted()
+        Event.objects.filter(name="Jazz Night").update(approval_status=ApprovalStatus.APPROVED)
+        response = self.client.get(reverse("events:event_list") + "?country=austria")
+        self.assertContains(response, "Jazz Night")

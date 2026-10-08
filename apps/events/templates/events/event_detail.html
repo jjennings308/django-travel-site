@@ -60,9 +60,9 @@
           <dd class="font-medium text-warm-900">{{ event.start_date|date:"D, M j, Y" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"D, M j, Y" }}{% endif %}</dd>
           <dd class="text-warm-600">{% if event.is_all_day %}All day{% elif event.start_time %}{{ event.start_time|time:"g:i A" }}{% if event.end_time %} – {{ event.end_time|time:"g:i A" }}{% endif %}{% endif %} <span class="text-warm-400">(local time)</span></dd></div>
         <div><dt class="text-xs uppercase tracking-wide text-warm-500">Where</dt>
-          <dd class="font-medium text-warm-900">{{ event.venue_name|default:event.city.name }}</dd>
+          <dd class="font-medium text-warm-900">{{ event.venue_name|default:event.place_name }}</dd>
           {% if event.venue_address %}<dd class="text-warm-600">{{ event.venue_address }}</dd>{% endif %}
-          <dd><a class="sbl-link" href="{% url 'locations:city_detail' event.city.slug %}">{{ event.city.name }}, {{ event.city.country.name }}</a></dd></div>
+          <dd>{% if event.city %}<a class="sbl-link" href="{% url 'locations:city_detail' event.city.slug %}">{{ event.place_name }}</a>{% else %}{{ event.place_name }}{% endif %}</dd></div>
         <div><dt class="text-xs uppercase tracking-wide text-warm-500">Tickets</dt>
           <dd class="text-warm-900">{% if event.is_free %}Free{% elif event.ticket_price_min %}{{ event.currency }} {{ event.ticket_price_min }}{% if event.ticket_price_max and event.ticket_price_max != event.ticket_price_min %} – {{ event.ticket_price_max }}{% endif %}{% else %}See organiser{% endif %}{% if event.sold_out %} · <span class="text-red-700">Sold out</span>{% endif %}</dd>
           {% if event.ticket_url %}<dd class="mt-1"><a class="sbl-btn sbl-btn-primary sbl-btn-sm" href="{{ event.ticket_url }}" target="_blank" rel="noopener noreferrer">Tickets <i class="bi bi-box-arrow-up-right"></i></a></dd>{% endif %}</div>
@@ -72,6 +72,32 @@
         {% if event.website %}<div><dt class="text-xs uppercase tracking-wide text-warm-500">Website</dt><dd><a class="sbl-link break-all" href="{{ event.website }}" target="_blank" rel="noopener noreferrer">{{ event.website }}</a></dd></div>{% endif %}
       </dl>
     </section>
+    {% if user.is_staff and event.needs_city_link %}
+      <section class="sbl-card border-amber-300 p-5" x-data="{ mode: 'pick' }">
+        <h2 class="mb-1 font-bold text-warm-900"><i class="bi bi-geo-alt text-amber-600"></i> City not in the catalogue</h2>
+        <p class="mb-3 text-sm text-warm-600">Submitted as <strong>{{ event.location_text }}</strong>{% if event.country %}, {{ event.country.name }}{% endif %}. Link it to a city (staff only).</p>
+        <div class="mb-3 flex gap-2 text-sm">
+          <button type="button" class="sbl-btn sbl-btn-sm" :class="mode === 'pick' ? 'sbl-btn-primary' : 'sbl-btn-outline'" @click="mode = 'pick'">Existing city</button>
+          <button type="button" class="sbl-btn sbl-btn-sm" :class="mode === 'new' ? 'sbl-btn-primary' : 'sbl-btn-outline'" @click="mode = 'new'">Create city</button>
+        </div>
+        <form method="post" action="{% url 'events:event_link_city' event.slug %}" x-show="mode === 'pick'">{% csrf_token %}
+          {% if city_choices %}
+            <select name="city" class="sbl-input mb-3" required>
+              {% for c in city_choices %}<option value="{{ c.pk }}" {% if c.name|lower == event.location_text|lower %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-sm w-full">Link to this city</button>
+          {% else %}<p class="text-sm text-warm-500">No approved cities in {{ event.country.name|default:"this country" }} yet. Create it instead.</p>{% endif %}
+        </form>
+        <form method="post" action="{% url 'events:event_link_city' event.slug %}" x-show="mode === 'new'" x-cloak class="space-y-2">{% csrf_token %}
+          <input name="name" value="{{ event.location_text }}" class="sbl-input" placeholder="City name" required>
+          <div class="grid grid-cols-2 gap-2">
+            <input name="latitude" class="sbl-input" placeholder="Latitude" inputmode="decimal" required>
+            <input name="longitude" class="sbl-input" placeholder="Longitude" inputmode="decimal" required>
+          </div>
+          <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-sm w-full">Create {{ event.country.name }} city and link</button>
+        </form>
+      </section>
+    {% endif %}
     {% if event.created_by %}<p class="text-xs text-warm-500">Added by @{{ event.created_by.username }}</p>{% endif %}
   </aside>
 </div>

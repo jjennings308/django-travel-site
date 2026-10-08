@@ -2,7 +2,7 @@
 from django import forms
 
 from apps.approval_system.models import ApprovalStatus
-from apps.locations.models import City
+from apps.locations.models import City, Country
 
 from .models import Event, EventCategory
 
@@ -17,7 +17,7 @@ class EventForm(forms.ModelForm):
         model = Event
         fields = [
             "name", "category", "short_description", "description",
-            "city", "venue_name", "venue_address",
+            "city", "country", "location_text", "venue_name", "venue_address",
             "start_date", "end_date", "is_all_day", "start_time", "end_time",
             "event_type", "organizer", "indoor_outdoor", "age_restriction",
             "is_free", "ticket_price_min", "ticket_price_max", "currency", "ticket_url",
@@ -27,6 +27,7 @@ class EventForm(forms.ModelForm):
             "name": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. Riverfront Jazz Festival"}),
             "short_description": forms.TextInput(attrs={**INPUT, "placeholder": "One line for event cards"}),
             "description": forms.Textarea(attrs={**INPUT, "rows": 5}),
+            "location_text": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. Hallstatt"}),
             "venue_name": forms.TextInput(attrs=INPUT),
             "venue_address": forms.TextInput(attrs=INPUT),
             "start_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
@@ -51,6 +52,12 @@ class EventForm(forms.ModelForm):
             .select_related("country").order_by("country__name", "name")
         )
         self.fields["city"].label_from_instance = lambda c: f"{c.name}, {c.country.name}"
+        self.fields["city"].required = False
+        self.fields["city"].empty_label = "Choose a city…"
+        self.fields["country"].queryset = Country.objects.filter(
+            approval_status=ApprovalStatus.APPROVED).order_by("name")
+        self.fields["country"].empty_label = "Choose a country…"
+        self.fields["location_text"].label = "City / town"
         self.fields["category"].queryset = EventCategory.objects.all()
         # These have model defaults but aren't blank=True; don't make users fill them in.
         for name in ("event_type", "age_restriction", "currency"):
@@ -62,6 +69,14 @@ class EventForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Either a catalogue city, or (city not listed) a country plus the town name.
+        if cleaned.get("city"):
+            cleaned["country"], cleaned["location_text"] = None, ""
+        else:
+            text = (cleaned.get("location_text") or "").strip()
+            cleaned["location_text"] = text
+            if not cleaned.get("country") or not text:
+                self.add_error("city", "Choose a city, or tick “City not listed” and enter the country and town.")
         start, end = cleaned.get("start_date"), cleaned.get("end_date")
         if start and end and end < start:
             self.add_error("end_date", "The end date can't be before the start date.")

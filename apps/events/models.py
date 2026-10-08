@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models import Q
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from apps.locations.models import City, POI
+from apps.locations.models import City, Country, POI
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import Approvable, ApprovalStatus
 from django.utils import timezone
@@ -92,7 +92,25 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     city = models.ForeignKey(
         City,
         on_delete=models.CASCADE,
-        related_name='events'
+        null=True,
+        blank=True,
+        related_name='events',
+        help_text="Catalogue city. Leave empty and fill country + location_text if the city isn't listed yet."
+    )
+    # When the city isn't in the catalogue yet: where the submitter says it is.
+    # Staff link it to a City (existing or newly created) from the event page.
+    country = models.ForeignKey(
+        Country,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='events_unlinked',
+        help_text="Country, when the city isn't in the catalogue"
+    )
+    location_text = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="City / town as typed by the submitter, when it isn't in the catalogue"
     )
     poi = models.ForeignKey(
         POI,
@@ -353,10 +371,31 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
             models.Index(fields=['is_featured', '-start_date']),
             models.Index(fields=['status', 'start_date']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(city__isnull=False) | (Q(country__isnull=False) & ~Q(location_text="")),
+                name="event_has_city_or_typed_location",
+            ),
+        ]
     
     def __str__(self):
         return f"{self.name} ({self.start_date})"
     
+    @property
+    def place_country(self):
+        return self.city.country if self.city_id else self.country
+
+    @property
+    def place_name(self):
+        """'City, Country' for display, whether or not the city is in the catalogue."""
+        country = self.place_country
+        town = self.city.name if self.city_id else self.location_text
+        return ", ".join(part for part in (town, country.name if country else "") if part)
+
+    @property
+    def needs_city_link(self):
+        return not self.city_id
+
     def is_visible_to(self, user):
         if user is not None and user.is_authenticated and (user.is_staff or user == self.created_by):
             return True
@@ -410,6 +449,11 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         # Auto-set end_date if not provided
         if not self.end_date:
             self.end_date = self.start_date
+
+        # Once linked to a catalogue city, the typed location is no longer needed.
+        if self.city_id:
+            self.country = None
+            self.location_text = ""
         
         super().save(*args, **kwargs)
 
