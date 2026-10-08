@@ -1,5 +1,6 @@
 # media/models.py
 from django.db import models
+from apps.core.utils.images import convert_heic_uploads
 from apps.core.models import TimeStampedModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -260,6 +261,10 @@ class Media(TimeStampedModel):
         return self.content_object is not None
 
     def save(self, *args, **kwargs):
+        # Convert a HEIC upload first, so size/extension/type describe the stored JPEG
+        # (core's pre_save signal would do it too, but only after these are set).
+        convert_heic_uploads(self)
+
         # Auto-detect file properties
         if self.file:
             self.file_size = self.file.size
