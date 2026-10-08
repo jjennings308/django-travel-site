@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'taggit',
     'crispy_forms',
     'crispy_bootstrap5',
-    'tailwind',
     
     # local apps 
     'apps.core',
@@ -223,4 +222,6 @@ LEGAL = {
     "min_age": os.environ.get("LEGAL_MIN_AGE", "16"),
 }
 
+# The 'theme' app (installed here) ships the built CSS that collectstatic gathers.
+# The 'tailwind' app that can rebuild it is installed only in dev.py.
 TAILWIND_APP_NAME = 'theme'

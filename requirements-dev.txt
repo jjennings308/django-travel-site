@@ -1,0 +1,5 @@
+# Development-only tooling. Production installs requirements.txt alone.
+-r requirements.txt
+django-tailwind==4.4.2
+pytailwindcss==0.3.0
+django-browser-reload==1.21.0

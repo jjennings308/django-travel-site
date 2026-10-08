@@ -1,4 +1,4 @@
-{% load static tailwind_tags %}
+{% load static %}
 
 <!doctype html>
 <html lang="en">
@@ -8,7 +8,8 @@
   <title>{% block title %}ShareBucketList{% endblock %}</title>
 
   {# TAILWIND CSS (replaces Bootstrap) #}
-  {% tailwind_css %}
+  {# Built Tailwind CSS (theme app, gathered by collectstatic). Rebuild in dev with `manage.py tailwind build`; production has no tailwind tooling. #}
+  <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}{% if TAILWIND_CSS_VERSION %}?v={{ TAILWIND_CSS_VERSION }}{% endif %}">
   
   {# Bootstrap Icons - keep these, they're just fonts #}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">

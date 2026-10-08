@@ -35,10 +35,10 @@ The virtualenv is at `.venv/`. `manage.py` uses `config.settings.dev` by default
 
 ```bash
 source .venv/bin/activate
-pip install -r requirements.txt        # requirement.txt (singular) is a fuller pip freeze
+pip install -r requirements-dev.txt    # dev: requirements.txt + django-tailwind, browser-reload
 
 python manage.py runserver
-python manage.py tailwind start         # Tailwind watcher (theme/static_src, npm run dev)
+python manage.py tailwind start         # Tailwind watcher (theme/static_src, npm run dev) — dev settings only
 python manage.py tailwind build         # production CSS -> theme/static/css/dist/styles.css
 python manage.py collectstatic          # -> staticfiles/ (committed to git)
 
@@ -100,7 +100,7 @@ sudo cp deploy/travel_site.service /etc/systemd/system/ && sudo systemctl daemon
 sudo cp deploy/nginx-travel_site.conf /etc/nginx/sites-available/travel_site   # edit server_name/certs, symlink, nginx -t, reload
 ```
 
-The built Tailwind CSS is committed, so the box needs no Node. Verify with
+The built Tailwind CSS is committed and gathered by `collectstatic` from the `theme` app. Production cannot rebuild it: the `tailwind` app is installed only in `dev.py` and `django-tailwind` is only in `requirements-dev.txt`, so `manage.py tailwind …` does not exist there and the box needs no Node. Always run `tailwind build` in dev and commit `theme/static/css/dist/styles.css` with any template or CSS change. Verify with
 `DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py check --deploy` (expect "no issues (2 silenced)").
 
 ## Architecture
@@ -134,7 +134,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - App templates live in `apps/<name>/templates/<name>/` and are still referenced as `"<name>/…html"` (e.g. `trips/trip_detail.html`); the `apps/` directory never appears in a template name.
 - Detail and list views pass `breadcrumb_list` (built with `apps.core.utils.breadcrumbs`); templates fill `{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}`, which `base.html` renders above the messages. Paginated lists use `{% include "partials/_pagination.html" %}` (needs `page_obj`; `{% querystring %}` keeps the filters).
 - **Bootstrap is not loaded.** `base.html` dropped Bootstrap's CSS/JS in `ddd00d7`; any template still using its classes (`row`/`col-*`, `btn`, `card`, `list-group`, `badge bg-*`, `form-control`, `data-bs-*`) renders unstyled. Convert to Tailwind plus the shared `sbl-*` components in `styles.css` (`sbl-card`, `sbl-btn` + `-primary`/`-secondary`/`-accent`/`-danger`/`-outline`, `sbl-input`, `sbl-label`, `sbl-badge-*`, `sbl-alert-*`, `sbl-list`, `sbl-table`, `sbl-page-title`). Interactive bits use Alpine.js (loaded in `base.html`). All live templates are converted (site shell, `pages`, `locations`, `accounts`, `rewards`, `activities`); form widgets set `sbl-input` / `sbl-check` in `forms.py`. The unused Bootstrap-era templates were deleted.
-- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the forms and typography plugins. DaisyUI is in `package.json` but not loaded (no `@plugin`). `@source` globs cover `templates/` and `apps/*/templates/`; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The old hand-written `!important` utility block is gone (it overrode every `hover:`/responsive variant); don't add `!important` utilities back. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` after template or CSS changes.
+- Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the forms and typography plugins. DaisyUI is in `package.json` but not loaded (no `@plugin`). `@source` globs cover `templates/` and `apps/*/templates/`; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The old hand-written `!important` utility block is gone (it overrode every `hover:`/responsive variant); don't add `!important` utilities back. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` (dev only) after template or CSS changes. `base.html` / `base_marketing.html` link it with `{% static 'css/dist/styles.css' %}` (not django-tailwind's `{% tailwind_css %}` tag, so production needs no tailwind app); in DEBUG a `?v=` from the `site_branding` context processor defeats browser caching.
 - **Trips pages are scoped.** Every trips template extends `trips/base_trips.html`, which sets `content_class` = `trips-ui` (and a default `wrap_class` width) on `base.html`'s content area. The itinerary component layer (`.card`, `.btn`, `.badge-*`, `.callout-*`, `.chip`, form controls) and its `@media print` rules are written as `.trips-ui …` in `styles.css`, so they never restyle other apps' templates. Tests assert those class names. Site header, sidebars and footer carry `print:hidden`.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
 - **Legal pages:** `pages:terms`, `pages:privacy`, `pages:safety` (templates in `apps/pages/templates/pages/legal/`, linked from `partials/_footer.html`). Company details come from `settings.LEGAL` (`LEGAL_*` in `.env`); while any is still a `[placeholder]` the pages show a draft banner. The wording is a starting template: when the site starts collecting new kinds of personal data, cookies or third-party services, update `privacy.html` to match, and have the text reviewed before public launch.
