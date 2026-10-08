@@ -9,209 +9,87 @@
 {% endblock %}
 
 {% block content %}
+{# Activity detail. An activity is an undated idea; its location is the free-text suggested_location (activities have no city/region FKs). #}
 <div class="py-6">
-    <!-- Header with Featured Media -->
-    <div class="sbl-card shadow-sm mb-6 overflow-hidden">
-        {% if activity.featured_media %}
-            <div class="relative" style="height: 400px;">
-                {% if activity.featured_media.media_type == 'video' %}
-                    <video src="{{ activity.featured_media.file.url }}" class="w-full h-full" style="object-fit: cover;" controls></video>
-                {% else %}
-                    <img src="{{ activity.featured_media.file.url }}" alt="{{ activity.name }}" class="w-full h-full" style="object-fit: cover;">
-                {% endif %}
-                <div class="absolute bottom-0 left-0 right-0 p-6" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
-                    <div class="flex items-center">
-                        <span style="font-size: 4rem;">{{ activity.flag_emoji|default:"🌍" }}</span>
-                        <div class="ml-4">
-                            <h1 class="text-5xl font-bold text-white mb-0">{{ activity.name }}</h1>
-                            <p class="text-xl font-semibold text-white/70 mb-0">{{ activity.continent }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div class="bg-earth-clay flex items-center justify-center relative" style="height: 400px;">
-                <div class="text-center">
-                    <span style="font-size: 8rem;">{{ activity.flag_emoji|default:"🌍" }}</span>
-                    <h1 class="text-5xl font-bold text-white mt-4">{{ activity.name }}</h1>
-                    <p class="text-xl font-semibold text-white/70">{{ activity.continent }}</p>
-                </div>
+    <header class="sbl-card mb-6 overflow-hidden">
+        <div class="bg-earth-clay px-6 py-10 text-white">
+            <p class="mb-2 text-sm font-medium uppercase tracking-wide text-white/80">
+                {% if activity.category.icon %}{% if 'bi-' in activity.category.icon %}<i class="bi {{ activity.category.icon }}"></i>{% else %}{{ activity.category.icon }}{% endif %} {% endif %}{{ activity.category.name }}
+            </p>
+            <h1 class="text-4xl font-bold md:text-5xl">{{ activity.name }}</h1>
+            {% if activity.suggested_location or activity.suggested_timeframe %}
+                <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-lg text-white/90">
+                    {% if activity.suggested_location %}<span><i class="bi bi-geo-alt"></i> {{ activity.suggested_location }}</span>{% endif %}
+                    {% if activity.suggested_timeframe %}<span><i class="bi bi-calendar3"></i> {{ activity.suggested_timeframe }}</span>{% endif %}
+                </p>
+            {% endif %}
+        </div>
+        {% if activity.approval_status != 'approved' or activity.visibility != 'public' %}
+            <div class="flex flex-wrap gap-2 px-6 py-3">
+                <span class="sbl-badge {% if activity.approval_status == 'pending' %}sbl-badge-warning{% elif activity.approval_status == 'rejected' %}sbl-badge-danger{% else %}sbl-badge-neutral{% endif %}">{{ activity.get_approval_status_display }}</span>
+                <span class="sbl-badge sbl-badge-neutral">{{ activity.get_visibility_display }}</span>
             </div>
         {% endif %}
-        
-        <!-- Status Badge -->
-        <span class="sbl-badge absolute top-0 right-0 m-4 text-base {% if activity.approval_status == 'approved' %} sbl-badge-success {% elif activity.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif activity.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
-            {{ activity.get_approval_status_display }}
-        </span>
-    </div>
+    </header>
 
-    <div class="grid grid-cols-12 gap-6">
-        <!-- Main Content -->
-        <div class="col-span-12 lg:col-span-8">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
             {% if activity.description %}
-                <div class="sbl-card shadow-sm mb-6">
-                    <div class="p-5">
-                        <h3 class="text-xl font-semibold font-bold mb-4">About</h3>
-                        <p class="text-lg text-warm-700">{{ activity.description }}</p>
-                    </div>
-                </div>
+                <section class="sbl-card p-5">
+                    <h2 class="mb-3 text-xl font-semibold text-warm-900">About</h2>
+                    <p class="whitespace-pre-line text-lg text-warm-700">{{ activity.description }}</p>
+                </section>
             {% endif %}
 
-            {% if activity.travel_tips %}
-                <div class="sbl-card shadow-sm mb-6">
-                    <div class="p-5">
-                        <h3 class="text-xl font-semibold font-bold mb-4">Travel Tips</h3>
-                        <p>{{ activity.travel_tips }}</p>
+            <section class="sbl-card p-5">
+                <h2 class="mb-4 text-xl font-semibold text-warm-900">Details</h2>
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                    {% if activity.skill_level %}<div><dt class="text-sm text-warm-500">Skill level</dt><dd>{{ activity.get_skill_level_display }}</dd></div>{% endif %}
+                    {% if activity.fitness_required %}<div><dt class="text-sm text-warm-500">Fitness needed</dt><dd>{{ activity.fitness_required }} / 5</dd></div>{% endif %}
+                    {% if activity.age_minimum or activity.age_maximum %}<div><dt class="text-sm text-warm-500">Ages</dt><dd>{% if activity.age_minimum and activity.age_maximum %}{{ activity.age_minimum }}–{{ activity.age_maximum }}{% elif activity.age_minimum %}{{ activity.age_minimum }}+{% else %}Up to {{ activity.age_maximum }}{% endif %}</dd></div>{% endif %}
+                    {% if activity.typical_duration or activity.duration_category %}<div><dt class="text-sm text-warm-500">Duration</dt><dd>{% if activity.duration_category %}{{ activity.get_duration_category_display }}{% endif %}{% if activity.typical_duration %}{% if activity.duration_category %} · {% endif %}about {% if activity.typical_duration >= 60 %}{% widthratio activity.typical_duration 60 1 %} h{% else %}{{ activity.typical_duration }} min{% endif %}{% endif %}</dd></div>{% endif %}
+                    {% if activity.cost_level or activity.estimated_cost_min or activity.estimated_cost_max %}<div><dt class="text-sm text-warm-500">Cost</dt><dd>{% if activity.cost_level %}{{ activity.get_cost_level_display }}{% endif %}{% if activity.estimated_cost_min or activity.estimated_cost_max %}{% if activity.cost_level %} · {% endif %}{{ activity.estimated_cost_min|default:"?" }}–{{ activity.estimated_cost_max|default:"?" }}{% endif %}</dd></div>{% endif %}
+                    {% if activity.best_for %}<div><dt class="text-sm text-warm-500">Best for</dt><dd>{{ activity.get_best_for_display }}</dd></div>{% endif %}
+                    {% if activity.best_season %}<div><dt class="text-sm text-warm-500">Best season</dt><dd class="capitalize">{{ activity.best_season|join:", " }}</dd></div>{% endif %}
+                    {% if activity.indoor_outdoor %}<div><dt class="text-sm text-warm-500">Setting</dt><dd>{{ activity.get_indoor_outdoor_display }}</dd></div>{% endif %}
+                    {% if activity.risk_level %}<div><dt class="text-sm text-warm-500">Risk</dt><dd>{{ activity.get_risk_level_display }}</dd></div>{% endif %}
+                </dl>
+                {% if activity.booking_required or activity.guide_required or activity.wheelchair_accessible or activity.suitable_for_children %}
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        {% if activity.booking_required %}<span class="sbl-badge sbl-badge-info"><i class="bi bi-ticket-perforated"></i> Booking required</span>{% endif %}
+                        {% if activity.guide_required %}<span class="sbl-badge sbl-badge-info"><i class="bi bi-person-badge"></i> Guide required</span>{% endif %}
+                        {% if activity.wheelchair_accessible %}<span class="sbl-badge sbl-badge-success"><i class="bi bi-universal-access"></i> Wheelchair accessible</span>{% endif %}
+                        {% if activity.suitable_for_children %}<span class="sbl-badge sbl-badge-success"><i class="bi bi-people"></i> Good for children</span>{% endif %}
                     </div>
-                </div>
-            {% endif %}
+                {% endif %}
+                {% if activity.equipment_needed %}<h3 class="mt-5 font-semibold text-warm-900">Equipment</h3><p class="whitespace-pre-line text-warm-700">{{ activity.equipment_needed }}</p>{% endif %}
+                {% if activity.safety_notes %}<h3 class="mt-5 font-semibold text-warm-900">Safety</h3><p class="whitespace-pre-line text-warm-700">{{ activity.safety_notes }}</p>{% endif %}
+            </section>
 
-            {% if activity.visa_info %}
-                <div class="sbl-card shadow-sm mb-6">
-                    <div class="p-5">
-                        <h3 class="text-xl font-semibold font-bold mb-4">Visa Information</h3>
-                        <div class="flex">
-                            <i class="bi bi-info-circle text-earth-clay text-xl mr-4"></i>
-                            <div>
-                                <p class="font-semibold mb-2">Visa Required: {{ activity.visa_required|yesno:"Yes,No" }}</p>
-                                <p class="mb-0">{{ activity.visa_info }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
-
-            <!-- Major Cities -->
-            <div class="sbl-card shadow-sm mb-6">
-                <div class="p-5">
-                    <h3 class="text-xl font-semibold font-bold mb-4">Major Cities</h3>
-                    {% if cities %}
-                        <div class="grid grid-cols-12 gap-4">
-                            {% for city in cities %}
-                                <div class="col-span-12 md:col-span-6">
-                                    <a href="{% url 'locations:city_detail' city.slug %}" class="no-underline">
-                                        <div class="flex items-center p-4 bg-warm-50 rounded-lg hover:bg-warm-50">
-                                            {% if city.featured_media %}
-                                                <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="rounded-lg mr-4" style="width: 64px; height: 64px; object-fit: cover;">
-                                            {% else %}
-                                                <div class="bg-sky-500/25 rounded-lg flex items-center justify-center mr-4" style="width: 64px; height: 64px;">
-                                                    <i class="bi bi-buildings text-sky-700 text-2xl"></i>
-                                                </div>
-                                            {% endif %}
-                                            <div class="grow">
-                                                <h5 class="mb-1 text-warm-900">{{ city.name }}</h5>
-                                                {% if city.population %}
-                                                    <p class="mb-0 text-sm text-warm-500">Population: {{ city.population|intcomma }}</p>
-                                                {% endif %}
-                                            </div>
-                                            {% if city.is_capital %}
-                                                <span class="sbl-badge sbl-badge-warning text-warm-900">Capital</span>
-                                            {% endif %}
-                                        </div>
-                                    </a>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-warm-500">No cities added yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Featured POIs -->
-            <div class="sbl-card shadow-sm">
-                <div class="p-5">
-                    <h3 class="text-xl font-semibold font-bold mb-4">Top Attractions</h3>
-                    {% if featured_pois %}
-                        <div class="grid grid-cols-12 gap-4">
-                            {% for poi in featured_pois %}
-                                <div class="col-span-12 md:col-span-6">
-                                    <a href="{% url 'locations:poi_detail' poi.slug %}" class="no-underline">
-                                        <div class="sbl-card border-0 bg-warm-50 h-full transition hover:shadow-md">
-                                            {% if poi.featured_media %}
-                                                <div style="height: 160px; overflow: hidden;">
-                                                    <img src="{{ poi.featured_media.file.url }}" alt="{{ poi.name }}" class="w-full rounded-t-xl h-full" style="object-fit: cover;">
-                                                </div>
-                                            {% endif %}
-                                            <div class="p-5">
-                                                <h6 class="font-semibold text-warm-900 mb-1">{{ poi.name }}</h6>
-                                                <p class="text-warm-500 text-sm mb-0">{{ poi.city.name }}</p>
-                                                <p class="text-warm-500 text-sm mb-0">{{ poi.get_poi_type_display }}</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-warm-500">No attractions added yet.</p>
-                    {% endif %}
-                </div>
-            </div>
+            {% with tags=activity.tags.all %}{% if tags %}
+                <section class="sbl-card p-5">
+                    <h2 class="mb-3 text-xl font-semibold text-warm-900">Tags</h2>
+                    <div class="flex flex-wrap gap-2">{% for tag in tags %}<span class="sbl-badge sbl-badge-neutral">{{ tag.name }}</span>{% endfor %}</div>
+                </section>
+            {% endif %}{% endwith %}
         </div>
 
-        <!-- Sidebar -->
-        <div class="col-span-12 lg:col-span-4">
-            <!-- Quick Info -->
-            <div class="sbl-card shadow-sm mb-6">
-                <div class="p-5">
-                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Quick Info</h5>
-                    <dl class="mb-0">
-                        <div class="mb-4">
-                            <dt class="text-warm-500 text-sm mb-1">ISO Codes</dt>
-                            <dd class="text-lg font-semibold mb-0">{{ activity.iso_code }} / {{ activity.iso3_code }}</dd>
-                        </div>
-                        
-                        {% if activity.currency_code %}
-                            <div class="mb-4">
-                                <dt class="text-warm-500 text-sm mb-1">Currency</dt>
-                                <dd class="text-lg font-semibold mb-0">{{ activity.currency_name }} ({{ activity.currency_code }})</dd>
-                            </div>
-                        {% endif %}
-                        
-                        {% if activity.phone_code %}
-                            <div class="mb-4">
-                                <dt class="text-warm-500 text-sm mb-1">Phone Code</dt>
-                                <dd class="text-lg font-semibold mb-0">{{ activity.phone_code }}</dd>
-                            </div>
-                        {% endif %}
-                        
-                        {% if activity.latitude and activity.longitude %}
-                            <div class="mb-0">
-                                <dt class="text-warm-500 text-sm mb-1">Coordinates</dt>
-                                <dd class="text-sm mb-0">{{ activity.latitude }}, {{ activity.longitude }}</dd>
-                            </div>
-                        {% endif %}
-                    </dl>
-                </div>
-            </div>
+        <aside class="space-y-6">
+            <section class="sbl-card p-5">
+                <h2 class="mb-4 font-bold text-warm-900">Quick Info</h2>
+                <dl class="space-y-4">
+                    <div><dt class="text-sm text-warm-500">Category</dt><dd>{{ activity.category.name }}</dd></div>
+                    <div><dt class="text-sm text-warm-500">Where</dt><dd>{{ activity.suggested_location|default:"Anywhere" }}</dd></div>
+                    {% if activity.suggested_timeframe or activity.suggested_date_range_start %}
+                        <div><dt class="text-sm text-warm-500">When</dt><dd>{% if activity.suggested_timeframe %}{{ activity.suggested_timeframe }}{% endif %}{% if activity.suggested_date_range_start %}{% if activity.suggested_timeframe %}<br>{% endif %}{{ activity.suggested_date_range_start|date:"M j, Y" }}{% if activity.suggested_date_range_end %} – {{ activity.suggested_date_range_end|date:"M j, Y" }}{% endif %}{% endif %}</dd></div>
+                    {% endif %}
+                    <div><dt class="text-sm text-warm-500">On bucket lists</dt><dd>{{ activity.bucket_list_count }}</dd></div>
+                    {% if activity.created_by %}<div><dt class="text-sm text-warm-500">Added by</dt><dd>@{{ activity.created_by.username }}</dd></div>{% endif %}
+                </dl>
+            </section>
 
-            <!-- Stats -->
-            <div class="sbl-card shadow-sm mb-6">
-                <div class="p-5">
-                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
-                    <div class="flex justify-between mb-4">
-                        <span class="text-warm-500">Regions</span>
-                        <span class="text-lg font-semibold mb-0">{{ regions.count }}</span>
-                    </div>
-                    <div class="flex justify-between mb-4">
-                        <span class="text-warm-500">Cities</span>
-                        <span class="text-lg font-semibold mb-0">{{ activity.city_count }}</span>
-                    </div>
-                    <div class="flex justify-between mb-4">
-                        <span class="text-warm-500">POIs</span>
-                        <span class="text-lg font-semibold mb-0">{{ activity.poi_count }}</span>
-                    </div>
-                    <div class="flex justify-between mb-0">
-                        <span class="text-warm-500">Visitors</span>
-                        <span class="text-lg font-semibold mb-0">{{ activity.visitor_count }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actions -->
             {% if user.is_authenticated %}
-                <div class="sbl-card p-5">
+                <section class="sbl-card p-5">
                     <h2 class="mb-4 font-bold text-warm-900">Actions</h2>
                     <div class="grid gap-2">
                         {% include "partials/_bucket_add_button.html" with kind="activity" obj=activity button_class="w-full" %}
@@ -235,9 +113,9 @@
                             <a href="{% url 'activities:activity_delete' activity.slug %}" class="sbl-btn sbl-btn-outline-danger w-full"><i class="bi bi-trash"></i>Delete</a>
                         {% endif %}
                     </div>
-                </div>
+                </section>
             {% endif %}
-        </div>
+        </aside>
     </div>
 </div>
 

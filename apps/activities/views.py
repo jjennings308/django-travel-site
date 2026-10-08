@@ -1,4 +1,5 @@
 # activities/views.py
+from apps.core.utils.breadcrumbs import build_breadcrumbs
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -86,6 +87,7 @@ def activity_detail(request, slug):
         'is_bookmarked': is_bookmarked,
         'can_edit': activity.can_edit(request.user),
         'can_delete': activity.can_delete(request.user),
+        'breadcrumb_list': build_breadcrumbs([('Activities', 'activities:activity_list'), (activity.name, None)]),
     }
     
     return render(request, 'activities/activity_detail.html', context)
