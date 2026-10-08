@@ -1,0 +1,4 @@
+{# templates/partials/_bucket_add_button.html — "Add to bucket list" for an activity/city/poi/event page. Pass kind= and obj=. Renders nothing for anonymous users or if the bucketlists app isn't installed (the `as` form of url swallows NoReverseMatch), so catalogue apps don't depend on bucketlists. #}
+{% if user.is_authenticated %}{% url 'bucketlists:quick_add' kind obj.pk as add_url %}{% if add_url %}
+<form method="post" action="{{ add_url }}" class="{{ form_class|default:'' }}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-accent {{ button_class|default:'' }}"><i class="bi bi-check2-square"></i>Add to bucket list</button></form>
+{% endif %}{% endif %}

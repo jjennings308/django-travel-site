@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Remove {{ item.title }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl sbl-card p-6 text-center">
+  <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-red-100 text-2xl text-red-700"><i class="bi bi-trash"></i></div>
+  <h1 class="mb-2 text-2xl font-bold text-warm-900">Remove from your bucket list?</h1>
+  <p class="mb-6 text-lg font-semibold text-warm-800">“{{ item.title }}”</p>
+  <p class="mb-6 text-sm text-warm-600">Tip: setting the status to “Abandoned” hides it but keeps your notes.</p>
+  <form method="post" class="flex justify-center gap-2">{% csrf_token %}<a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-btn sbl-btn-outline">Cancel</a><button type="submit" class="sbl-btn sbl-btn-danger">Remove</button></form>
+</div>
+{% endblock %}

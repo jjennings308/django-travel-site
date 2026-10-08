@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Done: {{ item.title }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl">
+  <div class="sbl-card p-6">
+    <div class="mb-4 text-center">
+      <div class="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700"><i class="bi bi-trophy"></i></div>
+      <h1 class="text-2xl font-bold text-warm-900">Tick it off</h1>
+      <p class="text-lg font-semibold text-warm-800">“{{ item.title }}”</p>
+    </div>
+    <form method="post">{% csrf_token %}
+      {% include "events/partials/_field.html" with field=form.completed_date %}
+      {% include "events/partials/_field.html" with field=form.user_rating %}
+      {% include "events/partials/_field.html" with field=form.completion_notes %}
+      <div class="flex justify-end gap-2"><a href="{% url 'bucketlists:dashboard' %}" class="sbl-btn sbl-btn-outline">Cancel</a><button type="submit" class="sbl-btn sbl-btn-secondary"><i class="bi bi-check-lg"></i>Mark as done</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

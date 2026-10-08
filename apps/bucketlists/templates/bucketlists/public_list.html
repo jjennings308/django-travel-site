@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ owner.get_full_name|default:owner.username }}'s bucket list{% endblock %}
+{% block content %}
+<header class="mb-6">
+  <h1 class="sbl-page-title">{{ owner.get_full_name|default:owner.username }}'s bucket list</h1>
+  <p class="sbl-page-subtitle">{{ done|length }} done · {{ todo|length }} still to go</p>
+  {% if is_owner %}<div class="sbl-alert sbl-alert-info mt-4">This is your public page. It shows items marked “Show on my public bucket list”{% if owner.profile_visibility != 'public' %}, but <strong>only you can see it</strong> because your profile visibility isn't Public{% endif %}. <a class="sbl-link" href="{% url 'bucketlists:dashboard' %}">Back to my list</a></div>{% endif %}
+</header>
+{% if todo %}<h2 class="sbl-section-title">Still to do</h2><div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{% for item in todo %}{% include "bucketlists/partials/_item_card.html" %}{% endfor %}</div>{% endif %}
+{% if done %}<h2 class="sbl-section-title">Done</h2><div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{% for item in done %}{% include "bucketlists/partials/_item_card.html" %}{% endfor %}</div>{% endif %}
+{% if not todo and not done %}<div class="sbl-card p-10 text-center text-warm-500">Nothing shared yet.</div>{% endif %}
+{% endblock %}

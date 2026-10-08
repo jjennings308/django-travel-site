@@ -1,12 +1,18 @@
-# ============================================
 # bucketlists/urls.py
-# ============================================
 from django.urls import path
+
 from . import views
 
-app_name = 'bucketlists'
+app_name = "bucketlists"
 
 urlpatterns = [
-    # Dashboard
-    path('', views.dashboard, name='dashboard'),
+    path("", views.dashboard, name="dashboard"),
+    path("add/", views.item_add, name="item_add"),
+    path("add/<str:kind>/<int:pk>/", views.quick_add, name="quick_add"),
+    path("<int:pk>/edit/", views.item_edit, name="item_edit"),
+    path("<int:pk>/complete/", views.item_complete, name="item_complete"),
+    path("<int:pk>/delete/", views.item_delete, name="item_delete"),
+    path("categories/", views.categories, name="categories"),
+    path("categories/<int:pk>/", views.category_edit, name="category_edit"),
+    path("u/<str:username>/", views.public_list, name="public_list"),
 ]

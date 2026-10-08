@@ -3,7 +3,7 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 from django.conf import settings
 from apps.activities.models import Activity
-from apps.locations.models import City  # CORRECTED: Use City instead of Location
+from apps.locations.models import City, POI
 from apps.events.models import Event
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -43,6 +43,22 @@ class BucketListItem(TimeStampedModel):
         blank=True,
         related_name='bucket_list_items',
         help_text="Event to attend"
+    )
+
+    poi = models.ForeignKey(
+        POI,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='bucket_list_items',
+        help_text="Place / point of interest to visit"
+    )
+
+    categories = models.ManyToManyField(
+        'BucketListCategory',
+        through='BucketListItemCategory',
+        related_name='items',
+        blank=True,
     )
     
     # Custom items (when user creates their own, not from catalog)
@@ -141,8 +157,8 @@ class BucketListItem(TimeStampedModel):
     
     # Sharing
     is_public = models.BooleanField(
-        default=True,
-        help_text="Whether this item is visible to others"
+        default=False,
+        help_text="Show on your public bucket list page"
     )
     
     # Travel companions
@@ -200,6 +216,8 @@ class BucketListItem(TimeStampedModel):
             return f"{self.user.username}'s: {self.city.name}"
         elif self.event:
             return f"{self.user.username}'s: {self.event.name}"
+        elif self.poi:
+            return f"{self.user.username}'s: {self.poi.name}"
         return f"{self.user.username}'s bucket list item"
     
     @property
@@ -213,7 +231,32 @@ class BucketListItem(TimeStampedModel):
             return self.city.name
         elif self.event:
             return self.event.name
+        elif self.poi:
+            return self.poi.name
         return "Untitled Item"
+
+    # The catalogue object this item points at (None for custom items).
+    TARGET_KINDS = ("activity", "city", "poi", "event")
+
+    @property
+    def kind(self):
+        for kind in self.TARGET_KINDS:
+            if getattr(self, f"{kind}_id"):
+                return kind
+        return "custom"
+
+    @property
+    def target(self):
+        return getattr(self, self.kind) if self.kind != "custom" else None
+
+    @property
+    def target_url(self):
+        """Detail page of the linked activity / city / POI / event, if any."""
+        from django.urls import reverse
+        names = {"activity": "activities:activity_detail", "city": "locations:city_detail",
+                 "poi": "locations:poi_detail", "event": "events:event_detail"}
+        target = self.target
+        return reverse(names[self.kind], args=[target.slug]) if target is not None else None
     
     @property
     def is_completed(self):
@@ -237,15 +280,16 @@ class BucketListItem(TimeStampedModel):
         
         references = sum([
             bool(self.activity),
-            bool(self.city),  # CORRECTED
+            bool(self.city),
             bool(self.event),
+            bool(self.poi),
             bool(self.custom_title)
         ])
         
         if references == 0:
-            raise ValidationError('Must specify activity, city, event, or custom title')
+            raise ValidationError('Must specify activity, city, place, event, or custom title')
         elif references > 1:
-            raise ValidationError('Can only specify one of: activity, city, event, or custom title')
+            raise ValidationError('Can only specify one of: activity, city, place, event, or custom title')
 
 
 class BucketListCategory(TimeStampedModel):

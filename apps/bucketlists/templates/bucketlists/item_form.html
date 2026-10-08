@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">{{ title }}</h1>
+    {% if target %}<p class="sbl-page-subtitle">{% if kind == 'activity' %}Activity{% elif kind == 'city' %}City{% elif kind == 'poi' %}Place{% else %}Event{% endif %}: <a class="sbl-link" href="{% if item %}{{ item.target_url }}{% elif kind == 'activity' %}{% url 'activities:activity_detail' target.slug %}{% elif kind == 'city' %}{% url 'locations:city_detail' target.slug %}{% elif kind == 'poi' %}{% url 'locations:poi_detail' target.slug %}{% else %}{% url 'events:event_detail' target.slug %}{% endif %}">{{ target }}</a></p>{% endif %}
+  </header>
+  <form method="post" class="sbl-card space-y-1 p-6">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    {% if form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_title %}{% include "events/partials/_field.html" with field=form.custom_description %}{% endif %}
+    <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+      {% include "events/partials/_field.html" with field=form.status %}
+      {% include "events/partials/_field.html" with field=form.priority %}
+      {% include "events/partials/_field.html" with field=form.target_date %}
+      {% include "events/partials/_field.html" with field=form.target_season %}
+      {% include "events/partials/_field.html" with field=form.estimated_budget %}
+      {% include "events/partials/_field.html" with field=form.budget_currency %}
+      {% include "events/partials/_field.html" with field=form.with_who %}
+      {% include "events/partials/_field.html" with field=form.inspiration_source %}
+    </div>
+    {% include "events/partials/_field.html" with field=form.personal_notes %}
+    <div class="mb-4">
+      <p class="sbl-label">Categories</p>
+      {% if form.categories.field.queryset %}
+        <div class="flex flex-wrap gap-x-5 gap-y-2">{% for cb in form.categories %}<label class="flex items-center gap-2 text-sm text-warm-700">{{ cb.tag }} {{ cb.choice_label }}</label>{% endfor %}</div>
+      {% else %}<p class="text-sm text-warm-500">No categories yet. <a class="sbl-link" href="{% url 'bucketlists:categories' %}">Create some</a> to group your goals.</p>{% endif %}
+    </div>
+    <label class="flex items-center gap-2 text-sm text-warm-700">{{ form.is_public }} {{ form.is_public.label }}</label>
+    <p class="sbl-help mb-4">Your public page is only visible if your profile visibility is set to Public.</p>
+    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-warm-200 pt-5">
+      {% if item %}<a href="{% url 'bucketlists:item_delete' item.pk %}" class="sbl-btn sbl-btn-outline-danger"><i class="bi bi-trash"></i>Remove</a>{% else %}<span></span>{% endif %}
+      <div class="flex gap-2">
+        <a href="{% url 'bucketlists:dashboard' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+        <button type="submit" class="sbl-btn sbl-btn-primary">{% if item %}Save{% else %}Add to bucket list{% endif %}</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

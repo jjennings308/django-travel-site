@@ -51,7 +51,7 @@ class BucketListItemAdmin(admin.ModelAdmin):
         'event__name'
     ]
     autocomplete_fields = ['user', 'activity', 'event']  # REMOVED 'city'
-    raw_id_fields = ['city']  # ADDED: Use raw_id instead
+    raw_id_fields = ['city', 'poi']
     inlines = [BucketListItemCategoryInline]
     
     fieldsets = (
@@ -62,6 +62,7 @@ class BucketListItemAdmin(admin.ModelAdmin):
             'fields': (
                 'activity',
                 'city',
+                'poi',
                 'event',
                 'custom_title',
                 'custom_description'
@@ -233,7 +234,7 @@ class BucketListItemAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        queryset = queryset.select_related('user', 'activity', 'city', 'event')
+        queryset = queryset.select_related('user', 'activity', 'city', 'poi', 'event')
         return queryset
 
 

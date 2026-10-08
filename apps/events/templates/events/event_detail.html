@@ -22,6 +22,7 @@
     {% if event.short_description %}<p class="sbl-page-subtitle">{{ event.short_description }}</p>{% endif %}
   </div>
   <div class="flex flex-wrap gap-2">
+    {% if event.approval_status == 'approved' %}{% include "partials/_bucket_add_button.html" with kind="event" obj=event %}{% endif %}
     {% if can_edit %}<a href="{% url 'events:event_edit' event.slug %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-pencil"></i>Edit</a>{% endif %}
     {% if can_delete %}<a href="{% url 'events:event_delete' event.slug %}" class="sbl-btn sbl-btn-outline-danger"><i class="bi bi-trash"></i>Delete</a>{% endif %}
   </div>
