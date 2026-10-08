@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% comment %}
+Shared layout for the Terms, Privacy and Safety pages. Child templates fill {% block legal_body %}. Wording is a starting template, not legal advice: have it reviewed before public launch. Details come from settings.LEGAL (set in .env).
+{% endcomment %}
+
+{% block title %}{{ page_title }} · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-3xl">
+  {% if legal.is_draft %}
+    <div class="sbl-alert sbl-alert-warning mb-6">
+      <span class="font-semibold">Draft.</span> This page is a template. Fill in the LEGAL_* settings in <code>.env</code> and have the wording reviewed before launch.
+    </div>
+  {% endif %}
+
+  <nav class="mb-6 flex flex-wrap gap-2 text-sm print:hidden" aria-label="Policies">
+    {% url 'pages:terms' as terms_url %}{% url 'pages:privacy' as privacy_url %}{% url 'pages:safety' as safety_url %}
+    <a href="{{ terms_url }}" class="sbl-btn sbl-btn-sm {% if request.path == terms_url %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}">Terms</a>
+    <a href="{{ privacy_url }}" class="sbl-btn sbl-btn-sm {% if request.path == privacy_url %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}">Privacy</a>
+    <a href="{{ safety_url }}" class="sbl-btn sbl-btn-sm {% if request.path == safety_url %}sbl-btn-primary{% else %}sbl-btn-outline{% endif %}">Safety</a>
+  </nav>
+
+  <header class="mb-8">
+    <h1 class="sbl-page-title">{{ page_title }}</h1>
+    <p class="sbl-page-subtitle">Effective {{ legal.effective_date }}</p>
+  </header>
+
+  <div class="sbl-card p-6 leading-relaxed text-warm-800 md:p-8 [&_a]:text-earth-clay [&_a]:underline [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-warm-900 [&_h2:first-child]:mt-0 [&_li]:mb-1 [&_p]:mb-4 [&_strong]:text-warm-900 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6">
+    {% block legal_body %}{% endblock %}
+  </div>
+
+  <p class="mt-6 text-sm text-warm-500">Questions about this page? Contact {{ legal.entity }} at <a class="sbl-link" href="mailto:{{ legal.contact_email }}">{{ legal.contact_email }}</a>.</p>
+</article>
+{% endblock %}

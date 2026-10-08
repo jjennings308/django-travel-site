@@ -1,0 +1,68 @@
+{% extends "pages/legal/_legal_base.html" %}
+{% block legal_body %}
+<h2>1. Who we are</h2>
+<p>{{ SITE_NAME }} is operated by {{ legal.entity }} ("we", "us"), which is responsible for the personal information described here. Contact: <a href="mailto:{{ legal.contact_email }}">{{ legal.contact_email }}</a>, {{ legal.postal_address }}.</p>
+
+<h2>2. Information we collect</h2>
+<p><strong>Information you give us</strong></p>
+<ul>
+  <li><strong>Account:</strong> username, email address, name and password (stored only as a secure hash); optionally date of birth and phone number.</li>
+  <li><strong>Profile and preferences:</strong> profile details you choose to add, home location, travel preferences, and settings such as units, currency, language, time zone and theme.</li>
+  <li><strong>Trips and plans:</strong> itineraries, days, lodging, transport, meals, booking tasks, confirmation numbers, contacts, notes and comments, and the people you list as travelers.</li>
+  <li><strong>Traveler profiles:</strong> if you add them, travel documents and memberships such as passport number and expiry, trusted-traveler numbers, and loyalty-program numbers. These are visible only to you and to our authorised staff.</li>
+  <li><strong>Content:</strong> bucket-list items, activities, location submissions, reviews, photos and other uploads.</li>
+  <li><strong>Role requests:</strong> business details and any documents you submit when applying for a vendor or content-provider role.</li>
+  <li><strong>Messages</strong> you send us.</li>
+</ul>
+<p><strong>Information collected automatically</strong></p>
+<ul>
+  <li><strong>Technical data:</strong> IP address, browser and device type, pages requested and timestamps, recorded in server logs for security and troubleshooting.</li>
+  <li><strong>Cookies:</strong> see section 6.</li>
+</ul>
+
+<h2>3. How we use it</h2>
+<ul>
+  <li>To provide the Service: your account, your trips and lists, and sharing with the people you choose.</li>
+  <li>To send service emails such as account verification, password resets and important notices.</li>
+  <li>To review content submitted for public display and to keep the Service safe, including preventing fraud and abuse.</li>
+  <li>To maintain, secure and improve the Service.</li>
+  <li>To meet legal obligations.</li>
+</ul>
+<p>Where the law requires a legal basis, we rely on performing our contract with you, our legitimate interests in running a safe and useful service, your consent (which you can withdraw), and legal obligations.</p>
+
+<h2>4. Who can see your information</h2>
+<ul>
+  <li><strong>People you share with:</strong> trips are private unless you give someone access. People you grant access to can see the trip at the level you allow.</li>
+  <li><strong>Public links:</strong> if a public link is created for a trip, anyone with the link can see a limited summary (destination, dates and an outline). Detailed sections, lodging, transport, confirmation numbers and traveler names are not included.</li>
+  <li><strong>Other users:</strong> content you submit for public display, such as activities, locations or reviews, may show your username once approved.</li>
+  <li><strong>Our staff,</strong> where needed to operate, support and moderate the Service.</li>
+</ul>
+
+<h2>5. Service providers</h2>
+<p>We do not sell your personal information. We use service providers who process data on our behalf, including our hosting provider, our email delivery provider, and content-delivery networks that serve icons and scripts to your browser (which can see your IP address when your browser fetches those files). Some pages display images from third-party image hosts. Providers may be located in other countries; where required we use appropriate safeguards for those transfers.</p>
+<p>We may disclose information if required by law, to protect the rights and safety of our users or others, or as part of a business transfer such as a merger, in which case this policy will continue to apply.</p>
+
+<h2>6. Cookies</h2>
+<p>We use only the cookies the Service needs:</p>
+<ul>
+  <li><strong>sessionid:</strong> keeps you signed in.</li>
+  <li><strong>csrftoken:</strong> protects forms against cross-site request forgery.</li>
+  <li><strong>ui_theme:</strong> remembers your display theme.</li>
+</ul>
+<p>We do not use advertising or cross-site tracking cookies.</p>
+
+<h2>7. How long we keep it</h2>
+<p>We keep your information while your account is active. If you delete your account we delete or anonymise your personal information within a reasonable period, except where we must keep it for legal, security or dispute-resolution reasons, or where content has been shared with others. Server logs are kept for a limited period.</p>
+
+<h2>8. Security</h2>
+<p>We use reasonable technical and organisational measures to protect your information, including encrypted connections (HTTPS) and access restricted to authorised staff. No system is completely secure, so please use a strong, unique password and think carefully before storing sensitive documents such as passport numbers.</p>
+
+<h2>9. Your choices and rights</h2>
+<p>You can view and edit most of your information in your account settings. Depending on where you live, you may also have the right to access, correct, export or delete your personal information, to object to or restrict some processing, and to withdraw consent. To make a request, email <a href="mailto:{{ legal.contact_email }}">{{ legal.contact_email }}</a>. You may also complain to your local data-protection authority.</p>
+
+<h2>10. Children</h2>
+<p>The Service is not intended for anyone under {{ legal.min_age }}. We do not knowingly collect personal information from children under that age; if you believe a child has given us information, contact us and we will delete it.</p>
+
+<h2>11. Changes to this policy</h2>
+<p>We may update this policy. If a change is significant we will give reasonable notice, for example by email or a notice in the Service. The effective date at the top shows when it was last updated.</p>
+{% endblock %}

@@ -211,4 +211,16 @@ SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)  # sender of e
 SITE_NAME = 'ShareBucketList'
 SITE_TAGLINE = 'Plan it. Live it. Share it.'
 
+# Details used by the Terms, Privacy and Safety pages (apps/pages, templates under
+# pages/legal/). Set them in .env; while any is still a [bracketed] placeholder the
+# pages show a "draft" banner. Have the wording reviewed before public launch.
+LEGAL = {
+    "entity": os.environ.get("LEGAL_ENTITY_NAME", "[Legal entity name]"),
+    "contact_email": os.environ.get("LEGAL_CONTACT_EMAIL", "[privacy@your-domain]"),
+    "postal_address": os.environ.get("LEGAL_POSTAL_ADDRESS", "[Postal address]"),
+    "jurisdiction": os.environ.get("LEGAL_JURISDICTION", "[State / country whose law governs]"),
+    "effective_date": os.environ.get("LEGAL_EFFECTIVE_DATE", "[Effective date]"),
+    "min_age": os.environ.get("LEGAL_MIN_AGE", "16"),
+}
+
 TAILWIND_APP_NAME = 'theme'

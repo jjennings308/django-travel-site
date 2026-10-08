@@ -1,6 +1,7 @@
 # pages/views.py
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -148,3 +149,26 @@ def dashboard(request):
 def about(request):
     """About page"""
     return render(request, 'pages/about.html')
+
+
+def _legal_page(request, template, title):
+    """Render one of the legal pages with the details from settings.LEGAL."""
+    legal = dict(settings.LEGAL)
+    legal["is_draft"] = any(str(v).startswith("[") for v in legal.values())
+    return render(request, template, {"legal": legal, "page_title": title})
+
+
+def terms(request):
+    """Terms of Service."""
+    return _legal_page(request, "pages/legal/terms.html", "Terms of Service")
+
+
+def privacy(request):
+    """Privacy Policy."""
+    return _legal_page(request, "pages/legal/privacy.html", "Privacy Policy")
+
+
+def safety(request):
+    """Safety guidance for travellers and for using the site."""
+    return _legal_page(request, "pages/legal/safety.html", "Safety")
+

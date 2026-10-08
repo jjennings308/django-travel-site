@@ -1,0 +1,64 @@
+{% extends "pages/legal/_legal_base.html" %}
+{% block legal_body %}
+<h2>1. About these terms</h2>
+<p>These Terms of Service ("Terms") govern your use of {{ SITE_NAME }} (the "Service"), operated by {{ legal.entity }} ("we", "us"). By creating an account or using the Service you agree to these Terms and to our <a href="{% url 'pages:privacy' %}">Privacy Policy</a>. If you do not agree, do not use the Service.</p>
+
+<h2>2. Who can use the Service</h2>
+<p>You must be at least {{ legal.min_age }} years old and able to form a binding agreement. If you use the Service on behalf of a business (for example as a vendor or content provider), you confirm you are authorised to bind that business to these Terms.</p>
+
+<h2>3. Your account</h2>
+<ul>
+  <li>Give accurate information and keep it up to date.</li>
+  <li>Keep your password confidential. You are responsible for activity under your account.</li>
+  <li>Tell us promptly at {{ legal.contact_email }} if you think your account has been compromised.</li>
+  <li>We may suspend or close accounts that break these Terms or put other users at risk.</li>
+</ul>
+
+<h2>4. What the Service does, and does not do</h2>
+<p>{{ SITE_NAME }} helps you plan trips, keep bucket lists, discover activities and places, and share plans with people you choose. We are <strong>not</strong> a travel agent, tour operator, carrier or booking service. Bookings you make with airlines, hotels, vendors or other third parties are agreements between you and them; we are not a party to them and are not responsible for their services, prices, cancellations or conduct.</p>
+
+<h2>5. Travel information</h2>
+<p>Destination details, activity descriptions, risk and fitness levels, costs, opening times, visa notes and similar information are provided for general guidance only. They may be incomplete or out of date. Always confirm important details with official and primary sources before you travel, and read our <a href="{% url 'pages:safety' %}">Safety</a> page.</p>
+
+<h2>6. Content you add</h2>
+<p>You keep ownership of the content you add, such as trips, notes, reviews, comments, photos, activities and location submissions ("Your Content"). You grant us a worldwide, non-exclusive, royalty-free licence to host, store, reproduce, display and adapt Your Content as needed to operate and improve the Service, including showing it to the people you share it with and, for content you submit for public display, to other users once approved. This licence ends when you delete the content or your account, except where the content has been shared with others or we must keep it for legal reasons.</p>
+<p>You are responsible for Your Content and confirm you have the rights to share it. Content submitted for public display may be reviewed, edited, rejected or removed at our discretion.</p>
+
+<h2>7. Acceptable use</h2>
+<p>You agree not to:</p>
+<ul>
+  <li>post anything unlawful, harassing, hateful, sexually explicit, misleading, or that infringes someone else's rights;</li>
+  <li>share other people's personal information without their permission;</li>
+  <li>impersonate anyone or misrepresent your connection with a business;</li>
+  <li>upload malware, probe or disrupt the Service, or access accounts or data you are not authorised to access;</li>
+  <li>scrape, copy or resell the Service or its content without our written permission;</li>
+  <li>use the Service to send spam or unsolicited advertising.</li>
+</ul>
+
+<h2>8. Vendor and content-provider roles</h2>
+<p>If we approve your request for a vendor or content-provider role, the information you provide about your business must be accurate, and you are responsible for the offers and content you publish. We may revoke the role at any time.</p>
+
+<h2>9. Sharing and public links</h2>
+<p>You decide who can see your trips. If you share a trip with another person or create a public link, anyone with that access can view what it shows. You are responsible for choosing who to share with and for revoking access you no longer want.</p>
+
+<h2>10. Third-party services and links</h2>
+<p>The Service may link to or rely on third-party websites and services. We are not responsible for their content, policies or practices.</p>
+
+<h2>11. Disclaimers</h2>
+<p>The Service is provided "as is" and "as available". To the fullest extent permitted by law we disclaim all warranties, express or implied, including fitness for a particular purpose, accuracy and uninterrupted availability. Travel involves risk; you are responsible for your own decisions and safety.</p>
+
+<h2>12. Limitation of liability</h2>
+<p>To the fullest extent permitted by law, {{ legal.entity }} will not be liable for indirect, incidental, special, consequential or punitive damages, or for loss of profits, data, bookings or travel arrangements, arising from your use of the Service. Nothing in these Terms limits liability that cannot be limited by law.</p>
+
+<h2>13. Ending your use</h2>
+<p>You may stop using the Service and ask us to delete your account at any time by contacting {{ legal.contact_email }}. We may suspend or end your access if you breach these Terms or if we stop offering the Service.</p>
+
+<h2>14. Changes to these terms</h2>
+<p>We may update these Terms. If a change is significant we will give reasonable notice, for example by email or a notice in the Service. Continuing to use the Service after a change takes effect means you accept the updated Terms.</p>
+
+<h2>15. Governing law</h2>
+<p>These Terms are governed by the laws of {{ legal.jurisdiction }}, without regard to conflict-of-law rules. Disputes will be handled by the courts of that jurisdiction, unless the law where you live gives you the right to bring a claim locally.</p>
+
+<h2>16. Contact</h2>
+<p>{{ legal.entity }}, {{ legal.postal_address }}. Email: <a href="mailto:{{ legal.contact_email }}">{{ legal.contact_email }}</a>.</p>
+{% endblock %}
