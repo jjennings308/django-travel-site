@@ -1,7 +1,37 @@
 # locations/admin.py
+from django import forms
 from django.contrib import admin
 from apps.approval_system.admin import ApprovableAdminMixin
 from .models import Country, Region, City, POI
+
+
+class RegionByCountrySelect(forms.Select):
+    """Region <select> whose options carry data-country, so
+    locations/admin/region_by_country.js can show only the chosen country's regions."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            option["attrs"]["data-country"] = value.instance.country_id
+        return option
+
+
+class CityAdminForm(forms.ModelForm):
+    class Meta:
+        model = City
+        fields = "__all__"
+        widgets = {"region": RegionByCountrySelect}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["region"].queryset = Region.objects.order_by("name")
+
+    def clean(self):
+        cleaned = super().clean()
+        country, region = cleaned.get("country"), cleaned.get("region")
+        if country and region and region.country_id != country.pk:
+            self.add_error("region", f"{region.name} is not in {country.name}.")
+        return cleaned
 
 
 @admin.register(Country)
@@ -173,7 +203,12 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     search_fields = ['name', 'country__name', 'region__name']
     prepopulated_fields = {'slug': ('name',)}
     list_editable = ['is_featured']
-    autocomplete_fields = ['country', 'region']
+    autocomplete_fields = ['country']
+    # Region is a plain select limited to the chosen country (see CityAdminForm).
+    form = CityAdminForm
+
+    class Media:
+        js = ['locations/admin/region_by_country.js']
     
     fieldsets = (
         ('Basic Information', {
