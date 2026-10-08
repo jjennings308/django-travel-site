@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
-from apps.locations.models import City, Country
+from apps.locations.models import City, Country, Region
 
 from .forms import EventForm
 from .models import Event
@@ -86,6 +86,10 @@ def event_detail(request, slug):
         "can_delete": event.can_delete(request.user),
         "city_choices": (
             City.objects.filter(country=event.country, approval_status=ApprovalStatus.APPROVED).order_by("name")
+            if request.user.is_staff and event.needs_city_link and event.country_id else None
+        ),
+        "region_choices": (
+            Region.objects.filter(country=event.country).order_by("name")
             if request.user.is_staff and event.needs_city_link and event.country_id else None
         ),
         "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (event.name, None)]),
@@ -189,13 +193,21 @@ def event_link_city(request, slug):
         if not name or lat is None or not (-90 <= lat <= 90 and -180 <= lng <= 180):
             messages.error(request, "To create the city, give its name and valid latitude/longitude.")
             return redirect("events:event_detail", slug=slug)
+        regions = Region.objects.filter(country=event.country)
+        region = regions.filter(pk=request.POST.get("region") or None).first()
+        if region is None and regions.exists():
+            messages.error(request, f"Choose the city's region in {event.country.name}.")
+            return redirect("events:event_detail", slug=slug)
         existing = City.objects.filter(country=event.country, name__iexact=name).first()
         if existing:
             city = existing
+            if region and not city.region_id:
+                city.region = region
+                city.save(update_fields=["region"])
         else:
             now = timezone.now()
             city = City.objects.create(
-                name=name, country=event.country, latitude=lat, longitude=lng,
+                name=name, country=event.country, region=region, latitude=lat, longitude=lng,
                 approval_status=ApprovalStatus.APPROVED, submitted_by=event.created_by or request.user,
                 submitted_at=now, reviewed_by=request.user, reviewed_at=now,
             )

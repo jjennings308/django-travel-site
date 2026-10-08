@@ -8,7 +8,7 @@ from django.urls import reverse
 from apps.approval_system.models import ApprovalStatus
 from apps.activities.models import ActivityCategory
 from apps.events.models import Event
-from apps.locations.models import City, Country
+from apps.locations.models import City, Country, Region
 
 User = get_user_model()
 TODAY = date.today()
@@ -181,6 +181,32 @@ class UnlistedCityTests(EventFixture):
         event.refresh_from_db()
         self.assertEqual((event.city.name, event.city.country, event.city.approval_status),
                          ("Hallstatt", self.austria, ApprovalStatus.APPROVED))
+
+    def test_new_city_gets_a_region_when_the_country_has_them(self):
+        upper = Region.objects.create(country=self.austria, name="Upper Austria", slug="upper-austria")
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.client.force_login(self.staff)
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "Upper Austria")
+        url = reverse("events:event_link_city", args=[event.slug])
+        self.client.post(url, {"name": "Hallstatt", "latitude": "47.562", "longitude": "13.649"})
+        self.assertFalse(City.objects.filter(name="Hallstatt").exists())  # region required
+        self.client.post(url, {"name": "Hallstatt", "latitude": "47.562", "longitude": "13.649", "region": upper.pk})
+        event.refresh_from_db()
+        self.assertEqual(event.city.region, upper)
+
+    def test_existing_city_without_a_region_gets_one(self):
+        upper = Region.objects.create(country=self.austria, name="Upper Austria", slug="upper-austria")
+        bare = City.objects.create(name="Hallstatt", slug="hallstatt-at", country=self.austria, latitude=47, longitude=13,
+                                   approval_status=ApprovalStatus.APPROVED)
+        self.submit_unlisted()
+        event = Event.objects.get(name="Jazz Night")
+        self.client.force_login(self.staff)
+        self.client.post(reverse("events:event_link_city", args=[event.slug]),
+                         {"name": "hallstatt", "latitude": "47.562", "longitude": "13.649", "region": upper.pk})
+        bare.refresh_from_db()
+        event.refresh_from_db()
+        self.assertEqual((event.city, bare.region), (bare, upper))
 
     def test_bad_coordinates_create_nothing(self):
         self.submit_unlisted()

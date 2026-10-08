@@ -91,6 +91,7 @@
         </form>
         <form method="post" action="{% url 'events:event_link_city' event.slug %}" x-show="mode === 'new'" x-cloak class="space-y-2">{% csrf_token %}
           <input name="name" value="{{ event.location_text }}" class="sbl-input" placeholder="City name" required>
+          {% if region_choices %}<select name="region" class="sbl-input" required><option value="">Region…</option>{% for r in region_choices %}<option value="{{ r.pk }}">{{ r.name }}</option>{% endfor %}</select>{% endif %}
           <div class="grid grid-cols-2 gap-2">
             <input name="latitude" class="sbl-input" placeholder="Latitude" inputmode="decimal" required>
             <input name="longitude" class="sbl-input" placeholder="Longitude" inputmode="decimal" required>
