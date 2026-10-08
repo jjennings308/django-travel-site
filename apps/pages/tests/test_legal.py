@@ -20,6 +20,7 @@ class LegalPageTests(TestCase):
         for name in ["terms", "privacy", "safety"]:
             self.assertContains(response, f'href="{reverse(f"pages:{name}")}"')
 
+    @override_settings(LEGAL={**FILLED, "entity": "[Legal entity name]"})
     def test_draft_banner_while_placeholders_remain(self):
         self.assertContains(self.client.get(reverse("pages:privacy")), "This page is a template")
 
