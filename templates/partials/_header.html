@@ -49,6 +49,7 @@
             <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'profile' %}"><i class="bi bi-person"></i>Profile</a>
             <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'trips:traveler_profile' %}"><i class="bi bi-passport"></i>Travel profile</a>
             <a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'settings' %}"><i class="bi bi-gear"></i>Settings</a>
+            {# is_staff, not can_access_staff: a permission check here adds 2 queries to every page (trips' detail page pins its count) #}{% if user.is_staff %}<a class="flex items-center gap-2 px-4 py-2 text-warm-700 hover:bg-warm-100" href="{% url 'pages:staff_dashboard' %}"><i class="bi bi-clipboard-data"></i>Staff dashboard</a>{% endif %}
             <div class="my-1 border-t border-warm-200"></div>
             <form method="post" action="{% url 'logout' %}">
               {% csrf_token %}
