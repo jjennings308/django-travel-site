@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{# admin_tools/import_done.html — staff CSV import, step 3: what was saved #}
+{% block title %}Import finished{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <h1 class="sbl-page-title">{{ kind_label }} imported</h1>
+  {% if done %}
+    <ul class="sbl-card divide-y divide-warm-200">
+      {% for row, obj, url in done %}
+        <li class="flex items-center justify-between gap-3 px-4 py-2 text-sm">
+          <a class="sbl-link font-medium" href="{{ url }}">{{ obj.name }}</a>
+          <span class="sbl-badge {% if row.action == 'create' %}sbl-badge-success{% else %}sbl-badge-info{% endif %}">{% if row.action == 'create' %}New{% else %}Updated{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <div class="flex gap-2">
+    <a href="{% url 'admin_tools:import' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-upload"></i>Import another file</a>
+    <a href="{% url 'pages:staff_dashboard' %}" class="sbl-btn sbl-btn-outline">Staff dashboard</a>
+  </div>
+</div>
+{% endblock %}

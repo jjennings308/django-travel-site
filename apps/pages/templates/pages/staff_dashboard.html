@@ -16,6 +16,7 @@
       <a href="{% url 'staff:admin_role_requests' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-person-badge"></i>Role requests</a>
       <a href="{% url 'staff:admin_account_list' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-people"></i>Accounts</a>
       <a href="{% url 'trips_staff:dashboard' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-airplane"></i>Trips</a>
+      <a href="{% url 'admin_tools:import' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-upload"></i>Import CSV</a>
       {% if user.is_staff %}<a href="{% url 'admin:index' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-shield-lock"></i>Admin</a>{% endif %}
     </nav>
   </header>

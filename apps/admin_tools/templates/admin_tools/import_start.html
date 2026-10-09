@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{# admin_tools/import_start.html — staff CSV import, step 1: choose activities/events and upload #}
+{% block title %}Import from CSV{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6" x-data="{ kind: 'activity' }">
+  <header>
+    <h1 class="sbl-page-title">Import from CSV</h1>
+    <p class="sbl-page-subtitle">Add or update activities or events from a spreadsheet. You'll see a preview before anything is saved.</p>
+  </header>
+
+  <form method="post" enctype="multipart/form-data" class="sbl-card space-y-4 p-6">
+    {% csrf_token %}
+    <fieldset>
+      <legend class="sbl-label">What are you importing?</legend>
+      <div class="flex gap-4">
+        {% for value, label in kinds.items %}<label class="flex items-center gap-2 text-sm text-warm-800"><input type="radio" name="kind" value="{{ value }}" class="sbl-check" x-model="kind" {% if forloop.first %}checked{% endif %}> {{ label }}</label>{% endfor %}
+      </div>
+    </fieldset>
+    <div>
+      <label for="file" class="sbl-label">CSV file</label>
+      <input id="file" type="file" name="file" accept=".csv,text/csv" required class="sbl-input">
+      <p class="sbl-help">Save from Excel or Google Sheets as “CSV”. Up to {{ max_rows }} rows, 1 MB.</p>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-warm-200 pt-4">
+      <span class="text-sm">Start from a template:
+        <a class="sbl-link" href="{% url 'admin_tools:import_template' 'activity' %}">activities.csv</a> ·
+        <a class="sbl-link" href="{% url 'admin_tools:import_template' 'event' %}">events.csv</a></span>
+      <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-upload"></i>Preview import</button>
+    </div>
+  </form>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-2 text-lg font-semibold text-warm-900">How it works</h2>
+    <ul class="list-disc space-y-1 pl-5 text-sm text-warm-700">
+      <li>The first row is the column names (any order; capitals and spaces don't matter). Unknown columns are ignored.</li>
+      <li>A row that matches an existing item is <strong>updated</strong>: an activity with the same name, an event with the same name and start date. Blank cells keep the existing value.</li>
+      <li>Categories, countries, regions, cities and activities are matched by name. An event city that isn't in the catalogue is kept as a typed town for staff to link later.</li>
+      <li>Yes/no columns take yes, no, true, false, 1 or 0. Dates: 2027-09-18 (or 9/18/2027). Times: 20:00 or 8:00 PM. Months: “Sep, Oct” or “9, 10”.</li>
+      <li>Imported items are published straight away.</li>
+    </ul>
+    {% for kind, cols in help_columns.items %}
+      <div x-show="kind === '{{ kind }}'" {% if not forloop.first %}x-cloak{% endif %} class="mt-4">
+        <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-warm-500">Columns for {{ kind }} rows</h3>
+        <div class="overflow-x-auto"><table class="sbl-table text-sm">
+          <thead><tr><th>Column</th><th>Example</th></tr></thead>
+          <tbody>{% for name, required, example in cols %}<tr><td class="font-mono">{{ name }}{% if required %} <span class="text-red-700">*</span>{% endif %}</td><td class="text-warm-600">{{ example }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

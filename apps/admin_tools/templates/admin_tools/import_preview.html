@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{# admin_tools/import_preview.html — staff CSV import, step 2: what each row will do; confirm saves the valid rows #}
+{% block title %}Import preview{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <header>
+    <h1 class="sbl-page-title">Preview: {{ kind_label|lower }} from {{ file_name }}</h1>
+    <p class="sbl-page-subtitle">Nothing has been saved yet.</p>
+  </header>
+
+  {% for error in importer.file_errors %}<div class="sbl-alert sbl-alert-warning">{{ error }}</div>{% endfor %}
+
+  <div class="grid grid-cols-3 gap-4">
+    <div class="sbl-card p-4"><p class="text-sm text-warm-500">New</p><p class="text-3xl font-bold text-emerald-700">{{ counts.create }}</p></div>
+    <div class="sbl-card p-4"><p class="text-sm text-warm-500">Updates</p><p class="text-3xl font-bold text-sky-700">{{ counts.update }}</p></div>
+    <div class="sbl-card p-4"><p class="text-sm text-warm-500">Errors (skipped)</p><p class="text-3xl font-bold {% if counts.error %}text-red-700{% else %}text-warm-400{% endif %}">{{ counts.error }}</p></div>
+  </div>
+
+  {% if importer.rows %}
+    <div class="sbl-card overflow-x-auto">
+      <table class="sbl-table text-sm">
+        <thead><tr><th>Row</th><th>Name</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody>
+          {% for row in importer.rows %}
+            <tr class="{% if row.action == 'error' %}bg-red-50{% endif %}">
+              <td class="tabular-nums text-warm-500">{{ row.number }}</td>
+              <td class="font-medium text-warm-900">{{ row.title }}</td>
+              <td>{% if row.action == 'create' %}<span class="sbl-badge sbl-badge-success">New</span>{% elif row.action == 'update' %}<span class="sbl-badge sbl-badge-info">Update</span>{% else %}<span class="sbl-badge sbl-badge-danger">Error</span>{% endif %}</td>
+              <td class="text-warm-700">
+                {% if row.errors %}<ul class="list-disc pl-4 text-red-800">{% for e in row.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% elif row.action == 'update' %}{% if row.changes %}Changes: {{ row.changes|join:", " }}{% else %}<span class="text-warm-500">No changes</span>{% endif %}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <div class="flex flex-wrap justify-end gap-2">
+    <form method="post" action="{% url 'admin_tools:import_cancel' %}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-outline">Cancel</button></form>
+    {% if counts.create or counts.update %}
+      <form method="post">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-check2"></i>Import {{ counts.create|add:counts.update }} row{{ counts.create|add:counts.update|pluralize }}{% if counts.error %}, skip {{ counts.error }}{% endif %}</button></form>
+    {% else %}
+      <a href="{% url 'admin_tools:import' %}" class="sbl-btn sbl-btn-primary">Upload a corrected file</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
