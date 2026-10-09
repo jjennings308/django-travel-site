@@ -24,5 +24,23 @@
       <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-airplane"></i>Start the trip</button>
     </div>
   </form>
+
+  {% if open_trips %}
+    <section class="sbl-card mt-6 p-6">
+      <h2 class="text-lg font-semibold text-warm-900">Or add it to a trip you already have</h2>
+      <p class="sbl-help">One trip can cover several goals: a concert and a city break on the same weekend.</p>
+      <ul class="mt-3 divide-y divide-warm-200">
+        {% for trip in open_trips %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+            <div class="min-w-0">
+              <p class="font-medium text-warm-900">{{ trip.name }}{% if trip.overlaps %} <span class="sbl-badge sbl-badge-success">Same dates</span>{% endif %}</p>
+              <p class="text-sm text-warm-500">{{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}{% if trip.destination %} · {{ trip.destination }}{% endif %}</p>
+            </div>
+            <form method="post" action="{% url 'bucketlists:add_to_trip' item.pk %}">{% csrf_token %}<button type="submit" name="trip" value="{{ trip.pk }}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-plus-lg"></i>Add to this trip</button></form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
 </div>
 {% endblock %}

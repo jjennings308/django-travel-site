@@ -185,6 +185,26 @@ def item_edit(request, pk):
     })
 
 
+def _attach(item, trip):
+    """Put ``item`` on ``trip``; a goal still being dreamt about moves to planning."""
+    item.trip = trip
+    if item.status in ("wishlist", "researching"):
+        item.status = "planning"
+    item.save(update_fields=["trip", "status", "updated_at"])
+
+
+def _open_trips(user, item=None):
+    """Trips ``user`` can see that aren't over, those overlapping ``item``'s dates first."""
+    today = timezone.now().date()
+    trips = list(Trip.objects.visible_to(user).filter(end_date__gte=today).order_by("start_date", "name"))
+    start, end = item.dates if item is not None else (None, None)
+    if start:
+        trips.sort(key=lambda t: not (t.start_date <= end and t.end_date >= start))
+        for trip in trips:
+            trip.overlaps = trip.start_date <= end and trip.end_date >= start
+    return trips
+
+
 @login_required
 def plan_trip(request, pk):
     """Start a trip for a bucket-list item, pre-filled from its dates and place.
@@ -208,16 +228,73 @@ def plan_trip(request, pk):
             traveler = Traveler.objects.filter(user=request.user).first()
             if traveler:
                 trip.travelers.add(traveler)
-            item.trip = trip
-            if item.status in ("wishlist", "researching"):
-                item.status = "planning"
-            item.save(update_fields=["trip", "status", "updated_at"])
+            _attach(item, trip)
         messages.success(request, f"Started “{trip.name}”. Add flights, lodging and the rest here.")
         return redirect("trips:trip_edit", pk=trip.pk)
     return render(request, "bucketlists/plan_trip.html", {
-        "form": form, "item": item,
+        "form": form, "item": item, "open_trips": _open_trips(request.user, item),
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"),
                                               (item.title, reverse("bucketlists:item_edit", args=[item.pk])), ("Plan a trip", None)]),
+    })
+
+
+@login_required
+@require_POST
+def add_to_trip(request, pk):
+    """Put a goal on an existing trip the user can see (from "Plan a trip")."""
+    item = _own_item(request, pk)
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=request.POST.get("trip") or 0)
+    _attach(item, trip)
+    messages.success(request, f"“{item.title}” is now part of “{trip.name}”.")
+    return redirect("trips:trip_detail", pk=trip.pk)
+
+
+@login_required
+@require_POST
+def remove_from_trip(request, pk):
+    """Take a goal off its trip; the trip itself is untouched."""
+    item = _own_item(request, pk)
+    if item.trip_id:
+        name = item.trip.name
+        item.trip = None
+        item.save(update_fields=["trip", "updated_at"])
+        messages.success(request, f"“{item.title}” is no longer part of “{name}”.")
+    return redirect(request.POST.get("next") if request.POST.get("next", "").startswith("/bucketlists/") else
+                    reverse("bucketlists:item_edit", args=[item.pk]))
+
+
+@login_required
+def trip_goals(request, trip_pk):
+    """The user's goals on one trip, and their other open goals to add to it.
+
+    Reached from the trip page. Any trip the user can see will do: putting your
+    own goal on a family trip changes your bucket list, not the trip.
+    """
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
+    mine = _items().filter(user=request.user)
+    if request.method == "POST":
+        chosen = mine.filter(pk__in=request.POST.getlist("items")).exclude(status__in=OPEN_STATUSES_EXCLUDED)
+        added = 0
+        for item in chosen:
+            if item.trip_id != trip.pk:
+                _attach(item, trip)
+                added += 1
+        if added:
+            messages.success(request, f"Added {added} goal{'s' if added != 1 else ''} to “{trip.name}”.")
+        return redirect("bucketlists:trip_goals", trip_pk=trip.pk)
+    on_trip = list(mine.filter(trip=trip).order_by("status", "-priority", "created_at"))
+    available = [i for i in mine.exclude(trip=trip).exclude(status__in=OPEN_STATUSES_EXCLUDED)
+                 .order_by("-priority", "created_at")]
+    for item in available:
+        start, end = item.dates
+        item.overlaps = bool(start) and start <= trip.end_date and end >= trip.start_date
+        item.elsewhere = item.live_trip
+    available.sort(key=lambda i: (not i.overlaps, i.elsewhere is not None))
+    return render(request, "bucketlists/trip_goals.html", {
+        "trip": trip, "on_trip": on_trip, "available": available,
+        "breadcrumb_list": build_breadcrumbs([("Trips", "trips:trip_list"),
+                                              (trip.name, reverse("trips:trip_detail", args=[trip.pk])),
+                                              ("Bucket-list goals", None)]),
     })
 
 

@@ -441,3 +441,54 @@ class TripDoneTests(BucketFixture):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(self.url).status_code, 404)
         self.assertEqual(self.client.get(self.url).status_code, 405)
+
+
+class SeveralGoalsOneTripTests(BucketFixture):
+    """A trip can carry several bucket-list goals."""
+
+    def setUp(self):
+        super().setUp()
+        start = date.today() + timedelta(days=30)
+        self.trip = Trip.objects.create(name="Testville weekend", start_date=start, end_date=start + timedelta(days=3))
+        TripGrant.objects.create(trip=self.trip, user=self.alice, role=TripRole.VIEWER)  # a traveller, not the planner
+        self.concert = BucketListItem.objects.create(user=self.alice, custom_title="See a concert", target_date=start)
+        self.museum = BucketListItem.objects.create(user=self.alice, custom_title="Visit the museum")
+
+    def test_plan_a_trip_offers_existing_trips(self):
+        page = self.client.get(reverse("bucketlists:plan_trip", args=[self.concert.pk]))
+        self.assertContains(page, "Testville weekend")
+        self.assertContains(page, "Same dates")
+        response = self.client.post(reverse("bucketlists:add_to_trip", args=[self.concert.pk]), {"trip": self.trip.pk})
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]))
+        self.concert.refresh_from_db()
+        self.assertEqual((self.concert.trip, self.concert.status), (self.trip, "planning"))
+
+    def test_add_several_from_the_trip_side(self):
+        url = reverse("bucketlists:trip_goals", args=[self.trip.pk])
+        self.assertContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), url)
+        page = self.client.get(url)
+        self.assertEqual([i.title for i in page.context["available"]], ["See a concert", "Visit the museum"])  # same dates first
+        self.client.post(url, {"items": [self.concert.pk, self.museum.pk]})
+        self.assertEqual(set(self.trip.bucket_list_items.values_list("custom_title", flat=True)), {"See a concert", "Visit the museum"})
+        self.assertEqual([i.title for i in self.client.get(url).context["on_trip"]], ["See a concert", "Visit the museum"])
+
+    def test_remove_and_move(self):
+        other = Trip.objects.create(name="Other", start_date=date.today() + timedelta(days=90), end_date=date.today() + timedelta(days=95))
+        TripGrant.objects.create(trip=other, user=self.alice, role=TripRole.EDITOR)
+        self.client.post(reverse("bucketlists:add_to_trip", args=[self.museum.pk]), {"trip": other.pk})
+        self.client.post(reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [self.museum.pk]})  # moves it
+        self.museum.refresh_from_db()
+        self.assertEqual(self.museum.trip, self.trip)
+        self.client.post(reverse("bucketlists:remove_from_trip", args=[self.museum.pk]))
+        self.museum.refresh_from_db()
+        self.assertIsNone(self.museum.trip)
+        self.assertTrue(Trip.objects.filter(pk=self.trip.pk).exists())  # the trip is untouched
+
+    def test_only_your_goals_and_visible_trips(self):
+        hidden = Trip.objects.create(name="Secret", start_date=date.today(), end_date=date.today() + timedelta(days=1))
+        self.assertEqual(self.client.post(reverse("bucketlists:add_to_trip", args=[self.concert.pk]), {"trip": hidden.pk}).status_code, 404)
+        self.assertEqual(self.client.get(reverse("bucketlists:trip_goals", args=[hidden.pk])).status_code, 404)
+        bobs = BucketListItem.objects.create(user=self.bob, custom_title="Bob's goal")
+        self.client.post(reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [bobs.pk]})
+        bobs.refresh_from_db()
+        self.assertIsNone(bobs.trip)

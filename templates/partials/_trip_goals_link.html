@@ -1,0 +1,2 @@
+{# templates/partials/_trip_goals_link.html — on a trip page: link to the reader's bucket-list goals for this trip. Pass trip=. url … as, no query (trips doesn't depend on bucketlists; detail query count unchanged). #}
+{% url 'bucketlists:trip_goals' trip.pk as goals_url %}{% if goals_url %}<a href="{{ goals_url }}" class="link-quiet mt-3 inline-flex items-center gap-1 text-sm font-medium print:hidden"><i class="bi bi-list-check"></i>Bucket-list goals for this trip</a>{% endif %}

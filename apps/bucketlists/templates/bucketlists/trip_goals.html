@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{# bucketlists/trip_goals.html — the user's goals on one trip, and their open goals to add (bucketlists:trip_goals) #}
+
+{% block title %}Goals for {{ trip.name }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <header>
+    <h1 class="sbl-page-title">Bucket-list goals for this trip</h1>
+    <p class="sbl-page-subtitle"><a class="sbl-link" href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a> · {{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}{% if trip.destination %} · {{ trip.destination }}{% endif %}</p>
+  </header>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-3 text-lg font-semibold text-warm-900">On this trip</h2>
+    {% if on_trip %}
+      <ul class="divide-y divide-warm-200">
+        {% for item in on_trip %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+            <div class="min-w-0">
+              <a href="{% url 'bucketlists:item_edit' item.pk %}" class="font-medium text-warm-900 hover:text-earth-clay">{{ item.title }}</a>
+              <span class="ml-1 text-xs text-warm-500">{{ item.get_status_display }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              {% if item.status != 'completed' and trip.is_completed %}<a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-check-lg"></i>Tick it off</a>{% endif %}
+              <form method="post" action="{% url 'bucketlists:remove_from_trip' item.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button type="submit" class="sbl-btn sbl-btn-outline sbl-btn-sm">Remove</button></form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-warm-500">None of your goals are on this trip yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-1 text-lg font-semibold text-warm-900">Add goals</h2>
+    <p class="sbl-help mb-3">Your open goals. Ones whose dates fall on this trip come first; a goal already on another trip moves to this one.</p>
+    {% if available %}
+      <form method="post">
+        {% csrf_token %}
+        <ul class="divide-y divide-warm-200">
+          {% for item in available %}
+            <li class="py-2">
+              <label class="flex items-start gap-3">
+                <input type="checkbox" name="items" value="{{ item.pk }}" class="sbl-check mt-1" {% if item.overlaps and not item.elsewhere %}checked{% endif %}>
+                <span class="min-w-0">
+                  <span class="font-medium text-warm-900">{{ item.title }}</span>
+                  {% if item.overlaps %} <span class="sbl-badge sbl-badge-success">Same dates</span>{% endif %}
+                  <span class="block text-xs text-warm-500">{% if item.dates.0 %}{{ item.dates.0|date:"M j, Y" }}{% else %}No date yet{% endif %}{% if item.place %} · {{ item.place }}{% endif %}{% if item.elsewhere %} · now on “{{ item.elsewhere.name }}”{% endif %}</span>
+                </span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+        <div class="mt-4 flex justify-end"><button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>Add selected to this trip</button></div>
+      </form>
+    {% else %}
+      <p class="text-sm text-warm-500">No other open goals. <a class="sbl-link" href="{% url 'bucketlists:dashboard' %}">Go to your bucket list</a>.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -11,6 +11,7 @@
   {% with trip=item.live_trip %}
     {% if trip %}
       <a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-airplane"></i>{{ trip.name }}</a>
+      <form method="post" action="{% url 'bucketlists:remove_from_trip' item.pk %}">{% csrf_token %}<button type="submit" class="sbl-link text-xs text-warm-500">Remove from this trip</button></form>
     {% elif item.stage != 'done' %}
       <a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-btn sbl-btn-accent sbl-btn-sm"><i class="bi bi-airplane"></i>Plan a trip</a>
     {% endif %}
