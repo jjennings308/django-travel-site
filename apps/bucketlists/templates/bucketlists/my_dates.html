@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{# bucketlists/my_dates.html — lifecycle stage 3: open goals with a date (ready to plan) and goals still needing one #}
+
+{% block title %}My dates{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+  <header>
+    <h1 class="sbl-page-title">My dates</h1>
+    <p class="sbl-page-subtitle">When your goals happen. Pick a date for the ones still waiting, then plan the trip.</p>
+  </header>
+
+  <section aria-labelledby="coming-title">
+    <h2 id="coming-title" class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-calendar-check"></i> Coming up</h2>
+    {% if dated %}
+      <ul class="sbl-card divide-y divide-warm-200">
+        {% for item in dated %}
+          {% with start=item.dates.0 end=item.dates.1 trip=item.live_trip %}
+            <li class="flex flex-wrap items-center gap-4 p-4">
+              <div class="w-20 shrink-0 text-center">
+                <p class="text-xs font-semibold uppercase text-earth-clay">{{ start|date:"M" }}</p>
+                <p class="text-2xl font-bold leading-none text-warm-900">{{ start|date:"j" }}</p>
+                <p class="text-xs text-warm-500">{{ start|date:"Y" }}</p>
+              </div>
+              <div class="min-w-0 grow">
+                <a href="{% url 'bucketlists:item_edit' item.pk %}" class="font-semibold text-warm-900 hover:text-earth-clay">{{ item.title }}</a>
+                <p class="text-sm text-warm-600">
+                  {% if item.event %}<a class="sbl-link" href="{% url 'events:event_detail' item.event.slug %}">{{ item.event.name }}</a>{% else %}Your target dates{% endif %}
+                  · {{ start|date:"M j" }}{% if end != start %} – {{ end|date:"M j, Y" }}{% else %}, {{ start|date:"Y" }}{% endif %}
+                  {% if item.place %} · {{ item.place }}{% endif %}
+                </p>
+                <p class="text-xs text-warm-500">{% if start == today %}Today{% else %}In {{ start|timeuntil }}{% endif %}</p>
+              </div>
+              {% if trip %}
+                <a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-airplane"></i>{{ trip.name }}</a>
+              {% else %}
+                <a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-btn sbl-btn-accent sbl-btn-sm"><i class="bi bi-airplane"></i>Plan a trip</a>
+              {% endif %}
+            </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="sbl-card p-5 text-warm-500">Nothing dated yet. Pick a date for a goal below.</p>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="needs-title">
+    <h2 id="needs-title" class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-calendar-plus"></i> Needs a date</h2>
+    {% if undated %}
+      <ul class="sbl-card divide-y divide-warm-200">
+        {% for item in undated %}
+          <li class="p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <a href="{% url 'bucketlists:item_edit' item.pk %}" class="font-semibold text-warm-900 hover:text-earth-clay">{{ item.title }}</a>
+                {% if item.place %}<p class="text-sm text-warm-600"><i class="bi bi-geo-alt"></i> {{ item.place }}</p>{% endif %}
+              </div>
+              {% if not item.date_options %}<a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-calendar3"></i>Set dates</a>{% endif %}
+            </div>
+            {% if item.date_options %}
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span class="text-xs text-warm-500">Upcoming:</span>
+                {% for event in item.date_options %}
+                  <form method="post" action="{% url 'bucketlists:pick_date' item.pk %}">{% csrf_token %}
+                    <button type="submit" name="event" value="{{ event.pk }}" class="sbl-btn sbl-btn-outline sbl-btn-sm" title="{{ event.name }} · {{ event.place_name }}"><i class="bi bi-calendar-event"></i>{{ event.start_date|date:"M j, Y" }}</button>
+                  </form>
+                {% endfor %}
+                <a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-link text-xs">or set your own dates</a>
+              </div>
+            {% elif item.activity %}
+              {% url 'events:event_add' as add_date_url %}{% if add_date_url %}<p class="mt-2 text-xs text-warm-500">No upcoming dates listed for {{ item.activity.name }}. <a class="sbl-link" href="{{ add_date_url }}?activity={{ item.activity_id }}">Add one</a> if you know it.</p>{% endif %}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="sbl-card p-5 text-warm-500">Every open goal has a date. <a class="sbl-link" href="{% url 'activities:activity_list' %}">Discover something new</a>.</p>
+    {% endif %}
+  </section>
+
+  {% if past %}
+    <section aria-labelledby="past-title">
+      <h2 id="past-title" class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-hourglass-bottom"></i> Date has passed</h2>
+      <ul class="sbl-card divide-y divide-warm-200">
+        {% for item in past %}
+          <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <a href="{% url 'bucketlists:item_edit' item.pk %}" class="font-semibold text-warm-900 hover:text-earth-clay">{{ item.title }}</a>
+              <p class="text-sm text-warm-500">{% if item.event %}{{ item.event.name }} · {% endif %}{{ item.dates.0|date:"M j, Y" }}</p>
+            </div>
+            <div class="flex gap-2">
+              <a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-check-lg"></i>I did it</a>
+              <a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-btn sbl-btn-outline sbl-btn-sm">New date</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

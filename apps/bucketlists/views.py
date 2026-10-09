@@ -296,6 +296,58 @@ def link_item(request, pk):
     return redirect("bucketlists:item_edit", pk=item.pk)
 
 
+OPEN_STATUSES_EXCLUDED = ("completed", "abandoned")
+
+
+@login_required
+def my_dates(request):
+    """Lifecycle stage 3, "Pick a date": the user's open goals that have a date
+    (soonest first, ready to plan a trip) and those still waiting for one. An
+    undated activity goal lists that activity's upcoming events to pick from."""
+    today = timezone.now().date()
+    items = list(_items().filter(user=request.user).exclude(status__in=OPEN_STATUSES_EXCLUDED))
+    dated, past, undated = [], [], []
+    for item in items:
+        start, end = item.dates
+        if start is None:
+            undated.append(item)
+        elif end < today:
+            past.append(item)
+        else:
+            dated.append(item)
+    dated.sort(key=lambda i: i.dates[0])
+    past.sort(key=lambda i: i.dates[0], reverse=True)
+    undated.sort(key=lambda i: (-i.priority, i.title.lower()))
+
+    activity_ids = {i.activity_id for i in undated if i.activity_id}
+    options = {}
+    for event in (Event.objects.visible_to(request.user)
+                  .filter(related_activity_id__in=activity_ids, start_date__gte=today)
+                  .select_related("city__country", "country").order_by("start_date")):
+        options.setdefault(event.related_activity_id, []).append(event)
+    for item in undated:
+        item.date_options = options.get(item.activity_id, [])[:3] if item.activity_id else []
+
+    return render(request, "bucketlists/my_dates.html", {
+        "dated": dated, "past": past, "undated": undated, "today": today,
+        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My dates", None)]),
+    })
+
+
+@login_required
+@require_POST
+def pick_date(request, pk):
+    """Date an activity goal with one of that activity's events (from My dates)."""
+    item = _own_item(request, pk)
+    event = get_object_or_404(Event.objects.visible_to(request.user), pk=request.POST.get("event") or 0)
+    if not item.activity_id or event.related_activity_id != item.activity_id:
+        raise Http404
+    item.event = event
+    item.save()
+    messages.success(request, f"“{item.title}” is set for {event.name}, {event.start_date:%b} {event.start_date.day}, {event.start_date.year}.")
+    return redirect("bucketlists:dates")
+
+
 @login_required
 def item_complete(request, pk):
     item = _own_item(request, pk)

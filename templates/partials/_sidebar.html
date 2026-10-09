@@ -1,4 +1,4 @@
-{# templates/partials/_sidebar.html — used by the desktop sidebar (base.html) and the mobile drawer. Grouped by the lifecycle: discover an idea → put it on your bucket list → find a date → plan the trip → done. #}
+{# templates/partials/_sidebar.html — used by the desktop sidebar (base.html) and the mobile drawer. Grouped by the lifecycle: discover (activities, events, places) → put it on your bucket list → give it a date (My dates) → plan the trip → done. #}
 {% with current=request.resolver_match.view_name|default:"" status=request.GET.status|default:"" %}
 {% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" step="mt-4 mb-1 flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-warm-400" num="flex size-4 items-center justify-center rounded-full bg-warm-200 text-[10px] text-warm-600" %}
 <nav aria-label="Main">
@@ -9,17 +9,18 @@
   <p class="{{ step }}"><span class="{{ num }}">1</span>Discover</p>
   <ul class="flex flex-col gap-1">
     <li><a class="{{ base }} {% if current|slice:':11' == 'activities:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'activities:activity_list' %}"><i class="bi bi-signpost-2"></i>Activities</a></li>
+    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:event_list' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
     <li><a class="{{ base }} {% if current|slice:':10' == 'locations:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'locations:dashboard' %}"><i class="bi bi-geo-alt"></i>Places</a></li>
   </ul>
 
   <p class="{{ step }}"><span class="{{ num }}">2</span>Dream</p>
   <ul class="flex flex-col gap-1">
-    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' and status != 'completed' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>My bucket list</a></li>
+    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and status != 'completed' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>My bucket list</a></li>
   </ul>
 
   <p class="{{ step }}"><span class="{{ num }}">3</span>Pick a date</p>
   <ul class="flex flex-col gap-1">
-    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:event_list' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
+    <li><a class="{{ base }} {% if current == 'bucketlists:dates' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dates' %}"><i class="bi bi-calendar-check"></i>My dates</a></li>
   </ul>
 
   <p class="{{ step }}"><span class="{{ num }}">4</span>Plan</p>

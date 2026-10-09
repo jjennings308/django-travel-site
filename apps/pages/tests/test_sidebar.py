@@ -19,14 +19,15 @@ class SidebarTests(TestCase):
 
     def test_stages_in_order(self):
         text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", self.nav(reverse("pages:dashboard"))))
-        positions = [text.index(s) for s in ("Discover", "Activities", "Places", "Dream", "My bucket list",
-                                             "Pick a date", "Events", "Plan", "Trips", "Done", "Completed")]
+        positions = [text.index(s) for s in ("Discover", "Activities", "Events", "Places", "Dream", "My bucket list",
+                                             "Pick a date", "My dates", "Plan", "Trips", "Done", "Completed")]
         self.assertEqual(positions, sorted(positions))
 
     def test_one_active_item(self):
         bucket = reverse("bucketlists:dashboard")
         for url, label in ((reverse("pages:dashboard"), "Home"), (bucket, "My bucket list"),
                            (bucket + "?status=completed", "Completed"), (reverse("events:event_list"), "Events"),
+                           (reverse("bucketlists:dates"), "My dates"),
                            (reverse("trips:trip_list"), "Trips"), (reverse("activities:activity_list"), "Activities")):
             with self.subTest(url=url):
                 self.assertEqual(ACTIVE.findall(self.nav(url)), [label])

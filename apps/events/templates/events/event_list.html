@@ -11,7 +11,7 @@
   </div>
   {% if user.is_authenticated %}
     <div class="flex flex-wrap gap-2">
-      <a href="{% url 'events:my_events' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-person"></i>My events</a>
+      <a href="{% url 'events:my_events' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-person"></i>Events I added</a>
       <a href="{% url 'events:event_add' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>Add an event</a>
     </div>
   {% endif %}

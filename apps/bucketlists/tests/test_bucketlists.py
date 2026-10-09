@@ -369,3 +369,43 @@ class GoalCatalogueTests(BucketFixture):
         self.assertEqual(self.client.post(url, {"target": f"event:{self.event.pk}"}).status_code, 404)
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(url, {"target": f"city:{self.city.pk}"}).status_code, 404)
+
+
+class MyDatesTests(BucketFixture):
+    """Stage 3: dated goals soonest first, undated ones with their activity's upcoming events."""
+
+    def setUp(self):
+        super().setUp()
+        self.later = Event.objects.create(name="Ridge Walk Day", category=self.activity.category, description="d",
+                                          related_activity=self.activity, city=self.city,
+                                          start_date=date.today() + timedelta(days=40), approval_status=ApprovalStatus.APPROVED)
+        self.url = reverse("bucketlists:dates")
+
+    def test_sections(self):
+        soon = BucketListItem.objects.create(user=self.alice, custom_title="Surf", target_date=date.today() + timedelta(days=3))
+        BucketListItem.objects.create(user=self.alice, custom_title="Old goal", target_date=date.today() - timedelta(days=30))
+        BucketListItem.objects.create(user=self.alice, activity=self.activity)
+        BucketListItem.objects.create(user=self.alice, custom_title="Done goal", status="completed", target_date=date.today())
+        BucketListItem.objects.create(user=self.bob, custom_title="Bob goal", target_date=date.today())
+        page = self.client.get(self.url)
+        self.assertEqual([i.title for i in page.context["dated"]], ["Surf"])
+        self.assertEqual([i.title for i in page.context["past"]], ["Old goal"])
+        self.assertEqual([i.title for i in page.context["undated"]], ["Ridge Walk"])
+        self.assertEqual(page.context["undated"][0].date_options, [self.later])
+        self.assertContains(page, reverse("bucketlists:plan_trip", args=[soon.pk]))
+        self.assertNotContains(page, "Bob goal")
+        self.assertNotContains(page, "Done goal")
+
+    def test_pick_a_date(self):
+        item = BucketListItem.objects.create(user=self.alice, activity=self.activity)
+        response = self.client.post(reverse("bucketlists:pick_date", args=[item.pk]), {"event": self.later.pk})
+        self.assertRedirects(response, self.url)
+        item.refresh_from_db()
+        self.assertEqual((item.event, item.stage), (self.later, "dated"))
+
+    def test_pick_date_must_be_of_the_activity_and_yours(self):
+        item = BucketListItem.objects.create(user=self.alice, activity=self.activity)
+        url = reverse("bucketlists:pick_date", args=[item.pk])
+        self.assertEqual(self.client.post(url, {"event": self.event.pk}).status_code, 404)  # Jazz Night: other activity
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(url, {"event": self.later.pk}).status_code, 404)
