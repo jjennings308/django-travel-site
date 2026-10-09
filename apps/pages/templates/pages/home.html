@@ -49,10 +49,11 @@
             
             {# Hero Image #}
             <div>
-                <img src="{% static 'core/branding/svg/sbl-logo-hero-old.svg' %}" 
-                     alt="ShareBucketList App Preview" 
-                     class="w-full rounded-2xl shadow-2xl bg-white/10 transform hover:scale-105 transition-transform duration-300"
-                     onerror="this.src='https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&h=400&fit=crop'">
+                {# Plain PNG, not the SVG that wraps the same PNG as base64 (648 KB; some browsers failed to draw it and the old onerror swapped in a stock photo). #}
+                <img src="{% static 'core/branding/png/sbl-logo-hero-2400x1200.png' %}"
+                     alt="ShareBucketList: Plan it. Live it. Share it."
+                     width="2400" height="1200" fetchpriority="high"
+                     class="h-auto w-full rounded-2xl shadow-2xl bg-white/10 transform hover:scale-105 transition-transform duration-300">
             </div>
         </div>
     </div>
