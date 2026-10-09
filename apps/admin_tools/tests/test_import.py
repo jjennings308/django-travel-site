@@ -10,7 +10,7 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
-from apps.locations.models import City, Country, Region
+from apps.locations.models import POI, City, Country, Region
 
 User = get_user_model()
 
@@ -19,7 +19,7 @@ def upload(text, name="data.csv"):
     return SimpleUploadedFile(name, text.encode("utf-8"), content_type="text/csv")
 
 
-class ImportTests(TestCase):
+class ImportFixture(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user("staffer", "s@example.com", "pw-1234-abcd")
         self.staff.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard",
@@ -38,6 +38,10 @@ class ImportTests(TestCase):
 
     def confirm(self):
         return self.client.post(reverse("admin_tools:import_preview"))
+
+
+class ImportTests(ImportFixture):
+    """Activities and events."""
 
     def test_staff_only(self):
         member = User.objects.create_user("m", "m@example.com", "pw-1234-abcd")
@@ -117,3 +121,58 @@ class ImportTests(TestCase):
         self.assertContains(page, "isn&#x27;t a date")
         page = self.preview("event", "name,description\nGig,Loud.\n")
         self.assertContains(page, "Missing required column(s): start_date")
+
+
+class LocationImportTests(ImportFixture):
+    """Countries, regions, cities and places, plus export and round trip."""
+
+    def test_location_chain(self):
+        steps = [
+            ("country", "name,iso_code,iso3_code,continent,visa_required\nIceland,IS,ISL,Europe,no\n"),
+            ("region", "name,country,code\nCapital Region,Iceland,1\n"),
+            ("city", "name,country,region,latitude,longitude,capital\nReykjavik,Iceland,Capital Region,64.1466,-21.9426,country\n"),
+            ("poi", "name,city,country,type,latitude,longitude,wheelchair_accessible\nHallgrimskirkja,Reykjavik,Iceland,temple,64.1417,-21.9266,yes\n"),
+        ]
+        for kind, text in steps:
+            with self.subTest(kind=kind):
+                page = self.preview(kind, text)
+                self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 0},
+                                 [r.errors for r in page.context["importer"].rows])
+                self.confirm()
+        iceland = Country.objects.get(iso_code="IS")
+        city = City.objects.get(name="Reykjavik")
+        self.assertEqual((iceland.visa_required, iceland.approval_status, iceland.flag_emoji), (False, ApprovalStatus.APPROVED, "🇮🇸"))
+        self.assertEqual((city.region.name, city.capital_type, city.is_capital), ("Capital Region", "country", True))
+        poi = city.pois.get() if hasattr(city, "pois") else POI.objects.get(city=city)
+        self.assertEqual((poi.poi_type, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED))
+        # matched by ISO code: renaming via the file updates, not duplicates
+        self.preview("country", "name,iso_code,iso3_code,continent\nIceland,is,ISL,Europe\n")
+        self.assertEqual(self.client.get(reverse("admin_tools:import_preview")).context["counts"]["update"], 1)
+
+    def test_place_needs_an_existing_city_and_region_in_country(self):
+        page = self.preview("poi", "name,city,latitude,longitude\nSomewhere,Atlantis,1,2\n")
+        self.assertContains(page, "isn&#x27;t a city in the catalogue")
+        france = Country.objects.create(name="France", slug="france", iso_code="FR", iso3_code="FRA", continent="Europe")
+        page = self.preview("city", "name,country,region,latitude,longitude\nLyon,France,Bavaria,45.76,4.83\n")
+        self.assertContains(page, "isn&#x27;t a region in the catalogue")
+        self.assertTrue(france)
+
+    def test_export_round_trip(self):
+        Activity.objects.create(category=self.festival, name="Oktoberfest", description="Beer, music", city=self.munich,
+                                recurrence="yearly", usual_months=[9, 10], created_by=self.staff, visibility="public",
+                                approval_status=ApprovalStatus.APPROVED)
+        Activity.objects.create(category=self.festival, name="Secret", description="d", created_by=self.staff,
+                                visibility="private")
+        for kind in ("country", "region", "city", "activity"):
+            with self.subTest(kind=kind):
+                response = self.client.get(reverse("admin_tools:export", args=[kind]))
+                self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+                text = response.content.decode("utf-8-sig")
+                if kind == "activity":
+                    self.assertIn('"Beer, music"', text)  # comma inside a cell is quoted
+                    self.assertIn("Sep;Oct", text)
+                    self.assertNotIn("Secret", text)  # only published items
+                page = self.preview(kind, text)
+                counts = page.context["counts"]
+                self.assertEqual((counts["create"], counts["error"]), (0, 0))
+                self.assertEqual([r.changes for r in page.context["importer"].rows], [[]] * counts["update"])

@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.views import redirect_to_login
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models import Count, Exists, F, OuterRef, Q
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
@@ -118,6 +118,17 @@ def _attention(now, sla_hours):
         "url": reverse("admin:locations_city_changelist") + "?region__isnull=True",
         "items": [{"text": c.name, "meta": c.country.name, "url": _admin_url(c)} for c in no_region.order_by("name")[:LIST_LIMIT]],
         "tone": "info",
+    })
+
+    mismatched = (City.objects.filter(region__isnull=False).exclude(region__country=F("country"))
+                  .select_related("country", "region__country"))
+    entries.append({
+        "key": "region_country", "title": "Cities whose region is in a different country", "count": mismatched.count(),
+        "detail": "The city's country and its region's country disagree; fix one in the admin.",
+        "url": None,
+        "items": [{"text": c.name, "meta": f"{c.country.name} · region {c.region.name} ({c.region.country.name})",
+                   "url": _admin_url(c)} for c in mismatched.order_by("name")[:LIST_LIMIT]],
+        "tone": "warning",
     })
 
     today = now.date()

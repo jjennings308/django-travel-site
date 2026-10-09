@@ -60,6 +60,9 @@ class StaffDashboardTests(TestCase):
         Region.objects.create(country=self.country, name="North", slug="north")
         City.objects.create(name="Regionless", slug="regionless", country=self.country, latitude=1, longitude=2,
                             approval_status=ApprovalStatus.APPROVED)
+        elsewhere = Country.objects.create(name="Otherland", slug="otherland", iso_code="OL", iso3_code="OTL", continent="Europe")
+        City.objects.create(name="Mixed Up", slug="mixed-up", country=elsewhere, latitude=1, longitude=2,
+                            region=Region.objects.get(name="North"), approval_status=ApprovalStatus.APPROVED)
         Activity.objects.create(category=cat, name="Okto", description="d", created_by=self.member, recurrence="yearly",
                                 visibility="public", approval_status=ApprovalStatus.APPROVED)
         RoleRequest.objects.create(user=self.member, requested_role=RoleRequest.RequestedRole.VENDOR)
@@ -68,7 +71,7 @@ class StaffDashboardTests(TestCase):
         page = self.client.get(URL)
         for text in ("Submissions waiting for review", "Pending Fest", "past the",
                      "Events with a city that isn&#x27;t in the catalogue", "Typed Town Gig",
-                     "Cities without a region", "Regionless",
+                     "Cities without a region", "Regionless", "Cities whose region is in a different country", "Mixed Up",
                      "Yearly activities with no upcoming dates", "Okto",
                      "Role requests", "@member", "Accounts with a placeholder email", "ghost"):
             self.assertContains(page, text)

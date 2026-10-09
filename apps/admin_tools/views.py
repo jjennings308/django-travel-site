@@ -1,5 +1,5 @@
 # admin_tools/views.py
-"""Staff CSV import of activities and events: upload -> preview -> confirm."""
+"""Staff CSV import (upload -> preview -> confirm) and export of activities, events and locations."""
 from functools import wraps
 
 from django.contrib import messages
@@ -8,15 +8,16 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 
-from .importers import EXAMPLES, MAX_ROWS, REQUIRED, Importer, columns, template_csv
+from .importers import IMPORT_ORDER, KINDS as SPECS, MAX_ROWS, Importer, export_csv, template_csv
 
 SESSION_KEY = "csv_import"
-MAX_BYTES = 1024 * 1024
-KINDS = {"activity": "Activities", "event": "Events"}
+MAX_BYTES = 5 * 1024 * 1024
+KINDS = {kind: SPECS[kind].label for kind in IMPORT_ORDER}
 
 
 def staff_only(view):
@@ -44,7 +45,7 @@ def import_start(request):
         if kind not in KINDS or upload is None:
             messages.error(request, "Choose what you're importing and a CSV file.")
         elif upload.size > MAX_BYTES:
-            messages.error(request, "That file is over 1 MB. Split it into smaller files.")
+            messages.error(request, "That file is over 5 MB. Split it into smaller files.")
         else:
             raw = upload.read()
             try:
@@ -53,7 +54,7 @@ def import_start(request):
                 text = raw.decode("cp1252", errors="replace")  # Excel's default on Windows
             request.session[SESSION_KEY] = {"kind": kind, "text": text, "name": upload.name}
             return redirect("admin_tools:import_preview")
-    help_columns = {kind: [(c, c in REQUIRED[kind], EXAMPLES[kind].get(c, "")) for c in columns(kind)] for kind in KINDS}
+    help_columns = {kind: [(c, c in SPECS[kind].required, SPECS[kind].example.get(c, "")) for c in SPECS[kind].columns] for kind in KINDS}
     return render(request, "admin_tools/import_start.html", {
         "kinds": KINDS, "help_columns": help_columns, "max_rows": MAX_ROWS,
         "breadcrumb_list": _crumbs(),
@@ -75,7 +76,7 @@ def import_preview(request):
         skipped = importer.counts["error"]
         messages.success(request, f"Imported {KINDS[pending['kind']].lower()}: {created} created, {updated} updated"
                                   + (f", {skipped} row(s) with errors skipped." if skipped else "."))
-        url_name = "activities:activity_detail" if pending["kind"] == "activity" else "events:event_detail"
+        url_name = SPECS[pending["kind"]].url_name
         return render(request, "admin_tools/import_done.html", {
             "kind_label": KINDS[pending["kind"]],
             "done": [(row, obj, reverse(url_name, args=[obj.slug])) for row, obj in done],
@@ -100,4 +101,16 @@ def import_template(request, kind):
         raise PermissionDenied
     response = HttpResponse(template_csv(kind), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{kind}-import-template.csv"'
+    return response
+
+
+@staff_only
+def export(request, kind):
+    """Download the published items of one kind, in the import columns."""
+    if kind not in KINDS:
+        raise PermissionDenied
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{kind}-export-{timezone.localdate():%Y-%m-%d}.csv"'
+    response.write("\ufeff")  # BOM, so Excel reads accents (café, München) correctly
+    export_csv(kind, response)
     return response

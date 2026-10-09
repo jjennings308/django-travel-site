@@ -1,32 +1,31 @@
 {% extends "base.html" %}
-{# admin_tools/import_start.html — staff CSV import, step 1: choose activities/events and upload #}
+{# admin_tools/import_start.html — staff CSV import, step 1: choose a kind and upload; also template and export downloads #}
 {% block title %}Import from CSV{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-4xl space-y-6" x-data="{ kind: 'activity' }">
+<div class="mx-auto max-w-4xl space-y-6" x-data="{ kind: 'country' }">
   <header>
     <h1 class="sbl-page-title">Import from CSV</h1>
-    <p class="sbl-page-subtitle">Add or update activities or events from a spreadsheet. You'll see a preview before anything is saved.</p>
+    <p class="sbl-page-subtitle">Add or update countries, regions, cities, places, activities or events from a spreadsheet. You'll see a preview before anything is saved.</p>
   </header>
 
   <form method="post" enctype="multipart/form-data" class="sbl-card space-y-4 p-6">
     {% csrf_token %}
     <fieldset>
       <legend class="sbl-label">What are you importing?</legend>
-      <div class="flex gap-4">
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
         {% for value, label in kinds.items %}<label class="flex items-center gap-2 text-sm text-warm-800"><input type="radio" name="kind" value="{{ value }}" class="sbl-check" x-model="kind" {% if forloop.first %}checked{% endif %}> {{ label }}</label>{% endfor %}
       </div>
+      <p class="sbl-help">Import in this order, since each looks up the ones before it: countries, regions, cities, places, activities, events.</p>
     </fieldset>
     <div>
       <label for="file" class="sbl-label">CSV file</label>
       <input id="file" type="file" name="file" accept=".csv,text/csv" required class="sbl-input">
-      <p class="sbl-help">Save from Excel or Google Sheets as “CSV”. Up to {{ max_rows }} rows, 1 MB.</p>
+      <p class="sbl-help">Save from Excel or Google Sheets as “CSV”. Up to {{ max_rows }} rows, 5 MB.</p>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 border-t border-warm-200 pt-4">
-      <span class="text-sm">Start from a template:
-        <a class="sbl-link" href="{% url 'admin_tools:import_template' 'activity' %}">activities.csv</a> ·
-        <a class="sbl-link" href="{% url 'admin_tools:import_template' 'event' %}">events.csv</a></span>
+      <span class="text-sm">{% for value, label in kinds.items %}<span x-show="kind === '{{ value }}'" {% if not forloop.first %}x-cloak{% endif %}><strong>{{ label }}:</strong> <a class="sbl-link" href="{% url 'admin_tools:import_template' value %}">blank template</a> · <a class="sbl-link" href="{% url 'admin_tools:export' value %}">export what's loaded now</a></span>{% endfor %}</span>
       <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-upload"></i>Preview import</button>
     </div>
   </form>
@@ -36,7 +35,10 @@
     <ul class="list-disc space-y-1 pl-5 text-sm text-warm-700">
       <li>The first row is the column names (any order; capitals and spaces don't matter). Unknown columns are ignored.</li>
       <li>A row that matches an existing item is <strong>updated</strong>: an activity with the same name, an event with the same name and start date. Blank cells keep the existing value.</li>
-      <li>Categories, countries, regions, cities and activities are matched by name. An event city that isn't in the catalogue is kept as a typed town for staff to link later.</li>
+      <li>A country matches by ISO code (or name); a region or city by name within its country; a place by name within its city.</li>
+      <li>Categories, countries, regions, cities and activities are matched by name. An event city that isn't in the catalogue is kept as a typed town for staff to link later; a place's city must already exist.</li>
+      <li>A cell that contains a comma (a description, “Sep, Oct”) is wrapped in double quotes in the CSV. Spreadsheets do this for you when saving; when writing a file by hand, add the quotes, or separate months with semicolons (“Sep;Oct”).</li>
+      <li>“Export what's loaded now” downloads the published items in these same columns, ready to edit and import again.</li>
       <li>Yes/no columns take yes, no, true, false, 1 or 0. Dates: 2027-09-18 (or 9/18/2027). Times: 20:00 or 8:00 PM. Months: “Sep, Oct” or “9, 10”.</li>
       <li>Imported items are published straight away.</li>
     </ul>
