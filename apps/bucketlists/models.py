@@ -288,6 +288,12 @@ class BucketListItem(TimeStampedModel):
         return trip if trip is not None and trip.deleted_at is None else None
 
     @property
+    def trip_finished(self):
+        """Its trip is over but the goal isn't ticked off yet."""
+        trip = self.live_trip
+        return trip is not None and trip.is_completed and self.status not in ("completed", "abandoned")
+
+    @property
     def stage(self):
         if self.status == "completed":
             return "done"

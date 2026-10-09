@@ -13,6 +13,7 @@ urlpatterns = [
     path("dates/", views.my_dates, name="dates"),
     path("suggest/", views.suggest, name="suggest"),
     path("<int:pk>/pick-date/", views.pick_date, name="pick_date"),
+    path("trip/<int:trip_pk>/done/", views.trip_done, name="trip_done"),
     path("<int:pk>/link/", views.link_item, name="link_item"),
     path("<int:pk>/plan-trip/", views.plan_trip, name="plan_trip"),
     path("<int:pk>/complete/", views.item_complete, name="item_complete"),

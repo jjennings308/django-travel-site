@@ -309,6 +309,9 @@ def my_dates(request):
     dated, past, undated = [], [], []
     for item in items:
         start, end = item.dates
+        if item.trip_finished:
+            past.append(item)
+            continue
         if start is None:
             undated.append(item)
         elif end < today:
@@ -316,7 +319,7 @@ def my_dates(request):
         else:
             dated.append(item)
     dated.sort(key=lambda i: i.dates[0])
-    past.sort(key=lambda i: i.dates[0], reverse=True)
+    past.sort(key=lambda i: i.dates[0] or i.live_trip.end_date, reverse=True)
     undated.sort(key=lambda i: (-i.priority, i.title.lower()))
 
     activity_ids = {i.activity_id for i in undated if i.activity_id}
@@ -332,6 +335,34 @@ def my_dates(request):
         "dated": dated, "past": past, "undated": undated, "today": today,
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My dates", None)]),
     })
+
+
+@login_required
+@require_POST
+def trip_done(request, trip_pk):
+    """From a finished trip's page: tick off the goal(s) it was for.
+
+    One open goal -> its "mark done" page. Several -> My dates, where they are
+    listed. None (a trip not started from a goal) -> a goal is created for it
+    with the trip's dates, then its "mark done" page.
+    """
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
+    linked = BucketListItem.objects.filter(user=request.user, trip=trip)
+    open_items = list(linked.exclude(status__in=OPEN_STATUSES_EXCLUDED))
+    if len(open_items) == 1:
+        return redirect("bucketlists:item_complete", pk=open_items[0].pk)
+    if open_items:
+        messages.info(request, f"Several goals are linked to “{trip.name}”. Tick each one off below.")
+        return redirect("bucketlists:dates")
+    if linked.filter(status="completed").exists():
+        messages.info(request, f"“{trip.name}” is already ticked off your bucket list.")
+        return redirect(reverse("bucketlists:dashboard") + "?status=completed")
+    item = BucketListItem.objects.create(
+        user=request.user, custom_title=trip.name, trip=trip, status="in_progress",
+        target_date=trip.start_date, target_end_date=trip.end_date,
+    )
+    messages.info(request, f"Added “{trip.name}” to your bucket list. Add your rating and notes to tick it off.")
+    return redirect("bucketlists:item_complete", pk=item.pk)
 
 
 @login_required

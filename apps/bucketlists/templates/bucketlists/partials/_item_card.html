@@ -20,7 +20,7 @@
   {% if owner and item.stage != 'done' %}
     <p class="mb-2 flex flex-wrap items-center gap-2 text-xs">
       <span class="rounded-full bg-warm-100 px-2 py-0.5 text-warm-600" title="Stage">{{ item.stage_label }}</span>
-      {% with trip=item.live_trip %}{% if trip %}<a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> {{ trip.name }}</a>{% else %}<a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> Plan a trip</a>{% endif %}{% endwith %}
+      {% with trip=item.live_trip %}{% if item.trip_finished %}<a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-link font-medium text-emerald-700"><i class="bi bi-trophy"></i> Trip over: tick it off</a>{% elif trip %}<a href="{% url 'trips:trip_detail' trip.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> {{ trip.name }}</a>{% else %}<a href="{% url 'bucketlists:plan_trip' item.pk %}" class="sbl-link"><i class="bi bi-airplane"></i> Plan a trip</a>{% endif %}{% endwith %}
     </p>
   {% endif %}
   <div class="mt-auto flex flex-wrap items-center gap-1.5 pt-2">

@@ -1,0 +1,2 @@
+{# trips/partials/_status_badge.html — pass trip= (and optionally extra= classes). Completed once the end date has passed, else the planning stage; see Trip.badge. #}
+{% with b=trip.badge %}<span class="badge {{ b.1 }} {{ extra|default:'' }}" title="Planning stage: {{ trip.get_status_display }}">{{ b.0 }}</span>{% endwith %}

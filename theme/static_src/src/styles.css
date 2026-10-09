@@ -111,6 +111,9 @@
   .trips-ui .badge-draft {
     @apply border-amber-200 bg-amber-50 text-amber-700 before:mr-1.5 before:size-1.5 before:rounded-full before:bg-amber-500 before:content-[''];
   }
+  .trips-ui .badge-done {
+    @apply border-slate-300 bg-slate-100 text-slate-700 before:mr-1.5 before:content-['✓'];
+  }
   .trips-ui .badge-mode {
     @apply border-zinc-200 bg-zinc-100 text-zinc-600;
   }

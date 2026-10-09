@@ -13,6 +13,7 @@ The section payloads are built by hand rather than imported, so a change to
 
 
 from datetime import date, timedelta
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -224,6 +225,9 @@ class MissingKeyToleranceTests(DetailFixture):
         self.assertIn("Day 2", self.get().content.decode())
 
 
+# The fixture trip is Sep 12-19, 2026; pin "today" before it so these tests see the
+# planning-stage badge rather than "Completed" (see CompletedTripTests).
+@mock.patch("apps.trips.models.django_timezone.localdate", new=lambda: date(2026, 9, 1))
 class TripChromeTests(DetailFixture):
     def test_header_carries_name_dates_and_draft_badge(self):
         html = self.get().content.decode()
@@ -246,6 +250,7 @@ class TripChromeTests(DetailFixture):
         html = self.get().content.decode()
         self.assertIn("card-kicker", html)
         self.assertIn("badge-draft", html)
+        self.assertIn("Starting", html)  # the real stage, not a generic "Draft"
         self.assertIn("Sep 12", html)
         self.assertIn("Sep 19, 2026", html)
         self.assertIn("New Mexico", html)
@@ -437,3 +442,25 @@ class QueryCountTests(DetailFixture):
         with self.assertNumQueries(19):
             response = self.get()
         self.assertEqual(response.status_code, 200)
+
+
+
+class CompletedTripTests(DetailFixture):
+    """A trip whose end date has passed is Completed, offers to tick it off the
+    bucket list, and moves to "Past trips" on the list."""
+
+    @mock.patch("apps.trips.models.django_timezone.localdate", return_value=date(2026, 9, 20))
+    def test_finished_trip(self, _today):
+        html = self.get().content.decode()
+        self.assertIn("badge-done", html)
+        self.assertIn("Completed", html)
+        self.assertIn(reverse("bucketlists:trip_done", args=[self.trip.pk]), html)
+        listing = self.client.get(reverse("trips:trip_list"))
+        self.assertEqual((listing.context["upcoming"], listing.context["past"]), ([], [self.trip]))
+        self.assertContains(listing, "Past trips")
+
+    @mock.patch("apps.trips.models.django_timezone.localdate", return_value=date(2026, 9, 19))
+    def test_last_day_is_not_finished_yet(self, _today):
+        html = self.get().content.decode()
+        self.assertNotIn("badge-done", html)
+        self.assertNotIn(reverse("bucketlists:trip_done", args=[self.trip.pk]), html)

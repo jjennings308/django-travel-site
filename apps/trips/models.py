@@ -599,6 +599,23 @@ class Trip(models.Model):
         return self.status == self.Status.READY_TO_GO
 
     @property
+    def is_completed(self):
+        """The trip is over: its last day is before today (in the active time zone).
+
+        Derived from the dates, never stored, so a trip finishes on its own without
+        anyone remembering to mark it. Like ``status`` it is a label, not an access check.
+        """
+        return self.end_date is not None and self.end_date < django_timezone.localdate()
+
+    @property
+    def badge(self):
+        """(label, css class) for the status badge: Completed once the trip is over,
+        otherwise the planning stage (Ready to go is green, earlier stages amber)."""
+        if self.is_completed:
+            return "Completed", "badge-done"
+        return self.get_status_display(), "badge-ready" if self.is_ready else "badge-draft"
+
+    @property
     def outstanding_booking_tasks(self):
         """Count of booking tasks not yet ticked off.
 

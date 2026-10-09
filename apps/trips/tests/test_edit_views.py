@@ -235,6 +235,16 @@ class TripEditTests(TripEditingFixture):
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.name, "Taos, revised")
 
+    def test_ready_to_go_with_open_tasks_warns(self):
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
+        self.client.force_login(self.alice)
+        BookingTask.objects.create(trip=self.trip, title="Book rental car")
+        url = reverse("trips:trip_edit", args=[self.trip.pk])
+        response = self.client.post(url, self.valid_trip_payload(status=Trip.Status.READY_TO_GO), follow=True)
+        self.assertContains(response, "marked Ready to go but still has 1 booking task outstanding")
+        response = self.client.post(url, self.valid_trip_payload(status=Trip.Status.CONFIRMING), follow=True)
+        self.assertNotContains(response, "marked Ready to go")
+
     def test_a_commentor_may_not_edit(self):
         self.give(self.alice, TripRole.COMMENTOR, trip=self.trip)
         self.client.force_login(self.alice)

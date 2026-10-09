@@ -156,11 +156,16 @@ def trip_list(request):
         )
     )
     _visible_capabilities(request.user, trips)
+    # Upcoming and current trips first (soonest first), then finished ones (latest first).
+    upcoming = sorted((t for t in trips if not t.is_completed), key=lambda t: (t.start_date, t.name))
+    past = sorted((t for t in trips if t.is_completed), key=lambda t: (t.end_date, t.name), reverse=True)
     return render(
         request,
         "trips/trip_list.html",
         {
             "trips": trips,
+            "upcoming": upcoming,
+            "past": past,
             "is_staff_view": request.user.is_staff or request.user.is_superuser,
             "can_create": can_create_trip(request.user),
         },
@@ -362,6 +367,18 @@ def _add_new_traveler(trip, traveler_form):
     trip.travelers.add(traveler)
 
 
+def _warn_if_ready_with_open_tasks(request, trip):
+    """Status is a hand-set label; flag "Ready to go" while booking tasks are still open."""
+    if trip.is_ready:
+        open_tasks = trip.booking_tasks.filter(done=False).count()
+        if open_tasks:
+            messages.warning(
+                request,
+                f"“{trip.name}” is marked Ready to go but still has {open_tasks} booking "
+                f"task{'s' if open_tasks != 1 else ''} outstanding.",
+            )
+
+
 @login_required
 def trip_create(request):
     """Start a new trip.
@@ -439,6 +456,7 @@ def trip_edit(request, pk):
                 for _key, _label, formset in formsets:
                     formset.save()
             messages.success(request, f"Saved “{trip.name}”.")
+            _warn_if_ready_with_open_tasks(request, trip)
             return redirect("trips:trip_detail", pk=trip.pk)
 
     return render(

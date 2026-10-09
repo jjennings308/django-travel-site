@@ -82,13 +82,13 @@
 
   {% if past %}
     <section aria-labelledby="past-title">
-      <h2 id="past-title" class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-hourglass-bottom"></i> Date has passed</h2>
+      <h2 id="past-title" class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-hourglass-bottom"></i> Date has passed: did you do it?</h2>
       <ul class="sbl-card divide-y divide-warm-200">
         {% for item in past %}
           <li class="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <a href="{% url 'bucketlists:item_edit' item.pk %}" class="font-semibold text-warm-900 hover:text-earth-clay">{{ item.title }}</a>
-              <p class="text-sm text-warm-500">{% if item.event %}{{ item.event.name }} · {% endif %}{{ item.dates.0|date:"M j, Y" }}</p>
+              <p class="text-sm text-warm-500">{% if item.trip_finished %}Trip “{{ item.live_trip.name }}” ended {{ item.live_trip.end_date|date:"M j, Y" }}{% else %}{% if item.event %}{{ item.event.name }} · {% endif %}{{ item.dates.0|date:"M j, Y" }}{% endif %}</p>
             </div>
             <div class="flex gap-2">
               <a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm"><i class="bi bi-check-lg"></i>I did it</a>

@@ -1,0 +1,7 @@
+{# templates/partials/_trip_bucket_prompt.html — on a finished trip's page: tick the trip off your bucket list. Pass trip=. Uses url … as (renders nothing without the bucketlists app) and runs no query, so trips doesn't depend on bucketlists and the detail page's query count is unchanged. #}
+{% if trip.is_completed %}{% url 'bucketlists:trip_done' trip.pk as done_url %}{% if done_url %}
+<form method="post" action="{{ done_url }}" class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 print:hidden">{% csrf_token %}
+  <span>This trip is over. Was it on your bucket list? Tick it off and add how it went.</span>
+  <button type="submit" class="btn">Tick it off</button>
+</form>
+{% endif %}{% endif %}

@@ -409,3 +409,35 @@ class MyDatesTests(BucketFixture):
         self.assertEqual(self.client.post(url, {"event": self.event.pk}).status_code, 404)  # Jazz Night: other activity
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(url, {"event": self.later.pk}).status_code, 404)
+
+
+class TripDoneTests(BucketFixture):
+    """Ticking off a finished trip from its page."""
+
+    def setUp(self):
+        super().setUp()
+        self.trip = Trip.objects.create(name="Surf week", start_date=date.today() - timedelta(days=10),
+                                        end_date=date.today() - timedelta(days=3))
+        TripGrant.objects.create(trip=self.trip, user=self.alice, role=TripRole.EDITOR)
+        self.url = reverse("bucketlists:trip_done", args=[self.trip.pk])
+
+    def test_linked_goal_goes_to_its_done_page(self):
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Learn to surf", trip=self.trip, status="planning")
+        self.assertTrue(item.trip_finished)
+        self.assertRedirects(self.client.post(self.url), reverse("bucketlists:item_complete", args=[item.pk]))
+        page = self.client.get(reverse("bucketlists:dashboard"))
+        self.assertContains(page, "Trip over: tick it off")
+        self.assertEqual([i.title for i in self.client.get(reverse("bucketlists:dates")).context["past"]], ["Learn to surf"])
+
+    def test_unlinked_trip_creates_a_goal(self):
+        response = self.client.post(self.url)
+        item = BucketListItem.objects.get(user=self.alice)
+        self.assertRedirects(response, reverse("bucketlists:item_complete", args=[item.pk]))
+        self.assertEqual((item.title, item.trip, item.target_date), ("Surf week", self.trip, self.trip.start_date))
+        self.client.post(self.url)  # second click: no second goal
+        self.assertEqual(BucketListItem.objects.filter(user=self.alice).count(), 1)
+
+    def test_trip_must_be_visible(self):
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(self.url).status_code, 404)
+        self.assertEqual(self.client.get(self.url).status_code, 405)

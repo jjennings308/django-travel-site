@@ -233,11 +233,7 @@
               <div class="min-w-0 flex-1">
                 <div class="flex items-start justify-between gap-3">
                   <a href="{% url 'trips:trip_detail' trip.pk %}" class="stretched card-title leading-snug">{{ trip.name }}</a>
-                  {% if trip.is_ready %}
-                    <span class="badge badge-ready shrink-0">Ready</span>
-                  {% else %}
-                    <span class="badge badge-draft shrink-0">Draft</span>
-                  {% endif %}
+                  {% include "trips/partials/_status_badge.html" with extra="shrink-0" %}
                 </div>
                 <p class="mt-1 text-sm text-zinc-500">
                   {{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }}{% if trip.destination %} &middot; {{ trip.destination }}{% endif %}
