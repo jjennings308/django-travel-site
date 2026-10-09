@@ -1,0 +1,15 @@
+{# templates/partials/_picture_field.html — optional picture upload for a form using media_app.forms.PictureFormMixin; pass form= and current= (the object's featured_media or nothing) #}
+<div class="mb-4" x-data="{ preview: null }">
+  <label for="{{ form.picture.id_for_label }}" class="sbl-label">{{ form.picture.label }}</label>
+  <div class="flex flex-wrap items-start gap-4">
+    {% if current %}<img src="{{ current.file.url }}" alt="Current picture" class="h-24 w-36 rounded-lg object-cover" x-show="!preview">{% endif %}
+    <img :src="preview" alt="New picture" class="h-24 w-36 rounded-lg object-cover" x-show="preview" x-cloak>
+    <div class="min-w-0 grow">
+      <input type="file" name="{{ form.picture.html_name }}" id="{{ form.picture.id_for_label }}" accept="image/*,.heic,.heif" class="sbl-input"
+             @change="const f = $event.target.files[0]; preview = f && f.type.startsWith('image/') && !/heic|heif/i.test(f.type) ? URL.createObjectURL(f) : null">
+      {% if form.picture.help_text %}<p class="sbl-help">{{ form.picture.help_text }}</p>{% endif %}
+      {% for error in form.picture.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+      {% if current %}<label class="mt-2 flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="{{ form.remove_picture.html_name }}" class="sbl-check"> {{ form.remove_picture.label }}</label>{% endif %}
+    </div>
+  </div>
+</div>

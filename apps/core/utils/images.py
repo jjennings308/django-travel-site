@@ -41,3 +41,24 @@ def convert_heic_uploads(instance):
         setattr(instance, field.attname, ContentFile(heic_to_jpeg(value.file), name=f"{base}.jpg"))
         converted.append(field.name)
     return converted
+
+
+def shrink_image(file, max_side):
+    """A ContentFile of ``file`` scaled so its longest side is at most ``max_side``
+    (upright, metadata dropped; PNG/GIF/WebP keep their format, everything else
+    becomes JPEG), or None when it is already small enough."""
+    file.seek(0)
+    with Image.open(file) as image:
+        if max(image.size) <= max_side:
+            file.seek(0)
+            return None
+        fmt = image.format if image.format in ("PNG", "GIF", "WEBP") else "JPEG"
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail((max_side, max_side))
+        if fmt == "JPEG":
+            image = image.convert("RGB")
+        out = io.BytesIO()
+        image.save(out, format=fmt, **({"quality": JPEG_QUALITY, "optimize": True} if fmt == "JPEG" else {}))
+    base = os.path.splitext(os.path.basename(file.name or "picture"))[0]
+    ext = {"JPEG": "jpg", "PNG": "png", "GIF": "gif", "WEBP": "webp"}[fmt]
+    return ContentFile(out.getvalue(), name=f"{base}.{ext}")

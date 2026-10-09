@@ -5,6 +5,7 @@ from .models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.locations.models import City, Country, Region
 from apps.locations.widgets import CountryTaggedSelect
+from apps.media_app.forms import PictureFormMixin
 
 PLACE_AND_TIMING_FIELDS = ['country', 'region', 'city', 'recurrence', 'usual_months']
 
@@ -51,7 +52,7 @@ class PlaceAndTimingMixin:
         return cleaned
 
 
-class ActivityCreateForm(PlaceAndTimingMixin, forms.ModelForm):
+class ActivityCreateForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm):
     """Form for users to create their own activities"""
     
     # Allow users to add tags
@@ -216,6 +217,7 @@ class ActivityCreateForm(PlaceAndTimingMixin, forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.setup_place_and_timing()
+        self.setup_picture()
         
         # Filter categories to only those that allow user submissions
         self.fields['category'].queryset = ActivityCategory.objects.filter(
@@ -297,7 +299,7 @@ class ActivityCreateForm(PlaceAndTimingMixin, forms.ModelForm):
         return activity
 
 
-class ActivityEditForm(PlaceAndTimingMixin, forms.ModelForm):
+class ActivityEditForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm):
     """Form for editing existing activities"""
     
     tags = forms.ModelMultipleChoiceField(
@@ -355,6 +357,7 @@ class ActivityEditForm(PlaceAndTimingMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setup_place_and_timing()
+        self.setup_picture()
         
         # Set initial tags
         if self.instance and self.instance.pk:

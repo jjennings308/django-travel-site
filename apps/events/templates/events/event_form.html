@@ -9,7 +9,7 @@
     <h1 class="sbl-page-title">{{ title }}</h1>
     {% if not user.is_staff %}<p class="sbl-page-subtitle">New events are reviewed before they appear publicly. You can see yours meanwhile under My events.</p>{% endif %}
   </header>
-  <form method="post" class="space-y-6" x-data="{ allDay: {{ form.is_all_day.value|yesno:'true,false' }}, free: {{ form.is_free.value|yesno:'true,false' }} }">
+  <form method="post" enctype="multipart/form-data" class="space-y-6" x-data="{ allDay: {{ form.is_all_day.value|yesno:'true,false' }}, free: {{ form.is_free.value|yesno:'true,false' }} }">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
 
@@ -24,6 +24,11 @@
       {% include "events/partials/_field.html" with field=form.short_description %}
       {% include "events/partials/_field.html" with field=form.description %}
       {% include "events/partials/_field.html" with field=form.organizer %}
+    </section>
+
+    <section class="sbl-card p-6">
+      <h2 class="sbl-section-title">Picture</h2>
+      {% include "partials/_picture_field.html" with current=form.instance.featured_media %}
     </section>
 
     <section class="sbl-card p-6">

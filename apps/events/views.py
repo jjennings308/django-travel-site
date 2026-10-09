@@ -22,7 +22,7 @@ from .models import Event
 def _visible_event_or_404(request, slug):
     """404 (not 403) for an event this user may not see, so its existence isn't revealed."""
     event = get_object_or_404(
-        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity"), slug=slug
+        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity", "featured_media"), slug=slug
     )
     if not event.is_visible_to(request.user):
         raise Http404
@@ -34,7 +34,7 @@ def event_list(request):
     today = timezone.now().date()
     events = (
         Event.objects.filter(approval_status=ApprovalStatus.APPROVED)
-        .select_related("category", "city__country", "country")
+        .select_related("category", "city__country", "country", "featured_media")
     )
     when = request.GET.get("when", "upcoming")
     if when == "past":
@@ -114,7 +114,7 @@ def event_detail(request, slug):
 @login_required
 def my_events(request):
     """Everything the user submitted, at any approval stage."""
-    events = Event.objects.filter(created_by=request.user).select_related("category", "city__country", "country").order_by("-start_date")
+    events = Event.objects.filter(created_by=request.user).select_related("category", "city__country", "country", "featured_media").order_by("-start_date")
     return render(request, "events/my_events.html", {
         "events": events,
         "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("My events", None)]),
@@ -148,7 +148,7 @@ def _copy_initial(source):
 
 @login_required
 def event_add(request):
-    initial = {}
+    initial, source = {}, None
     if request.GET.get("copy"):
         # "Add next year's dates" from an event: a recurring activity has one event per year.
         source = Event.objects.visible_to(request.user).filter(pk=request.GET["copy"]).first()
@@ -162,7 +162,7 @@ def event_add(request):
                        "short_description": activity.short_description, "description": activity.description,
                        "city": activity.city, "country": None if activity.city_id else activity.country,
                        "location_text": "" if activity.city_id else activity.suggested_location}
-    form = EventForm(request.POST or None, initial=initial)
+    form = EventForm(request.POST or None, request.FILES or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         event = form.save(commit=False)
         event.created_by = request.user
@@ -174,6 +174,10 @@ def event_add(request):
             event.save()
             event.submit_for_review(request.user)
             messages.success(request, f"Thanks! “{event.name}” was sent for review. Only you can see it until it's approved.")
+        form.save_picture(request.user)
+        if not event.featured_media_id and source is not None and source.featured_media_id:
+            event.featured_media_id = source.featured_media_id  # next year's event keeps last year's picture
+            event.save(update_fields=["featured_media"])
         return redirect("events:event_detail", slug=event.slug)
     return render(request, "events/event_form.html", {
         "form": form, "title": "Add an event",
@@ -187,9 +191,10 @@ def event_edit(request, slug):
     if not event.can_edit(request.user):
         messages.error(request, "Approved events can only be changed by staff.")
         return redirect("events:event_detail", slug=slug)
-    form = EventForm(request.POST or None, instance=event)
+    form = EventForm(request.POST or None, request.FILES or None, instance=event)
     if request.method == "POST" and form.is_valid():
         event = form.save()
+        form.save_picture(request.user)
         # A creator's edit of a rejected / changes-requested event goes back to the queue.
         if not request.user.is_staff and event.approval_status in (
             ApprovalStatus.REJECTED, ApprovalStatus.CHANGES_REQUESTED, ApprovalStatus.DRAFT

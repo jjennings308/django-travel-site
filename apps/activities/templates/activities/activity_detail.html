@@ -12,7 +12,7 @@
 {# Activity detail. An activity is an undated idea; each dated occurrence (e.g. one per year) is an Event listed under Dates via the activity.events reverse relation. #}
 <div class="py-6">
     <header class="sbl-card mb-6 overflow-hidden">
-        <div class="bg-earth-clay px-6 py-10 text-white">
+        <div class="relative bg-earth-clay bg-cover bg-center px-6 py-10 text-white {% if activity.featured_media %}min-h-72 flex flex-col justify-end{% endif %}"{% if activity.featured_media %} style="background-image: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,.1)), url('{{ activity.featured_media.file.url }}');" role="img" aria-label="{{ activity.featured_media.alt_text|default:activity.name }}"{% endif %}>
             <p class="mb-2 text-sm font-medium uppercase tracking-wide text-white/80">
                 {% if activity.category.icon %}{% if 'bi-' in activity.category.icon %}<i class="bi {{ activity.category.icon }}"></i>{% else %}{{ activity.category.icon }}{% endif %} {% endif %}{{ activity.category.name }}
             </p>

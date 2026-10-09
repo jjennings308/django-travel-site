@@ -144,6 +144,13 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     )
     recurrence_end_date = models.DateField(null=True, blank=True)
     
+    # Optional picture, like places have. Uploaded on the add/edit form as a
+    # media_app.Media row (HEIC is stored as JPEG, large photos are scaled down).
+    featured_media = models.ForeignKey(
+        'media_app.Media', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='featured_for_event', help_text="Picture shown on its page and in lists"
+    )
+
     # Related activity
     related_activity = models.ForeignKey(
         Activity,

@@ -3,6 +3,7 @@ from django import forms
 
 from apps.approval_system.models import ApprovalStatus
 from apps.locations.models import City, Country
+from apps.media_app.forms import PictureFormMixin
 
 from apps.activities.models import Activity, ActivityCategory
 
@@ -11,7 +12,7 @@ from .models import Event
 INPUT = {"class": "sbl-input"}
 
 
-class EventForm(forms.ModelForm):
+class EventForm(PictureFormMixin, forms.ModelForm):
     """What a user fills in to submit (or edit) an event. Approval, counters and
     the admin-only fields are left out; staff manage those in the admin."""
 
@@ -49,6 +50,7 @@ class EventForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setup_picture()
         self.fields["city"].queryset = (
             City.objects.filter(approval_status=ApprovalStatus.APPROVED)
             .select_related("country").order_by("country__name", "name")

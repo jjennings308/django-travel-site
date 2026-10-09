@@ -1,5 +1,6 @@
 {# events/partials/_event_card.html — pass event=; show_status=True adds the approval badge (my events) #}
 <article class="sbl-card sbl-card-hover flex flex-col overflow-hidden">
+  {% if event.featured_media %}<a href="{% url 'events:event_detail' event.slug %}" tabindex="-1" aria-hidden="true"><img src="{{ event.featured_media.file.url }}" alt="" loading="lazy" class="h-40 w-full object-cover"></a>{% endif %}
   <a href="{% url 'events:event_detail' event.slug %}" class="flex gap-4 p-5">
     <div class="flex w-14 shrink-0 flex-col items-center rounded-lg bg-earth-sand py-2 text-earth-clay-dark">
       <span class="text-xs font-semibold uppercase">{{ event.start_date|date:"M" }}</span>

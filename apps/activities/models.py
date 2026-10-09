@@ -138,6 +138,13 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         help_text="How specific is this activity description?"
     )
     
+    # Optional picture, like places have. Uploaded on the add/edit form as a
+    # media_app.Media row (HEIC is stored as JPEG, large photos are scaled down).
+    featured_media = models.ForeignKey(
+        'media_app.Media', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='featured_for_activity', help_text="Picture shown on its page and in lists"
+    )
+
     # Where it happens (all optional: "See Kenny Chesney" tours, "Go skydiving" is
     # anywhere). Choosing a city fills in its region and country (see save()).
     # suggested_location is free text for a place not in the catalogue.

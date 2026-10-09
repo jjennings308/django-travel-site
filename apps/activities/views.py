@@ -14,7 +14,7 @@ from apps.approval_system.models import ApprovalStatus
 
 def activity_list(request):
     """Public list of approved activities"""
-    activities = Activity.get_public_activities()
+    activities = Activity.get_public_activities().select_related('category', 'featured_media')
     
     # Filtering
     category_slug = request.GET.get('category')
@@ -69,7 +69,7 @@ def activity_list(request):
 def activity_detail(request, slug):
     """View a single activity"""
     activity = get_object_or_404(
-        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country'), slug=slug)
+        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country', 'featured_media'), slug=slug)
     
     # Check visibility
     if not activity.is_visible_to(request.user):
@@ -126,9 +126,10 @@ def my_activities(request):
 def activity_add(request):
     """Create a new activity"""
     if request.method == 'POST':
-        form = ActivityCreateForm(request.POST, user=request.user)
+        form = ActivityCreateForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             activity = form.save()
+            form.save_picture(request.user)
             
             if activity.visibility == 'public':
                 if request.user.is_staff:
@@ -181,9 +182,10 @@ def activity_edit(request, slug):
         return redirect('activities:activity_detail', slug=slug)
     
     if request.method == 'POST':
-        form = ActivityEditForm(request.POST, instance=activity)
+        form = ActivityEditForm(request.POST, request.FILES, instance=activity)
         if form.is_valid():
             form.save()
+            form.save_picture(request.user)
             messages.success(request, 'Activity updated!')
             return redirect('activities:activity_detail', slug=activity.slug)
     else:

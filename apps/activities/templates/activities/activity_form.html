@@ -13,7 +13,7 @@
                 </div>
                 <div class="p-5">
 
-                    <form method="post" novalidate>
+                    <form method="post" enctype="multipart/form-data" novalidate>
                         {% csrf_token %}
                         
                         {# Basic Information Section #}
@@ -87,6 +87,12 @@
                                     </small>
                                 </div>
                             </div>
+                        </div>
+
+                        {# Picture (optional) #}
+                        <div class="sbl-card mb-6">
+                            <div class="border-b border-warm-200 px-5 py-3 font-semibold"><h5 class="mb-0">Picture (optional)</h5></div>
+                            <div class="p-5">{% include "partials/_picture_field.html" with current=form.instance.featured_media %}</div>
                         </div>
 
                         {# Where & when: catalogue place (region/city filtered by country via locations/country_filter.js) and how often it happens #}
