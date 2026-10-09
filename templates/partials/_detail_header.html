@@ -1,0 +1,20 @@
+{# templates/partials/_detail_header.html — banner header shared by the activity and event pages. Pass: title, label (category), icon, image (a Media or nothing), place, when, when_icon, status / status_label (approval), extra (a second badge, e.g. visibility or "Cancelled"). A non-approved status gets a one-line explanation. #}
+<header class="sbl-card mb-6 overflow-hidden">
+  <div class="relative flex flex-col justify-end bg-earth-clay bg-cover bg-center px-6 py-10 text-white {% if image %}min-h-72{% endif %}"{% if image %} style="background-image: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.1)), url('{{ image.file.url }}');" role="img" aria-label="{{ image.alt_text|default:title }}"{% endif %}>
+    <p class="mb-2 text-sm font-medium uppercase tracking-wide text-white/80">{% if icon %}{% if 'bi-' in icon %}<i class="bi {{ icon }}"></i>{% else %}{{ icon }}{% endif %} {% endif %}{{ label }}</p>
+    <h1 class="text-4xl font-bold md:text-5xl">{{ title }}</h1>
+    {% if place or when %}
+      <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-lg text-white/90">
+        {% if when %}<span><i class="bi {{ when_icon|default:'bi-calendar3' }}"></i> {{ when }}</span>{% endif %}
+        {% if place %}<span><i class="bi bi-geo-alt"></i> {{ place }}</span>{% endif %}
+      </p>
+    {% endif %}
+  </div>
+  {% if status and status != 'approved' or extra %}
+    <div class="flex flex-wrap items-center gap-2 px-6 py-3">
+      {% if status and status != 'approved' %}<span class="sbl-badge {% if status == 'pending' %}sbl-badge-warning{% elif status == 'rejected' %}sbl-badge-danger{% else %}sbl-badge-neutral{% endif %}">{{ status_label }}</span>{% endif %}
+      {% if extra %}<span class="sbl-badge sbl-badge-neutral">{{ extra }}</span>{% endif %}
+      {% if status == 'pending' %}<span class="text-sm text-warm-600">Only you and our team can see this until it's approved.</span>{% elif status == 'rejected' %}<span class="text-sm text-warm-600">This wasn't approved. Edit it and it will be sent for review again.</span>{% elif status == 'changes_requested' %}<span class="text-sm text-warm-600">Changes were requested. Edit it and it will be re-submitted.</span>{% elif status == 'draft' %}<span class="text-sm text-warm-600">Not submitted yet; only you can see it.</span>{% endif %}
+    </div>
+  {% endif %}
+</header>

@@ -1,127 +1,48 @@
 {% extends 'base.html' %}
-{% load static %}
+{# activities/activity_list.html — same layout as the events list: header, filter bar, shared partials/_catalogue_card.html cards #}
 
 {% block title %}Activities{% endblock %}
-
-{% block breadcrumbs %}
-  {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
-{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
 
 {% block content %}
-<div class="py-6">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-4xl font-bold mb-2">Activities</h1>
-            <p class="text-warm-500">Browse and manage activities</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-        <a href="{% url 'activities:my_bookmarks' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-bookmark"></i>My bookmarks</a>
-        <a href="{% url 'activities:activity_quick_add' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-lightning"></i>Quick add</a>
-        <a href="{% url 'activities:activity_add' %}" class="sbl-btn sbl-btn-primary">
-            <i class="bi bi-plus-lg mr-2"></i>Add Activity
-        </a>
-        </div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="sbl-page-title">Activities</h1>
+    <p class="sbl-page-subtitle">Things to do, see and experience. Add the ones you want to your bucket list.</p>
+  </div>
+  {% if user.is_authenticated %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'activities:my_bookmarks' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-bookmark"></i>My bookmarks</a>
+      <a href="{% url 'activities:my_activities' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-person"></i>Activities I added</a>
+      <a href="{% url 'activities:activity_add' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>Add an activity</a>
     </div>
+  {% endif %}
+</header>
 
-    <!-- Filters -->
-    <div class="sbl-card shadow-sm mb-6">
-        <div class="p-5">
-            <form method="get">
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search activities..." class="sbl-input">
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Status</label>
-                        <select name="status" class="sbl-input">
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
-                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
-                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Continent</label>
-                        <select name="continent" class="sbl-input">
-                            <option value="">All Continents</option>
-                            {% for continent in continents %}
-                                <option value="{{ continent }}" {% if continent_filter == continent %}selected{% endif %}>{{ continent }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-3 flex items-end">
-                        <button type="submit" class="sbl-btn sbl-btn-primary w-full">
-                            <i class="bi bi-funnel mr-2"></i>Apply Filters
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+<form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
+  <div class="md:col-span-2"><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name or description…"></div>
+  <div><label class="sbl-label" for="category">Category</label>
+    <select id="category" name="category" class="sbl-input"><option value="">All</option>{% for c in categories %}<option value="{{ c.slug }}" {% if filters.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="country">Country</label>
+    <select id="country" name="country" class="sbl-input"><option value="">All</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="sort">Sort</label>
+    <select id="sort" name="sort" class="sbl-input">{% for value, label in sorts %}<option value="{{ value }}" {% if current_sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div><button type="submit" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-funnel"></i>Filter</button></div>
+</form>
 
-    <!-- Activities Grid -->
-    <div class="grid grid-cols-12 gap-6">
-        {% for activity in page_obj %}
-            <div class="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
-                <div class="sbl-card h-full shadow-sm transition hover:shadow-md">
-                    <a href="{% url 'activities:activity_detail' activity.slug %}" class="no-underline">
-                        {% if activity.featured_media %}
-                            <div class="relative" style="height: 200px; overflow: hidden;">
-                                <img src="{{ activity.featured_media.file.url }}" alt="{{ activity.name }}" class="w-full rounded-t-xl" style="width: 100%; height: 100%; object-fit: cover;">
-                            </div>
-                        {% else %}
-                            <div class="bg-earth-clay flex items-center justify-center" style="height: 200px;">
-                                <span style="font-size: 5rem;">{{ activity.flag_emoji|default:"🌍" }}</span>
-                            </div>
-                        {% endif %}
-                    </a>
-                    
-                    <div class="p-5">
-                        <div class="flex justify-between items-start mb-2">
-                            <a href="{% url 'activities:activity_detail' activity.slug %}" class="no-underline">
-                                <h5 class="font-semibold text-warm-900 mb-0">{{ activity.name }}</h5>
-                            </a>
-                            <span class="sbl-badge {% if activity.approval_status == 'approved' %} sbl-badge-success {% elif activity.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif activity.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %} ml-2">
-                                {{ activity.get_approval_status_display }}
-                            </span>
-                        </div>
-                        
-                        <p class="text-warm-500 text-sm mb-4">{{ activity.continent }}</p>
-                        
-                        {% if activity.description %}
-                            <p class="text-warm-500 text-sm" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                {{ activity.description|truncatewords:15 }}
-                            </p>
-                        {% endif %}
-                        
-                        <div class="flex justify-between text-warm-500 text-sm border-t border-warm-200 pt-4 mt-4">
-                            <span><i class="bi bi-buildings mr-1"></i>{{ activity.city_count }} cities</span>
-                            <span><i class="bi bi-geo-alt mr-1"></i>{{ activity.poi_count }} POIs</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% empty %}
-            <div class="col-span-12">
-                <div class="text-center py-12">
-                    <i class="bi bi-globe2 text-warm-500" style="font-size: 4rem;"></i>
-                    <h3 class="mt-4 text-warm-500">No activities found</h3>
-                    <p class="text-warm-500">Try adjusting your filters or add a new activity.</p>
-                    <a href="{% url 'activities:activity_add' %}" class="sbl-btn sbl-btn-primary mt-4">
-                        <i class="bi bi-plus-lg mr-2"></i>Add Activity
-                    </a>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-
-    <!-- Pagination -->
-    {% include "partials/_pagination.html" %}
-</div>
-
+{% if page_obj %}
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {% for activity in page_obj %}
+      {% url 'activities:activity_detail' activity.slug as activity_url %}
+      {% include "partials/_catalogue_card.html" with url=activity_url title=activity.name label=activity.category.name icon=activity.category.icon image=activity.featured_media meta=activity.place_name meta2=activity.recurrence_summary text=activity.short_description status=activity.approval_status status_label=activity.get_approval_status_display %}
+    {% endfor %}
+  </div>
+  {% include "partials/_pagination.html" %}
+{% else %}
+  <div class="sbl-card p-10 text-center text-warm-500">
+    <i class="bi bi-signpost-2 mb-2 block text-4xl"></i>
+    <p class="mb-4">No activities match.{% if user.is_authenticated %} Have one in mind?{% endif %}</p>
+    {% if user.is_authenticated %}<a href="{% url 'activities:activity_add' %}" class="sbl-btn sbl-btn-primary">Add an activity</a>{% endif %}
+  </div>
+{% endif %}
 {% endblock %}

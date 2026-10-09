@@ -11,24 +11,9 @@
 {% block content %}
 {# Activity detail. An activity is an undated idea; each dated occurrence (e.g. one per year) is an Event listed under Dates via the activity.events reverse relation. #}
 <div class="py-6">
-    <header class="sbl-card mb-6 overflow-hidden">
-        <div class="relative bg-earth-clay bg-cover bg-center px-6 py-10 text-white {% if activity.featured_media %}min-h-72 flex flex-col justify-end{% endif %}"{% if activity.featured_media %} style="background-image: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,.1)), url('{{ activity.featured_media.file.url }}');" role="img" aria-label="{{ activity.featured_media.alt_text|default:activity.name }}"{% endif %}>
-            <p class="mb-2 text-sm font-medium uppercase tracking-wide text-white/80">
-                {% if activity.category.icon %}{% if 'bi-' in activity.category.icon %}<i class="bi {{ activity.category.icon }}"></i>{% else %}{{ activity.category.icon }}{% endif %} {% endif %}{{ activity.category.name }}
-            </p>
-            <h1 class="text-4xl font-bold md:text-5xl">{{ activity.name }}</h1>
-            <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-lg text-white/90">
-                {% if activity.place_name %}<span><i class="bi bi-geo-alt"></i> {{ activity.place_name }}</span>{% endif %}
-                {% if activity.recurrence != 'anytime' or activity.usual_months %}<span><i class="bi bi-arrow-repeat"></i> {{ activity.get_recurrence_display }}{% if activity.usual_months %} · {{ activity.usual_months_display }}{% endif %}</span>{% endif %}
-            </p>
-        </div>
-        {% if activity.approval_status != 'approved' or activity.visibility != 'public' %}
-            <div class="flex flex-wrap gap-2 px-6 py-3">
-                <span class="sbl-badge {% if activity.approval_status == 'pending' %}sbl-badge-warning{% elif activity.approval_status == 'rejected' %}sbl-badge-danger{% else %}sbl-badge-neutral{% endif %}">{{ activity.get_approval_status_display }}</span>
-                <span class="sbl-badge sbl-badge-neutral">{{ activity.get_visibility_display }}</span>
-            </div>
-        {% endif %}
-    </header>
+    {% with when=activity.recurrence_summary extra=activity.visibility_note %}
+        {% include "partials/_detail_header.html" with title=activity.name label=activity.category.name icon=activity.category.icon image=activity.featured_media place=activity.place_name when=when when_icon="bi-arrow-repeat" status=activity.approval_status status_label=activity.get_approval_status_display extra=extra %}
+    {% endwith %}
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">

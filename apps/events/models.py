@@ -365,6 +365,16 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         return ", ".join(part for part in (town, country.name if country else "") if part)
 
     @property
+    def venue_and_place(self):
+        """'Venue, City, Country' for cards (the venue only when there is one)."""
+        return ", ".join(x for x in (self.venue_name, self.place_name) if x)
+
+    @property
+    def status_alert(self):
+        """'Cancelled' / 'Postponed' etc., or '' for a scheduled event."""
+        return "" if self.status == "scheduled" else self.get_status_display()
+
+    @property
     def needs_city_link(self):
         return not self.city_id
 

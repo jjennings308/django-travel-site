@@ -1,0 +1,19 @@
+{# templates/partials/_catalogue_card.html — list card shared by activities and events. Pass: url, title, label (category), icon, image (a Media or nothing), date (shows a date chip), meta (place line), meta2 (second line, e.g. how often), text (short description), status / status_label (badge when not approved), badge (green, e.g. "Free"), alert (red, e.g. "Cancelled"). #}
+<article class="sbl-card sbl-card-hover flex h-full flex-col overflow-hidden">
+  <a href="{{ url }}" class="relative block h-40 shrink-0 bg-earth-clay" tabindex="-1" aria-hidden="true">
+    {% if image %}<img src="{{ image.file.url }}" alt="" loading="lazy" class="h-full w-full object-cover">{% else %}<span class="flex h-full items-center justify-center text-5xl text-white/70">{% if icon and 'bi-' in icon %}<i class="bi {{ icon }}"></i>{% elif icon %}{{ icon }}{% else %}<i class="bi bi-compass"></i>{% endif %}</span>{% endif %}
+    {% if date %}<span class="absolute left-3 top-3 flex w-14 flex-col items-center rounded-lg bg-white/95 py-1.5 text-earth-clay-dark shadow"><span class="text-xs font-semibold uppercase">{{ date|date:"M" }}</span><span class="text-2xl font-bold leading-none">{{ date|date:"j" }}</span><span class="text-[10px] text-warm-500">{{ date|date:"Y" }}</span></span>{% endif %}
+  </a>
+  <div class="flex grow flex-col p-5">
+    <div class="mb-1 flex flex-wrap items-center gap-1.5">
+      <span class="sbl-badge sbl-badge-primary">{{ label }}</span>
+      {% if badge %}<span class="sbl-badge sbl-badge-success">{{ badge }}</span>{% endif %}
+      {% if alert %}<span class="sbl-badge sbl-badge-danger">{{ alert }}</span>{% endif %}
+      {% if status and status != 'approved' %}<span class="sbl-badge {% if status == 'pending' %}sbl-badge-warning{% elif status == 'rejected' %}sbl-badge-danger{% else %}sbl-badge-neutral{% endif %}">{{ status_label }}</span>{% endif %}
+    </div>
+    <h3 class="text-lg font-semibold text-warm-900"><a href="{{ url }}" class="hover:text-earth-clay">{{ title }}</a></h3>
+    {% if meta %}<p class="text-sm text-warm-500"><i class="bi bi-geo-alt"></i> {{ meta }}</p>{% endif %}
+    {% if meta2 %}<p class="text-sm text-warm-500"><i class="bi bi-arrow-repeat"></i> {{ meta2 }}</p>{% endif %}
+    {% if text %}<p class="mt-2 line-clamp-2 text-sm text-warm-600">{{ text }}</p>{% endif %}
+  </div>
+</article>

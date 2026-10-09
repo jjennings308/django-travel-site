@@ -62,7 +62,7 @@ class ListAndVisibilityTests(EventFixture):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.get(url).status_code, 404)
         self.client.force_login(self.alice)
-        self.assertContains(self.client.get(url), "Only you and our team can see this event")
+        self.assertContains(self.client.get(url), "Only you and our team can see this until")
         self.client.force_login(self.staff)
         self.assertEqual(self.client.get(url).status_code, 200)
 
@@ -318,4 +318,4 @@ class ActivityLinkTests(EventFixture):
 
     def test_event_page_names_its_activity(self):
         event = self.make("Oktoberfest 2027", related_activity=self.okto)
-        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "A date for")
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "This is a date for")

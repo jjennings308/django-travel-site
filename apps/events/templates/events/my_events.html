@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 
-{% block title %}My events{% endblock %}
+{% block title %}Events I added{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
 
 {% block content %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
   <div>
-    <h1 class="sbl-page-title">My events</h1>
+    <h1 class="sbl-page-title">Events I added</h1>
     <p class="sbl-page-subtitle">Events you've added, and where each one is in review.</p>
   </div>
   <a href="{% url 'events:event_add' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>Add an event</a>
 </header>
 {% if events %}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-    {% for event in events %}{% include "events/partials/_event_card.html" with show_status=True %}{% endfor %}
+    {% for event in events %}{% include "events/partials/_event_card.html" %}{% endfor %}
   </div>
 {% else %}
   <div class="sbl-card p-10 text-center text-warm-500"><i class="bi bi-calendar-plus mb-2 block text-4xl"></i><p>You haven't added any events yet.</p></div>

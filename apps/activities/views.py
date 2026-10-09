@@ -1,5 +1,6 @@
 # activities/views.py
 from apps.core.utils.breadcrumbs import build_breadcrumbs
+from apps.locations.models import Country
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -14,7 +15,7 @@ from apps.approval_system.models import ApprovalStatus
 
 def activity_list(request):
     """Public list of approved activities"""
-    activities = Activity.get_public_activities().select_related('category', 'featured_media')
+    activities = Activity.get_public_activities().select_related('category', 'featured_media', 'city', 'region', 'country')
     
     # Filtering
     category_slug = request.GET.get('category')
@@ -32,6 +33,10 @@ def activity_list(request):
     best_for = request.GET.get('for')
     if best_for:
         activities = activities.filter(best_for=best_for)
+
+    country_slug = request.GET.get('country')
+    if country_slug:
+        activities = activities.filter(country__slug=country_slug)
     
     # Search
     search = request.GET.get('q')
@@ -59,8 +64,12 @@ def activity_list(request):
     context = {
         'page_obj': page_obj,
         'categories': categories,
-        'current_category': category_slug,
+        'countries': Country.objects.filter(activities__in=Activity.get_public_activities()).distinct().order_by('name'),
+        'filters': {'q': search or '', 'category': category_slug or '', 'country': country_slug or ''},
         'current_sort': sort,
+        'sorts': [('-popularity_score', 'Most popular'), ('-bucket_list_count', 'Most bucket-listed'),
+                  ('name', 'Name'), ('-created_at', 'Newest')],
+        'breadcrumb_list': build_breadcrumbs([('Activities', None)]),
     }
     
     return render(request, 'activities/activity_list.html', context)
@@ -97,7 +106,7 @@ def activity_detail(request, slug):
 @login_required
 def my_activities(request):
     """User's own activities (private and public)"""
-    activities = Activity.get_user_activities(request.user)
+    activities = Activity.get_user_activities(request.user).select_related('category', 'featured_media', 'city', 'region', 'country')
     
     # Filter by status
     status = request.GET.get('status')

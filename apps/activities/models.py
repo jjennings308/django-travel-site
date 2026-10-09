@@ -456,6 +456,18 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         return ", ".join(parts) or self.suggested_location
 
     @property
+    def recurrence_summary(self):
+        """'Every year · September, October' for headers; '' for an any-time activity."""
+        if self.recurrence == 'anytime' and not self.usual_months:
+            return ''
+        return ' · '.join(x for x in (self.get_recurrence_display(), self.usual_months_display) if x)
+
+    @property
+    def visibility_note(self):
+        """'Private' / 'Shared' for the header badge; '' when public."""
+        return '' if self.visibility == 'public' else self.get_visibility_display()
+
+    @property
     def usual_months_display(self):
         names = dict(self.MONTHS)
         months = sorted(int(m) for m in self.usual_months or [])
