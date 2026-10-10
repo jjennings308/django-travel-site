@@ -62,3 +62,38 @@ class ActivityFormPlaceTests(ActivityPlaceFixture):
         activity = form.save()
         activity.refresh_from_db()
         self.assertEqual((activity.city, activity.country, activity.usual_months), (self.munich, self.germany, [9, 10]))
+
+
+class SeasonAndVenueTests(ActivityPlaceFixture):
+    """Several-times-a-year activities: seasons across New Year, and a venue."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.locations.models import POI
+        self.stadium = POI.objects.create(name="Allianz Arena", slug="allianz-arena", city=self.munich, poi_type="sports",
+                                          latitude=48.2188, longitude=11.6247, approval_status=ApprovalStatus.APPROVED)
+
+    def test_season_labels(self):
+        from datetime import date
+        football = Activity(usual_months=[9, 10, 11, 12, 1])
+        self.assertEqual([football.season_label(date(2026, 9, 13)), football.season_label(date(2027, 1, 3))], ["2026–27", "2026–27"])
+        self.assertEqual(football.season_label(date(2027, 9, 12)), "2027–28")
+        self.assertEqual(football.usual_months_display, "September, October, November, December, January")
+        summer = Activity(usual_months=[6, 7])
+        self.assertEqual(summer.season_label(date(2027, 7, 1)), "2027")
+
+    def test_venue_fills_the_place(self):
+        game = Activity.objects.create(category=self.festival, name="Bayern home game", description="d", venue=self.stadium,
+                                       created_by=self.user, visibility="public", approval_status=ApprovalStatus.APPROVED)
+        self.assertEqual((game.city, game.region, game.country), (self.munich, self.bavaria, self.germany))
+        self.assertEqual(game.display_place, "Allianz Arena, Munich, Bavaria, Germany")
+        page = self.client.get(reverse("activities:activity_detail", args=[game.slug]))
+        self.assertContains(page, reverse("locations:poi_detail", args=["allianz-arena"]))
+
+    def test_venue_must_be_in_the_city(self):
+        from apps.locations.models import City
+        paris = City.objects.create(name="Paris", slug="paris", country=self.france, latitude=48.85, longitude=2.35,
+                                    approval_status=ApprovalStatus.APPROVED)
+        form = ActivityEditForm(ActivityFormPlaceTests.data(self, city=paris.pk, venue=self.stadium.pk), instance=self.activity)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Allianz Arena is in Munich, not Paris.", form.errors["venue"])

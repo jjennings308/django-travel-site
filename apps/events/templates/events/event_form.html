@@ -59,6 +59,7 @@
           City not listed? Enter the country and town instead. We'll add the city.
         </label>
       </div>
+      {% include "events/partials/_field.html" with field=form.poi %}
       <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         {% include "events/partials/_field.html" with field=form.venue_name %}
         {% include "events/partials/_field.html" with field=form.venue_address %}

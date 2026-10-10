@@ -4,7 +4,7 @@ from django.conf import settings
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.approval_system.models import Approvable, ApprovalStatus
-from apps.locations.models import City, Country, Region
+from apps.locations.models import POI, City, Country, Region
 
 
 class ActivityCategory(TimeStampedModel, SlugMixin):
@@ -164,6 +164,10 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         max_length=200,
         blank=True,
         help_text="Place, if it isn't in our list of cities (e.g., 'Vegas Sphere')"
+    )
+    venue = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='activities', help_text="Where it takes place, e.g. a stadium (fills in the city)"
     )
 
     # When it happens. An activity is undated; each dated occurrence is an Event
@@ -431,7 +435,9 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
             slug_base = '-'.join(slug_parts)
             self.slug = generate_unique_slug(Activity, slug_base, self.id)
         
-        # A city implies its region and country; a region implies its country.
+        # A venue implies its city; a city implies its region and country; a region its country.
+        if self.venue_id and not self.city_id:
+            self.city_id = self.venue.city_id
         if self.city_id:
             self.region_id = self.city.region_id or self.region_id
             self.country_id = self.city.country_id
@@ -455,6 +461,48 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         parts = [x.name for x in (self.city, self.region, self.country) if x is not None]
         return ", ".join(parts) or self.suggested_location
 
+    def _season_start_month(self):
+        """The month a season starts in when ``usual_months`` wraps the new year
+        (e.g. Sep-Jan -> 9): the month after the largest gap between usual months.
+        None when the months don't wrap (or there are none)."""
+        months = sorted({int(m) for m in self.usual_months or [] if 1 <= int(m) <= 12})
+        if len(months) < 2 or not (1 in months and 12 in months):
+            return None
+        gaps = [((months[(i + 1) % len(months)] - m) % 12, months[(i + 1) % len(months)]) for i, m in enumerate(months)]
+        return max(gaps)[1]
+
+    def season_label(self, day):
+        """'2026-27' for a season that crosses New Year (a January game belongs to the
+        season that started the autumn before), else the year: '2027'."""
+        start = self._season_start_month()
+        if start is None:
+            return str(day.year)
+        first = day.year if day.month >= start else day.year - 1
+        return f"{first}–{(first + 1) % 100:02d}"
+
+    def dates_by_season(self, user):
+        """The activity's events ``user`` may see, as (upcoming, past) lists of
+        (season label, [events]): upcoming soonest first, past latest first."""
+        from django.utils import timezone
+        today = timezone.localdate()
+        events = list(self.events.select_related("city__country", "country", "poi").order_by("start_date", "start_time"))
+        if not (user.is_authenticated and user.is_staff):
+            events = [e for e in events if e.approval_status == ApprovalStatus.APPROVED
+                      or (user.is_authenticated and e.created_by_id == user.pk)]
+
+        def group(items):
+            seasons = []
+            for event in items:
+                label = self.season_label(event.start_date)
+                if not seasons or seasons[-1][0] != label:
+                    seasons.append((label, []))
+                seasons[-1][1].append(event)
+            return seasons
+
+        upcoming = [e for e in events if (e.end_date or e.start_date) >= today]
+        past = [e for e in reversed(events) if (e.end_date or e.start_date) < today]
+        return group(upcoming), group(past)
+
     @property
     def recurrence_summary(self):
         """'Every year · September, October' for headers; '' for an any-time activity."""
@@ -468,9 +516,17 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         return '' if self.visibility == 'public' else self.get_visibility_display()
 
     @property
+    def display_place(self):
+        """'Venue, City, Region, Country' when there is a venue, else ``place_name``."""
+        return ", ".join(x for x in (self.venue.name if self.venue_id else "", self.place_name) if x)
+
+    @property
     def usual_months_display(self):
         names = dict(self.MONTHS)
         months = sorted(int(m) for m in self.usual_months or [])
+        start = self._season_start_month()
+        if start:  # a season across New Year reads from its first month: Sep ... Jan
+            months = [m for m in months if m >= start] + [m for m in months if m < start]
         return ", ".join(names[m] for m in months if m in names)
 
     # Visibility helpers

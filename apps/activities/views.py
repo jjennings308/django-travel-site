@@ -78,7 +78,7 @@ def activity_list(request):
 def activity_detail(request, slug):
     """View a single activity"""
     activity = get_object_or_404(
-        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country', 'featured_media'), slug=slug)
+        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country', 'featured_media', 'venue'), slug=slug)
     
     # Check visibility
     if not activity.is_visible_to(request.user):
@@ -92,12 +92,16 @@ def activity_detail(request, slug):
             activity=activity
         ).exists()
     
+    upcoming, past = activity.dates_by_season(request.user)
     context = {
         'activity': activity,
         'is_bookmarked': is_bookmarked,
         'can_edit': activity.can_edit(request.user),
         'can_delete': activity.can_delete(request.user),
         'breadcrumb_list': build_breadcrumbs([('Activities', 'activities:activity_list'), (activity.name, None)]),
+        'upcoming_seasons': upcoming,
+        'past_seasons': past,
+        'past_count': sum(len(events) for _, events in past),
     }
     
     return render(request, 'activities/activity_detail.html', context)

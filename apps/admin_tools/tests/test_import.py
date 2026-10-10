@@ -132,6 +132,10 @@ class LocationImportTests(ImportFixture):
             ("region", "name,country,code\nCapital Region,Iceland,1\n"),
             ("city", "name,country,region,latitude,longitude,capital\nReykjavik,Iceland,Capital Region,64.1466,-21.9426,country\n"),
             ("poi", "name,city,country,type,latitude,longitude,wheelchair_accessible\nHallgrimskirkja,Reykjavik,Iceland,temple,64.1417,-21.9266,yes\n"),
+            ("activity", "name,category,description,city,country,venue,recurrence,usual_months\n"
+                         "Organ concert,Festival,Sunday recitals.,Reykjavik,Iceland,Hallgrimskirkja,Several times a year,Jun;Jul;Aug\n"),
+            ("event", "name,start_date,activity,description,city,country,place\n"
+                      "Organ concert June,2027-06-06,Organ concert,Recital.,Reykjavik,Iceland,Hallgrimskirkja\n"),
         ]
         for kind, text in steps:
             with self.subTest(kind=kind):
@@ -145,6 +149,9 @@ class LocationImportTests(ImportFixture):
         self.assertEqual((city.region.name, city.capital_type, city.is_capital), ("Capital Region", "country", True))
         poi = city.pois.get() if hasattr(city, "pois") else POI.objects.get(city=city)
         self.assertEqual((poi.poi_type, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED))
+        concert = Activity.objects.get(name="Organ concert")
+        self.assertEqual((concert.venue, concert.city, concert.recurrence), (poi, city, "seasonal"))
+        self.assertEqual(Event.objects.get(name="Organ concert June").poi, poi)
         # matched by ISO code: renaming via the file updates, not duplicates
         self.preview("country", "name,iso_code,iso3_code,continent\nIceland,is,ISL,Europe\n")
         self.assertEqual(self.client.get(reverse("admin_tools:import_preview")).context["counts"]["update"], 1)

@@ -143,7 +143,7 @@ KINDS = {
         {"name": ("name", "text"), "category": ("category", "category"), "description": ("description", "text"),
          "short_description": ("short_description", "text"), "country": ("country", "country"),
          "region": ("region", "region"), "city": ("city", "city"), "place": ("suggested_location", "text"),
-         "recurrence": ("recurrence", "choice"), "usual_months": ("usual_months", "months"),
+         "venue": ("venue", "poi"), "recurrence": ("recurrence", "choice"), "usual_months": ("usual_months", "months"),
          "timing_notes": ("suggested_timeframe", "text"), "skill_level": ("skill_level", "choice"),
          "fitness": ("fitness_required", "number"), "duration": ("duration_category", "choice"),
          "cost_level": ("cost_level", "choice"), "best_for": ("best_for", "choice"),
@@ -164,7 +164,7 @@ KINDS = {
          "activity": ("related_activity", "activity"), "category": ("category", "category"),
          "description": ("description", "text"), "short_description": ("short_description", "text"),
          "country": ("country", "country"), "city": ("city", "city"), "town": ("location_text", "text"),
-         "venue": ("venue_name", "text"), "venue_address": ("venue_address", "text"), "organizer": ("organizer", "text"),
+         "place": ("poi", "poi"), "venue": ("venue_name", "text"), "venue_address": ("venue_address", "text"), "organizer": ("organizer", "text"),
          "event_type": ("event_type", "choice"), "free": ("is_free", "bool"),
          "ticket_price_min": ("ticket_price_min", "number"), "ticket_price_max": ("ticket_price_max", "number"),
          "currency": ("currency", "text"), "ticket_url": ("ticket_url", "text"), "website": ("website", "text"),
@@ -209,7 +209,7 @@ def _cell(obj, kind, column, form_field, how):
         return value.strftime("%H:%M")
     if how == "months":
         return ";".join(MONTH_ABBR[m] for m in sorted(value) if m in MONTH_ABBR)
-    if how in ("category", "country", "region", "city", "city_required", "activity"):
+    if how in ("category", "country", "region", "city", "city_required", "activity", "poi"):
         return value.name
     return str(value)
 
@@ -218,9 +218,9 @@ def export_queryset(kind):
     spec = KINDS[kind]
     qs = spec.model.objects.filter(approval_status=APPROVED)
     if kind == "activity":
-        qs = qs.filter(visibility="public").select_related("category", "country", "region", "city")
+        qs = qs.filter(visibility="public").select_related("category", "country", "region", "city", "venue")
     elif kind == "event":
-        qs = qs.select_related("category", "country", "city__country", "related_activity")
+        qs = qs.select_related("category", "country", "city__country", "related_activity", "poi")
     elif kind == "region":
         qs = qs.select_related("country")
     elif kind == "city":
@@ -350,6 +350,16 @@ class Importer:
             if city is None:
                 raise ValueError("isn't a city in the catalogue (import the cities first)")
             return city.pk
+        if how == "poi":
+            places = POI.objects.filter(name__iexact=value, approval_status=APPROVED)
+            if cells.get("city"):
+                places = places.filter(city__name__iexact=cells["city"])
+            if cells.get("country"):
+                places = places.filter(city__country=self._country(cells["country"]))
+            if places.count() != 1:
+                raise ValueError("isn't a place in the catalogue (import the places first)" if not places
+                                 else "matches several places; add the city")
+            return places.get().pk
         if how == "activity":
             matches = Activity.get_public_activities().filter(name__iexact=value)
             if matches.count() != 1:

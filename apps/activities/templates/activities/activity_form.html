@@ -118,6 +118,12 @@
                                         {{ form.city }}
                                         {% for error in form.city.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
                                     </div>
+                                    <div class="col-span-12 mb-4">
+                                        <label for="{{ form.venue.id_for_label }}" class="sbl-label">Venue (optional)</label>
+                                        {{ form.venue }}
+                                        <p class="sbl-help">A stadium, arena or other place from our list. Choosing one fills in the city.</p>
+                                        {% for error in form.venue.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+                                    </div>
                                     <div class="col-span-12  mb-4">
                                         <label for="{{ form.suggested_location.id_for_label }}" class="sbl-label">{{ form.suggested_location.label }}</label>
                                         {{ form.suggested_location }}

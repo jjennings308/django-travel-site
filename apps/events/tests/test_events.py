@@ -319,3 +319,58 @@ class ActivityLinkTests(EventFixture):
     def test_event_page_names_its_activity(self):
         event = self.make("Oktoberfest 2027", related_activity=self.okto)
         self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "This is a date for")
+
+
+class SeasonalActivityTests(EventFixture):
+    """Steelers-style activities: many dates a season, at one venue."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.activities.models import Activity
+        from apps.locations.models import POI
+        self.stadium = POI.objects.create(name="Testville Stadium", slug="testville-stadium", city=self.city, poi_type="sports",
+                                          latitude=1, longitude=2, approval_status=ApprovalStatus.APPROVED)
+        self.team = Activity.objects.create(category=self.music, name="See the Testers play", description="Home games.",
+                                            venue=self.stadium, recurrence="seasonal", usual_months=[9, 10, 11, 12, 1],
+                                            created_by=self.bob, visibility="public", approval_status=ApprovalStatus.APPROVED)
+        self.game = Event.objects.create(name="Testers vs Rivals", category=self.music, description="d", city=self.city,
+                                         poi=self.stadium, venue_name="Testville Stadium", related_activity=self.team,
+                                         start_date=TODAY + timedelta(days=20), approval_status=ApprovalStatus.APPROVED)
+
+    def test_add_a_date_prefills_the_venue(self):
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse("events:event_add") + f"?activity={self.team.pk}")
+        self.assertContains(page, f'<option value="{self.stadium.pk}" selected>')
+        self.assertContains(page, 'value="Testville Stadium"')
+
+    def test_venue_fills_city_and_name(self):
+        self.client.force_login(self.staff)
+        self.client.post(reverse("events:event_add"), self.payload(name="Cup final", city="", poi=self.stadium.pk))
+        final = Event.objects.get(name="Cup final")
+        self.assertEqual((final.city, final.poi, final.venue_name), (self.city, self.stadium, "Testville Stadium"))
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[final.slug])),
+                            reverse("locations:poi_detail", args=["testville-stadium"]))
+
+    def test_add_another_date(self):
+        self.client.force_login(self.alice)
+        detail = self.client.get(reverse("events:event_detail", args=[self.game.slug]))
+        self.assertContains(detail, "Add another date")
+        self.assertNotContains(detail, f"Add {self.game.start_date.year + 1} dates")  # not the yearly button
+        form = self.client.get(reverse("events:event_add") + f"?copy={self.game.pk}&another=1")
+        self.assertContains(form, 'value="Testers vs Rivals"')
+        self.assertContains(form, f'<option value="{self.stadium.pk}" selected>')
+        self.assertIsNone(form.context["form"].initial["start_date"])
+
+    def test_activity_page_groups_by_season_and_folds_past(self):
+        from datetime import date
+        Event.objects.create(name="Old game", category=self.music, description="d", city=self.city, related_activity=self.team,
+                             start_date=date(2025, 10, 5), approval_status=ApprovalStatus.APPROVED)
+        Event.objects.create(name="January game", category=self.music, description="d", city=self.city, related_activity=self.team,
+                             start_date=date(TODAY.year + 2, 1, 4), approval_status=ApprovalStatus.APPROVED)
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse("activities:activity_detail", args=[self.team.slug]))
+        seasons = [label for label, _ in page.context["upcoming_seasons"]]
+        self.assertIn(f"{TODAY.year + 1}–{(TODAY.year + 2) % 100:02d}", seasons)  # the January game's season
+        self.assertEqual([[e.name for e in events] for _, events in page.context["past_seasons"]], [["Old game"]])
+        self.assertContains(page, "Past dates (1)")
+        self.assertContains(page, "Happens several times a year, usually September, October")

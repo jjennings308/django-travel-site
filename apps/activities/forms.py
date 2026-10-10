@@ -3,11 +3,11 @@ from django import forms
 from django.utils import timezone
 from .models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
-from apps.locations.models import City, Country, Region
+from apps.locations.models import POI, City, Country, Region
 from apps.locations.widgets import CountryTaggedSelect
 from apps.media_app.forms import PictureFormMixin
 
-PLACE_AND_TIMING_FIELDS = ['country', 'region', 'city', 'recurrence', 'usual_months']
+PLACE_AND_TIMING_FIELDS = ['country', 'region', 'city', 'venue', 'recurrence', 'usual_months']
 
 
 class PlaceAndTimingMixin:
@@ -29,6 +29,10 @@ class PlaceAndTimingMixin:
         for name in ('region', 'city'):
             self.fields[name].widget = CountryTaggedSelect(attrs={'class': 'sbl-input'})
             self.fields[name].widget.choices = self.fields[name].choices
+        self.fields['venue'].queryset = POI.objects.filter(**approved).select_related('city').order_by('city__name', 'name')
+        self.fields['venue'].label_from_instance = lambda p: f"{p.name} ({p.city.name})"
+        self.fields['venue'].widget.attrs['class'] = 'sbl-input'
+        self.fields['venue'].empty_label = "No particular venue"
         self.fields['recurrence'].widget.attrs['class'] = 'sbl-input'
         self.fields['suggested_location'].label = 'Or a place not in our list'
         self.fields['suggested_timeframe'].label = 'Timing notes'
@@ -44,6 +48,9 @@ class PlaceAndTimingMixin:
             self.add_error('city', f"{city.name} is not in {country.name}.")
         if region and country and region.country_id != country.pk:
             self.add_error('region', f"{region.name} is not in {country.name}.")
+        venue = cleaned.get('venue')
+        if venue and city and venue.city_id != city.pk:
+            self.add_error('venue', f"{venue.name} is in {venue.city.name}, not {city.name}.")
         if city and region and city.region_id and city.region_id != region.pk:
             self.add_error('region', f"{city.name} is in {city.region.name}.")
         if not cleaned.get('recurrence'):
@@ -75,6 +82,7 @@ class ActivityCreateForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm)
             'region',
             'city',
             'suggested_location',
+            'venue',
             'recurrence',
             'usual_months',
             'suggested_timeframe',
@@ -231,6 +239,7 @@ class ActivityCreateForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm)
             'region',
             'city',
             'suggested_location',
+            'venue',
             'recurrence',
             'usual_months',
             'suggested_timeframe',
@@ -320,6 +329,7 @@ class ActivityEditForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm):
             'region',
             'city',
             'suggested_location',
+            'venue',
             'recurrence',
             'usual_months',
             'suggested_timeframe',

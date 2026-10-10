@@ -1,0 +1,8 @@
+{# activities/partials/_date_row.html — one event in an activity's Dates list; pass event= (and past=True for past dates). Links by URL name only: activities doesn't import events. #}
+<li class="flex flex-wrap items-center justify-between gap-2 py-2">
+  <span class="min-w-0">
+    <a href="{% url 'events:event_detail' event.slug %}" class="sbl-link font-medium">{{ event.name }}</a>
+    {% if event.venue_name or event.poi %}<span class="block text-xs text-warm-500">{{ event.venue_name|default:event.poi.name }}</span>{% endif %}
+  </span>
+  <span class="text-sm">{{ event.start_date|date:"D, M j" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"M j" }}{% endif %}, {{ event.start_date|date:"Y" }}{% if not past and event.approval_status != 'approved' %} · {{ event.get_approval_status_display }}{% endif %}</span>
+</li>

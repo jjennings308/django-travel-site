@@ -78,11 +78,19 @@ def event_list(request):
     })
 
 
-def _next_year_link(event, user):
-    """For an event of a yearly activity: next year's event if it exists (visible to
-    ``user``), else the pre-filled add URL. None when it doesn't apply."""
+def _next_date_link(event, user):
+    """Shortcut to the activity's next occurrence, for its events' pages.
+
+    Yearly activity: next year's event if it exists (visible to ``user``), else the
+    pre-filled "Add <year> dates" form. Several-times-a-year activity: "Add another
+    date" (a copy with the date left blank). None otherwise.
+    """
     activity = event.related_activity
-    if activity is None or activity.recurrence != "yearly" or not user.is_authenticated:
+    if activity is None or not user.is_authenticated:
+        return None
+    if activity.recurrence == "seasonal":
+        return {"another": True, "add_url": f"{reverse('events:event_add')}?copy={event.pk}&another=1"}
+    if activity.recurrence != "yearly":
         return None
     year = event.start_date.year + 1
     existing = Event.objects.visible_to(user).filter(related_activity=activity, start_date__year=year).first()
@@ -98,7 +106,7 @@ def event_detail(request, slug):
         "performers": event.performers.all(),
         "can_edit": event.can_edit(request.user),
         "can_delete": event.can_delete(request.user),
-        "next_year": _next_year_link(event, request.user),
+        "next_year": _next_date_link(event, request.user),
         "city_choices": (
             City.objects.filter(country=event.country, approval_status=ApprovalStatus.APPROVED).order_by("name")
             if request.user.is_staff and event.needs_city_link and event.country_id else None
@@ -136,13 +144,18 @@ def _next_year_name(name, year):
     return name.replace(str(year), str(year + 1)) if str(year) in name else f"{name} {year + 1}"
 
 
-def _copy_initial(source):
-    """Form initial for next year's occurrence of ``source`` (same details, dates +1 year)."""
+def _copy_initial(source, another=False):
+    """Form initial for another occurrence of ``source`` (same details): next year's
+    (dates +1 year, year in the name bumped), or with ``another`` a further date of a
+    several-times-a-year activity (dates left blank, name kept to edit)."""
     initial = {name: getattr(source, name) for name in EventForm._meta.fields}
-    initial.update(
-        name=_next_year_name(source.name, source.start_date.year),
-        start_date=_next_year(source.start_date), end_date=_next_year(source.end_date),
-    )
+    if another:
+        initial.update(start_date=None, end_date=None)
+    else:
+        initial.update(
+            name=_next_year_name(source.name, source.start_date.year),
+            start_date=_next_year(source.start_date), end_date=_next_year(source.end_date),
+        )
     return initial
 
 
@@ -153,7 +166,7 @@ def event_add(request):
         # "Add next year's dates" from an event: a recurring activity has one event per year.
         source = Event.objects.visible_to(request.user).filter(pk=request.GET["copy"]).first()
         if source:
-            initial = _copy_initial(source)
+            initial = _copy_initial(source, another=bool(request.GET.get("another")))
     elif request.GET.get("activity"):
         # "Add a date" from an activity page: pre-fill from the activity.
         activity = Activity.get_public_activities().filter(pk=request.GET["activity"]).first()
@@ -161,7 +174,8 @@ def event_add(request):
             initial = {"related_activity": activity, "name": activity.name, "category": activity.category,
                        "short_description": activity.short_description, "description": activity.description,
                        "city": activity.city, "country": None if activity.city_id else activity.country,
-                       "location_text": "" if activity.city_id else activity.suggested_location}
+                       "location_text": "" if activity.city_id else activity.suggested_location,
+                       "poi": activity.venue, "venue_name": activity.venue.name if activity.venue_id else ""}
     form = EventForm(request.POST or None, request.FILES or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         event = form.save(commit=False)

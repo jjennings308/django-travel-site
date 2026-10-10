@@ -2,7 +2,7 @@
 from django import forms
 
 from apps.approval_system.models import ApprovalStatus
-from apps.locations.models import City, Country
+from apps.locations.models import POI, City, Country
 from apps.media_app.forms import PictureFormMixin
 
 from apps.activities.models import Activity, ActivityCategory
@@ -20,7 +20,7 @@ class EventForm(PictureFormMixin, forms.ModelForm):
         model = Event
         fields = [
             "related_activity", "name", "category", "short_description", "description",
-            "city", "country", "location_text", "venue_name", "venue_address",
+            "city", "country", "location_text", "poi", "venue_name", "venue_address",
             "start_date", "end_date", "is_all_day", "start_time", "end_time",
             "event_type", "organizer", "indoor_outdoor", "age_restriction",
             "is_free", "ticket_price_min", "ticket_price_max", "currency", "ticket_url",
@@ -62,6 +62,12 @@ class EventForm(PictureFormMixin, forms.ModelForm):
             approval_status=ApprovalStatus.APPROVED).order_by("name")
         self.fields["country"].empty_label = "Choose a country…"
         self.fields["location_text"].label = "City / town"
+        self.fields["poi"].queryset = (
+            POI.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related("city").order_by("city__name", "name"))
+        self.fields["poi"].label = "Venue from our places (optional)"
+        self.fields["poi"].label_from_instance = lambda p: f"{p.name} ({p.city.name})"
+        self.fields["poi"].empty_label = "Not one of our places"
+        self.fields["poi"].help_text = "A stadium, arena or other place we list. Fills in the city and venue name."
         self.fields["category"].queryset = ActivityCategory.objects.filter(is_active=True)
         self.fields["category"].required = False  # falls back to the activity's category
         self.fields["related_activity"].queryset = Activity.get_public_activities().order_by("name")
@@ -84,6 +90,14 @@ class EventForm(PictureFormMixin, forms.ModelForm):
                 cleaned["category"] = activity.category
             else:
                 self.add_error("category", "Choose a category (or the activity this is a date for).")
+        # A venue from the catalogue gives the city and (if blank) the venue name.
+        poi = cleaned.get("poi")
+        if poi:
+            if cleaned.get("city") and cleaned["city"].pk != poi.city_id:
+                self.add_error("poi", f"{poi.name} is in {poi.city.name}, not {cleaned['city'].name}.")
+            else:
+                cleaned["city"] = poi.city
+                cleaned["venue_name"] = cleaned.get("venue_name") or poi.name
         # Either a catalogue city, or (city not listed) a country plus the town name.
         if cleaned.get("city"):
             cleaned["country"], cleaned["location_text"] = None, ""
