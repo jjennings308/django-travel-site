@@ -464,3 +464,27 @@ class CompletedTripTests(DetailFixture):
         html = self.get().content.decode()
         self.assertNotIn("badge-done", html)
         self.assertNotIn(reverse("bucketlists:trip_done", args=[self.trip.pk]), html)
+
+
+class HeaderActionTests(DetailFixture):
+    """Edit/Delete on the trip page itself, shown only to those who may use them."""
+
+    def actions(self):
+        html = self.get().content.decode()
+        return (reverse("trips:trip_edit", args=[self.trip.pk]) in html,
+                reverse("trips:trip_delete", args=[self.trip.pk]) in html)
+
+    def test_viewer_and_commentor_get_neither(self):
+        self.assertEqual(self.actions(), (False, False))
+        TripGrant.objects.filter(trip=self.trip, user=self.reader).update(role=TripRole.COMMENTOR)
+        self.assertEqual(self.actions(), (False, False))
+
+    def test_editor_gets_edit_and_owner_also_delete(self):
+        TripGrant.objects.filter(trip=self.trip, user=self.reader).update(role=TripRole.EDITOR)
+        self.assertEqual(self.actions(), (True, False))
+        Trip.objects.filter(pk=self.trip.pk).update(created_by=self.reader)
+        self.assertEqual(self.actions(), (True, True))
+
+    def test_staff_get_both(self):
+        self.client.force_login(self.admin)
+        self.assertEqual(self.actions(), (True, True))

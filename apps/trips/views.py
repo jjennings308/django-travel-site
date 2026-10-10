@@ -313,6 +313,9 @@ def trip_detail(request, pk):
         pk=pk,
     )
     comments, comments_by_target = _trip_comments(trip, request.user)
+    # One capabilities lookup for every action the page offers: each trip.can()
+    # is a query, and this page pins its query count (QueryCountTests).
+    capabilities = trip.capabilities_for(request.user)
     return render(
         request,
         "trips/trip_detail.html",
@@ -320,7 +323,9 @@ def trip_detail(request, pk):
             "trip": trip,
             "trip_comments": comments.get(("trip", trip.pk), []),
             "comments_by_target": comments_by_target,
-            "can_comment": trip.can(request.user, "comment"),
+            "can_comment": "comment" in capabilities,
+            "can_edit": "edit" in capabilities,
+            "can_delete": "delete" in capabilities,
         },
     )
 
