@@ -1,0 +1,13 @@
+# Nightly at 03:30; a run missed while the machine was off happens at the next start.
+#   systemctl --user enable --now sbl-dev-sync.timer
+#   loginctl enable-linger james      # once, so it also runs while logged out
+[Unit]
+Description=Nightly dev database sync from production
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

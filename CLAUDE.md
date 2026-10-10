@@ -73,6 +73,8 @@ set -a; source .env; set +a
 python manage.py migrate
 ```
 
+**Dev data is a nightly copy of production.** `scripts/sync_dev_from_prod.sh` dumps production over SSH (read-only there), checks the dump, backs up dev, restores into the dev container, runs `migrate` (re-applies migrations not yet on production), copies new `uploads/` (add-only), compares row counts and prunes its own dumps after 14 days (`~/db_backups/travel_site_{prod,dev_pre_sync}_*.dump`); one line per run in `~/db_backups/sync.log`. It skips while a `manage.py test` run is going. Scheduled by the systemd user timer in `deploy/dev/` (03:30, `Persistent=true`): install with `cp deploy/dev/sbl-dev-sync.* ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now sbl-dev-sync.timer`; run now with `systemctl --user start sbl-dev-sync`; history in `journalctl --user -u sbl-dev-sync`. `loginctl enable-linger james` lets it run while logged out. So anything done only in the dev database is gone the next morning; this is a dev convenience, not a production backup.
+
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
 ## Deploying (staging / production)

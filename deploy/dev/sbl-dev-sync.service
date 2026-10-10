@@ -1,0 +1,11 @@
+# Copy production's database (and new uploads) into the dev database.
+# User unit for the dev machine; see scripts/sync_dev_from_prod.sh and CLAUDE.md.
+#   cp deploy/dev/sbl-dev-sync.* ~/.config/systemd/user/ && systemctl --user daemon-reload
+[Unit]
+Description=Sync dev database from ShareBucketList production
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/projects/travel_site/scripts/sync_dev_from_prod.sh
