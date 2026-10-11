@@ -331,6 +331,23 @@ class BucketListItem(TimeStampedModel):
                 cities.append(poi.city.name)
         return " & ".join(cities)
 
+    def photos(self):
+        """Photos attached to this goal (added when ticking it off), oldest first."""
+        from django.contrib.contenttypes.models import ContentType
+        from apps.media_app.models import Media
+        return Media.objects.filter(content_type=ContentType.objects.get_for_model(self), object_id=self.pk,
+                                    media_type="image").order_by("created_at")
+
+    def add_photos(self, files, user):
+        """Store uploaded images as Media attached to this goal (scaled down; HEIC -> JPEG)."""
+        from apps.core.utils.images import shrink_image
+        from apps.media_app.forms import MAX_PICTURE_SIDE
+        from apps.media_app.models import Media
+        for f in files:
+            Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
+                  title=self.title[:200], alt_text=self.title[:200], content_object=self,
+                  privacy="public" if self.is_public else "private").save()
+
     @property
     def is_completed(self):
         """Check if item is completed"""

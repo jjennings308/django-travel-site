@@ -492,3 +492,76 @@ class SeveralGoalsOneTripTests(BucketFixture):
         self.client.post(reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [bobs.pk]})
         bobs.refresh_from_db()
         self.assertIsNone(bobs.trip)
+
+
+class AdventuresTests(BucketFixture):
+    """Photos when ticking a goal off, and the My adventures timeline."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        self.media_root = tempfile.mkdtemp(prefix="sbl-test-adventures-")
+        self.settings_override = self.settings(MEDIA_ROOT=self.media_root)
+        self.settings_override.enable()
+        self.item = BucketListItem.objects.create(user=self.alice, custom_title="See the northern lights", is_public=True)
+
+    def tearDown(self):
+        import shutil
+        self.settings_override.disable()
+        shutil.rmtree(self.media_root, ignore_errors=True)
+        super().tearDown()
+
+    def photo(self, name):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (30, 20), "green").save(buf, format="JPEG")
+        return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
+
+    def complete(self, **extra):
+        data = {"completed_date": "2026-09-01", "user_rating": "5", "completion_notes": "Magical"}
+        data.update(extra)
+        return self.client.post(reverse("bucketlists:item_complete", args=[self.item.pk]), data)
+
+    def test_photos_attach_to_the_goal_and_show_in_adventures(self):
+        response = self.complete(photos=[self.photo("a.jpg"), self.photo("b.jpg")])
+        self.assertRedirects(response, reverse("bucketlists:adventures"))
+        photos = list(self.item.photos())
+        self.assertEqual(len(photos), 2)
+        self.assertEqual((photos[0].uploaded_by, photos[0].content_object), (self.alice, self.item))
+        page = self.client.get(reverse("bucketlists:adventures"))
+        self.assertContains(page, "See the northern lights")
+        self.assertContains(page, photos[0].file.url)
+        self.assertContains(page, "Magical")
+        # more photos later, from the same page
+        self.complete(photos=[self.photo("c.jpg")])
+        self.assertEqual(self.item.photos().count(), 3)
+
+    def test_not_an_image_is_refused(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        response = self.complete(photos=[SimpleUploadedFile("x.jpg", b"nope", content_type="image/jpeg")])
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertNotEqual(self.item.status, "completed")
+
+    def test_adventures_is_private_and_lists_unlinked_finished_trips(self):
+        trip = Trip.objects.create(name="Iceland week", start_date=date.today() - timedelta(days=30),
+                                   end_date=date.today() - timedelta(days=23))
+        TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.VIEWER)
+        self.complete()
+        page = self.client.get(reverse("bucketlists:adventures"))
+        self.assertContains(page, "Iceland week")
+        self.assertContains(page, reverse("bucketlists:trip_done", args=[trip.pk]))
+        self.client.force_login(self.bob)
+        page = self.client.get(reverse("bucketlists:adventures"))
+        self.assertNotContains(page, "See the northern lights")
+        self.assertNotContains(page, "Iceland week")
+
+    def test_public_list_shows_first_photo(self):
+        self.alice.profile_visibility = "public"
+        self.alice.save()
+        self.complete(photos=[self.photo("first.jpg")])
+        first = self.item.photos().first()
+        self.client.logout()
+        self.assertContains(self.client.get(reverse("bucketlists:public_list", args=["alice"])), first.file.url)

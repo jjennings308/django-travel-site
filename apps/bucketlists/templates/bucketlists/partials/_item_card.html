@@ -1,6 +1,7 @@
 {# bucketlists/partials/_item_card.html — pass item=; owner=True shows the edit/complete actions #}
 
 <article class="sbl-card flex flex-col p-5 {% if item.status == 'completed' %}bg-emerald-50/40{% endif %}">
+  {% if item.first_photo %}<img src="{{ item.first_photo.file.url }}" alt="{{ item.first_photo.alt_text }}" loading="lazy" class="-mx-5 -mt-5 mb-4 h-40 w-[calc(100%+2.5rem)] max-w-none rounded-t-xl object-cover">{% endif %}
   <div class="mb-2 flex items-start justify-between gap-3">
     <div class="min-w-0">
       <h3 class="text-lg font-semibold text-warm-900 {% if item.status == 'completed' %}line-through decoration-emerald-600/60{% endif %}">

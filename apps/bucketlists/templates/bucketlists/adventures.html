@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{# bucketlists/adventures.html — lifecycle stage 5: completed goals (with photos) and finished trips, by year (bucketlists:adventures) #}
+
+{% block title %}My adventures{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-8">
+  <header>
+    <h1 class="sbl-page-title">My adventures</h1>
+    <p class="sbl-page-subtitle">{{ goal_count }} goal{{ goal_count|pluralize }} ticked off{% if trip_count %} · {{ trip_count }} more trip{{ trip_count|pluralize }}{% endif %}</p>
+  </header>
+
+  {% for year, entries in years %}
+    <section aria-labelledby="year-{{ year|default:'undated' }}">
+      <h2 id="year-{{ year|default:'undated' }}" class="mb-3 text-2xl font-bold text-earth-clay">{{ year|default:"Undated" }}</h2>
+      <ol class="space-y-4 border-l-2 border-warm-200 pl-5">
+        {% for entry in entries %}
+          <li class="relative">
+            <span class="absolute -left-[1.6rem] top-5 size-3 rounded-full {% if entry.kind == 'goal' %}bg-earth-clay{% else %}bg-warm-400{% endif %}"></span>
+            {% if entry.kind == 'goal' %}{% with item=entry.item %}
+              <article class="sbl-card p-5">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 class="text-lg font-semibold text-warm-900">{% if item.target_url %}<a class="hover:text-earth-clay" href="{{ item.target_url }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h3>
+                  <span class="text-sm text-warm-500">{{ item.completed_date|date:"M j, Y" }}</span>
+                </div>
+                <p class="text-sm text-warm-500">{% if item.place %}<i class="bi bi-geo-alt"></i> {{ item.place }}{% endif %}{% if item.user_rating %} <span class="text-earth-ochre" title="{{ item.user_rating }} of 5">{% for _ in "x"|ljust:item.user_rating %}★{% endfor %}</span>{% endif %}{% if item.live_trip %} · <a class="sbl-link" href="{% url 'trips:trip_detail' item.live_trip.pk %}"><i class="bi bi-airplane"></i> {{ item.live_trip.name }}</a>{% endif %}</p>
+                {% if item.completion_notes %}<p class="mt-2 whitespace-pre-line text-warm-700">{{ item.completion_notes }}</p>{% endif %}
+                {% if entry.photos %}
+                  <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">{% for photo in entry.photos %}<a href="{{ photo.file.url }}" target="_blank" rel="noopener"><img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}" loading="lazy" class="aspect-square w-full rounded-lg object-cover"></a>{% endfor %}</div>
+                {% endif %}
+                <a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-link mt-3 inline-block text-sm"><i class="bi bi-camera"></i> Add photos or edit</a>
+              </article>
+            {% endwith %}{% else %}{% with trip=entry.trip %}
+              <article class="sbl-card bg-warm-50 p-4">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 class="font-semibold text-warm-900"><i class="bi bi-airplane text-warm-500"></i> <a class="hover:text-earth-clay" href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a></h3>
+                  <span class="text-sm text-warm-500">{{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}</span>
+                </div>
+                <form method="post" action="{% url 'bucketlists:trip_done' trip.pk %}" class="mt-1">{% csrf_token %}<button type="submit" class="sbl-link text-sm">Add it to your adventures with notes and photos</button></form>
+              </article>
+            {% endwith %}{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% empty %}
+    <div class="sbl-card p-10 text-center text-warm-500">
+      <i class="bi bi-trophy mb-2 block text-4xl"></i>
+      <p>Nothing ticked off yet. When you finish a goal, press <em>Done</em> on it and it appears here with your notes and photos.</p>
+      <a href="{% url 'bucketlists:dates' %}" class="sbl-btn sbl-btn-primary mt-4">See what's coming up</a>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

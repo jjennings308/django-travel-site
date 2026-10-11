@@ -1,4 +1,6 @@
 # bucketlists/views.py
+from datetime import date
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -459,16 +461,54 @@ def pick_date(request, pk):
 @login_required
 def item_complete(request, pk):
     item = _own_item(request, pk)
-    form = CompleteItemForm(request.POST or None, initial={
+    form = CompleteItemForm(request.POST or None, request.FILES or None, initial={
         "completed_date": item.completed_date or timezone.now().date(),
         "user_rating": item.user_rating, "completion_notes": item.completion_notes,
     })
+    already_done = item.status == "completed"
     if request.method == "POST" and form.is_valid():
         item.complete(form.cleaned_data["completed_date"], form.cleaned_data["completion_notes"],
                       form.cleaned_data["user_rating"])
-        messages.success(request, f"🎉 Ticked off “{item.title}”!")
-        return redirect("bucketlists:dashboard")
-    return render(request, "bucketlists/item_complete.html", {"form": form, "item": item})
+        item.add_photos(form.cleaned_data["photos"], request.user)
+        messages.success(request, "Saved." if already_done else f"🎉 Ticked off “{item.title}”!")
+        return redirect("bucketlists:adventures")
+    return render(request, "bucketlists/item_complete.html", {
+        "form": form, "item": item, "photos": item.photos(), "already_done": already_done,
+    })
+
+
+@login_required
+def adventures(request):
+    """My adventures: the user's completed goals (with photos) and finished trips
+    they were on that aren't tied to a goal, newest first, grouped by year."""
+    from django.contrib.contenttypes.models import ContentType
+    from apps.media_app.models import Media
+
+    done = list(_items().filter(user=request.user, status="completed").order_by("-completed_date", "-updated_at"))
+    photos = {}
+    if done:
+        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
+                                           object_id__in=[i.pk for i in done], media_type="image")
+                      .order_by("created_at")):
+            photos.setdefault(media.object_id, []).append(media)
+    entries = [{"kind": "goal", "date": i.completed_date, "item": i, "photos": photos.get(i.pk, [])} for i in done]
+
+    today = timezone.now().date()
+    trips = (Trip.objects.live().filter(grants__user=request.user, end_date__lt=today)
+             .exclude(bucket_list_items__user=request.user).distinct())
+    entries += [{"kind": "trip", "date": t.end_date, "trip": t} for t in trips]
+    entries.sort(key=lambda e: e["date"] or date.min, reverse=True)
+
+    years = []
+    for entry in entries:
+        year = entry["date"].year if entry["date"] else None
+        if not years or years[-1][0] != year:
+            years.append((year, []))
+        years[-1][1].append(entry)
+    return render(request, "bucketlists/adventures.html", {
+        "years": years, "goal_count": len(done), "trip_count": len(entries) - len(done),
+        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My adventures", None)]),
+    })
 
 
 @login_required
@@ -531,6 +571,15 @@ def public_list(request, username):
     )
     done = [i for i in items if i.status == "completed"]
     todo = [i for i in items if i.status != "completed"]
+    if done:  # first photo of each finished goal, in one query
+        from django.contrib.contenttypes.models import ContentType
+        from apps.media_app.models import Media
+        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
+                                           object_id__in=[i.pk for i in done], media_type="image")
+                      .order_by("-created_at")):
+            for item in done:
+                if item.pk == media.object_id:
+                    item.first_photo = media
     return render(request, "bucketlists/public_list.html", {
         "owner": owner, "todo": todo, "done": done, "is_owner": is_owner,
     })

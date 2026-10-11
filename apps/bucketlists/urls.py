@@ -11,6 +11,7 @@ urlpatterns = [
     path("add/<str:kind>/<int:pk>/", views.quick_add, name="quick_add"),
     path("<int:pk>/edit/", views.item_edit, name="item_edit"),
     path("dates/", views.my_dates, name="dates"),
+    path("adventures/", views.adventures, name="adventures"),
     path("suggest/", views.suggest, name="suggest"),
     path("<int:pk>/pick-date/", views.pick_date, name="pick_date"),
     path("trip/<int:trip_pk>/done/", views.trip_done, name="trip_done"),

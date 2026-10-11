@@ -4,6 +4,7 @@ from django import forms
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI
+from apps.media_app.forms import MAX_PICTURE_MB
 
 from .models import BucketListCategory, BucketListItem
 
@@ -115,6 +116,32 @@ class BucketListItemForm(forms.ModelForm):
         return item
 
 
+MAX_PHOTOS = 10
+
+
+class MultipleImageInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleImageField(forms.ImageField):
+    """Several image files in one input; each is checked as an image."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleImageInput(attrs={"class": "sbl-input", "accept": "image/*,.heic,.heif"}))
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        files = data if isinstance(data, (list, tuple)) else ([data] if data else [])
+        if len(files) > MAX_PHOTOS:
+            raise forms.ValidationError(f"Up to {MAX_PHOTOS} photos at a time.")
+        single = super().clean
+        cleaned = [single(f, initial) for f in files]
+        for f in cleaned:
+            if f.size > MAX_PICTURE_MB * 1024 * 1024:
+                raise forms.ValidationError(f"{f.name} is over {MAX_PICTURE_MB} MB.")
+        return cleaned
+
+
 class CompleteItemForm(forms.Form):
     completed_date = forms.DateField(widget=forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"))
     user_rating = forms.TypedChoiceField(
@@ -124,6 +151,10 @@ class CompleteItemForm(forms.Form):
     )
     completion_notes = forms.CharField(
         required=False, label="How was it?", widget=forms.Textarea(attrs={**INPUT, "rows": 4})
+    )
+    photos = MultipleImageField(
+        required=False, label="Photos (optional)",
+        help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
     )
 
 
