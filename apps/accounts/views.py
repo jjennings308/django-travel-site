@@ -649,3 +649,19 @@ def set_theme(request):
         settings.save(update_fields=["theme"])
 
     return resp
+
+
+@login_required
+def role_request_document(request, pk):
+    """Download a role request's supporting document: the requester and staff only
+    (404 for anyone else). The file lives in private storage, never under /media/."""
+    import os
+    from django.http import FileResponse, Http404
+    role_request = get_object_or_404(RoleRequest, pk=pk)
+    if not (request.user == role_request.user or request.user.can_access_staff) or not role_request.supporting_documents:
+        raise Http404
+    document = role_request.supporting_documents
+    response = FileResponse(document.open("rb"), as_attachment=True, filename=os.path.basename(document.name))
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response

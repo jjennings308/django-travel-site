@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.utils import timezone
+from apps.core.storage import private_storage
 from apps.core.models import TimeStampedModel
 from django.utils.translation import gettext_lazy as _
 
@@ -397,6 +398,7 @@ class RoleRequest(TimeStampedModel):
     )
     supporting_documents = models.FileField(
         upload_to='role_requests/%Y/%m/',
+        storage=private_storage,  # not under /media/: only the requester and staff can download (role_request_document)
         null=True,
         blank=True,
         help_text='Upload verification documents (license, portfolio, etc.)'

@@ -49,9 +49,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = _flag("SECURE_SSL_REDIRECT", "True")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-# Start low on a new domain: browsers remember HSTS for this long. Raise to
-# 31536000 (a year) once HTTPS is known-good, and only then consider preload.
-SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))
+# Browsers remember HSTS (HTTPS only) for this long. A year, now that HTTPS on
+# sharebucketlist.com is proven; a brand-new domain should start at 3600 via .env.
+# Subdomains and preload stay off (W005/W021 silenced) until every subdomain is HTTPS.
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _flag("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False")
 SECURE_HSTS_PRELOAD = False
 # Deliberately off until HTTPS has run cleanly on the real domain: both are

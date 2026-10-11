@@ -179,6 +179,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "uploads"
+# Uploads that must not be public (e.g. role-request documents): outside MEDIA_ROOT, so nginx
+# never serves them; apps.core.storage.PrivateStorage, downloaded only through access-checked views.
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_uploads"
 
 AUTH_USER_MODEL = 'accounts.User'
 

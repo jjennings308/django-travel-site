@@ -341,7 +341,17 @@ class RoleRequestAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
         "reviewed_at",
+        "document_download",
     )
+
+    @admin.display(description="Supporting documents")
+    def document_download(self, obj):
+        """The file is in private storage (no public URL); link to the access-checked view."""
+        from django.urls import reverse
+        from django.utils.html import format_html
+        if not obj.pk or not obj.supporting_documents:
+            return "—"
+        return format_html('<a href="{}">Download</a>', reverse("role_request_document", args=[obj.pk]))
     
     fieldsets = (
         ("Request Information", {
@@ -358,7 +368,7 @@ class RoleRequestAdmin(admin.ModelAdmin):
                 "business_description",
                 "website",
                 "business_license",
-                "supporting_documents",
+                "document_download",
             )
         }),
         ("Review", {

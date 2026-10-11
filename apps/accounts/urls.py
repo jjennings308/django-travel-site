@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     # Registration & Email Verification
     path('register/', views.register, name='register'),
+    path('role-requests/<int:pk>/document/', views.role_request_document, name='role_request_document'),
     path('registration-complete/', views.registration_complete, name='registration_complete'),
     re_path(
         r'^verify-email/(?P<uidb64>[0-9A-Za-z_\-=]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$',

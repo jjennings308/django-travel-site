@@ -18,7 +18,7 @@
       <div><dt class="text-xs uppercase tracking-wide text-warm-500">Business name</dt><dd class="text-warm-900">{{ role_request.business_name|default:"—" }}</dd></div>
       <div><dt class="text-xs uppercase tracking-wide text-warm-500">Website</dt><dd>{% if role_request.website %}<a class="sbl-link break-all" href="{{ role_request.website }}" rel="noopener noreferrer" target="_blank">{{ role_request.website }}</a>{% else %}—{% endif %}</dd></div>
       <div><dt class="text-xs uppercase tracking-wide text-warm-500">Business license</dt><dd class="text-warm-900">{{ role_request.business_license|default:"—" }}</dd></div>
-      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Supporting documents</dt><dd>{% if role_request.supporting_documents %}<a class="sbl-link" href="{{ role_request.supporting_documents.url }}" target="_blank">Download</a>{% else %}—{% endif %}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-warm-500">Supporting documents</dt><dd>{% if role_request.supporting_documents %}<a class="sbl-link" href="{% url 'role_request_document' role_request.pk %}">Download</a>{% else %}—{% endif %}</dd></div>
       <div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-warm-500">Description</dt><dd class="whitespace-pre-line text-warm-900">{{ role_request.business_description }}</dd></div>
     </dl>
   </section>

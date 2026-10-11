@@ -25,6 +25,11 @@ echo "   now $(git log --oneline -1)"
 echo "== requirements"
 "$APP/.venv/bin/pip" install -q -r requirements.txt
 
+echo "== private uploads"
+# Role-request documents etc.: outside MEDIA_ROOT so nginx never serves them. Group
+# www-data (the repo directory is setgid), writable by the app, nothing for others.
+mkdir -p "$APP/private_uploads" && chmod 2770 "$APP/private_uploads"
+
 echo "== checks"
 "$PY" manage.py check --deploy
 

@@ -60,6 +60,8 @@ class UserThemeMiddleware:
         response = self.get_response(request)
 
         # keep cookie synced with resolved theme
-        response.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365)
+        # Server-read only (no JS uses it): HttpOnly; Secure whenever the request came over HTTPS.
+        response.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365,
+                            secure=request.is_secure(), httponly=True, samesite="Lax")
 
         return response

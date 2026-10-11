@@ -19,7 +19,7 @@ RuntimeDirectory=travel_site
 Environment="DJANGO_SETTINGS_MODULE=config.settings.prod"
 EnvironmentFile=/var/www/travel_site/.env
 ExecStart=/var/www/travel_site/.venv/bin/gunicorn \
-    --workers 3 \
+    --workers 2 \
     --bind unix:/run/travel_site/travel_site.sock \
     --access-logfile - \
     config.wsgi:application
