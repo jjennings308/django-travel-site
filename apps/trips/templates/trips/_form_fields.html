@@ -2,6 +2,10 @@
 Renders a form's visible fields with per-field help, but skips fields a caller
 lists as hidden.
 
+The `not hide_fields or` matters: without it, a caller that passes no
+hide_fields renders *nothing* (`x not in <undefined>` is an error, which the
+template engine turns into False).
+
 Django has no built-in "render everything except these", and the trip form uses
 `as_p` while the day form needs a rendered hint under `travelers`. This partial
 exists so both get the same markup, and so a field added to a form appears
@@ -9,7 +13,7 @@ without a template edit.
 {% endcomment %}
 <div class="field-grid">
 {% for field in form.visible_fields %}
-  {% if field.name not in hide_fields %}
+  {% if not hide_fields or field.name not in hide_fields %}
     <div class="mb-4">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
