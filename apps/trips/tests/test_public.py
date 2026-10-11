@@ -219,6 +219,12 @@ class DerivedTitleTests(PublicFixture):
         )
         self.assertEqual(same.public_dates, "March 1, 2027")
 
+    def test_ranges_across_months_and_years_name_both(self):
+        europe = Trip(name="E", start_date=date(2027, 9, 17), end_date=date(2027, 10, 3))
+        self.assertEqual(europe.public_dates, "September 17 – October 3, 2027")
+        new_year = Trip(name="N", start_date=date(2026, 12, 28), end_date=date(2027, 1, 3))
+        self.assertEqual(new_year.public_dates, "December 28, 2026 – January 3, 2027")
+
 
 class ShapeTests(PublicFixture):
     """The output is a subset of the declared allowlist. Nothing else."""

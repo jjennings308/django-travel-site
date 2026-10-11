@@ -557,12 +557,14 @@ class Trip(models.Model):
         the same way (see ``format_local_date``). ``%-d`` is glibc's
         "no zero padding", which this project's platforms all are.
         """
-        if self.start_date == self.end_date:
-            return self.start_date.strftime("%B %-d, %Y")
-        return (
-            f"{self.start_date.strftime('%B %-d')} – "
-            f"{self.end_date.strftime('%-d, %Y')}"
-        )
+        start, end = self.start_date, self.end_date
+        if start == end:
+            return start.strftime("%B %-d, %Y")
+        if start.year != end.year:  # December 28, 2026 – January 3, 2027
+            return f"{start.strftime('%B %-d, %Y')} – {end.strftime('%B %-d, %Y')}"
+        if start.month != end.month:  # September 17 – October 3, 2027
+            return f"{start.strftime('%B %-d')} – {end.strftime('%B %-d, %Y')}"
+        return f"{start.strftime('%B %-d')} – {end.strftime('%-d, %Y')}"  # March 1 – 8, 2027
 
     def enable_public(self):
         """Mint a public token, and return it.
