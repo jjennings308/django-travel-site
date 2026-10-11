@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{# pages/help.html — short how-it-works / FAQ #}
+{% block title %}Help · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-3xl space-y-6">
+  <header>
+    <h1 class="sbl-page-title">Help</h1>
+    <p class="sbl-page-subtitle">How {{ SITE_NAME }} works, from an idea to a trip you've taken.</p>
+  </header>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">The five steps</h2>
+    <ol class="list-decimal space-y-3 pl-5 text-warm-700">
+      <li><strong>Discover:</strong> browse <a class="sbl-link" href="{% url 'activities:activity_list' %}">activities</a>, <a class="sbl-link" href="{% url 'events:event_list' %}">events</a> and <a class="sbl-link" href="{% url 'locations:dashboard' %}">places</a>. An activity is the idea (“See Oktoberfest”); an event is one dated occurrence of it (“Oktoberfest 2027”).</li>
+      <li><strong>Dream:</strong> press <em>Add to bucket list</em> on anything you'd like to do, or add your own goal. Group goals with your own categories.</li>
+      <li><strong>Pick a date:</strong> <em>My dates</em> shows goals with a date and offers upcoming dates for the ones without.</li>
+      <li><strong>Plan:</strong> <em>Plan a trip</em> from a goal starts a trip with its dates and place filled in. Several goals can share one trip.</li>
+      <li><strong>Done:</strong> tick a goal off with a date, a rating, notes and photos. <em>My adventures</em> keeps them all.</li>
+    </ol>
+  </section>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">Questions</h2>
+    <dl class="space-y-4 text-warm-700">
+      <div><dt class="font-semibold text-warm-900">Who can see my bucket list?</dt><dd>Only you, unless you mark goals as public and set your profile to public; then they show on your public bucket-list page.</dd></div>
+      <div><dt class="font-semibold text-warm-900">How do I share a trip?</dt><dd>On the trip page, editors can press <em>Share</em> to get a link. The shared page shows the trip's name, dates and outline only, never bookings, confirmations or who's travelling. <em>Stop sharing</em> turns the link off.</dd></div>
+      <div><dt class="font-semibold text-warm-900">Who can see or edit a trip?</dt><dd>Only people the trip has been shared with in the app, each as a viewer, commentor or editor.</dd></div>
+      <div><dt class="font-semibold text-warm-900">I added an event or activity. Why can't others see it?</dt><dd>New submissions are checked by our team first; you can see and edit yours under <em>My contributions</em> in your account menu meanwhile.</dd></div>
+      <div><dt class="font-semibold text-warm-900">My city or venue isn't listed.</dt><dd>When adding an event, tick <em>City not listed</em> and type it; our team adds it to the catalogue.</dd></div>
+    </dl>
+  </section>
+
+  <p class="text-warm-600">Still stuck? <a class="sbl-link" href="{% url 'pages:contact' %}">Contact us</a>.</p>
+</article>
+{% endblock %}

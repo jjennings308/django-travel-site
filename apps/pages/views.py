@@ -5,6 +5,10 @@ from django.conf import settings
 from django.shortcuts import render, redirect
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.contrib import messages
+from django.core.cache import cache
+from django.core.mail import EmailMessage
+from apps.approval_system.models import ApprovalStatus
 from datetime import timedelta
 from apps.accounts.models import Profile
 from apps.trips.models import Trip
@@ -13,20 +17,29 @@ from apps.bucketlists.models import BucketListItem
 # from recommendations.models import Recommendation  # When you create this
 
 
+def _catalogue_counts():
+    """Published catalogue sizes for the home page's stats band, cached for an hour."""
+    counts = cache.get("home_catalogue_counts")
+    if counts is None:
+        from apps.activities.models import Activity
+        from apps.locations.models import POI, City, Country
+        approved = {"approval_status": ApprovalStatus.APPROVED}
+        counts = {
+            "countries": Country.objects.filter(**approved).count(),
+            "cities": City.objects.filter(**approved).count(),
+            "places": POI.objects.filter(**approved).count(),
+            "activities": Activity.get_public_activities().count(),
+        }
+        cache.set("home_catalogue_counts", counts, 60 * 60)
+    return counts
+
+
 def home(request):
     """Pre-login home page"""
     # Redirect authenticated users to dashboard
     if request.user.is_authenticated:
         return redirect('pages:dashboard')
-    
-    # Stats for homepage
-    context = {
-        'total_users': get_user_model().objects.filter(is_active=True).count(),
-        'total_trips': Trip.objects.live().count(),
-        'countries_count': Profile.objects.exclude(
-            home_country__isnull=True
-        ).values('home_country').distinct().count(),
-    }
+    context = {"catalogue": _catalogue_counts()}
     return render(request, 'pages/home.html', context)
 
 
@@ -172,3 +185,48 @@ def safety(request):
     """Safety guidance for travellers and for using the site."""
     return _legal_page(request, "pages/legal/safety.html", "Safety")
 
+
+
+CONTACT_LIMIT = 3          # messages per session ...
+CONTACT_WINDOW = 60 * 60   # ... per hour
+
+
+def contact(request):
+    """Contact form: emails settings.LEGAL["contact_email"], Reply-To the sender.
+
+    Disabled (with a note) while the address is still a placeholder. A hidden
+    "website" field catches simple bots, and a session can send 3 an hour.
+    """
+    from .forms import ContactForm
+    to = str(settings.LEGAL.get("contact_email", ""))
+    ready = bool(to) and not to.startswith("[")
+    initial = {}
+    if request.user.is_authenticated:
+        initial = {"name": request.user.get_full_name() or request.user.username, "email": request.user.email}
+    form = ContactForm(request.POST or None, initial=initial)
+    if request.method == "POST" and ready and form.is_valid():
+        now = timezone.now().timestamp()
+        sent = [t for t in request.session.get("contact_sent", []) if now - t < CONTACT_WINDOW]
+        if form.cleaned_data["website"]:
+            pass  # a bot filled the hidden field: pretend it worked, send nothing
+        elif len(sent) >= CONTACT_LIMIT:
+            messages.error(request, "You've sent several messages already. Please try again in an hour.")
+            return redirect("pages:contact")
+        else:
+            data = form.cleaned_data
+            EmailMessage(
+                subject=f"[{settings.SITE_NAME} contact] {data['subject']}",
+                body=f"From: {data['name']} <{data['email']}>\n"
+                     f"Signed in as: {request.user.username if request.user.is_authenticated else '(not signed in)'}\n\n"
+                     f"{data['message']}",
+                from_email=settings.DEFAULT_FROM_EMAIL, to=[to], reply_to=[data["email"]],
+            ).send()
+            request.session["contact_sent"] = sent + [now]
+        messages.success(request, "Thanks, your message was sent. We'll reply by email.")
+        return redirect("pages:contact")
+    return render(request, "pages/contact.html", {"form": form, "ready": ready})
+
+
+def help_page(request):
+    """Short how-it-works / FAQ page."""
+    return render(request, "pages/help.html")

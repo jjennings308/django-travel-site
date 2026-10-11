@@ -92,8 +92,7 @@
                 </div>
                 <h3 class="text-2xl font-bold text-warm-900 mb-3">Plan Trips</h3>
                 <p class="text-warm-600">
-                    Build detailed itineraries with flights, hotels, activities, and budgets. 
-                    Everything you need in one organized place.
+                    Build day-by-day itineraries with flights, hotels, activities and booking to-dos, and share them with the people going.
                 </p>
             </div>
             
@@ -104,8 +103,7 @@
                 </div>
                 <h3 class="text-2xl font-bold text-warm-900 mb-3">Discover Places</h3>
                 <p class="text-warm-600">
-                    Explore curated destinations and hidden gems. Get personalized 
-                    recommendations based on your interests.
+                    Explore activities, events and places around the world. Get recommendations based on what's already on your list.
                 </p>
             </div>
             
@@ -116,8 +114,7 @@
                 </div>
                 <h3 class="text-2xl font-bold text-warm-900 mb-3">Track Adventures</h3>
                 <p class="text-warm-600">
-                    Document your journey with photos, notes, and ratings. Build a 
-                    beautiful travel diary to cherish forever.
+                    Tick off what you've done with a date, a rating, notes and photos, and look back on it all in My adventures.
                 </p>
             </div>
             
@@ -128,8 +125,7 @@
                 </div>
                 <h3 class="text-2xl font-bold text-warm-900 mb-3">Connect & Share</h3>
                 <p class="text-warm-600">
-                    Share your experiences with friends and the travel community. 
-                    Get inspired by others' journeys.
+                    Share your bucket list and your trip plans with a link, so friends and family can follow along.
                 </p>
             </div>
             
@@ -138,10 +134,9 @@
                 <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl text-4xl bg-gradient-to-br from-earth-ochre to-amber-400 text-white">
                     <i class="bi bi-gift"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-warm-900 mb-3">Earn Rewards</h3>
+                <h3 class="text-2xl font-bold text-warm-900 mb-3">Keep Your Rewards Handy</h3>
                 <p class="text-warm-600">
-                    Complete adventures and earn badges. Unlock premium features and 
-                    exclusive travel perks.
+                    Store your airline, hotel and rental loyalty numbers in one place, ready when you book.
                 </p>
             </div>
         </div>
@@ -153,20 +148,20 @@
     <div class="container mx-auto px-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
             <div class="text-center">
-                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">10K+</div>
-                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Active Travelers</div>
-            </div>
-            <div class="text-center">
-                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ countries_count|default:"150+" }}</div>
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ catalogue.countries|default:0 }}</div>
                 <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Countries</div>
             </div>
             <div class="text-center">
-                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">50K+</div>
-                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Trips Planned</div>
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ catalogue.cities|default:0 }}</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Cities</div>
             </div>
             <div class="text-center">
-                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">100K+</div>
-                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Bucket List Items</div>
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ catalogue.places|default:0 }}</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Places to see</div>
+            </div>
+            <div class="text-center">
+                <div class="text-5xl lg:text-6xl font-extrabold leading-none mb-2">{{ catalogue.activities|default:0 }}</div>
+                <div class="text-lg lg:text-xl opacity-90 uppercase tracking-wider font-medium">Activities</div>
             </div>
         </div>
     </div>
@@ -206,7 +201,7 @@
                 <h3 class="text-2xl font-bold text-warm-900 mb-3">Build Your Bucket List</h3>
                 <p class="text-warm-600">
                     Add destinations and activities you want to experience. 
-                    Browse recommendations tailored just for you.
+                    Browse activities, events and places, and get suggestions based on your list.
                 </p>
             </div>
             
@@ -227,91 +222,6 @@
     </div>
 </section>
 
-<!-- Testimonials Section -->
-<section class="py-16 md:py-20 bg-warm-50">
-    <div class="container mx-auto px-4">
-        <div class="text-center mb-12 lg:mb-16">
-            <h2 class="text-4xl lg:text-5xl font-bold text-warm-900 mb-4">What Travelers Say</h2>
-            <p class="text-xl text-warm-600">Join thousands of happy adventurers</p>
-        </div>
-        
-        <div class="grid md:grid-cols-3 gap-8">
-            
-            {# Testimonial 1 #}
-            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div class="flex gap-1 mb-4 text-amber-400">
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <p class="text-warm-700 mb-6">
-                    "ShareBucketList completely transformed how I plan my trips. 
-                    I've discovered so many amazing places I never would have found otherwise!"
-                </p>
-                <div class="flex items-center gap-4">
-                    <img src="https://i.pravatar.cc/150?img=1" 
-                         alt="Sarah" 
-                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
-                    <div>
-                        <div class="font-bold text-warm-900">Sarah Johnson</div>
-                        <small class="text-warm-500">Traveled to 47 countries</small>
-                    </div>
-                </div>
-            </div>
-            
-            {# Testimonial 2 #}
-            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div class="flex gap-1 mb-4 text-amber-400">
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <p class="text-warm-700 mb-6">
-                    "The best travel planning tool I've ever used. Love seeing my bucket list 
-                    come to life and sharing adventures with friends!"
-                </p>
-                <div class="flex items-center gap-4">
-                    <img src="https://i.pravatar.cc/150?img=13" 
-                         alt="Michael" 
-                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
-                    <div>
-                        <div class="font-bold text-warm-900">Michael Chen</div>
-                        <small class="text-warm-500">Adventure Enthusiast</small>
-                    </div>
-                </div>
-            </div>
-            
-            {# Testimonial 3 #}
-            <div class="bg-white rounded-2xl p-8 border border-warm-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div class="flex gap-1 mb-4 text-amber-400">
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <p class="text-warm-700 mb-6">
-                    "Finally, a place to organize all my travel dreams! The recommendations 
-                    are spot-on and the community is incredibly helpful."
-                </p>
-                <div class="flex items-center gap-4">
-                    <img src="https://i.pravatar.cc/150?img=5" 
-                         alt="Emma" 
-                         class="w-14 h-14 rounded-full object-cover border-3 border-earth-sand">
-                    <div>
-                        <div class="font-bold text-warm-900">Emma Rodriguez</div>
-                        <small class="text-warm-500">Digital Nomad</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
 <!-- CTA Section -->
 <section class="py-20 bg-gradient-to-br from-warm-50 to-warm-200">
     <div class="container mx-auto px-4">
@@ -320,7 +230,7 @@
                 Ready to Start Your Adventure?
             </h2>
             <p class="text-xl text-warm-600 mb-8 max-w-2xl mx-auto">
-                Join thousands of travelers planning their dream trips. It's completely free to get started!
+                Start your bucket list and plan your next trip. It's free.
             </p>
             <div class="flex flex-wrap justify-center gap-4">
                 <a href="{% url 'register' %}" 
@@ -335,7 +245,7 @@
                 </a>
             </div>
             <p class="text-warm-500 mt-6 text-sm">
-                No credit card required • Free forever • Cancel anytime
+                Free to use. No credit card needed.
             </p>
         </div>
     </div>

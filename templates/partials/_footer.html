@@ -19,10 +19,10 @@
             <div>
                 <h6 class="font-bold mb-4">Product</h6>
                 <ul class="space-y-2">
-                    <li><a href="#features" class="text-warm-400 hover:text-white transition-colors">Features</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Pricing</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Premium</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Mobile App</a></li>
+                    <li><a href="{% url 'pages:home' %}#features" class="text-warm-400 hover:text-white transition-colors">Features</a></li>
+                    <li><a href="{% url 'activities:activity_list' %}" class="text-warm-400 hover:text-white transition-colors">Activities</a></li>
+                    <li><a href="{% url 'events:event_list' %}" class="text-warm-400 hover:text-white transition-colors">Events</a></li>
+                    <li><a href="{% url 'locations:dashboard' %}" class="text-warm-400 hover:text-white transition-colors">Places</a></li>
                 </ul>
             </div>
             
@@ -31,29 +31,19 @@
                 <h6 class="font-bold mb-4">Company</h6>
                 <ul class="space-y-2">
                     <li><a href="{% url 'pages:about' %}" class="text-warm-400 hover:text-white transition-colors">About Us</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Blog</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Careers</a></li>
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Contact</a></li>
+                    <li><a href="{% url 'pages:contact' %}" class="text-warm-400 hover:text-white transition-colors">Contact</a></li>
                 </ul>
             </div>
             
             {# Support & Social Column #}
             <div>
                 <h6 class="font-bold mb-4">Support</h6>
-                <ul class="space-y-2 mb-6">
-                    <li><a href="#" class="text-warm-400 hover:text-white transition-colors">Help Center</a></li>
+                <ul class="space-y-2">
+                    <li><a href="{% url 'pages:help' %}" class="text-warm-400 hover:text-white transition-colors">Help</a></li>
                     <li><a href="{% url 'pages:privacy' %}" class="text-warm-400 hover:text-white transition-colors">Privacy</a></li>
                     <li><a href="{% url 'pages:terms' %}" class="text-warm-400 hover:text-white transition-colors">Terms</a></li>
                     <li><a href="{% url 'pages:safety' %}" class="text-warm-400 hover:text-white transition-colors">Safety</a></li>
                 </ul>
-                
-                <h6 class="font-bold mb-3">Follow Us</h6>
-                <div class="flex gap-4">
-                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-facebook"></i></a>
-                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-twitter"></i></a>
-                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-instagram"></i></a>
-                    <a href="#" class="text-warm-400 hover:text-white text-2xl transition-colors"><i class="bi bi-youtube"></i></a>
-                </div>
             </div>
         </div>
         
