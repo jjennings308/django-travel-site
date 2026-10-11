@@ -549,9 +549,9 @@ def city_add(request):
             except Region.DoesNotExist:
                 pass
         
-        # Check for duplicates
-        if City.objects.filter(country=country, name=name).exists():
-            messages.error(request, 'This city already exists in the selected country.')
+        # Check for duplicates: cities are unique per region (Kansas City MO / KS)
+        if City.objects.filter(country=country, region=region, name__iexact=name).exists():
+            messages.error(request, 'This city already exists in the selected region and country.')
             return redirect('locations:city_add')
         
         city = City.objects.create(

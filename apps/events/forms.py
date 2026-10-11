@@ -53,9 +53,11 @@ class EventForm(PictureFormMixin, forms.ModelForm):
         self.setup_picture()
         self.fields["city"].queryset = (
             City.objects.filter(approval_status=ApprovalStatus.APPROVED)
-            .select_related("country").order_by("country__name", "name")
+            .select_related("country", "region").order_by("country__name", "name")
         )
-        self.fields["city"].label_from_instance = lambda c: f"{c.name}, {c.country.name}"
+        # The region code tells same-named cities apart (Kansas City, MO / KS).
+        self.fields["city"].label_from_instance = lambda c: ", ".join(
+            x for x in (c.name, c.region.code if c.region_id else "", c.country.name) if x)
         self.fields["city"].required = False
         self.fields["city"].empty_label = "Choose a city…"
         self.fields["country"].queryset = Country.objects.filter(

@@ -163,9 +163,9 @@ class Command(BaseCommand):
 
                     city, was_created = City.objects.update_or_create(
                         country=country,
+                        region=region,  # cities are unique per region (Kansas City MO / KS)
                         name=city_name,
                         defaults={
-                            "region": region,
                             "latitude": Decimal(str(lat)),
                             "longitude": Decimal(str(lon)),
                             "description": description,

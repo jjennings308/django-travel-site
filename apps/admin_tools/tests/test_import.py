@@ -183,3 +183,59 @@ class LocationImportTests(ImportFixture):
                 counts = page.context["counts"]
                 self.assertEqual((counts["create"], counts["error"]), (0, 0))
                 self.assertEqual([r.changes for r in page.context["importer"].rows], [[]] * counts["update"])
+
+
+class SameNameCityTests(ImportFixture):
+    """Cities are unique per region: Kansas City, MO and Kansas City, KS."""
+
+    def setUp(self):
+        super().setUp()
+        self.us = Country.objects.create(name="United States", slug="united-states", iso_code="US", iso3_code="USA",
+                                         continent="North America", approval_status=ApprovalStatus.APPROVED)
+        self.mo = Region.objects.create(country=self.us, name="Missouri", code="MO", slug="missouri")
+        self.ks = Region.objects.create(country=self.us, name="Kansas", code="KS", slug="kansas")
+
+    def test_both_kansas_cities_import(self):
+        csv = ("name,country,region,latitude,longitude\n"
+               "Kansas City,United States,Missouri,39.0997,-94.5786\n"
+               "Kansas City,United States,Kansas,39.1141,-94.6275\n")
+        page = self.preview("city", csv)
+        self.assertEqual(page.context["counts"], {"create": 2, "update": 0, "error": 0},
+                         [r.errors for r in page.context["importer"].rows])
+        self.confirm()
+        cities = City.objects.filter(name="Kansas City").order_by("region__name")
+        self.assertEqual([(c.region.code, c.slug) for c in cities], [("KS", "kansas-city-ks-us"), ("MO", "kansas-city-mo-us")])
+        self.assertEqual(str(cities[0]), "Kansas City, KS, US")
+
+        # re-import updates the right one; a row without the region is ambiguous now
+        page = self.preview("city", "name,country,region,latitude,longitude,population\n"
+                                    "Kansas City,United States,Kansas,39.1141,-94.6275,156607\n"
+                                    "Kansas City,United States,,39.1,-94.6,1\n")
+        rows = page.context["importer"].rows
+        self.assertEqual((rows[0].action, rows[0].instance.region.code), ("update", "KS"))
+        self.assertEqual(rows[1].action, "error")
+        self.assertIn("several cities are called Kansas City", rows[1].errors[0])
+
+        # a place attaches to the city its region names
+        self.preview("poi", "name,city,region,country,type,latitude,longitude\n"
+                            "Children's Mercy Park,Kansas City,Kansas,United States,sports,39.1218,-94.8231\n")
+        self.confirm()
+        self.assertEqual(POI.objects.get(name="Children's Mercy Park").city.region, self.ks)
+
+    def test_same_name_in_the_same_region_is_still_refused(self):
+        from django.db import IntegrityError, transaction
+        City.objects.create(name="Kansas City", country=self.us, region=self.mo, latitude=39, longitude=-94,
+                            approval_status=ApprovalStatus.APPROVED)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            City.objects.create(name="Kansas City", slug="kc-dup", country=self.us, region=self.mo, latitude=39, longitude=-94)
+        City.objects.create(name="Lonely", country=self.us, latitude=1, longitude=1)
+        with self.assertRaises(IntegrityError), transaction.atomic():  # two region-less ones clash too
+            City.objects.create(name="Lonely", slug="lonely-2", country=self.us, latitude=1, longitude=1)
+
+    def test_city_without_region_gets_one_instead_of_a_duplicate(self):
+        old = City.objects.create(name="Kansas City", country=self.us, latitude=39, longitude=-94,
+                                  approval_status=ApprovalStatus.APPROVED)
+        self.preview("city", "name,country,region,latitude,longitude\nKansas City,United States,Missouri,39.0997,-94.5786\n")
+        self.confirm()
+        old.refresh_from_db()
+        self.assertEqual((City.objects.filter(name="Kansas City").count(), old.region), (1, self.mo))

@@ -264,7 +264,9 @@ def event_link_city(request, slug):
         if region is None and regions.exists():
             messages.error(request, f"Choose the city's region in {event.country.name}.")
             return redirect("events:event_detail", slug=slug)
-        existing = City.objects.filter(country=event.country, name__iexact=name).first()
+        same_name = City.objects.filter(country=event.country, name__iexact=name)
+        existing = (same_name.filter(region=region).first() or same_name.filter(region__isnull=True).first()) if region \
+            else same_name.first()
         if existing:
             city = existing
             if region and not city.region_id:

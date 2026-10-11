@@ -423,7 +423,12 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
     class Meta:
         db_table = 'locations_cities'
         verbose_name_plural = 'Cities'
-        unique_together = [['country', 'name']]
+        # Unique per region, not per country: Kansas City MO and KS, Springfield IL/MO/MA.
+        # nulls_distinct=False: two region-less cities of one name in a country still clash.
+        constraints = [
+            models.UniqueConstraint(fields=['country', 'region', 'name'], nulls_distinct=False,
+                                    name='city_unique_name_region_country'),
+        ]
         ordering = ['country', 'name']
         indexes = [
             models.Index(fields=['status', '-created_at']),
@@ -455,11 +460,9 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
 
         if not self.slug:
             from apps.core.utils import generate_unique_slug
-            self.slug = generate_unique_slug(
-                City,
-                f"{self.name}-{self.country.iso_code}",
-                self.id
-            )
+            # kansas-city-ks-us: the region code tells same-named cities apart.
+            parts = [self.name, self.region.code if self.region_id and self.region.code else "", self.country.iso_code]
+            self.slug = generate_unique_slug(City, "-".join(p for p in parts if p), self.id)
         super().save(*args, **kwargs)
 
 

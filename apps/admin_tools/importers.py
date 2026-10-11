@@ -373,7 +373,21 @@ class Importer:
         if self.kind == "country":
             matches = model.objects.filter(iso_code__iexact=cells["iso_code"]) if cells.get("iso_code") \
                 else model.objects.filter(name__iexact=cells["name"])
-        elif self.kind in ("region", "city"):
+        elif self.kind == "city":
+            # Cities are unique per region (Kansas City MO / KS), so the region decides
+            # when one is given; a same-named city with no region yet is taken to be it.
+            if not data.get("country"):
+                return None
+            same_name = model.objects.filter(country_id=data["country"], name__iexact=cells["name"])
+            if data.get("region"):
+                matches = same_name.filter(region_id=data["region"])
+                if not matches.exists():
+                    matches = same_name.filter(region__isnull=True)
+            else:
+                matches = same_name
+                if matches.count() > 1:
+                    raise ValueError(f"several cities are called {cells['name']} in {cells.get('country')}; add the region")
+        elif self.kind == "region":
             if not data.get("country"):
                 return None
             matches = model.objects.filter(country_id=data["country"], name__iexact=cells["name"])
@@ -395,7 +409,9 @@ class Importer:
         """What makes two rows in one file the same item."""
         if self.kind == "country":
             return (cells.get("iso_code") or cells["name"]).lower()
-        if self.kind in ("region", "city"):
+        if self.kind == "city":
+            return (data.get("country"), data.get("region"), cells["name"].lower())
+        if self.kind == "region":
             return (data.get("country"), cells["name"].lower())
         if self.kind == "poi":
             return (data.get("city"), cells["name"].lower())
