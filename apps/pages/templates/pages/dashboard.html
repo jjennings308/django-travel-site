@@ -110,12 +110,15 @@
           {% for rec in recommendations %}
             <article class="relative overflow-hidden {{ card }} transition hover:-translate-y-1 sm:flex">
               <span class="absolute right-3 top-3 rounded-full bg-earth-ochre px-3 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">{{ rec.tag }}</span>
-              <img src="{{ rec.image_url }}" alt="{{ rec.title }}" class="h-48 w-full object-cover sm:h-auto sm:w-1/3"
-                   onerror="this.src='https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&h=200&fit=crop'">
+              {% if rec.image_url %}<img src="{{ rec.image_url }}" alt="{{ rec.title }}" loading="lazy" class="h-48 w-full object-cover sm:h-auto sm:w-1/3">
+              {% else %}<div class="flex h-32 w-full items-center justify-center bg-earth-clay text-4xl text-white/70 sm:h-auto sm:w-1/3">{% if rec.obj.category.icon and 'bi-' in rec.obj.category.icon %}<i class="bi {{ rec.obj.category.icon }}"></i>{% elif rec.obj.category.icon %}{{ rec.obj.category.icon }}{% else %}<i class="bi bi-compass"></i>{% endif %}</div>{% endif %}
               <div class="p-5 sm:w-2/3">
-                <h3 class="text-lg font-semibold text-warm-900">{{ rec.title }}</h3>
-                <p class="mt-1 mb-4 text-sm text-warm-600">{{ rec.description|truncatewords:15 }}</p>
-                <a href="{{ rec.url }}" class="{{ solid }}">Learn more <i class="bi bi-arrow-right"></i></a>
+                <h3 class="pr-24 text-lg font-semibold text-warm-900">{{ rec.title }}</h3>
+                <p class="mt-1 mb-4 text-sm text-warm-600">{{ rec.description|truncatewords:22 }}</p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <a href="{{ rec.url }}" class="{{ solid }}">Learn more <i class="bi bi-arrow-right"></i></a>
+                  {% include "partials/_bucket_add_button.html" with kind=rec.kind obj=rec.obj %}
+                </div>
               </div>
             </article>
           {% endfor %}
@@ -123,8 +126,8 @@
       {% else %}
         <div class="{{ card }} p-8 text-center text-warm-500">
           <i class="bi bi-lightbulb mb-2 block text-4xl"></i>
-          <p class="mb-1">No recommendations yet</p>
-          <p class="text-sm">Complete your profile to get personalized suggestions</p>
+          <p class="mb-1">Nothing to suggest yet</p>
+          <p class="text-sm"><a class="sbl-link" href="{% url 'activities:activity_list' %}">Browse activities</a> and add a few to your bucket list; suggestions follow what you add.</p>
         </div>
       {% endif %}
     </section>

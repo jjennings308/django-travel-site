@@ -73,3 +73,17 @@ class SitePagesTests(TestCase):
         user = get_user_model().objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
         self.client.force_login(user)
         self.assertContains(self.client.get(reverse("pages:contact")), 'value="ada@example.com"')
+
+
+class DashboardRecommendationTests(TestCase):
+    def test_dashboard_shows_real_suggestions_not_the_old_placeholders(self):
+        from apps.activities.models import Activity, ActivityCategory
+        user = get_user_model().objects.create_user("u", "u@example.com", "pw-1234-abcd")
+        Activity.objects.create(category=ActivityCategory.objects.get(name="Festival"), name="Lantern festival",
+                                description="Lights.", created_by=user, visibility="public",
+                                approval_status=ApprovalStatus.APPROVED)
+        self.client.force_login(user)
+        page = self.client.get(reverse("pages:dashboard"))
+        self.assertContains(page, "Lantern festival")
+        self.assertNotContains(page, "Explore Paris")
+        self.assertNotContains(page, "unsplash")

@@ -13,8 +13,7 @@ from datetime import timedelta
 from apps.accounts.models import Profile
 from apps.trips.models import Trip
 from apps.bucketlists.models import BucketListItem
-# from activities.models import Activity  # Uncomment when ready
-# from recommendations.models import Recommendation  # When you create this
+from apps.recommendations.services import Goals, for_user as recommend
 
 
 def _catalogue_counts():
@@ -32,6 +31,27 @@ def _catalogue_counts():
         }
         cache.set("home_catalogue_counts", counts, 60 * 60)
     return counts
+
+
+def _goals(user):
+    """What the user's bucket list covers, for recommendations (ids only, two queries)."""
+    goals = Goals()
+    items = BucketListItem.objects.filter(user=user).values(
+        "status", "activity_id", "activity__category_id", "activity__country_id", "event_id",
+        "event__category_id", "event__city__country_id", "event__country_id", "city__country_id")
+    for row in items:
+        if row["activity_id"]:
+            goals.activity_ids.add(row["activity_id"])
+            goals.category_ids.add(row["activity__category_id"])
+            if not row["event_id"] and row["status"] not in ("completed", "abandoned"):
+                goals.undated_activity_ids.add(row["activity_id"])
+        if row["event_id"]:
+            goals.event_ids.add(row["event_id"])
+            goals.category_ids.add(row["event__category_id"])
+        goals.country_ids.update(c for c in (row["activity__country_id"], row["event__city__country_id"],
+                                             row["event__country_id"], row["city__country_id"]) if c)
+    goals.country_ids.update(c for c in BucketListItem.objects.filter(user=user).values_list("pois__city__country_id", flat=True) if c)
+    return goals
 
 
 def home(request):
@@ -127,28 +147,8 @@ def dashboard(request):
     else:
         bucket_list_stats = None
     
-    # Recommendations (placeholder - you'll build this system later)
-    # For now, using static examples
-    recommendations = [
-        {
-            'tag': 'Popular',
-            'title': 'Explore Paris',
-            'description': 'The city of lights awaits with amazing food, culture, and iconic landmarks.',
-            'image_url': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=300&h=200&fit=crop',
-            'url': '#',
-        },
-        {
-            'tag': 'Trending',
-            'title': 'Bali Adventure',
-            'description': 'Discover pristine beaches, ancient temples, and vibrant culture.',
-            'image_url': 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=300&h=200&fit=crop',
-            'url': '#',
-        },
-    ]
-    
-    # Later, replace with:
-    # recommendations = Recommendation.objects.get_for_user(user)[:3]
-    
+    recommendations = recommend(_goals(user))
+
     context = {
         'recent_activities': recent_activities,
         'upcoming_trips': upcoming_trips,
