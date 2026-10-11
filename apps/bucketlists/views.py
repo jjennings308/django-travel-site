@@ -187,8 +187,12 @@ def item_edit(request, pk):
     })
 
 
-def _attach(item, trip):
-    """Put ``item`` on ``trip``; a goal still being dreamt about moves to planning."""
+def _attach(item, trip, user):
+    """Put ``item`` on ``trip``; a goal still being dreamt about moves to planning.
+    Its cities are added to the trip only when ``user`` may edit the trip: a viewer
+    attaching their own goal changes the goal, never the trip."""
+    if trip.can(user, "edit"):
+        trip.cities.add(*item.catalogue_cities())
     item.trip = trip
     if item.status in ("wishlist", "researching"):
         item.status = "planning"
@@ -230,7 +234,7 @@ def plan_trip(request, pk):
             traveler = Traveler.objects.filter(user=request.user).first()
             if traveler:
                 trip.travelers.add(traveler)
-            _attach(item, trip)
+            _attach(item, trip, request.user)
         messages.success(request, f"Started “{trip.name}”. Add flights, lodging and the rest here.")
         return redirect("trips:trip_edit", pk=trip.pk)
     return render(request, "bucketlists/plan_trip.html", {
@@ -246,7 +250,7 @@ def add_to_trip(request, pk):
     """Put a goal on an existing trip the user can see (from "Plan a trip")."""
     item = _own_item(request, pk)
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=request.POST.get("trip") or 0)
-    _attach(item, trip)
+    _attach(item, trip, request.user)
     messages.success(request, f"“{item.title}” is now part of “{trip.name}”.")
     return redirect("trips:trip_detail", pk=trip.pk)
 
@@ -279,7 +283,7 @@ def trip_goals(request, trip_pk):
         added = 0
         for item in chosen:
             if item.trip_id != trip.pk:
-                _attach(item, trip)
+                _attach(item, trip, request.user)
                 added += 1
         if added:
             messages.success(request, f"Added {added} goal{'s' if added != 1 else ''} to “{trip.name}”.")

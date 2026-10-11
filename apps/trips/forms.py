@@ -22,6 +22,8 @@ from django.forms.formsets import formset_factory
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone as django_timezone
 
+from apps.locations.models import City
+
 from .models import (
     BookingTask,
     Comment,
@@ -488,6 +490,13 @@ class DayAdminForm(forms.ModelForm):
 # ---------------------------------------------------------------------------
 
 
+def _city_choices():
+    """Approved catalogue cities, for the trip's and a day's city fields."""
+    from apps.approval_system.models import ApprovalStatus
+    return (City.objects.filter(approval_status=ApprovalStatus.APPROVED)
+            .select_related("region", "country").order_by("country__name", "name"))
+
+
 class TripForm(forms.ModelForm):
     """Create or edit a trip.
 
@@ -508,12 +517,16 @@ class TripForm(forms.ModelForm):
         initial.update(kwargs.get("initial") or {})
         kwargs["initial"] = initial
         super().__init__(*args, **kwargs)
+        if "cities" in self.fields:
+            self.fields["cities"].queryset = _city_choices()
+            self.fields["cities"].label_from_instance = str  # "Kansas City, KS, US" tells same names apart
 
     class Meta:
         model = Trip
         fields = (
             "name",
             "destination",
+            "cities",
             "start_date",
             "end_date",
             "travelers",
@@ -528,6 +541,7 @@ class TripForm(forms.ModelForm):
             # it is the one that works without JavaScript, and the traveler
             # count is small enough that it stays readable.
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
+            "cities": forms.SelectMultiple(attrs={"size": 6}),
         }
 
     def clean(self):
@@ -848,7 +862,7 @@ class DayForm(forms.ModelForm):
 
     class Meta:
         model = Day
-        fields = ["day_number", "date", "theme", "meals_included", "travelers"]
+        fields = ["day_number", "date", "city", "theme", "meals_included", "travelers"]
         widgets = {
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
         }
@@ -860,6 +874,11 @@ class DayForm(forms.ModelForm):
         self.trip = trip
         if "travelers" in self.fields:
             self.fields["travelers"].queryset = trip.travelers.all()
+        if "city" in self.fields:
+            # The trip's own cities when it names any, else any catalogue city.
+            trip_cities = trip.cities.all() if trip.pk else City.objects.none()
+            self.fields["city"].queryset = trip_cities if trip_cities.exists() else _city_choices()
+            self.fields["city"].label_from_instance = str
         # Prefill the next free day number: a new day is nearly always the next
         # one, and the unique constraint on (trip, day_number) would otherwise
         # make the first thing to do a guess. `date` is deliberately left alone —

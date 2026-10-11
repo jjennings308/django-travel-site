@@ -565,3 +565,20 @@ class AdventuresTests(BucketFixture):
         first = self.item.photos().first()
         self.client.logout()
         self.assertContains(self.client.get(reverse("bucketlists:public_list", args=["alice"])), first.file.url)
+
+
+class TripCitiesFromGoalsTests(BucketFixture):
+    def test_plan_a_trip_takes_the_goals_cities(self):
+        item = BucketListItem.objects.create(user=self.alice, city=self.city, target_date=date.today() + timedelta(days=60))
+        self.client.post(reverse("bucketlists:plan_trip", args=[item.pk]), {
+            "name": "Testville", "start_date": str(date.today() + timedelta(days=60)),
+            "end_date": str(date.today() + timedelta(days=63))})
+        self.assertEqual(list(Trip.objects.get(name="Testville").cities.all()), [self.city])
+
+    def test_a_viewer_attaching_a_goal_does_not_change_the_trip(self):
+        trip = Trip.objects.create(name="Family", start_date=date.today() + timedelta(days=5), end_date=date.today() + timedelta(days=9))
+        TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.VIEWER)
+        item = BucketListItem.objects.create(user=self.alice, city=self.city)
+        self.client.post(reverse("bucketlists:add_to_trip", args=[item.pk]), {"trip": trip.pk})
+        item.refresh_from_db()
+        self.assertEqual((item.trip, trip.cities.count()), (trip, 0))

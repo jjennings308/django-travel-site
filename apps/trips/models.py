@@ -97,6 +97,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apps.accounts.models import Role
+from apps.locations.models import City
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -438,6 +439,10 @@ class Trip(models.Model):
 
     name = models.CharField(max_length=200)
     destination = models.CharField(max_length=200, blank=True)
+    # The catalogue cities the trip visits (several for a multi-city trip). The free-text
+    # destination above stays for display and the public title; cities are never public.
+    cities = models.ManyToManyField(City, related_name="trips", blank=True,
+                                    help_text="Cities from our catalogue that this trip visits")
     start_date = models.DateField()
     end_date = models.DateField()
     travelers = models.ManyToManyField(
@@ -886,6 +891,8 @@ class Day(models.Model):
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="days")
     day_number = models.PositiveSmallIntegerField()
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_days",
+                             help_text="Where the day is spent (one of the trip's cities)")
     date = models.DateField()
     theme = models.CharField(
         max_length=200,

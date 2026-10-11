@@ -51,6 +51,9 @@ def _goals(user):
         goals.country_ids.update(c for c in (row["activity__country_id"], row["event__city__country_id"],
                                              row["event__country_id"], row["city__country_id"]) if c)
     goals.country_ids.update(c for c in BucketListItem.objects.filter(user=user).values_list("pois__city__country_id", flat=True) if c)
+    # ... and the countries of the user's own upcoming trips' cities.
+    goals.country_ids.update(c for c in Trip.objects.live().filter(grants__user=user, end_date__gte=timezone.localdate())
+                             .values_list("cities__country_id", flat=True) if c)
     return goals
 
 

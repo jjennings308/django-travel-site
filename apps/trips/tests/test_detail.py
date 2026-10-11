@@ -435,11 +435,14 @@ class QueryCountTests(DetailFixture):
         # All are fixed: the count does not move with the number of days,
         # sections, meals or comments, which is the property being pinned.
         #
-        # 19 in all on this site, four of which are the site shell's, added to
+        # * 1 for the trip's catalogue cities (the chips under the title). Each
+        #   day's city comes with the days query (select_related), so it is free.
+        #
+        # 20 in all on this site, four of which are the site shell's, added to
         # every page — UserTimezoneMiddleware (user_preferences),
         # UserThemeMiddleware (account_settings), and the travel_preferences and
         # rewards context processors. None of them depends on the trip.
-        with self.assertNumQueries(19):
+        with self.assertNumQueries(20):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

@@ -197,11 +197,12 @@ that matter most:
   allowlisted dict, never a `Trip`; sections, themes, lodging, transport, confirmations and
   travellers are omitted on purpose. `manage.py audit_public_leak` checks the real data (exit 1
   on a certain leak).
-- **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the 19-query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
+- **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
+- **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city` (limited in the day form to the trip's cities). "Plan a trip" / adding a goal fills `trip.cities` from `BucketListItem.catalogue_cities()` — only when the user may edit the trip. Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
-- **The detail page is printed to PDF** and holds a fixed query count (19 here, 4 of them from this site's
-  middleware/context processors); `test_detail.QueryCountTests`
+- **The detail page is printed to PDF** and holds a fixed query count (20 here, 4 of them from this site's
+  middleware/context processors; one is the trip's cities); `test_detail.QueryCountTests`
   pins it.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin

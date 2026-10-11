@@ -283,6 +283,8 @@ def trip_detail(request, pk):
             # ones trip.ordered_days holds, so the template's for loop over
             # ordered_sections quietly iterates nothing. Prefetching just the
             # leaves is what makes the template loop work at all.
+            # Each day's city rides along with the days query (no extra query).
+            Prefetch("days", queryset=Day.objects.select_related("city")),
             Prefetch(
                 "days__sections",
                 queryset=Section.objects.order_by("order", "id"),
@@ -299,6 +301,7 @@ def trip_detail(request, pk):
             # day — 17 for the Europe trip, purely to ask whether a roster is
             # set.
             "days__travelers",
+            "cities",  # the trip's catalogue cities (chips under the title): one query
             "lodging",
             "transport",
             "confirmations",

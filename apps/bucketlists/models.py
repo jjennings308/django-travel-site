@@ -316,6 +316,18 @@ class BucketListItem(TimeStampedModel):
             return self.target_date, self.target_end_date or self.target_date
         return None, None
 
+    def catalogue_cities(self):
+        """The catalogue cities this goal is in (its city, its event's or activity's
+        city, its POIs' cities), for filling in a trip's cities."""
+        cities = []
+        for city in (self.city if self.city_id else None,
+                     self.event.city if self.event_id and self.event.city_id else None,
+                     self.activity.city if self.activity_id and self.activity.city_id else None,
+                     *(poi.city for poi in self._poi_list())):
+            if city is not None and city not in cities:
+                cities.append(city)
+        return cities
+
     @property
     def place(self):
         """Where it happens, as text for a trip's destination ("" if unknown)."""
