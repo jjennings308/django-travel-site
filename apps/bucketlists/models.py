@@ -359,6 +359,9 @@ class BucketListItem(TimeStampedModel):
             Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
                   title=self.title[:200], alt_text=self.title[:200], content_object=self,
                   privacy="public" if self.is_public else "private").save()
+        if files:
+            from .badges import award_badges
+            award_badges(self.user)
 
     @property
     def is_completed(self):
@@ -479,6 +482,8 @@ class BucketListMilestone(TimeStampedModel):
         max_length=20,
         choices=MILESTONE_TYPES
     )
+    # Which badge (apps.bucketlists.badges.BADGES); one row per user and badge, written when earned.
+    code = models.CharField(max_length=40, blank=True)
     
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -503,6 +508,10 @@ class BucketListMilestone(TimeStampedModel):
     class Meta:
         db_table = 'bucket_list_milestones'
         ordering = ['user', '-is_achieved', 'milestone_type']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'code'], condition=~models.Q(code=''),
+                                    name='milestone_unique_badge_per_user'),
+        ]
     
     def __str__(self):
         return f"{self.user.username}: {self.title} ({self.current_count}/{self.target_count})"

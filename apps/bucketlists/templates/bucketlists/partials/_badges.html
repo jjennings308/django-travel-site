@@ -1,0 +1,12 @@
+{# bucketlists/partials/_badges.html — badge strip; pass badges= (bucketlists.badges.progress rows) and earned_only=True to hide the not-yet-earned ones #}
+{% if badges %}
+<ul class="flex flex-wrap gap-3" aria-label="Badges">
+  {% for badge, earned_at, current, target in badges %}{% if earned_at or not earned_only %}
+    <li class="flex w-36 flex-col items-center rounded-xl border p-3 text-center {% if earned_at %}border-earth-ochre/40 bg-white{% else %}border-dashed border-warm-200 bg-warm-50 opacity-70{% endif %}" title="{{ badge.description }}">
+      <span class="flex size-11 items-center justify-center rounded-full text-xl {% if earned_at %}bg-earth-ochre text-white{% else %}bg-warm-200 text-warm-500{% endif %}"><i class="bi {{ badge.icon }}"></i></span>
+      <span class="mt-2 text-sm font-semibold {% if earned_at %}text-warm-900{% else %}text-warm-500{% endif %}">{{ badge.title }}</span>
+      <span class="text-xs text-warm-500">{% if earned_at %}{{ earned_at|date:"M j, Y" }}{% else %}{{ current }} / {{ target }}{% endif %}</span>
+    </li>
+  {% endif %}{% endfor %}
+</ul>
+{% endif %}

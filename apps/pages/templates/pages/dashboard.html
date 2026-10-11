@@ -132,6 +132,12 @@
       {% endif %}
     </section>
 
+    {# Badges #}
+    <section>
+      <div class="mb-4 flex items-center justify-between"><h2 class="{{ h2 }}">Badges</h2><a class="sbl-link text-sm" href="{% url 'bucketlists:adventures' %}">{{ badges_earned }} of {{ badges|length }} earned</a></div>
+      {% include "bucketlists/partials/_badges.html" %}
+    </section>
+
     {# Bucket list progress #}
     <section>
       <div class="mb-4 flex items-center justify-between">

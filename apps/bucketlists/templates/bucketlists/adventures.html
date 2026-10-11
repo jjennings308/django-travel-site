@@ -10,6 +10,12 @@
     <h1 class="sbl-page-title">My adventures</h1>
     <p class="sbl-page-subtitle">{{ goal_count }} goal{{ goal_count|pluralize }} ticked off{% if trip_count %} · {{ trip_count }} more trip{{ trip_count|pluralize }}{% endif %}</p>
   </header>
+  {% if badges %}
+    <section aria-labelledby="badges-title">
+      <h2 id="badges-title" class="mb-3 text-lg font-semibold text-warm-900">Badges</h2>
+      {% include "bucketlists/partials/_badges.html" %}
+    </section>
+  {% endif %}
 
   {% for year, entries in years %}
     <section aria-labelledby="year-{{ year|default:'undated' }}">

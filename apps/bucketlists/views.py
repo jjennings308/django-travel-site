@@ -509,8 +509,9 @@ def adventures(request):
         if not years or years[-1][0] != year:
             years.append((year, []))
         years[-1][1].append(entry)
+    from .badges import progress
     return render(request, "bucketlists/adventures.html", {
-        "years": years, "goal_count": len(done), "trip_count": len(entries) - len(done),
+        "years": years, "goal_count": len(done), "trip_count": len(entries) - len(done), "badges": progress(request.user),
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My adventures", None)]),
     })
 
@@ -584,6 +585,7 @@ def public_list(request, username):
             for item in done:
                 if item.pk == media.object_id:
                     item.first_photo = media
+    from .badges import progress
     return render(request, "bucketlists/public_list.html", {
-        "owner": owner, "todo": todo, "done": done, "is_owner": is_owner,
+        "owner": owner, "todo": todo, "done": done, "is_owner": is_owner, "badges": progress(owner),
     })

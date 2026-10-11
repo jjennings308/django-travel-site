@@ -151,12 +151,16 @@ def dashboard(request):
         bucket_list_stats = None
     
     recommendations = recommend(_goals(user))
+    from apps.bucketlists.badges import progress
+    badges = progress(user)
 
     context = {
         'recent_activities': recent_activities,
         'upcoming_trips': upcoming_trips,
         'bucket_list_stats': bucket_list_stats,
         'recommendations': recommendations,
+        'badges': badges,
+        'badges_earned': sum(1 for _, earned_at, _, _ in badges if earned_at),
     }
     
     return render(request, 'pages/dashboard.html', context)

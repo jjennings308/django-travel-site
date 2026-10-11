@@ -39,6 +39,14 @@ def item_saved(sender, instance, raw=False, **kwargs):
             _recount(kind, old[f"{kind}_id"])
 
 
+@receiver(post_save, sender=BucketListItem, dispatch_uid="bucketlists_award_badges")
+def award_badges_after_save(sender, instance, raw=False, **kwargs):
+    """Goals added, ticked off, dated or put on a trip can earn badges."""
+    if not raw:
+        from .badges import award_badges
+        award_badges(instance.user)
+
+
 @receiver(post_delete, sender=BucketListItem)
 def item_deleted(sender, instance, **kwargs):
     for kind in KINDS:

@@ -582,3 +582,59 @@ class TripCitiesFromGoalsTests(BucketFixture):
         self.client.post(reverse("bucketlists:add_to_trip", args=[item.pk]), {"trip": trip.pk})
         item.refresh_from_db()
         self.assertEqual((item.trip, trip.cities.count()), (trip, 0))
+
+
+class BadgeTests(BucketFixture):
+    """Badges are earned once, notified once, and shown with progress."""
+
+    def test_first_goal_and_first_adventure(self):
+        from apps.bucketlists.models import BucketListMilestone
+        from apps.notifications.models import Notification
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Surf")
+        self.assertEqual(list(BucketListMilestone.objects.filter(user=self.alice).values_list("code", flat=True)), ["first_goal"])
+        item.complete()
+        codes = set(BucketListMilestone.objects.filter(user=self.alice).values_list("code", flat=True))
+        self.assertEqual(codes, {"first_goal", "first_done"})
+        item.save()  # nothing new: no duplicate rows or notifications
+        self.assertEqual(BucketListMilestone.objects.filter(user=self.alice).count(), 2)
+        self.assertEqual(Notification.objects.filter(user=self.alice, notification_type__name="badge_earned").count(), 2)
+
+    def test_countries_and_events(self):
+        from apps.bucketlists.badges import award_badges, progress
+        other = Country.objects.create(name="Otherland", slug="otherland", iso_code="OL", iso3_code="OTL", continent="Asia")
+        far = City.objects.create(name="Faraway", slug="faraway", country=other, latitude=1, longitude=2,
+                                  approval_status=ApprovalStatus.APPROVED)
+        BucketListItem.objects.create(user=self.alice, city=self.city).complete()
+        BucketListItem.objects.create(user=self.alice, city=far).complete()
+        BucketListItem.objects.create(user=self.alice, event=self.event).complete()
+        rows = {b.code: (earned, current, target) for b, earned, current, target in progress(self.alice)}
+        self.assertEqual(rows["three_countries"][1:], (2, 3))
+        self.assertIsNone(rows["three_countries"][0])
+        self.assertIsNotNone(rows["first_event"][0])
+        self.assertEqual(award_badges(self.alice), [])  # already up to date
+
+    def test_backfill_command_is_silent(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from apps.bucketlists.models import BucketListMilestone
+        from apps.notifications.models import Notification
+        BucketListItem.objects.create(user=self.alice, custom_title="Surf")
+        BucketListMilestone.objects.all().delete()
+        Notification.objects.all().delete()
+        out = StringIO()
+        call_command("award_badges", stdout=out)
+        self.assertIn("alice: Dreamer", out.getvalue())
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_shown_on_dashboard_adventures_and_public_page(self):
+        BucketListItem.objects.create(user=self.alice, custom_title="Surf", is_public=True).complete()
+        self.assertContains(self.client.get(reverse("pages:dashboard")), "First adventure")
+        page = self.client.get(reverse("bucketlists:adventures"))
+        self.assertContains(page, "First adventure")
+        self.assertContains(page, "1 / 5")  # Adventurer: one of five so far
+        self.alice.profile_visibility = "public"
+        self.alice.save()
+        self.client.logout()
+        public = self.client.get(reverse("bucketlists:public_list", args=["alice"]))
+        self.assertContains(public, "First adventure")
+        self.assertNotContains(public, "Adventurer")  # unearned badges stay private
