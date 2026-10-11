@@ -21,6 +21,7 @@ template.
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
@@ -497,6 +498,27 @@ def trip_delete(request, pk):
         return redirect("trips:trip_list")
 
     return render(request, "trips/trip_confirm_delete.html", {"trip": trip})
+
+
+@login_required
+@require_POST
+def trip_share(request, pk):
+    """Turn the trip's public link on (editors and staff). Idempotent: an existing
+    link is kept, so pressing Share again never breaks one already sent."""
+    trip = _readable_trip(request, pk, "edit")
+    trip.enable_public()
+    messages.success(request, "Sharing is on. Anyone with the link sees the trip's name, dates and outline, nothing else.")
+    return redirect("trips:trip_detail", pk=trip.pk)
+
+
+@login_required
+@require_POST
+def trip_unshare(request, pk):
+    """Turn the public link off; links already sent stop working."""
+    trip = _readable_trip(request, pk, "edit")
+    trip.revoke_public()
+    messages.success(request, "Sharing is off. The old link no longer works.")
+    return redirect("trips:trip_detail", pk=trip.pk)
 
 
 @login_required

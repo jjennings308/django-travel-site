@@ -20,8 +20,19 @@
         {% include "trips/partials/_status_badge.html" %}
         {% if can_edit %}<a class="btn print:hidden" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
         {% if can_delete %}<a class="link-quiet font-medium hover:text-red-700 print:hidden" href="{% url 'trips:trip_delete' trip.pk %}">Delete</a>{% endif %}
+        {% if can_edit and not trip.public_token %}<form method="post" action="{% url 'trips:trip_share' trip.pk %}" class="print:hidden">{% csrf_token %}<button type="submit" class="btn-quiet" title="Make a read-only link with the trip's name, dates and outline">Share</button></form>{% endif %}
       </div>
     </div>
+    {% if trip.public_token %}
+      {# Shared: the public link (name, dates, outline only; see trips/public.py), copyable by anyone who can see the trip; editors can stop sharing. #}
+      {% url 'public_trip' trip.public_token as public_path %}
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-sm print:hidden" x-data="{ copied: false, url: window.location.origin + '{{ public_path }}' }">
+        <span class="card-kicker">Shared link</span>
+        <a class="link-quiet font-medium break-all" href="{{ public_path }}" x-text="url">{{ public_path }}</a>
+        <button type="button" class="btn-quiet" @click="navigator.clipboard.writeText(url); copied = true; setTimeout(() => copied = false, 2000)" x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+        {% if can_edit %}<form method="post" action="{% url 'trips:trip_unshare' trip.pk %}">{% csrf_token %}<button type="submit" class="link-quiet hover:text-red-700">Stop sharing</button></form>{% endif %}
+      </div>
+    {% endif %}
     {% include "partials/_trip_bucket_prompt.html" %}
     {% include "partials/_trip_goals_link.html" %}
     {% if trip.travelers.all %}

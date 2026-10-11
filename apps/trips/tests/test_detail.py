@@ -488,3 +488,56 @@ class HeaderActionTests(DetailFixture):
     def test_staff_get_both(self):
         self.client.force_login(self.admin)
         self.assertEqual(self.actions(), (True, True))
+
+
+class ShareTripTests(DetailFixture):
+    """Editors turn a trip's public link on and off from the trip page."""
+
+    def test_viewer_cannot_share_but_sees_an_existing_link(self):
+        self.assertNotIn(reverse("trips:trip_share", args=[self.trip.pk]), self.get().content.decode())
+        self.assertEqual(self.client.post(reverse("trips:trip_share", args=[self.trip.pk])).status_code, 403)
+        token = self.trip.enable_public()
+        html = self.get().content.decode()
+        self.assertIn(reverse("public_trip", args=[token]), html)
+        self.assertNotIn(reverse("trips:trip_unshare", args=[self.trip.pk]), html)
+
+    def test_editor_shares_and_unshares(self):
+        TripGrant.objects.filter(trip=self.trip, user=self.reader).update(role=TripRole.EDITOR)
+        self.assertIn(reverse("trips:trip_share", args=[self.trip.pk]), self.get().content.decode())
+        self.client.post(reverse("trips:trip_share", args=[self.trip.pk]))
+        self.trip.refresh_from_db()
+        token = self.trip.public_token
+        self.assertIsNotNone(token)
+        self.client.post(reverse("trips:trip_share", args=[self.trip.pk]))  # again: same link kept
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.public_token, token)
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("public_trip", args=[token])).status_code, 200)
+        self.client.force_login(self.reader)
+        self.client.post(reverse("trips:trip_unshare", args=[self.trip.pk]))
+        self.trip.refresh_from_db()
+        self.assertIsNone(self.trip.public_token)
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("public_trip", args=[token])).status_code, 404)
+
+    def test_no_grant_is_404_and_get_is_refused(self):
+        stranger = User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd")
+        self.client.force_login(stranger)
+        self.assertEqual(self.client.post(reverse("trips:trip_share", args=[self.trip.pk])).status_code, 404)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse("trips:trip_share", args=[self.trip.pk])).status_code, 405)
+
+    def test_query_count_unchanged_when_shared(self):
+        self.trip.enable_public()
+        self.client.force_login(self.admin)
+        with self.assertNumQueries(len(self._baseline_queries())):
+            self.get()
+
+    def _baseline_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        self.trip.revoke_public()
+        with CaptureQueriesContext(connection) as ctx:
+            self.get()
+        self.trip.enable_public()
+        return ctx.captured_queries
