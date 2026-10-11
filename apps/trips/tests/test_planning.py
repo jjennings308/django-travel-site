@@ -326,8 +326,8 @@ class TripAdminTests(TestCase):
         # of the non-task inlines, so zero everywhere is valid and keeps the
         # payload independent of the admin's `extra` settings. The `transport`
         # prefix follows the related_name on TransportLeg.trip, and `grants`
-        # the one on TripGrant.
-        for prefix in ("days", "transport", "lodging", "confirmations", "contacts", "grants"):
+        # the one on TripGrant; `expenses` the one on TripExpense.
+        for prefix in ("days", "transport", "lodging", "expenses", "confirmations", "contacts", "grants"):
             data[f"{prefix}-TOTAL_FORMS"] = "0"
             data[f"{prefix}-INITIAL_FORMS"] = "0"
         data["booking_tasks-TOTAL_FORMS"] = str(len(tasks))

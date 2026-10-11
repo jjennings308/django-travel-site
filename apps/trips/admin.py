@@ -9,6 +9,7 @@ from django.utils.html import format_html
 
 from .forms import DayAdminForm, TransportLegAdminForm
 from .models import (
+    TripExpense,
     BookingTask,
     Confirmation,
     Contact,
@@ -51,6 +52,13 @@ class LodgingInline(admin.TabularInline):
     model = Lodging
     extra = 1
     fields = ("name", "check_in", "check_out", "nightly_rate", "currency", "confirmation_number")
+
+
+class TripExpenseInline(admin.TabularInline):
+    model = TripExpense
+    extra = 0
+    fields = ("spent_on", "description", "category", "amount", "currency", "paid_by", "shared_with")
+    autocomplete_fields = ("paid_by",)
 
 
 class DayInline(admin.TabularInline):
@@ -163,6 +171,7 @@ class TripAdmin(admin.ModelAdmin):
         DayInline,
         TransportLegInline,
         LodgingInline,
+        TripExpenseInline,
         ConfirmationInline,
         ContactInline,
         TripGrantInline,

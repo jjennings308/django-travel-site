@@ -25,6 +25,7 @@ from django.utils import timezone as django_timezone
 from apps.locations.models import City
 
 from .models import (
+    TripExpense,
     BookingTask,
     Comment,
     Confirmation,
@@ -1532,3 +1533,34 @@ RewardsMembershipFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class TripExpenseForm(forms.ModelForm):
+    """One cost on a trip; payer and sharers come from the trip's travellers."""
+
+    class Meta:
+        model = TripExpense
+        fields = ["description", "category", "amount", "currency", "spent_on", "day", "paid_by", "shared_with", "notes"]
+        labels = {"spent_on": "Date", "paid_by": "Paid by", "shared_with": "Split between"}
+        widgets = {
+            "spent_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "shared_with": forms.CheckboxSelectMultiple,
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "currency": forms.TextInput(attrs={"maxlength": 3, "size": 4}),
+        }
+
+    def __init__(self, *args, trip, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trip = trip
+        travelers = trip.travelers.order_by("name")
+        self.fields["paid_by"].queryset = travelers
+        self.fields["shared_with"].queryset = travelers
+        self.fields["shared_with"].help_text = "Leave all unticked to split it among everyone on the trip."
+        self.fields["day"].queryset = trip.days.order_by("day_number")
+        self.fields["day"].required = False
+
+    def clean_currency(self):
+        currency = (self.cleaned_data.get("currency") or "USD").strip().upper()
+        if len(currency) != 3 or not currency.isalpha():
+            raise forms.ValidationError("Use a three-letter currency code, e.g. USD or EUR.")
+        return currency

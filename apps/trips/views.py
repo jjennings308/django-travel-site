@@ -33,6 +33,7 @@ from django.utils import timezone as django_timezone
 
 
 from .forms import (
+    TripExpenseForm,
     AddTravelerForm,
     CommentForm,
     DayForm,
@@ -45,6 +46,7 @@ from .forms import (
     trip_subsection_formsets,
 )
 from .models import (
+    TripExpense,
     BookingTask,
     Comment,
     Day,
@@ -1091,3 +1093,66 @@ def traveler_profile(request):
         "trips/traveler_profile.html",
         {"form": form, "memberships": memberships, "traveler": traveler},
     )
+
+
+def _default_currency(trip):
+    """The trip's most-used expense currency, else its lodging's, else USD."""
+    from django.db.models import Count as _Count
+    used = trip.expenses.values("currency").annotate(n=_Count("id")).order_by("-n").first()
+    if used:
+        return used["currency"]
+    lodging = trip.lodging.exclude(currency="").first()
+    return lodging.currency if lodging else "USD"
+
+
+@login_required
+def trip_budget(request, pk):
+    """Costs on a trip, totals per currency, each traveller's share and who owes whom.
+
+    Anyone who can see the trip sees it; editors add costs here (POST). Separate
+    from the detail page, whose query count is pinned.
+    """
+    from .budget import summarize
+    trip = _readable_trip(request, pk, "view")
+    can_edit = trip.can(request.user, "edit")
+    form = None
+    if can_edit:
+        form = TripExpenseForm(request.POST or None, trip=trip,
+                               initial={"currency": _default_currency(trip), "spent_on": trip.start_date})
+        if request.method == "POST" and form.is_valid():
+            expense = form.save(commit=False)
+            expense.trip, expense.created_by = trip, request.user
+            expense.save()
+            form.save_m2m()
+            messages.success(request, f"Added “{expense.description}”.")
+            return redirect("trips:trip_budget", pk=trip.pk)
+    elif request.method == "POST":
+        raise PermissionDenied
+    expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with")
+                    .order_by("spent_on", "created_at"))
+    everyone = list(trip.travelers.all())
+    lodging_estimate = {}
+    for stay in trip.lodging.all():
+        if stay.nightly_rate:
+            lodging_estimate[stay.currency] = lodging_estimate.get(stay.currency, 0) + stay.nightly_rate * stay.nights
+    return render(request, "trips/trip_budget.html", {
+        "trip": trip, "expenses": expenses, "summary": summarize(expenses, everyone), "form": form,
+        "can_edit": can_edit, "everyone": everyone, "lodging_estimate": sorted(lodging_estimate.items()),
+    })
+
+
+@login_required
+def expense_edit(request, pk, expense_pk):
+    trip = _readable_trip(request, pk, "edit")
+    expense = get_object_or_404(TripExpense, pk=expense_pk, trip=trip)
+    form = TripExpenseForm(request.POST or None, instance=expense, trip=trip)
+    if request.method == "POST":
+        if "delete" in request.POST:
+            expense.delete()
+            messages.success(request, f"Removed “{expense.description}”.")
+            return redirect("trips:trip_budget", pk=trip.pk)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Saved.")
+            return redirect("trips:trip_budget", pk=trip.pk)
+    return render(request, "trips/expense_form.html", {"trip": trip, "form": form, "expense": expense})

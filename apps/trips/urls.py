@@ -22,6 +22,8 @@ urlpatterns = [
     path("<int:pk>/edit/", views.trip_edit, name="trip_edit"),
     path("<int:pk>/delete/", views.trip_delete, name="trip_delete"),
     path("<int:pk>/share/", views.trip_share, name="trip_share"),
+    path("<int:pk>/budget/", views.trip_budget, name="trip_budget"),
+    path("<int:pk>/budget/<int:expense_pk>/", views.expense_edit, name="expense_edit"),
     path("<int:pk>/unshare/", views.trip_unshare, name="trip_unshare"),
     path("<int:pk>/restore/", views.trip_restore, name="trip_restore"),
     # A day is reached through its trip, so the trip's permission check runs

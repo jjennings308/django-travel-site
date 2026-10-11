@@ -879,6 +879,47 @@ class Lodging(models.Model):
         return max((self.check_out - self.check_in).days, 0)
 
 
+class TripExpense(models.Model):
+    """A cost on a trip: who paid it and who shares it (see ``trips.budget``).
+
+    Visible to anyone who can see the trip; editors add and change them. Never
+    part of the public view. Amounts stay in their own currency: totals and the
+    settle-up are per currency, with no conversion.
+    """
+
+    class Category(models.TextChoices):
+        FLIGHTS = "flights", "Flights"
+        LODGING = "lodging", "Lodging"
+        FOOD = "food", "Food & drink"
+        ACTIVITIES = "activities", "Activities & tickets"
+        TRANSPORT = "transport", "Local transport"
+        OTHER = "other", "Other"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="expenses")
+    day = models.ForeignKey("Day", on_delete=models.SET_NULL, null=True, blank=True, related_name="expenses")
+    category = models.CharField(max_length=12, choices=Category.choices, default=Category.OTHER)
+    description = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])
+    currency = models.CharField(max_length=3, default="USD")
+    spent_on = models.DateField(null=True, blank=True)
+    paid_by = models.ForeignKey(Traveler, on_delete=models.PROTECT, related_name="expenses_paid")
+    shared_with = models.ManyToManyField(
+        Traveler, related_name="expenses_shared", blank=True,
+        help_text="Who shares this cost. Leave empty to split it among everyone on the trip.")
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+", editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "trip_expenses"
+        ordering = ["spent_on", "created_at"]
+
+    def __str__(self):
+        return f"{self.description} ({self.amount} {self.currency})"
+
+
 class Day(models.Model):
     """One calendar day of a trip.
 

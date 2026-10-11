@@ -1,0 +1,22 @@
+{% extends "trips/base_trips.html" %}
+{% block title %}Edit cost — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <h1 class="page-title mb-4">Edit “{{ expense.description }}”</h1>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% include "trips/_form_fields.html" with form=form %}
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{% url 'trips:trip_budget' trip.pk %}">Cancel</a>
+      <button type="submit" name="delete" value="1" class="btn-danger ml-auto">Remove this cost</button>
+    </div>
+  </form>
+{% endblock %}

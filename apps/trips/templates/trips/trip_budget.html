@@ -1,0 +1,86 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Trip budget: costs, totals per currency, each traveller's share and who owes whom (trips.budget.summarize). Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
+{% endcomment %}
+{% block title %}Budget — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Budget</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Budget</h1>
+      <p class="page-subtitle">{{ expenses|length }} cost{{ expenses|length|pluralize }}{% if summary %} · each currency is totalled separately{% endif %}</p>
+    </div>
+  </div>
+
+  {% for currency, s in summary.items %}
+    <section class="card mb-6 p-6">
+      <div class="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 class="card-title text-lg">{{ currency }} {{ s.total }}</h2>
+        <p class="text-sm text-zinc-500">{% for name, amount in s.by_category %}{{ name }} {{ amount }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+      </div>
+      <div class="mt-4 grid gap-6 md:grid-cols-2">
+        <div>
+          <h3 class="card-kicker mb-2">Who paid what</h3>
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-zinc-500"><th class="py-1 font-medium">Traveller</th><th class="py-1 text-right font-medium">Paid</th><th class="py-1 text-right font-medium">Share</th><th class="py-1 text-right font-medium">Balance</th></tr></thead>
+            <tbody>
+              {% for person, paid, share, balance in s.people %}
+                <tr class="border-t border-zinc-100"><td class="py-1">{{ person.name }}</td><td class="py-1 text-right tabular-nums">{{ paid }}</td><td class="py-1 text-right tabular-nums">{{ share }}</td><td class="py-1 text-right tabular-nums {% if balance > 0 %}text-emerald-700{% elif balance < 0 %}text-red-700{% endif %}">{% if balance > 0 %}+{% endif %}{{ balance }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 class="card-kicker mb-2">Settle up</h3>
+          {% if s.transfers %}
+            <ul class="space-y-1 text-sm">{% for debtor, creditor, amount in s.transfers %}<li><strong>{{ debtor.name }}</strong> pays <strong>{{ creditor.name }}</strong> {{ currency }} {{ amount }}</li>{% endfor %}</ul>
+          {% else %}<p class="text-sm text-zinc-500">Everyone's square.</p>{% endif %}
+        </div>
+      </div>
+    </section>
+  {% empty %}
+    <p class="note">No costs yet.{% if can_edit %} Add the first one below.{% endif %}</p>
+  {% endfor %}
+
+  {% if lodging_estimate %}
+    <p class="mb-6 text-sm text-zinc-500">Lodging on file (nightly rate × nights, an estimate, not counted above):
+      {% for currency, amount in lodging_estimate %}{{ currency }} {{ amount|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+
+  {% if expenses %}
+    <section class="card mb-6 overflow-x-auto p-0">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-zinc-200 text-left text-zinc-500"><th class="px-4 py-2 font-medium">Date</th><th class="px-4 py-2 font-medium">What</th><th class="px-4 py-2 font-medium">Paid by</th><th class="px-4 py-2 font-medium">Split between</th><th class="px-4 py-2 text-right font-medium">Amount</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+          {% for e in expenses %}
+            <tr class="border-b border-zinc-100">
+              <td class="px-4 py-2 whitespace-nowrap">{{ e.spent_on|date:"M j"|default:"—" }}</td>
+              <td class="px-4 py-2">{{ e.description }} <span class="text-xs text-zinc-500">· {{ e.get_category_display }}{% if e.day %} · Day {{ e.day.day_number }}{% endif %}</span>{% if e.notes %}<span class="block text-xs text-zinc-500">{{ e.notes }}</span>{% endif %}</td>
+              <td class="px-4 py-2">{{ e.paid_by.name }}</td>
+              <td class="px-4 py-2 text-zinc-600">{% with people=e.shared_with.all %}{% if people %}{% for p in people %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}Everyone{% endif %}{% endwith %}</td>
+              <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{{ e.currency }} {{ e.amount }}</td>
+              {% if can_edit %}<td class="px-4 py-2 text-right"><a class="link-quiet" href="{% url 'trips:expense_edit' trip.pk e.pk %}">Edit</a></td>{% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if form %}
+    <form method="post" class="card p-6" novalidate>
+      {% csrf_token %}
+      <h2 class="form-section-title">Add a cost</h2>
+      {% if not everyone %}<p class="note">Add travellers to the trip first (Edit trip), so there's someone to pay and share.</p>{% endif %}
+      {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+      {% include "trips/_form_fields.html" with form=form %}
+      <button type="submit" class="btn">Add cost</button>
+    </form>
+  {% endif %}
+{% endblock %}
