@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{# notifications/list.html — the user's notifications, newest first #}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="sbl-page-title">Notifications</h1>
+      <p class="sbl-page-subtitle">{% if unread %}{{ unread }} unread{% else %}You're all caught up.{% endif %} Emails for these can be turned off in <a class="sbl-link" href="{% url 'settings' %}">Settings</a>.</p>
+    </div>
+    {% if unread %}<form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-outline sbl-btn-sm"><i class="bi bi-check2-all"></i>Mark all as read</button></form>{% endif %}
+  </header>
+  {% if page_obj %}
+    <ul class="sbl-card divide-y divide-warm-200">
+      {% for note in page_obj %}
+        <li class="{% if not note.is_read %}bg-earth-sand/40{% endif %}">
+          <a href="{% url 'notifications:open' note.pk %}" class="flex gap-3 px-5 py-4 hover:bg-warm-50">
+            <span class="mt-1.5 size-2 shrink-0 rounded-full {% if note.is_read %}bg-transparent{% else %}bg-earth-clay{% endif %}" aria-hidden="true"></span>
+            <span class="min-w-0">
+              <span class="block font-medium text-warm-900">{{ note.title }}{% if not note.is_read %}<span class="sr-only"> (unread)</span>{% endif %}</span>
+              <span class="block whitespace-pre-line text-sm text-warm-600">{{ note.message }}</span>
+              <span class="mt-1 block text-xs text-warm-500">{{ note.created_at|timesince }} ago</span>
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    {% include "partials/_pagination.html" %}
+  {% else %}
+    <div class="sbl-card p-10 text-center text-warm-500"><i class="bi bi-bell mb-2 block text-4xl"></i><p>No notifications yet. You'll hear here when your submissions are reviewed or someone adds you to a trip.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

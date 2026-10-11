@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import Traveler
+from .models import Traveler, TripGrant
 
 User = get_user_model()
 
@@ -71,3 +71,20 @@ def link_traveler_to_account(sender, instance, **kwargs):
             instance.user_id = candidates[0].pk
     # Zero candidates is the ordinary case; several means two accounts answer
     # to one name and need an administrator to say which is which.
+
+
+@receiver(post_save, sender=TripGrant, dispatch_uid="notify_trip_access_granted")
+def tell_new_grantee(sender, instance, created, raw=False, **kwargs):
+    """Someone was given access to a trip: tell them, unless they granted it to
+    themselves (creating a trip or "Plan a trip" gives the creator an editor grant)."""
+    if not created or raw or instance.granted_by_id == instance.user_id:
+        return
+    from django.urls import reverse
+    from apps.notifications.services import notify
+    trip, giver = instance.trip, instance.granted_by
+    who = (giver.get_full_name() or giver.username) if giver else "Our team"
+    role = instance.get_role_display().lower()
+    notify(instance.user, "trip_access_granted", f"You were added to “{trip.name}”",
+           f"{who} gave you access to the trip “{trip.name}” ({trip.start_date:%b} {trip.start_date.day} – "
+           f"{trip.end_date:%b} {trip.end_date.day}, {trip.end_date.year}) as {role}.",
+           reverse("trips:trip_detail", args=[trip.pk]), obj=trip)

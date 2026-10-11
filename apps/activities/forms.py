@@ -300,6 +300,8 @@ class ActivityCreateForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm)
         
         if commit:
             activity.save()
+            if activity.approval_status == ApprovalStatus.PENDING:
+                activity.submit_for_review(self.user)  # logs it and tells staff
             
             # Handle tags
             if 'tags' in self.cleaned_data:
@@ -457,5 +459,7 @@ class ActivityQuickCreateForm(forms.ModelForm):
         
         if commit:
             activity.save()
+            if activity.approval_status == ApprovalStatus.PENDING:
+                activity.submit_for_review(self.user)  # logs it and tells staff
         
         return activity

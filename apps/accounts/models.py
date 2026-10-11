@@ -477,7 +477,8 @@ class RoleRequest(TimeStampedModel):
                 }
             )
         
-        # TODO: Send approval email to user
+        from .signals import role_request_decided
+        role_request_decided.send(sender=type(self), request=self, approved=True)
     
     def reject(self, reviewed_by, reason):
         """Reject the role request"""
@@ -487,7 +488,8 @@ class RoleRequest(TimeStampedModel):
         self.rejection_reason = reason
         self.save()
         
-        # TODO: Send rejection email to user
+        from .signals import role_request_decided
+        role_request_decided.send(sender=type(self), request=self, approved=False)
 
 
 class VendorProfile(TimeStampedModel):

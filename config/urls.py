@@ -39,6 +39,7 @@ urlpatterns = [
     # namespace because every URL there assumes a signed-in reader with a grant.
     path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
     path('approval/', include('apps.approval_system.urls')),
+    path('notifications/', include('apps.notifications.urls')),
 ]
 
 if settings.DEBUG:

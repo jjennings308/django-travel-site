@@ -124,6 +124,7 @@ class Approvable(models.Model):
             new_status=ApprovalStatus.PENDING,
             notes='Submitted for review'
         )
+        self._send_submission_notification(user)
     
     def approve(self, reviewer, notes=''):
         """Approve this content"""
@@ -204,14 +205,49 @@ class Approvable(models.Model):
             notes=notes
         )
     
+    def _notification_url(self):
+        from django.urls import reverse
+        # The object's page: get_absolute_url, else the "<app>:<model>_detail" + slug convention
+        # every catalogue app follows (no import of those apps), else My submissions.
+        try:
+            if hasattr(self, "get_absolute_url"):
+                return self.get_absolute_url()
+            return reverse(f"{self._meta.app_label}:{self._meta.model_name}_detail", args=[self.slug])
+        except Exception:  # noqa: BLE001 - a missing route must not break a review
+            return reverse("approval_system:my_submissions")
+
     def _send_approval_notification(self, action, notes=''):
-        """Send notification about approval action"""
-        # This can be implemented to send emails, in-app notifications, etc.
-        # For now, just create a notification record
-        if self.submitted_by:
-            from apps.notifications.models import Notification  # Assuming you have notifications app
-            # Notification.objects.create(...)
-            pass
+        """Tell the submitter (or creator) that their submission was reviewed, unless they reviewed it."""
+        from apps.notifications.services import notify
+        settings_ = ApprovalSettings.get_settings()
+        if action == 'approved' and not settings_.notify_on_approval:
+            return
+        if action in ('rejected', 'changes_requested') and not settings_.notify_on_rejection:
+            return
+        person = self.submitted_by or getattr(self, 'created_by', None)
+        if person is None or person.pk == getattr(self.reviewed_by, 'pk', None):
+            return
+        kind_label = self._meta.verbose_name
+        outcome = {'approved': 'was approved', 'rejected': "wasn't approved",
+                   'changes_requested': 'needs changes'}[action]
+        title = f"Your {kind_label} “{self}” {outcome}"
+        message = {'approved': f"Good news: your {kind_label} “{self}” {outcome} and is now public.",
+                   'rejected': f"Your {kind_label} “{self}” {outcome}. You can edit it and send it again.",
+                   'changes_requested': f"Your {kind_label} “{self}” {outcome} before it can be published."}[action]
+        if notes:
+            message += f"\n\nReviewer's note: {notes}"
+        notify(person, 'submission_reviewed', title, message, self._notification_url(), obj=self)
+
+    def _send_submission_notification(self, user):
+        """Tell staff that something new is waiting for review."""
+        from django.urls import reverse
+        from apps.notifications.services import notify_staff
+        if not ApprovalSettings.get_settings().notify_on_submission:
+            return
+        who = f" by @{user.username}" if user else ""
+        notify_staff('submission_received', f"New {self._meta.verbose_name} to review: “{self}”",
+                     f"“{self}” was submitted{who} and is waiting in the approval queue.",
+                     reverse("approval_system:dashboard"), obj=self, exclude=user)
     
     def get_approval_history(self):
         """Get all approval log entries for this object"""

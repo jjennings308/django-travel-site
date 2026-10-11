@@ -36,6 +36,27 @@
           </a>
         {% endif %}
 
+        {# Notifications bell: the count loads after the page (notifications:unread_count), so rendering costs no query. #}
+        {% url 'notifications:unread_count' as bell_url %}{% if bell_url %}
+        <div class="relative" x-data="{ open: false, unread: 0, latest: [], async load() { try { const r = await fetch('{{ bell_url }}', { headers: { Accept: 'application/json' } }); if (r.ok) { const d = await r.json(); this.unread = d.unread; this.latest = d.latest; } } catch (e) {} } }" x-init="load()" @click.outside="open = false" @keydown.escape="open = false">
+          <button type="button" class="relative rounded-md p-2 text-warm-600 hover:bg-warm-100 hover:text-warm-900" @click="open = !open; if (open) load()" :aria-expanded="open" aria-haspopup="true" :aria-label="unread ? unread + ' unread notifications' : 'Notifications'" title="Notifications">
+            <i class="bi bi-bell text-lg"></i>
+            <span x-show="unread" x-cloak x-text="unread > 9 ? '9+' : unread" class="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-earth-clay px-1 text-[10px] font-bold leading-4 text-white"></span>
+          </button>
+          <div x-show="open" x-cloak x-transition.opacity class="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-warm-200 bg-white text-sm shadow-lg">
+            <p class="border-b border-warm-200 px-4 py-2 font-semibold text-warm-800">Notifications</p>
+            <template x-for="note in latest" :key="note.url">
+              <a :href="note.url" class="flex items-start gap-2 px-4 py-2 hover:bg-warm-100" :class="note.read ? 'text-warm-600' : 'font-medium text-warm-900'">
+                <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="note.read ? '' : 'bg-earth-clay'"></span>
+                <span class="min-w-0 grow"><span class="block" x-text="note.title"></span><span class="block text-xs font-normal text-warm-500" x-text="note.when"></span></span>
+              </a>
+            </template>
+            <p x-show="!latest.length" class="px-4 py-3 text-warm-500">Nothing yet.</p>
+            <a href="{% url 'notifications:list' %}" class="block border-t border-warm-200 px-4 py-2 text-center text-earth-clay hover:bg-warm-100">See all</a>
+          </div>
+        </div>
+        {% endif %}
+
         {# User menu #}
         <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
           <button type="button" class="flex items-center gap-2 rounded-md px-2 py-1.5 text-warm-700 hover:bg-warm-100"
