@@ -34,7 +34,7 @@
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     {% for activity in page_obj %}
       {% url 'activities:activity_detail' activity.slug as activity_url %}
-      {% include "partials/_catalogue_card.html" with url=activity_url title=activity.name label=activity.category.name icon=activity.category.icon image=activity.featured_media stars=activity.average_rating stars_count=activity.review_count meta=activity.place_name meta2=activity.recurrence_summary text=activity.short_description status=activity.approval_status status_label=activity.get_approval_status_display %}
+      {% include "partials/_catalogue_card.html" with url=activity_url title=activity.name label=activity.category.name icon=activity.category.icon image=activity.display_media stars=activity.average_rating stars_count=activity.review_count meta=activity.place_name meta2=activity.recurrence_summary text=activity.short_description status=activity.approval_status status_label=activity.get_approval_status_display %}
     {% endfor %}
   </div>
   {% include "partials/_pagination.html" %}

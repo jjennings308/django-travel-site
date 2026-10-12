@@ -357,6 +357,20 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     def place_country(self):
         return self.city.country if self.city_id else self.country
 
+    # Its own picture, else its activity's, else its place's: venue, city, region, country.
+    PICTURE_PATHS = ("featured_media", "related_activity.featured_media", "poi.featured_media",
+                     "city.featured_media", "city.region.featured_media", "city.country.featured_media",
+                     "country.featured_media")
+    PICTURE_RELATED = ("featured_media", "related_activity__featured_media", "poi__featured_media",
+                       "city__featured_media", "city__region__featured_media", "city__country__featured_media",
+                       "country__featured_media")  # for select_related
+
+    @property
+    def display_media(self):
+        """The picture to show: its own, else its activity's or place's (``PICTURE_PATHS``)."""
+        from apps.media_app.pictures import first_media
+        return first_media(self, *self.PICTURE_PATHS)
+
     @property
     def place_name(self):
         """'City, Country' for display, whether or not the city is in the catalogue."""

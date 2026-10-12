@@ -22,7 +22,7 @@ from .models import Event
 def _visible_event_or_404(request, slug):
     """404 (not 403) for an event this user may not see, so its existence isn't revealed."""
     event = get_object_or_404(
-        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity", "featured_media"), slug=slug
+        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity", *Event.PICTURE_RELATED), slug=slug
     )
     if not event.is_visible_to(request.user):
         raise Http404
@@ -34,7 +34,7 @@ def event_list(request):
     today = timezone.now().date()
     events = (
         Event.objects.filter(approval_status=ApprovalStatus.APPROVED)
-        .select_related("category", "city__country", "country", "featured_media")
+        .select_related("category", "city__country", "country", *Event.PICTURE_RELATED)
     )
     when = request.GET.get("when", "upcoming")
     if when == "past":
@@ -122,7 +122,7 @@ def event_detail(request, slug):
 @login_required
 def my_events(request):
     """Everything the user submitted, at any approval stage."""
-    events = Event.objects.filter(created_by=request.user).select_related("category", "city__country", "country", "featured_media").order_by("-start_date")
+    events = Event.objects.filter(created_by=request.user).select_related("category", "city__country", "country", *Event.PICTURE_RELATED).order_by("-start_date")
     return render(request, "events/my_events.html", {
         "events": events,
         "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("My events", None)]),

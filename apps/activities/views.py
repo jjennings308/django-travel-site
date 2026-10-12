@@ -15,7 +15,7 @@ from apps.approval_system.models import ApprovalStatus
 
 def activity_list(request):
     """Public list of approved activities"""
-    activities = Activity.get_public_activities().select_related('category', 'featured_media', 'city', 'region', 'country')
+    activities = Activity.get_public_activities().select_related('category', 'city', 'region', 'country', *Activity.PICTURE_RELATED)
     
     # Filtering
     category_slug = request.GET.get('category')
@@ -78,7 +78,7 @@ def activity_list(request):
 def activity_detail(request, slug):
     """View a single activity"""
     activity = get_object_or_404(
-        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country', 'featured_media', 'venue'), slug=slug)
+        Activity.objects.select_related('category', 'created_by', 'city', 'region', 'country', 'venue', *Activity.PICTURE_RELATED), slug=slug)
     
     # Check visibility
     if not activity.is_visible_to(request.user):
@@ -110,7 +110,7 @@ def activity_detail(request, slug):
 @login_required
 def my_activities(request):
     """User's own activities (private and public)"""
-    activities = Activity.get_user_activities(request.user).select_related('category', 'featured_media', 'city', 'region', 'country')
+    activities = Activity.get_user_activities(request.user).select_related('category', 'city', 'region', 'country', *Activity.PICTURE_RELATED)
     
     # Filter by status
     status = request.GET.get('status')

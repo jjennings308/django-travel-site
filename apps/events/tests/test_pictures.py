@@ -151,3 +151,84 @@ class ActivityPictureCopyTests(EventFixture):
         self.client.post(reverse("events:event_add") + f"?copy={first.pk}",
                          self.payload(name="Okto 2028", related_activity=self.activity.pk, start_date="2028-09-16"))
         self.assertEqual(Event.objects.get(name="Okto 2028").featured_media, first.featured_media)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class PlacePictureFallbackTests(EventFixture):
+    """No picture of its own: an activity or event shows its place's (venue, city, region, country)."""
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def media(self, owner, name, media_type="image"):
+        from apps.media_app.models import Media
+        media = Media(file=picture(name), uploaded_by=self.staff, media_type=media_type, title=name, content_object=owner)
+        media.save()
+        owner.featured_media = media
+        owner.save()
+        return media
+
+    def setUp(self):
+        super().setUp()
+        from apps.locations.models import POI
+        self.venue = POI.objects.create(name="Hall", slug="hall", city=self.city, latitude=1, longitude=2,
+                                        approval_status=ApprovalStatus.APPROVED)
+        self.activity = Activity.objects.create(category=self.music, name="Gigs", description="d", created_by=self.bob,
+                                                city=self.city, visibility="public", approval_status=ApprovalStatus.APPROVED)
+
+    def test_activity_falls_back_through_its_place(self):
+        self.assertIsNone(self.activity.display_media)
+        country_pic = self.media(self.city.country, "country.jpg")
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.display_media, country_pic)
+        city_pic = self.media(self.city, "city.jpg")
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.display_media, city_pic)
+        venue_pic = self.media(self.venue, "venue.jpg")
+        self.activity.venue = self.venue
+        self.activity.save()
+        self.assertEqual(Activity.objects.get(pk=self.activity.pk).display_media, venue_pic)
+        own = self.media(self.activity, "own.jpg")
+        self.assertEqual(Activity.objects.get(pk=self.activity.pk).display_media, own)
+
+    def test_event_uses_activity_then_venue_then_city(self):
+        city_pic = self.media(self.city, "city.jpg")
+        event = self.make("Gig night", poi=self.venue)
+        self.assertEqual(event.display_media, city_pic)
+        venue_pic = self.media(self.venue, "venue.jpg")
+        self.assertEqual(Event.objects.get(pk=event.pk).display_media, venue_pic)
+        activity_pic = self.media(self.activity, "act.jpg")
+        event.related_activity = self.activity
+        event.save()
+        self.assertEqual(Event.objects.get(pk=event.pk).display_media, activity_pic)
+
+    def test_videos_are_not_borrowed(self):
+        self.media(self.city, "city.jpg", media_type="video")
+        self.assertIsNone(self.make("Gig night").display_media)
+
+    def test_pages_show_the_place_picture(self):
+        city_pic = self.media(self.city, "city.jpg")
+        event = self.make("Gig night")
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(reverse("events:event_list")), city_pic.file.url)
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), city_pic.file.url)
+        self.assertContains(self.client.get(reverse("activities:activity_list")), city_pic.file.url)
+        self.assertContains(self.client.get(reverse("activities:activity_detail", args=[self.activity.slug])), city_pic.file.url)
+
+    def test_list_costs_no_query_per_card(self):
+        self.media(self.city, "city.jpg")
+        for i in range(3):
+            self.make(f"Gig {i}", poi=self.venue)
+        self.client.force_login(self.alice)
+        self.client.get(reverse("events:event_list"))  # warm up (session, content types)
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as three:
+            self.client.get(reverse("events:event_list"))
+        for i in range(3, 6):
+            self.make(f"Gig {i}", poi=self.venue)
+        with CaptureQueriesContext(connection) as six:
+            self.client.get(reverse("events:event_list"))
+        self.assertEqual(len(three), len(six))

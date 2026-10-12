@@ -40,7 +40,7 @@ def _card(obj, kind, tag, description):
     url = reverse("activities:activity_detail" if kind == "activity" else "events:event_detail", args=[obj.slug])
     return {
         "tag": tag, "title": obj.name, "description": description, "url": url, "kind": kind, "obj": obj,
-        "image_url": obj.featured_media.file.url if obj.featured_media_id else None,
+        "image_url": media.file.url if (media := obj.display_media) else None,
     }
 
 
@@ -51,7 +51,7 @@ def for_user(goals, limit=3):
 
     events = (Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__gte=today)
               .exclude(pk__in=goals.event_ids)
-              .select_related("category", "city__country", "country", "related_activity", "featured_media")
+              .select_related("category", "city__country", "country", "related_activity", *Event.PICTURE_RELATED)
               .order_by("start_date")[:POOL])
     for event in events:
         country_id = event.city.country_id if event.city_id else event.country_id
@@ -71,7 +71,7 @@ def for_user(goals, limit=3):
 
     activities = (Activity.get_public_activities()
                   .exclude(pk__in=goals.activity_ids)
-                  .select_related("category", "city", "region", "country", "featured_media")
+                  .select_related("category", "city", "region", "country", *Activity.PICTURE_RELATED)
                   .order_by("-bucket_list_count", "-created_at")[:POOL])
     for activity in activities:
         text = activity.short_description or activity.description

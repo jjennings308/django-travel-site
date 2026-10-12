@@ -455,6 +455,18 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         
         super().save(*args, **kwargs)
     
+    # Its own picture, else its place's: venue, city, region, country.
+    PICTURE_PATHS = ("featured_media", "venue.featured_media", "city.featured_media",
+                     "region.featured_media", "country.featured_media")
+    PICTURE_RELATED = ("featured_media", "venue__featured_media", "city__featured_media",
+                       "region__featured_media", "country__featured_media")  # for select_related
+
+    @property
+    def display_media(self):
+        """The picture to show: its own, else its place's (``PICTURE_PATHS``)."""
+        from apps.media_app.pictures import first_media
+        return first_media(self, *self.PICTURE_PATHS)
+
     @property
     def place_name(self):
         """'City, Region, Country' (as far as known), else the free-text location."""
