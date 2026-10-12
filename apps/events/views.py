@@ -177,6 +177,10 @@ def event_add(request):
                        "location_text": "" if activity.city_id else activity.suggested_location,
                        "poi": activity.venue, "venue_name": activity.venue.name if activity.venue_id else ""}
     form = EventForm(request.POST or None, request.FILES or None, initial=initial)
+    if source is not None and source.featured_media_id:
+        form.fields["picture"].help_text += " Leave empty to keep the picture of the event you're copying."
+    else:
+        form.fields["picture"].help_text += " Leave empty to use the activity's picture, if it has one."
     if request.method == "POST" and form.is_valid():
         event = form.save(commit=False)
         event.created_by = request.user
@@ -189,7 +193,7 @@ def event_add(request):
             event.submit_for_review(request.user)
             messages.success(request, f"Thanks! “{event.name}” was sent for review. Only you can see it until it's approved.")
         form.save_picture(request.user)
-        if not event.featured_media_id and source is not None and source.featured_media_id:
+        if not form.cleaned_data.get("picture") and source is not None and source.featured_media_id:
             event.featured_media_id = source.featured_media_id  # next year's event keeps last year's picture
             event.save(update_fields=["featured_media"])
         return redirect("events:event_detail", slug=event.slug)

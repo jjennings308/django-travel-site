@@ -436,7 +436,13 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         if self.city_id:
             self.country = None
             self.location_text = ""
-        
+
+        # A new event starts with its activity's picture (the same Media row); uploading
+        # one on the event later replaces it for this event only.
+        if self._state.adding and not self.featured_media_id and self.related_activity_id:
+            self.featured_media_id = (Activity.objects.filter(pk=self.related_activity_id)
+                                      .values_list("featured_media_id", flat=True).first())
+
         super().save(*args, **kwargs)
 
 

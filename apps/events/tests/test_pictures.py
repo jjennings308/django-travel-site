@@ -86,3 +86,68 @@ class PictureTests(EventFixture):
         self.assertIsNotNone(activity.featured_media)
         self.assertContains(self.client.get(reverse("activities:activity_detail", args=[activity.slug])),
                             activity.featured_media.file.url)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class ActivityPictureCopyTests(EventFixture):
+    """A new event starts with its activity's picture; the event can replace or remove its own."""
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        from apps.media_app.models import Media
+        self.activity = Activity.objects.create(category=self.music, name="Okto", description="d", created_by=self.bob,
+                                                recurrence="yearly", visibility="public",
+                                                approval_status=ApprovalStatus.APPROVED)
+        self.media = Media(file=picture(), uploaded_by=self.bob, media_type="image", title="Okto", content_object=self.activity)
+        self.media.save()
+        self.activity.featured_media = self.media
+        self.activity.save()
+
+    def add(self, **extra):
+        self.client.force_login(self.staff)
+        self.client.post(reverse("events:event_add"), {**self.payload(name="Okto 2027", related_activity=self.activity.pk,
+                                                                       start_date="2027-09-18"), **extra})
+        return Event.objects.get(name="Okto 2027")
+
+    def test_new_event_gets_the_activity_picture(self):
+        event = self.add()
+        self.assertEqual(event.featured_media, self.media)
+        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), self.media.file.url)
+
+    def test_created_anywhere(self):  # CSV import and admin save through the model too
+        event = self.make("Okto 2028", related_activity=self.activity)
+        self.assertEqual(event.featured_media, self.media)
+        self.assertIsNone(self.make("Other").featured_media)
+
+    def test_upload_replaces_it_for_the_event_only(self):
+        event = self.add(picture=picture("own.jpg"))
+        self.assertNotEqual(event.featured_media, self.media)
+        self.client.post(reverse("events:event_edit", args=[event.slug]),
+                         {**self.payload(name="Okto 2027", related_activity=self.activity.pk, start_date="2027-09-18"),
+                          "picture": picture("later.jpg")})
+        event.refresh_from_db()
+        self.assertTrue(event.featured_media.file.name.endswith(".jpg"))
+        self.assertNotEqual(event.featured_media, self.media)
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.featured_media, self.media)
+
+    def test_removed_picture_stays_removed(self):
+        event = self.add()
+        self.client.post(reverse("events:event_edit", args=[event.slug]),
+                         {**self.payload(name="Okto 2027", related_activity=self.activity.pk, start_date="2027-09-18"),
+                          "remove_picture": "on"})
+        event.refresh_from_db()
+        self.assertIsNone(event.featured_media)
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.featured_media, self.media)
+
+    def test_copy_keeps_last_years_picture_over_the_activitys(self):
+        first = self.add(picture=picture("2027.jpg"))
+        self.client.post(reverse("events:event_add") + f"?copy={first.pk}",
+                         self.payload(name="Okto 2028", related_activity=self.activity.pk, start_date="2028-09-16"))
+        self.assertEqual(Event.objects.get(name="Okto 2028").featured_media, first.featured_media)
