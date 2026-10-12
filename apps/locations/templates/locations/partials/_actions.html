@@ -1,0 +1,10 @@
+{# locations/partials/_actions.html — the Actions card at the bottom of the right-hand column on country, region, city and place pages. Pass edit_url / edit_label (shown when can_edit) and back_url / back_label. #}
+<div class="sbl-card shadow-sm">
+    <div class="p-5">
+        <h5 class="font-semibold text-warm-900 font-bold mb-4">Actions</h5>
+        <div class="grid gap-2">
+            {% if can_edit %}<a href="{{ edit_url }}" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-pencil mr-2"></i>{{ edit_label }}</a>{% endif %}
+            <a href="{{ back_url }}" class="sbl-btn sbl-btn-secondary w-full"><i class="bi bi-arrow-left mr-2"></i>{{ back_label }}</a>
+        </div>
+    </div>
+</div>

@@ -124,7 +124,6 @@
         <!-- Sidebar -->
         <div class="col-span-12 lg:col-span-4">
             {% include "partials/_bucket_add_button.html" with kind="poi" obj=poi form_class="mb-4" button_class="w-full" %}
-            {% if can_edit %}<a href="{% url 'locations:poi_edit' poi.slug %}" class="sbl-btn sbl-btn-outline mb-4 w-full"><i class="bi bi-pencil mr-2"></i>Edit Place</a>{% endif %}
             <!-- Quick Info -->
             <div class="sbl-card shadow-sm mb-6">
                 <div class="p-5">
@@ -231,6 +230,10 @@
                     </div>
                 </div>
             {% endif %}
+
+            <!-- Actions -->
+            {% url 'locations:poi_edit' poi.slug as edit_url %}{% url 'locations:poi_list' as back_url %}
+            {% include "locations/partials/_actions.html" with edit_label="Edit Place" back_label="Back to Places" %}
         </div>
     </div>
 </div>

@@ -210,16 +210,8 @@
             </div>
 
             <!-- Actions -->
-            {% if can_edit %}
-                <div class="sbl-card shadow-sm">
-                    <div class="p-5">
-                        <h5 class="font-semibold text-warm-900 font-bold mb-4">Actions</h5>
-                        <a href="{% url 'locations:country_edit' country.slug %}" class="sbl-btn sbl-btn-primary w-full">
-                            <i class="bi bi-pencil mr-2"></i>Edit Country
-                        </a>
-                    </div>
-                </div>
-            {% endif %}
+            {% url 'locations:country_edit' country.slug as edit_url %}{% url 'locations:country_list' as back_url %}
+            {% include "locations/partials/_actions.html" with edit_label="Edit Country" back_label="Back to Countries" %}
         </div>
     </div>
 </div>
