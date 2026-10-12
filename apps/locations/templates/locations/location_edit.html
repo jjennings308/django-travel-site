@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{# locations/location_edit.html — edit a region, city or place (RegionForm / CityForm / POIForm). #}
+{% block title %}Edit {{ obj.name }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <header class="mb-6">
+    <h1 class="sbl-page-title">Edit {{ obj.name }}</h1>
+    <p class="sbl-page-subtitle">Changes are saved straight to the {{ kind }}; its approval status does not change.</p>
+  </header>
+  <form method="post" enctype="multipart/form-data" class="sbl-card p-6">{% csrf_token %}
+    {% for error in form.non_field_errors %}<p class="sbl-alert-danger mb-4">{{ error }}</p>{% endfor %}
+    <div class="grid gap-x-4 sm:grid-cols-2">
+      {% for field in form %}{% if field.name != "picture" and field.name != "remove_picture" %}
+        <div class="mb-4 {% if field.name == 'description' or field.name == 'address' or field.name == 'name' %}sm:col-span-2{% endif %}">
+          {% if field.widget_type == "checkbox" %}
+            <label class="flex items-center gap-2 text-sm font-medium text-warm-800">{{ field }} {{ field.label }}</label>
+          {% else %}
+            <label for="{{ field.id_for_label }}" class="sbl-label">{{ field.label }}{% if field.field.required %} <span class="text-red-700">*</span>{% endif %}</label>
+            {{ field }}
+          {% endif %}
+          {% if field.help_text %}<p class="sbl-help">{{ field.help_text|safe }}</p>{% endif %}
+          {% for error in field.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}{% endfor %}
+    </div>
+    {% include "partials/_picture_field.html" with form=form current=obj.featured_media %}
+    <div class="flex justify-end gap-2">
+      <a href="{% url cancel_url obj.slug %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+      <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block extra_js %}{% if kind == "city" %}<script src="{% static 'locations/country_filter.js' %}"></script>{% endif %}{% endblock %}

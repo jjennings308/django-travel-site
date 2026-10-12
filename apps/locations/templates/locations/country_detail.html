@@ -210,7 +210,7 @@
             </div>
 
             <!-- Actions -->
-            {% if user.is_staff or country.submitted_by == user %}
+            {% if can_edit %}
                 <div class="sbl-card shadow-sm">
                     <div class="p-5">
                         <h5 class="font-semibold text-warm-900 font-bold mb-4">Actions</h5>

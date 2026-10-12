@@ -13,6 +13,8 @@ from apps.media_app.models import Media
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import BreadcrumbPatterns
 
+from .forms import CityForm, POIForm, RegionForm
+
 
 
 # ============================================================================
@@ -148,7 +150,7 @@ def country_detail(request, slug):
     ).select_related('city', 'featured_media').order_by('-visitor_count', 'name')[:8]
     
     context = {
-        'country': country,
+        'country': country, 'can_edit': can_edit(request.user, country),
         'regions': regions,
         'cities': cities,
         'featured_pois': featured_pois,
@@ -243,7 +245,7 @@ def country_edit(request, slug):
     country = get_object_or_404(Country, slug=slug)
     
     # Check permissions
-    if not request.user.is_staff and country.submitted_by != request.user:
+    if not can_edit(request.user, country):
         messages.error(request, 'You do not have permission to edit this country.')
         return redirect('locations:country_detail', slug=slug)
     
@@ -357,7 +359,7 @@ def region_detail(request, slug):
     ).select_related('featured_media').order_by('-population')
     
     context = {
-        'region': region,
+        'region': region, 'can_edit': can_edit(request.user, region),
         'cities': cities,
         'breadcrumb_list': BreadcrumbPatterns.region_detail(region)
     }
@@ -507,7 +509,7 @@ def city_detail(request, slug):
     ).select_related('featured_media').order_by('-visitor_count', 'name')
     
     context = {
-        'city': city,
+        'city': city, 'can_edit': can_edit(request.user, city),
         'pois': pois,
         'breadcrumb_list': BreadcrumbPatterns.city_detail(city)
     }
@@ -664,7 +666,7 @@ def poi_detail(request, slug):
     )
         
     context = {
-        'poi': poi,
+        'poi': poi, 'can_edit': can_edit(request.user, poi),
         'breadcrumb_list': BreadcrumbPatterns.poi_detail(poi)
     }
     
@@ -799,3 +801,46 @@ def get_cities_for_country(request, country_id):
     ).values('id', 'name', 'region__name').order_by('name')
     
     return JsonResponse({'cities': list(cities)})
+
+
+# ============================================================================
+# EDIT PAGES (region, city, place)
+# ============================================================================
+
+def can_edit(user, obj):
+    """Staff, or whoever submitted it (as on the country edit page)."""
+    return user.is_authenticated and (
+        user.is_staff or getattr(user, "can_access_staff", False) or obj.submitted_by_id == user.pk)
+
+
+def _edit(request, obj, form_class, kind, detail_url, breadcrumbs):
+    if not can_edit(request.user, obj):
+        messages.error(request, f"You do not have permission to edit this {kind}.")
+        return redirect(detail_url, slug=obj.slug)
+    form = form_class(request.POST or None, request.FILES or None, instance=obj)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save()
+        form.save_picture(request.user)
+        messages.success(request, f"{kind.capitalize()} “{obj.name}” updated.")
+        return redirect(detail_url, slug=obj.slug)
+    return render(request, "locations/location_edit.html", {
+        "form": form, "obj": obj, "kind": kind, "cancel_url": detail_url, "breadcrumb_list": breadcrumbs,
+    })
+
+
+@login_required
+def region_edit(request, slug):
+    region = get_object_or_404(Region, slug=slug)
+    return _edit(request, region, RegionForm, "region", "locations:region_detail", BreadcrumbPatterns.region_edit(region))
+
+
+@login_required
+def city_edit(request, slug):
+    city = get_object_or_404(City.objects.select_related("country", "region"), slug=slug)
+    return _edit(request, city, CityForm, "city", "locations:city_detail", BreadcrumbPatterns.city_edit(city))
+
+
+@login_required
+def poi_edit(request, slug):
+    poi = get_object_or_404(POI.objects.select_related("city"), slug=slug)
+    return _edit(request, poi, POIForm, "place", "locations:poi_detail", BreadcrumbPatterns.poi_edit(poi))
