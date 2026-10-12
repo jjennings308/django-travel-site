@@ -234,6 +234,11 @@ def contact(request):
     return render(request, "pages/contact.html", {"form": form, "ready": ready})
 
 
+def features(request):
+    """What the site does, step by step (the footer's Features link; open to everyone)."""
+    return render(request, "pages/features.html", {"catalogue": _catalogue_counts()})
+
+
 def help_page(request):
     """Short how-it-works / FAQ page."""
     return render(request, "pages/help.html")

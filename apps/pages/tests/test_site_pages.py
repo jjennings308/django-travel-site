@@ -40,6 +40,16 @@ class SitePagesTests(TestCase):
                 except Resolver404:
                     self.fail(f"footer link {href} doesn't resolve")
 
+    def test_features_page(self):
+        page = self.client.get(reverse("pages:features"))
+        for step in ("Discover", "Dream", "Pick a date", "Plan", "Done"):
+            self.assertContains(page, step)
+        self.assertContains(page, reverse("register"))
+        self.assertContains(self.client.get(reverse("pages:home")), reverse("pages:features"))
+        user = get_user_model().objects.create_user(username="f", email="f@example.com", password="pw")
+        self.client.force_login(user)
+        self.assertContains(self.client.get(reverse("pages:features")), reverse("pages:dashboard"))
+
     def test_help_page(self):
         self.assertContains(self.client.get(reverse("pages:help")), "The five steps")
 

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{# pages/features.html — what the site does, by lifecycle step. Only list what exists; no invented claims (see "Public pages stay honest" in CLAUDE.md). #}
+{% block title %}Features · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-5xl space-y-8">
+  <header class="text-center">
+    <h1 class="sbl-page-title">Features</h1>
+    <p class="sbl-page-subtitle mx-auto max-w-2xl">{{ SITE_NAME }} follows a goal from the first idea to the trip you've taken, in five steps.</p>
+    <p class="mt-3 text-sm text-warm-500">
+      The catalogue holds {{ catalogue.activities }} activit{{ catalogue.activities|pluralize:"y,ies" }},
+      {{ catalogue.places }} place{{ catalogue.places|pluralize }} and {{ catalogue.cities }} cit{{ catalogue.cities|pluralize:"y,ies" }}
+      in {{ catalogue.countries }} countr{{ catalogue.countries|pluralize:"y,ies" }}.
+    </p>
+  </header>
+
+  {% with box="sbl-card p-6" icon="flex size-11 shrink-0 items-center justify-center rounded-xl text-xl text-white" h2="text-xl font-semibold text-warm-900" ul="mt-4 space-y-2 text-warm-700" li="flex gap-2" tick="bi bi-check2 mt-0.5 text-earth-olive" %}
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-earth-clay"><i class="bi bi-compass"></i></span>
+      <div><p class="text-xs font-semibold uppercase tracking-wider text-warm-400">Step 1</p><h2 class="{{ h2 }}">Discover</h2></div>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><a class="sbl-link" href="{% url 'activities:activity_list' %}">Activities</a>: ideas worth doing (“See Oktoberfest”, “Watch the Steelers at home”), each with how often it happens and the months it usually runs.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><a class="sbl-link" href="{% url 'events:event_list' %}">Events</a>: the dated occurrences of an activity (Oktoberfest 2027, a game on a given Sunday), grouped by season on the activity's page.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><a class="sbl-link" href="{% url 'locations:dashboard' %}">Places</a>: countries, regions, cities and points of interest, with how many members have been there.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Recommendations on your dashboard, based on what's already on your list: new dates for your goals, things in your categories and near your plans.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Add an event or activity that's missing. Our team checks it, and you can edit it under <em>My contributions</em> until then.</span></li>
+    </ul>
+  </section>
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-earth-olive"><i class="bi bi-list-check"></i></span>
+      <div><p class="text-xs font-semibold uppercase tracking-wider text-warm-400">Step 2</p><h2 class="{{ h2 }}">Dream</h2></div>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><em>Add to bucket list</em> on any activity, event, city or place, or write your own goal. As you type, the site suggests matching catalogue entries.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Sort goals into your own categories, with a priority and notes.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Private by default. Mark goals public and set your profile to public to share a bucket-list page.</span></li>
+    </ul>
+  </section>
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-earth-ochre"><i class="bi bi-calendar-check"></i></span>
+      <div><p class="text-xs font-semibold uppercase tracking-wider text-warm-400">Step 3</p><h2 class="{{ h2 }}">Pick a date</h2></div>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><em>My dates</em> lists what's coming up, what still needs a date, and what's slipped past.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Goals without a date are offered the activity's next upcoming dates; pick one with a click.</span></li>
+    </ul>
+  </section>
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-earth-clay-dark"><i class="bi bi-airplane"></i></span>
+      <div><p class="text-xs font-semibold uppercase tracking-wider text-warm-400">Step 4</p><h2 class="{{ h2 }}">Plan</h2></div>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><em>Plan a trip</em> from a goal starts a trip with its dates and place filled in. Several goals can share one trip.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Day-by-day itineraries with lodging, meals, flights and other legs (times shown in each place's own time zone), confirmations, contacts and booking to-dos.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Invite the people going as viewers, commentors or editors, and discuss the plan in comments.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>A trip budget: who paid for what, who shares each cost, everyone's balance and who should pay whom to settle up.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Print the itinerary or save it as a PDF, and share a read-only link that shows the outline but never bookings or who's travelling.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Keep your travel profile and airline, hotel and rental loyalty numbers in one place, visible only to you.</span></li>
+    </ul>
+  </section>
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-earth-sage"><i class="bi bi-trophy"></i></span>
+      <div><p class="text-xs font-semibold uppercase tracking-wider text-warm-400">Step 5</p><h2 class="{{ h2 }}">Done</h2></div>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Tick a goal off with the date, a rating, notes and up to 10 photos. When a trip ends, its page prompts you to do it.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span><em>My adventures</em> shows everything you've done, year by year, with your photos and past trips.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Badges for milestones: goals ticked off, countries visited, trips taken and more.</span></li>
+    </ul>
+  </section>
+
+  <section class="{{ box }}">
+    <div class="flex items-center gap-3">
+      <span class="{{ icon }} bg-warm-500"><i class="bi bi-sliders"></i></span>
+      <h2 class="{{ h2 }}">Everywhere</h2>
+    </div>
+    <ul class="{{ ul }}">
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Notifications in the site and by email (you can turn the emails off) when a submission is reviewed, you're added to a trip or you earn a badge.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Your own units, currency and time zone.</span></li>
+      <li class="{{ li }}"><i class="{{ tick }}"></i><span>Works on phones as well as computers.</span></li>
+    </ul>
+  </section>
+  {% endwith %}
+
+  <footer class="flex flex-wrap items-center justify-center gap-3 pb-4">
+    {% if user.is_authenticated %}
+      <a class="sbl-btn sbl-btn-primary" href="{% url 'pages:dashboard' %}">Go to your dashboard</a>
+    {% else %}
+      <a class="sbl-btn sbl-btn-primary" href="{% url 'register' %}">Sign up</a>
+      <a class="sbl-btn sbl-btn-outline" href="{% url 'login' %}">Log in</a>
+    {% endif %}
+    <a class="sbl-btn sbl-btn-outline" href="{% url 'pages:help' %}">How it works</a>
+  </footer>
+</article>
+{% endblock %}
