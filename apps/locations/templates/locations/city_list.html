@@ -24,15 +24,36 @@
     <div class="sbl-card shadow-sm mb-6">
         <div class="p-5">
             <form method="get">
+                {# Search, Country, Region, Status. Region options carry data-country; locations/country_filter.js shows only the chosen country's regions. #}
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search cities..." class="sbl-input">
+                        <label for="filter_q" class="sbl-label text-sm font-semibold">Search</label>
+                        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search cities..." class="sbl-input">
                     </div>
-                    
-                    <div class="col-span-12 md:col-span-2">
-                        <label class="sbl-label text-sm font-semibold">Status</label>
-                        <select name="status" class="sbl-input">
+
+                    <div class="col-span-12 sm:col-span-6 md:col-span-3">
+                        <label for="filter_country" class="sbl-label text-sm font-semibold">Country</label>
+                        <select id="filter_country" name="country" class="sbl-input">
+                            <option value="">All Countries</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-span-12 sm:col-span-6 md:col-span-2">
+                        <label for="filter_region" class="sbl-label text-sm font-semibold">Region</label>
+                        <select id="filter_region" name="region" class="sbl-input" data-country-source="filter_country">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.id }}" data-country="{{ region.country_id }}" {% if selected_region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-span-12 sm:col-span-6 md:col-span-2">
+                        <label for="filter_status" class="sbl-label text-sm font-semibold">Status</label>
+                        <select id="filter_status" name="status" class="sbl-input">
                             <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
                             <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
                             <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
@@ -40,27 +61,10 @@
                             <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                         </select>
                     </div>
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Country</label>
-                        <select name="country" class="sbl-input">
-                            <option value="">All Countries</option>
-                            {% for country in countries %}
-                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ country.flag_emoji }} {{ country.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-4 flex items-end gap-2">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" name="capital" value="true" id="capital_only" {% if capital_only %}checked{% endif %} class="sbl-check">
-                            <label for="capital_only" class="text-sm text-warm-700">Capitals only</label>
-                        </div>
-                        <button type="submit" class="sbl-btn sbl-btn-accent grow">
-                            <i class="bi bi-funnel mr-2"></i>Filter
-                        </button>
+
+                    <div class="col-span-12 sm:col-span-6 md:col-span-2 flex flex-col justify-end gap-2">
+                        <label class="flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="capital" value="true" {% if capital_only %}checked{% endif %} class="sbl-check">Capitals only</label>
+                        <button type="submit" class="sbl-btn sbl-btn-accent w-full"><i class="bi bi-funnel"></i>Filter</button>
                     </div>
                 </div>
             </form>
@@ -140,3 +144,5 @@
 </div>
 
 {% endblock %}
+
+{% block extra_js %}<script src="{% static 'locations/country_filter.js' %}"></script>{% endblock %}

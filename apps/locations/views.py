@@ -480,7 +480,9 @@ def city_list(request):
         'status_filter': status_filter,
         'search_query': search_query,
         'countries': countries,
+        'regions': Region.objects.filter(country__approval_status=ApprovalStatus.APPROVED).order_by('name'),
         'selected_country': country_id,
+        'selected_region': region_id,
         'capital_only': capital_only,
         'breadcrumb_list': BreadcrumbPatterns.cities_list
     }
