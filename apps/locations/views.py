@@ -145,7 +145,7 @@ def country_detail(request, slug):
     featured_pois = POI.objects.filter(
         city__country=country,
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('city', 'featured_media').order_by('-visitor_count')[:8]
+    ).select_related('city', 'featured_media').order_by('-visitor_count', 'name')[:8]
     
     context = {
         'country': country,
@@ -504,7 +504,7 @@ def city_detail(request, slug):
     # Get POIs in this city
     pois = city.pois.filter(
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('featured_media').order_by('-visitor_count')
+    ).select_related('featured_media').order_by('-visitor_count', 'name')
     
     context = {
         'city': city,

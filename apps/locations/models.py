@@ -190,7 +190,7 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
     # Stats (denormalized)
     visitor_count = models.IntegerField(
         default=0,
-        help_text="Number of users who visited"
+        help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
     )
     
     class Meta:
@@ -295,6 +295,9 @@ class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, A
     )
     
     description = models.TextField(blank=True)
+
+    visitor_count = models.IntegerField(
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
     
     class Meta:
         db_table = 'locations_regions'
@@ -410,7 +413,8 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
     )
     
     # Stats
-    visitor_count = models.IntegerField(default=0)
+    visitor_count = models.IntegerField(
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
     average_rating = models.DecimalField(
         max_digits=3,
         decimal_places=2,
@@ -548,7 +552,8 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     parking_available = models.BooleanField(default=False)
     
     # Stats
-    visitor_count = models.IntegerField(default=0)
+    visitor_count = models.IntegerField(
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
     average_rating = models.DecimalField(
         max_digits=3,
         decimal_places=2,

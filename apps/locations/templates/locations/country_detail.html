@@ -202,10 +202,10 @@
                         <span class="text-warm-500">POIs</span>
                         <span class="text-lg font-semibold mb-0">{{ country.poi_count }}</span>
                     </div>
-                    <div class="flex justify-between mb-0">
-                        <span class="text-warm-500">Visitors</span>
+                    {% if country.visitor_count %}<div class="flex justify-between mb-0" title="Members who ticked off a goal or finished a trip here">
+                        <span class="text-warm-500">Members who've been</span>
                         <span class="text-lg font-semibold mb-0">{{ country.visitor_count }}</span>
-                    </div>
+                    </div>{% endif %}
                 </div>
             </div>
 

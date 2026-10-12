@@ -122,10 +122,14 @@
             <div class="sbl-card shadow-sm mb-6">
                 <div class="p-5">
                     <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
-                    <div class="flex justify-between mb-0">
+                    <div class="flex justify-between {% if region.visitor_count %}mb-4{% else %}mb-0{% endif %}">
                         <span class="text-warm-500">Cities</span>
                         <span class="text-lg font-semibold mb-0">{{ region.city_count }}</span>
                     </div>
+                    {% if region.visitor_count %}<div class="flex justify-between mb-0" title="Members who ticked off a goal or finished a trip here">
+                        <span class="text-warm-500">Members who've been</span>
+                        <span class="text-lg font-semibold mb-0">{{ region.visitor_count }}</span>
+                    </div>{% endif %}
                 </div>
             </div>
 

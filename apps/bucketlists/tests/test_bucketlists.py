@@ -8,7 +8,7 @@ from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.bucketlists.models import BucketListCategory, BucketListItem
 from apps.events.models import Event
-from apps.locations.models import POI, City, Country
+from apps.locations.models import POI, City, Country, Region
 from apps.trips.models import Trip, TripGrant, TripRole
 
 User = get_user_model()
@@ -638,3 +638,78 @@ class BadgeTests(BucketFixture):
         public = self.client.get(reverse("bucketlists:public_list", args=["alice"]))
         self.assertContains(public, "First adventure")
         self.assertNotContains(public, "Adventurer")  # unearned badges stay private
+
+
+class VisitorCountTests(BucketFixture):
+    """visitor_count = members who ticked off a goal there or finished a trip there."""
+
+    def setUp(self):
+        super().setUp()
+        self.region = Region.objects.create(country=self.city.country, name="North", slug="north")
+        self.city.region = self.region
+        self.city.save()
+
+    def counts(self):
+        from django.db import connection
+        for model, obj in ((City, self.city), (POI, self.poi), (Region, self.region), (Country, self.city.country)):
+            obj.refresh_from_db()
+        return (self.city.visitor_count, self.poi.visitor_count, self.region.visitor_count, self.city.country.visitor_count)
+
+    def commit(self):
+        """Signals recount on transaction commit; TestCase never commits, so run the hooks."""
+        from django.db import connection
+        callbacks = list(connection.run_on_commit)
+        connection.run_on_commit.clear()
+        for _, func, *_ in callbacks:
+            func()
+
+    def test_completed_goals_count_once_per_member(self):
+        BucketListItem.objects.create(user=self.alice, city=self.city).complete()
+        poi_goal = BucketListItem.objects.create(user=self.alice)
+        poi_goal.pois.add(self.poi)
+        poi_goal.complete()
+        BucketListItem.objects.create(user=self.bob, city=self.city)  # not done: doesn't count
+        self.commit()
+        self.assertEqual(self.counts(), (1, 1, 1, 1))
+        BucketListItem.objects.create(user=self.bob, event=self.event).complete()  # event in the city
+        self.commit()
+        self.assertEqual(self.counts()[0], 2)
+
+    def test_uncompleting_or_deleting_lowers_it(self):
+        goal = BucketListItem.objects.create(user=self.alice, city=self.city)
+        goal.complete()
+        self.commit()
+        self.assertEqual(self.counts()[0], 1)
+        goal.status = "planning"
+        goal.save()
+        self.commit()
+        self.assertEqual(self.counts()[0], 0)
+
+    def test_finished_trips_count_their_travellers_not_other_grant_holders(self):
+        from apps.trips.models import Traveler
+        trip = Trip.objects.create(name="Done", start_date=date.today() - timedelta(days=10), end_date=date.today() - timedelta(days=3))
+        traveller = Traveler.objects.get(user=self.alice)  # every account is a traveller
+        trip.travelers.add(traveller)
+        TripGrant.objects.create(trip=trip, user=self.bob, role=TripRole.VIEWER)  # can see it, didn't go
+        trip.cities.add(self.city)
+        self.commit()
+        self.assertEqual(self.counts()[0], 1)
+        future = Trip.objects.create(name="Soon", start_date=date.today() + timedelta(days=3), end_date=date.today() + timedelta(days=5))
+        future.travelers.add(Traveler.objects.get(user=self.bob))
+        future.cities.add(self.city)
+        self.commit()
+        self.assertEqual(self.counts()[0], 1)
+
+    def test_command_recounts_from_scratch(self):
+        from io import StringIO
+        from django.core.management import call_command
+        BucketListItem.objects.create(user=self.alice, city=self.city).complete()
+        City.objects.update(visitor_count=0)
+        call_command("recount_visitors", stdout=StringIO())
+        self.assertEqual(self.counts()[0], 1)
+
+    def test_page_shows_it_only_when_nonzero(self):
+        url = reverse("locations:city_detail", args=[self.city.slug])
+        self.assertNotContains(self.client.get(url), "Members who&#x27;ve been")
+        City.objects.filter(pk=self.city.pk).update(visitor_count=4)
+        self.assertContains(self.client.get(url), "Members who've been")
