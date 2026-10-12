@@ -156,6 +156,29 @@ class CompleteItemForm(forms.Form):
         required=False, label="Photos (optional)",
         help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
     )
+    share_review = forms.BooleanField(
+        required=False, label="Share as a public review",
+        widget=forms.CheckboxInput(attrs={"class": "sbl-check"}),
+    )
+
+    def __init__(self, *args, review_target=None, **kwargs):
+        """``review_target``: the published catalogue item this goal can be reviewed on, if any."""
+        super().__init__(*args, **kwargs)
+        if review_target is None:
+            del self.fields["share_review"]
+        else:
+            self.fields["share_review"].help_text = (
+                f"Your rating and “How was it?” go on {review_target.name}'s page with your username, "
+                "marked “Been there”.")
+
+    def clean(self):
+        data = super().clean()
+        if data.get("share_review"):
+            if not data.get("user_rating"):
+                self.add_error("user_rating", "Pick a rating to share a review.")
+            if not (data.get("completion_notes") or "").strip():
+                self.add_error("completion_notes", "Say a few words to share a review.")
+        return data
 
 
 class CategoryForm(forms.ModelForm):

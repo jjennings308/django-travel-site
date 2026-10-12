@@ -121,3 +121,21 @@ def visitors_after_day_changed(sender, instance, raw=False, **kwargs):
 def visitors_after_trip_people_or_places(sender, instance, action, **kwargs):
     if action.startswith("post_") and isinstance(instance, Trip) and _finished(instance):
         _recount_visitors()
+
+
+# --- Reviews: "Been there" when the reviewer has ticked the item off ------------------------------
+# Here rather than in reviews, because reviews may not import bucketlists.
+from apps.reviews.models import Review  # noqa: E402
+
+
+@receiver(pre_save, sender=Review, dispatch_uid="bucketlists_review_been_there")
+def mark_review_been_there(sender, instance, raw=False, **kwargs):
+    if raw or instance.is_verified_visit or instance.user_id is None:
+        return
+    done = BucketListItem.objects.filter(user_id=instance.user_id, status="completed")
+    lookups = {"activity_id": "activity_id", "event_id": "event_id", "location_id": "city_id", "poi_id": "pois"}
+    for field, lookup in lookups.items():
+        value = getattr(instance, field)
+        if value and done.filter(**{lookup: value}).exists():
+            instance.is_verified_visit = True
+            return

@@ -91,6 +91,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% if city.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_reviews.html" with kind="city" obj=city %}</div>{% endif %}
         </div>
 
         <!-- Sidebar -->
@@ -176,7 +177,7 @@
                     {% if city.average_rating %}
                         <div class="flex justify-between mb-0">
                             <span class="text-warm-500">Rating</span>
-                            <span class="text-lg font-semibold mb-0">⭐ {{ city.average_rating }}</span>
+                            <span class="text-lg font-semibold mb-0">⭐ {{ city.average_rating|floatformat:1 }} <a href="#reviews" class="text-sm font-normal text-warm-500 hover:underline">({{ city.review_count }})</a></span>
                         </div>
                     {% endif %}
                 </div>

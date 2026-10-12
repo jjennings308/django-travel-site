@@ -7,7 +7,7 @@
 {# Event detail, laid out like the activity page: shared banner header, sections on the left, Quick Info + Actions on the right. #}
 <div class="py-6">
   {% with when=event.start_date|date:"D, M j, Y" %}
-    {% include "partials/_detail_header.html" with title=event.name label=event.category.name icon=event.category.icon image=event.featured_media place=event.venue_and_place when=when when_icon="bi-calendar-event" status=event.approval_status status_label=event.get_approval_status_display extra=event.status_alert %}
+    {% include "partials/_detail_header.html" with title=event.name label=event.category.name icon=event.category.icon image=event.featured_media stars=event.average_rating stars_count=event.review_count place=event.venue_and_place when=when when_icon="bi-calendar-event" status=event.approval_status status_label=event.get_approval_status_display extra=event.status_alert %}
   {% endwith %}
 
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -46,6 +46,7 @@
           <p class="whitespace-pre-line text-warm-700">{{ event.what_to_bring }}</p>
         </section>
       {% endif %}
+      {% if event.approval_status == 'approved' %}{% include "partials/_reviews.html" with kind="event" obj=event %}{% endif %}
     </div>
 
     <aside class="space-y-6">

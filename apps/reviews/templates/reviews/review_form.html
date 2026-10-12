@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if mine %}Edit your review{% else %}Review{% endif %}: {{ target.name }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl">
+  <div class="sbl-card p-6">
+    <h1 class="text-2xl font-bold text-warm-900">{% if mine %}Edit your review{% else %}Write a review{% endif %}</h1>
+    <p class="mb-4 text-lg text-warm-700"><a class="sbl-link" href="{{ back }}">{{ target.name }}</a></p>
+    <form method="post">{% csrf_token %}
+      {% for field in form %}{% include "events/partials/_field.html" %}{% endfor %}
+      <p class="mb-4 text-sm text-warm-500">Reviews are public and show your username.</p>
+      <div class="flex justify-end gap-2"><a href="{{ back }}" class="sbl-btn sbl-btn-outline">Cancel</a><button type="submit" class="sbl-btn sbl-btn-primary">{% if mine %}Save{% else %}Post review{% endif %}</button></div>
+    </form>
+    {% if mine %}
+      <form method="post" action="{% url 'reviews:delete' mine.pk %}" class="mt-4 border-t border-warm-200 pt-4 text-right" onsubmit="return confirm('Delete your review?')">{% csrf_token %}
+        <button type="submit" class="sbl-btn sbl-btn-danger"><i class="bi bi-trash"></i> Delete review</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

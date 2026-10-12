@@ -12,7 +12,7 @@
 {# Activity detail. An activity is an undated idea; each dated occurrence (e.g. one per year) is an Event listed under Dates via the activity.events reverse relation. #}
 <div class="py-6">
     {% with when=activity.recurrence_summary extra=activity.visibility_note %}
-        {% include "partials/_detail_header.html" with title=activity.name label=activity.category.name icon=activity.category.icon image=activity.featured_media place=activity.display_place when=when when_icon="bi-arrow-repeat" status=activity.approval_status status_label=activity.get_approval_status_display extra=extra %}
+        {% include "partials/_detail_header.html" with title=activity.name label=activity.category.name icon=activity.category.icon image=activity.featured_media stars=activity.average_rating stars_count=activity.review_count place=activity.display_place when=when when_icon="bi-arrow-repeat" status=activity.approval_status status_label=activity.get_approval_status_display extra=extra %}
     {% endwith %}
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -82,6 +82,7 @@
                     <div class="flex flex-wrap gap-2">{% for tag in tags %}<span class="sbl-badge sbl-badge-neutral">{{ tag.name }}</span>{% endfor %}</div>
                 </section>
             {% endif %}{% endwith %}
+            {% if activity.approval_status == 'approved' and activity.visibility == 'public' %}{% include "partials/_reviews.html" with kind="activity" obj=activity %}{% endif %}
         </div>
 
         <aside class="space-y-6">

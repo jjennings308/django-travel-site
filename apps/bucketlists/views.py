@@ -464,21 +464,38 @@ def pick_date(request, pk):
 
 @login_required
 def item_complete(request, pk):
+    from apps.reviews import services as reviews
+
     item = _own_item(request, pk)
-    form = CompleteItemForm(request.POST or None, request.FILES or None, initial={
+    review_target = _review_target(item)
+    review = reviews.review_by(request.user, review_target) if review_target else None
+    form = CompleteItemForm(request.POST or None, request.FILES or None, review_target=review_target, initial={
         "completed_date": item.completed_date or timezone.now().date(),
-        "user_rating": item.user_rating, "completion_notes": item.completion_notes,
+        "user_rating": item.user_rating, "completion_notes": item.completion_notes, "share_review": review is not None,
     })
     already_done = item.status == "completed"
     if request.method == "POST" and form.is_valid():
-        item.complete(form.cleaned_data["completed_date"], form.cleaned_data["completion_notes"],
-                      form.cleaned_data["user_rating"])
-        item.add_photos(form.cleaned_data["photos"], request.user)
+        data = form.cleaned_data
+        item.complete(data["completed_date"], data["completion_notes"], data["user_rating"])
+        item.add_photos(data["photos"], request.user)
+        if data.get("share_review"):
+            reviews.upsert_review(request.user, review_target, data["user_rating"], data["completion_notes"].strip(),
+                                  title=review.title if review else "", visit_date=data["completed_date"], verified=True)
         messages.success(request, "Saved." if already_done else f"🎉 Ticked off “{item.title}”!")
         return redirect("bucketlists:adventures")
     return render(request, "bucketlists/item_complete.html", {
         "form": form, "item": item, "photos": item.photos(), "already_done": already_done,
     })
+
+
+def _review_target(item):
+    """The published activity, event, city or single place this goal can be reviewed on, or None."""
+    from apps.reviews import services as reviews
+    kind = item.kind
+    if kind == "custom" or (kind == "poi" and len(item._poi_list()) != 1):
+        return None
+    target = item.target
+    return target if reviews.public(kind).filter(pk=target.pk).exists() else None
 
 
 @login_required

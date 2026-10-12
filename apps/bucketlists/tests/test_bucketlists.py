@@ -713,3 +713,53 @@ class VisitorCountTests(BucketFixture):
         self.assertNotContains(self.client.get(url), "Members who&#x27;ve been")
         City.objects.filter(pk=self.city.pk).update(visitor_count=4)
         self.assertContains(self.client.get(url), "Members who've been")
+
+
+class ShareReviewTests(BucketFixture):
+    """Mark done can share the rating and notes as a public review (apps.reviews)."""
+
+    def complete(self, item, **extra):
+        data = {"completed_date": "2026-09-01", "user_rating": "4", "completion_notes": "Worth the climb"}
+        data.update(extra)
+        return self.client.post(reverse("bucketlists:item_complete", args=[item.pk]), data)
+
+    def test_sharing_creates_a_been_there_review_and_updates_it(self):
+        from apps.reviews.models import Review
+        item = BucketListItem.objects.create(user=self.alice, activity=self.activity)
+        self.assertContains(self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review")
+        self.complete(item, share_review="on")
+        review = Review.objects.get(user=self.alice, activity=self.activity)
+        self.assertEqual((review.rating, review.comment, review.is_verified_visit, review.visit_date),
+                         (4, "Worth the climb", True, date(2026, 9, 1)))
+        self.complete(item, share_review="on", user_rating="5")
+        self.assertEqual(Review.objects.get(pk=review.pk).rating, 5)
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.review_count, 1)
+
+    def test_not_shared_unless_ticked(self):
+        from apps.reviews.models import Review
+        item = BucketListItem.objects.create(user=self.alice, city=self.city)
+        self.complete(item)
+        self.assertFalse(Review.objects.exists())
+
+    def test_sharing_needs_a_rating(self):
+        from apps.reviews.models import Review
+        item = BucketListItem.objects.create(user=self.alice, city=self.city)
+        response = self.complete(item, share_review="on", user_rating="")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Review.objects.exists())
+
+    def test_custom_goals_are_not_reviewable(self):
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Learn to surf")
+        self.assertNotContains(self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review")
+
+    def test_review_from_the_page_is_been_there_after_ticking_off(self):
+        from apps.reviews.models import Review
+        item = BucketListItem.objects.create(user=self.alice, custom_title="Bridge")
+        item.pois.add(self.poi)
+        item.complete(date(2026, 9, 1))
+        self.client.post(reverse("reviews:write", args=["poi", self.poi.slug]), {"rating": 5, "comment": "Grand"})
+        self.assertTrue(Review.objects.get(user=self.alice).is_verified_visit)
+        self.client.force_login(self.bob)
+        self.client.post(reverse("reviews:write", args=["poi", self.poi.slug]), {"rating": 2, "comment": "Meh"})
+        self.assertFalse(Review.objects.get(user=self.bob).is_verified_visit)

@@ -115,7 +115,7 @@
                                 <span>Free entry</span>
                             {% endif %}
                             {% if poi.average_rating %}
-                                <span>⭐ {{ poi.average_rating }}</span>
+                                <span>⭐ {{ poi.average_rating|floatformat:1 }} ({{ poi.review_count }})</span>
                             {% endif %}
                         </div>
                     </div>

@@ -26,6 +26,7 @@ from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
 from apps.media_app.models import Media
+from apps.reviews.models import Review
 from apps.trips.models import Trip
 
 LIST_LIMIT = 5
@@ -96,6 +97,20 @@ def _attention(now, sla_hours):
         "items": [{"text": f"@{r.user.username}: {r.get_requested_role_display()}",
                    "meta": f"waiting {_age(r.created_at, now)}",
                    "url": reverse("staff:admin_role_request_detail", args=[r.pk])} for r in role_requests[:LIST_LIMIT]],
+        "tone": "warning",
+    })
+
+    reported = (Review.objects.filter(reports__is_resolved=False)
+                .annotate(open_reports=Count("reports", filter=Q(reports__is_resolved=False)))
+                .select_related("user", "activity", "event", "location", "poi").order_by("-open_reports", "created_at"))
+    entries.append({
+        "key": "reported_reviews", "title": "Reported reviews", "count": reported.count(),
+        "detail": "Keep or hide each review (untick “Is approved”), then mark its reports resolved. "
+                  "A review with 3 open reports is already hidden.",
+        "url": reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0",
+        "items": [{"text": f"@{r.user.username} on {r.get_review_target_name()}",
+                   "meta": f"{r.open_reports} report{'s' if r.open_reports != 1 else ''}" + ("" if r.is_approved else " · hidden"),
+                   "url": _admin_url(r)} for r in reported[:LIST_LIMIT]],
         "tone": "warning",
     })
 

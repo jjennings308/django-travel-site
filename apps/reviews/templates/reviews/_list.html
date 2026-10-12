@@ -1,0 +1,41 @@
+{# reviews/_list.html — fragment loaded into partials/_reviews.html: summary, the newest reviews, write/edit and report. #}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h2 class="text-xl font-semibold text-warm-900"><i class="bi bi-star"></i> Reviews</h2>
+  {% if user.is_authenticated %}
+    <a href="{% url 'reviews:write' kind target.slug %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-pencil"></i> {% if mine %}Edit your review{% else %}Write a review{% endif %}</a>
+  {% else %}
+    <a href="{% url 'login' %}?next={{ back|urlencode }}" class="sbl-link text-sm">Log in to write a review</a>
+  {% endif %}
+</div>
+{% if total %}
+  <p class="mt-2 text-warm-700"><span class="text-2xl font-bold text-warm-900">{{ target.average_rating|floatformat:1 }}</span> <span class="text-earth-ochre">{% for _ in "x"|ljust:rounded %}★{% endfor %}</span> · {{ total }} review{{ total|pluralize }}</p>
+  <ul class="mt-4 divide-y divide-warm-200">
+    {% for review in reviews %}
+      <li class="py-4" x-data="{ reporting: false }">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="text-earth-ochre" title="{{ review.rating }} of 5">{% for _ in "x"|ljust:review.rating %}★{% endfor %}</span>
+          {% if review.title %}<span class="font-semibold text-warm-900">{{ review.title }}</span>{% endif %}
+          {% if review.is_verified_visit %}<span class="sbl-badge sbl-badge-success" title="Ticked this off on their bucket list"><i class="bi bi-patch-check"></i> Been there</span>{% endif %}
+        </div>
+        <p class="mt-1 whitespace-pre-line text-warm-700">{{ review.comment }}</p>
+        <p class="mt-1 text-xs text-warm-500">
+          @{{ review.user.username }} · {{ review.created_at|date:"M j, Y" }}{% if review.visit_date %} · visited {{ review.visit_date|date:"M Y" }}{% endif %}
+          {% if user.is_authenticated and review.user_id != user.pk %}
+            {% if review.pk in reported %}· reported{% else %}· <button type="button" class="hover:underline" @click="reporting = !reporting">Report</button>{% endif %}
+          {% endif %}
+        </p>
+        {% if user.is_authenticated and review.user_id != user.pk and review.pk not in reported %}
+          <form method="post" action="{% url 'reviews:report' review.pk %}" x-show="reporting" x-cloak class="mt-3 space-y-2 rounded-lg bg-warm-50 p-3 text-sm">{% csrf_token %}
+            <label class="sbl-label" for="reason-{{ review.pk }}">What's wrong with it?</label>
+            <select name="reason" id="reason-{{ review.pk }}" class="sbl-input" required>{% for value, label in report_form.fields.reason.choices %}{% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}{% endfor %}</select>
+            <textarea name="details" rows="2" class="sbl-input" placeholder="Anything else? (optional)" aria-label="Details"></textarea>
+            <button type="submit" class="sbl-btn sbl-btn-outline">Send report</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% if total > reviews|length %}<p class="text-sm text-warm-500">Showing the {{ reviews|length }} newest.</p>{% endif %}
+{% else %}
+  <p class="mt-2 text-warm-600">No reviews yet.{% if user.is_authenticated and not mine %} Been? Be the first to say how it was.{% endif %}</p>
+{% endif %}

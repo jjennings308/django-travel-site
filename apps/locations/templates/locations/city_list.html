@@ -121,7 +121,7 @@
                         <div class="flex justify-between text-warm-500 text-sm border-t border-warm-200 pt-4 mt-4">
                             <span><i class="bi bi-geo-alt mr-1"></i>{{ city.poi_count }} POIs</span>
                             {% if city.average_rating %}
-                                <span>⭐ {{ city.average_rating }}</span>
+                                <span>⭐ {{ city.average_rating|floatformat:1 }} ({{ city.review_count }})</span>
                             {% endif %}
                         </div>
                     </div>

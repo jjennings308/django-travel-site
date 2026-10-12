@@ -40,6 +40,7 @@ urlpatterns = [
     path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
     path('approval/', include('apps.approval_system.urls')),
     path('notifications/', include('apps.notifications.urls')),
+    path('reviews/', include('apps.reviews.urls')),
 ]
 
 if settings.DEBUG:

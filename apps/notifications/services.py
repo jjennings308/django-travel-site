@@ -23,6 +23,7 @@ KINDS = {
     "role_request_decided": "Your role request was decided",
     "trip_access_granted": "You were added to a trip",
     "badge_earned": "You earned a badge",
+    "review_reported": "A review was reported",
 }
 CATEGORY = "Activity on your account"
 

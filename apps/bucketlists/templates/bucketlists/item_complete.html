@@ -16,6 +16,12 @@
       {% include "events/partials/_field.html" with field=form.user_rating %}
       {% include "events/partials/_field.html" with field=form.completion_notes %}
       {% include "events/partials/_field.html" with field=form.photos %}
+      {% if form.share_review %}
+        <div class="mb-4 rounded-lg bg-warm-50 p-3">
+          <label class="flex items-start gap-2 font-medium text-warm-800">{{ form.share_review }} <span>{{ form.share_review.label }}</span></label>
+          <p class="sbl-help ml-6">{{ form.share_review.help_text }}</p>
+        </div>
+      {% endif %}
       <div class="flex justify-end gap-2"><a href="{% if already_done %}{% url 'bucketlists:adventures' %}{% else %}{% url 'bucketlists:dashboard' %}{% endif %}" class="sbl-btn sbl-btn-outline">Cancel</a><button type="submit" class="sbl-btn sbl-btn-secondary"><i class="bi bi-check-lg"></i>{% if already_done %}Save{% else %}Mark as done{% endif %}</button></div>
     </form>
   </div>

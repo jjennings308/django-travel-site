@@ -52,7 +52,7 @@ class ReviewAdmin(admin.ModelAdmin):
         'location__name',
         'trip__title'
     ]
-    autocomplete_fields = ['user', 'vendor', 'activity', 'event', 'location', 'trip']
+    autocomplete_fields = ['user', 'vendor', 'activity', 'event', 'location', 'poi', 'trip']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
     inlines = [ReviewResponseInline]
@@ -68,6 +68,7 @@ class ReviewAdmin(admin.ModelAdmin):
                 'activity',
                 'event',
                 'location',
+                'poi',
                 'trip'
             ),
             'description': 'Select ONE target based on review_type (or none for site feedback)'
@@ -148,6 +149,7 @@ class ReviewAdmin(admin.ModelAdmin):
             'activity': '#10B981',
             'event': '#F59E0B',
             'location': '#8B5CF6',
+            'poi': '#8B5CF6',
             'trip': '#EC4899',
             'site': '#6B7280'
         }
@@ -261,6 +263,7 @@ class ReviewAdmin(admin.ModelAdmin):
             'activity',
             'event',
             'location',
+            'poi',
             'trip'
         )
         return queryset

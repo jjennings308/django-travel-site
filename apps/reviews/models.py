@@ -5,7 +5,7 @@ from django.conf import settings
 from apps.vendors.models import Vendor
 from apps.activities.models import Activity
 from apps.events.models import Event
-from apps.locations.models import City
+from apps.locations.models import City, POI
 from apps.trips.models import Trip
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -25,7 +25,8 @@ class Review(TimeStampedModel):
         ('vendor', 'Vendor'),
         ('activity', 'Activity'),
         ('event', 'Event'),
-        ('location', 'Location'),
+        ('location', 'City'),
+        ('poi', 'Place'),
         ('trip', 'Trip'),
         ('site', 'Website Feedback')
     ]
@@ -65,6 +66,15 @@ class Review(TimeStampedModel):
         null=True,
         blank=True,
         related_name='reviews'
+    )
+    
+    poi = models.ForeignKey(
+        POI,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='reviews',
+        verbose_name='place'
     )
     
     trip = models.ForeignKey(
@@ -180,7 +190,7 @@ class Review(TimeStampedModel):
     # Moderation
     is_approved = models.BooleanField(
         default=True,
-        help_text="Approved by moderators"
+        help_text="Shown on the site; untick to hide (also hidden automatically after 3 open reports)"
     )
     
     is_featured = models.BooleanField(
@@ -220,6 +230,7 @@ class Review(TimeStampedModel):
             ['user', 'activity'],
             ['user', 'event'],
             ['user', 'location'],
+            ['user', 'poi'],
             ['user', 'trip'],
         ]
     
@@ -227,6 +238,11 @@ class Review(TimeStampedModel):
         target = self.get_review_target_name()
         return f"{self.user.username}'s review of {target} ({self.rating}★)"
     
+    @property
+    def target(self):
+        """The activity, event, city or place reviewed (None for vendor/trip/site reviews)."""
+        return self.activity or self.event or self.location or self.poi
+
     def get_review_target_name(self):
         """Get the name of what's being reviewed"""
         if self.vendor:
@@ -237,6 +253,8 @@ class Review(TimeStampedModel):
             return self.event.name
         elif self.location:
             return self.location.name
+        elif self.poi:
+            return self.poi.name
         elif self.trip:
             return self.trip.name
         elif self.review_type == 'site':
@@ -270,6 +288,7 @@ class Review(TimeStampedModel):
             bool(self.activity),
             bool(self.event),
             bool(self.location),
+            bool(self.poi),
             bool(self.trip)
         ])
         
