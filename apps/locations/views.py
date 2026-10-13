@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, Count, Prefetch
+from django.db.models import BooleanField, Count, ExpressionWrapper, Prefetch, Q
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
@@ -14,6 +14,12 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import BreadcrumbPatterns
 
 from .forms import CityForm, POIForm, RegionForm
+
+
+def pictures_first(queryset, *order):
+    """Order ``queryset`` with the ones that have a picture first, then by ``order``."""
+    has_picture = ExpressionWrapper(Q(featured_media__isnull=False), output_field=BooleanField())
+    return queryset.annotate(_has_picture=has_picture).order_by("-_has_picture", *order)
 
 
 
@@ -100,7 +106,7 @@ def country_list(request):
     if continent_filter:
         countries = countries.filter(continent=continent_filter)
     
-    countries = countries.order_by('name')
+    countries = pictures_first(countries, 'name')
     
     # Pagination
     paginator = Paginator(countries, 25)
@@ -134,20 +140,19 @@ def country_detail(request, slug):
     )
     
     # Get regions with city count
-    regions = country.regions.annotate(
-        total_cities=Count('cities')
-    ).order_by('name')
+    regions = pictures_first(country.regions.annotate(total_cities=Count('cities')), 'name')
     
     # Get major cities
-    cities = country.cities.filter(
+    cities = pictures_first(country.cities.filter(
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('region', 'featured_media').order_by('-population')[:10]
+    ).select_related('region', 'featured_media'), '-population')[:10]
     
     # Get featured POIs
     featured_pois = POI.objects.filter(
         city__country=country,
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('city', 'featured_media').order_by('-visitor_count', 'name')[:8]
+    ).select_related('city', 'featured_media')
+    featured_pois = pictures_first(featured_pois, '-visitor_count', 'name')[:8]
     
     context = {
         'country': country, 'can_edit': can_edit(request.user, country),
@@ -321,7 +326,7 @@ def region_list(request):
             Q(country__name__icontains=search_query)
         )
     
-    regions = regions.order_by('country__name', 'name')
+    regions = pictures_first(regions, 'country__name', 'name')
     
     # Pagination
     paginator = Paginator(regions, 25)
@@ -354,9 +359,9 @@ def region_detail(request, slug):
     )
     
     # Get cities in this region
-    cities = region.cities.filter(
+    cities = pictures_first(region.cities.filter(
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('featured_media').order_by('-population')
+    ).select_related('featured_media'), '-population')
     
     context = {
         'region': region, 'can_edit': can_edit(request.user, region),
@@ -468,7 +473,7 @@ def city_list(request):
             Q(region__name__icontains=search_query)
         )
     
-    cities = cities.order_by('country__name', 'name')
+    cities = pictures_first(cities, 'country__name', 'name')
     
     # Pagination
     paginator = Paginator(cities, 25)
@@ -506,7 +511,8 @@ def city_detail(request, slug):
     # Get POIs in this city
     pois = city.pois.filter(
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('featured_media').order_by('-visitor_count', 'name')
+    ).select_related('featured_media')
+    pois = pictures_first(pois, '-visitor_count', 'name')
     
     context = {
         'city': city, 'can_edit': can_edit(request.user, city),
@@ -635,7 +641,7 @@ def poi_list(request):
             Q(description__icontains=search_query)
         )
     
-    pois = pois.order_by('city__country__name', 'city__name', 'name')
+    pois = pictures_first(pois, 'city__country__name', 'city__name', 'name')
     
     # Pagination
     paginator = Paginator(pois, 25)
