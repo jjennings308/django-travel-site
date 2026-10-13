@@ -49,7 +49,11 @@
     ready: function () { return !!window.L; },
     create: function (el, opts) {
       var map = L.map(el, { scrollWheelZoom: false });
-      L.tileLayer(opts.tiles, { maxZoom: 19, attribution: opts.attribution }).addTo(map);
+      // OpenStreetMap's tile policy requires a Referer naming the site. The site-wide policy is
+      // "same-origin" (no Referer to other sites), so tiles alone send the origin only
+      // (https://sharebucketlist.com/, never the page path); without it the tiles are blocked.
+      L.tileLayer(opts.tiles, { maxZoom: 19, attribution: opts.attribution,
+                                referrerPolicy: "strict-origin-when-cross-origin" }).addTo(map);
       map.on("focus", function () { map.scrollWheelZoom.enable(); });
       map.on("blur", function () { map.scrollWheelZoom.disable(); });
       return map;

@@ -74,3 +74,12 @@ class PlacesMapTests(TestCase):
     def test_login_required(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("locations:poi_map_data")).status_code, 302)
+
+
+class TileRefererTests(TestCase):
+    def test_tiles_send_the_site_origin(self):
+        """OpenStreetMap blocks tile requests without a Referer; the site's own policy is
+        "same-origin", so the tile layer must ask for the origin to be sent."""
+        from django.contrib.staticfiles import finders
+        with open(finders.find("core/map.js"), encoding="utf-8") as f:
+            self.assertIn('referrerPolicy: "strict-origin-when-cross-origin"', f.read())
