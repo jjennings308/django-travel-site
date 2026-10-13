@@ -31,3 +31,13 @@ class SidebarTests(TestCase):
                            (reverse("trips:trip_list"), "Trips"), (reverse("activities:activity_list"), "Activities")):
             with self.subTest(url=url):
                 self.assertEqual(ACTIVE.findall(self.nav(url)), [label])
+
+    def test_sections_fold_and_the_current_one_starts_open(self):
+        nav = self.nav(reverse("trips:trip_list"))
+        self.assertEqual(nav.count('@click="toggle()"'), 5)  # one toggle per numbered section
+        sections = {m.group(1): m.group(0) for m in re.finditer(r"sbl-nav-(\w+)[^\"]*", nav)}
+        opened = re.findall(r"open: true, toggle\(\) \{[^}]*sbl-nav-(\w+)", nav)
+        self.assertEqual(opened, ["plan"])  # on a trips page, Plan is forced open
+        self.assertEqual(set(sections), {"discover", "dream", "dates", "plan", "done"})
+        self.assertIn("Home", nav)
+        self.assertIn("About", nav)
