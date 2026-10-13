@@ -45,7 +45,7 @@
       
       {# Desktop sidebar (authenticated users only) #}
       {% if user.is_authenticated %}
-        <aside class="hidden lg:block w-52 flex-shrink-0 print:hidden">
+        <aside class="hidden lg:block w-48 flex-shrink-0 print:hidden">
           {% include "partials/_sidebar.html" %}
         </aside>
       {% endif %}
