@@ -328,7 +328,7 @@ class SeasonalActivityTests(EventFixture):
         super().setUp()
         from apps.activities.models import Activity
         from apps.locations.models import POI
-        self.stadium = POI.objects.create(name="Testville Stadium", slug="testville-stadium", city=self.city, poi_type="sports",
+        self.stadium = POI.objects.create(name="Testville Stadium", slug="testville-stadium", city=self.city, poi_type_id="sports",
                                           latitude=1, longitude=2, approval_status=ApprovalStatus.APPROVED)
         self.team = Activity.objects.create(category=self.music, name="See the Testers play", description="Home games.",
                                             venue=self.stadium, recurrence="seasonal", usual_months=[9, 10, 11, 12, 1],

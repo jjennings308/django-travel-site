@@ -76,7 +76,7 @@
                                             {% endif %}
                                             <div class="p-5">
                                                 <h6 class="font-semibold text-warm-900 mb-1">{{ poi.name }}</h6>
-                                                <p class="text-warm-500 text-sm mb-0">{{ poi.get_poi_type_display }}</p>
+                                                <p class="text-warm-500 text-sm mb-0">{{ poi.poi_type.name }}</p>
                                                 {% if poi.entry_fee %}
                                                     <p class="text-warm-500 text-sm mb-0">{{ poi.entry_fee_currency }} {{ poi.entry_fee }}</p>
                                                 {% endif %}

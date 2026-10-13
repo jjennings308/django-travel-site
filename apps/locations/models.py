@@ -470,6 +470,51 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
         super().save(*args, **kwargs)
 
 
+# The place types a site starts with (seeded by locations 0012); staff manage the list in the admin.
+DEFAULT_PLACE_TYPES = [
+    ('landmark', 'Landmark'),
+    ('museum', 'Museum'),
+    ('park', 'Park/Garden'),
+    ('beach', 'Beach'),
+    ('mountain', 'Mountain'),
+    ('temple', 'Temple/Religious Site'),
+    ('historical', 'Historical Site'),
+    ('viewpoint', 'Viewpoint'),
+    ('entertainment', 'Entertainment'),
+    ('shopping', 'Shopping'),
+    ('nightlife', 'Nightlife'),
+    ('nature', 'Nature Reserve'),
+    ('sports', 'Sports Venues'),
+    ('other', 'Other'),
+]
+
+
+class PlaceType(TimeStampedModel):
+    """What kind of place a POI is (Museum, Viewpoint, Sports Venues...). Managed in the admin.
+
+    Kept apart from activity/event categories on purpose: a type says what a place *is*,
+    a category what kind of experience something is. POI.poi_type stores the ``code``,
+    so the code never changes once a type exists (read-only in the admin).
+    """
+    code = models.SlugField(max_length=20, unique=True, help_text="Short key stored on each place; can't be changed later")
+    name = models.CharField(max_length=60)
+    icon = models.CharField(max_length=50, blank=True, help_text="Optional Bootstrap icon class, e.g. bi-bank")
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True, help_text="Untick to stop offering it; places keep it")
+
+    class Meta:
+        db_table = 'locations_place_types'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def choices(cls):
+        """(code, name) of the active types, for hand-written selects."""
+        return list(cls.objects.filter(is_active=True).values_list('code', 'name'))
+
+
 class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Points of Interest (attractions, landmarks, etc.)"""
     
@@ -481,26 +526,17 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     
     name = models.CharField(max_length=200)
     
-    POI_TYPES = [
-        ('landmark', 'Landmark'),
-        ('museum', 'Museum'),
-        ('park', 'Park/Garden'),
-        ('beach', 'Beach'),
-        ('mountain', 'Mountain'),
-        ('temple', 'Temple/Religious Site'),
-        ('historical', 'Historical Site'),
-        ('viewpoint', 'Viewpoint'),
-        ('entertainment', 'Entertainment'),
-        ('shopping', 'Shopping'),
-        ('nightlife', 'Nightlife'),
-        ('nature', 'Nature Reserve'),
-        ('sports', 'Sports Venues'),
-        ('other', 'Other')
-    ]
-    poi_type = models.CharField(
-        max_length=20,
-        choices=POI_TYPES,
-        default='landmark'
+    # Stores the PlaceType code in the original "poi_type" column (locations 0013), so the
+    # values from the old fixed list carried over untouched.
+    poi_type = models.ForeignKey(
+        PlaceType,
+        to_field='code',
+        db_column='poi_type',
+        db_index=False,  # Meta.indexes already has one on this column
+        on_delete=models.PROTECT,
+        default='landmark',
+        related_name='places',
+        verbose_name='type',
     )
     
     # Geographic data

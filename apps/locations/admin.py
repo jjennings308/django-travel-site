@@ -2,7 +2,9 @@
 from django import forms
 from django.contrib import admin
 from apps.approval_system.admin import ApprovableAdminMixin
-from .models import Country, Region, City, POI
+from django.db.models import Count
+
+from .models import Country, Region, City, POI, PlaceType
 from .widgets import CountryTaggedSelect
 
 
@@ -257,8 +259,33 @@ class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 
 
 
+@admin.register(PlaceType)
+class PlaceTypeAdmin(admin.ModelAdmin):
+    """Place types (what kind of place a POI is). The code is what places store, so it is
+    fixed once saved; a type in use can't be deleted (untick Active to retire it)."""
+    list_display = ['name', 'code', 'icon', 'sort_order', 'is_active', 'place_count']
+    list_editable = ['sort_order', 'is_active']
+    list_filter = ['is_active']
+    search_fields = ['name', 'code']
+    prepopulated_fields = {'code': ('name',)}
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(_places=Count('places'))
+
+    @admin.display(description='Places', ordering='_places')
+    def place_count(self, obj):
+        return obj._places
+
+    def get_readonly_fields(self, request, obj=None):
+        return ['code'] if obj else []
+
+    def get_prepopulated_fields(self, request, obj=None):
+        return {} if obj else self.prepopulated_fields
+
+
 @admin.register(POI)
 class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
+    list_select_related = ['city', 'poi_type']
     list_display = [
         'name', 'city', 'poi_type', 'entry_fee', 
         'average_rating', 'review_count', 'is_featured'

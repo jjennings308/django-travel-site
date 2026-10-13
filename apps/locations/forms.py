@@ -2,13 +2,22 @@
 """Edit forms for regions, cities and places (the country edit page predates these and
 reads the POST by hand). Approval, counters and featured flags stay in the admin."""
 from django import forms
+from django.db import models
 
 from apps.media_app.forms import PictureFormMixin
 
-from .models import POI, City, Country, Region
+from .models import POI, City, Country, PlaceType, Region
 from .widgets import CountryTaggedSelect
 
 INPUT = {"class": "sbl-input"}
+
+
+def active_place_types(poi=None):
+    """Active place types, plus the one a place already has if it has been retired."""
+    qs = PlaceType.objects.filter(is_active=True)
+    if poi is not None and poi.poi_type_id:
+        qs = PlaceType.objects.filter(models.Q(is_active=True) | models.Q(code=poi.poi_type_id))
+    return qs.order_by("sort_order", "name")
 
 
 class _LocationForm(PictureFormMixin, forms.ModelForm):
@@ -65,5 +74,6 @@ class POIForm(_LocationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["city"].queryset = City.objects.select_related("region", "country").order_by("name")
+        self.fields["poi_type"].queryset = active_place_types(self.instance)
         self.fields["city"].label_from_instance = lambda c: ", ".join(
             part for part in (c.name, c.region.code or c.region.name if c.region_id else "", c.country.name) if part)

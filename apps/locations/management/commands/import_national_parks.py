@@ -875,7 +875,7 @@ class Command(BaseCommand):
                     city=city,
                     name=park_data['name'],
                     defaults={
-                        'poi_type': 'nature',
+                        'poi_type_id': 'nature',
                         'latitude': Decimal(str(park_data['lat'])),
                         'longitude': Decimal(str(park_data['lon'])),
                         'description': park_data['description'],

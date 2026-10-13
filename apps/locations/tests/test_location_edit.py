@@ -60,7 +60,7 @@ class LocationEditTests(TestCase):
         self.assertEqual(self.city.approval_status, ApprovalStatus.APPROVED)  # unchanged
 
         self.client.post(reverse("locations:poi_edit", args=[self.poi.slug]),
-                         {"city": self.city.pk, "name": "Arches National Park", "poi_type": self.poi.poi_type,
+                         {"city": self.city.pk, "name": "Arches National Park", "poi_type": self.poi.poi_type_id,
                           "latitude": "38.7", "longitude": "-109.6", "website": "https://nps.gov/arch",
                           "entry_fee_currency": "USD", "wheelchair_accessible": "on"})
         self.poi.refresh_from_db()

@@ -100,7 +100,7 @@
                             📍 {{ poi.city.name }}, {{ poi.city.country.iso_code }}
                         </p>
                         
-                        <p class="text-warm-500 text-sm mb-4">{{ poi.get_poi_type_display }}</p>
+                        <p class="text-warm-500 text-sm mb-4">{{ poi.poi_type.name }}</p>
                         
                         {% if poi.description %}
                             <p class="text-warm-500 text-sm" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">

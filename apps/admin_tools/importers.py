@@ -226,7 +226,7 @@ def export_queryset(kind):
     elif kind == "city":
         qs = qs.select_related("country", "region")
     elif kind == "poi":
-        qs = qs.select_related("city__country", "city__region")
+        qs = qs.select_related("city__country", "city__region", "poi_type")
     return qs.order_by(*spec.order)
 
 
@@ -270,7 +270,7 @@ class Importer:
     def _choice(self, form_field, value):
         for key, label in form_field.choices:
             if key != "" and (str(key).lower() == value.lower() or str(label).lower() == value.lower()):
-                return key
+                return getattr(key, "value", key)  # a model choice (place type) gives its code
         raise ValueError(f"isn't one of: {', '.join(str(k) for k, _ in form_field.choices if k != '')}")
 
     def _country(self, value):

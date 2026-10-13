@@ -70,7 +70,7 @@ class SeasonAndVenueTests(ActivityPlaceFixture):
     def setUp(self):
         super().setUp()
         from apps.locations.models import POI
-        self.stadium = POI.objects.create(name="Allianz Arena", slug="allianz-arena", city=self.munich, poi_type="sports",
+        self.stadium = POI.objects.create(name="Allianz Arena", slug="allianz-arena", city=self.munich, poi_type_id="sports",
                                           latitude=48.2188, longitude=11.6247, approval_status=ApprovalStatus.APPROVED)
 
     def test_season_labels(self):

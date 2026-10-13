@@ -8,7 +8,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
-from .models import Country, Region, City, POI, LocationStatus, CapitalType
+from .models import Country, Region, City, POI, PlaceType, LocationStatus, CapitalType
 from apps.media_app.models import Media
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import BreadcrumbPatterns
@@ -151,7 +151,7 @@ def country_detail(request, slug):
     featured_pois = POI.objects.filter(
         city__country=country,
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('city', 'featured_media')
+    ).select_related('city', 'featured_media', 'poi_type')
     featured_pois = pictures_first(featured_pois, '-visitor_count', 'name')[:8]
     
     context = {
@@ -511,7 +511,7 @@ def city_detail(request, slug):
     # Get POIs in this city
     pois = city.pois.filter(
         approval_status=ApprovalStatus.APPROVED
-    ).select_related('featured_media')
+    ).select_related('featured_media', 'poi_type')
     pois = pictures_first(pois, '-visitor_count', 'name')
     
     context = {
@@ -622,7 +622,7 @@ def poi_list(request):
     poi_type = request.GET.get('type')
     search_query = request.GET.get('q', '')
     
-    pois = POI.objects.select_related('city', 'city__country', 'featured_media').all()
+    pois = POI.objects.select_related('city', 'city__country', 'featured_media', 'poi_type').all()
     
     # Apply filters
     if status_filter != 'all':
@@ -632,7 +632,7 @@ def poi_list(request):
         pois = pois.filter(city_id=city_id)
     
     if poi_type:
-        pois = pois.filter(poi_type=poi_type)
+        pois = pois.filter(poi_type_id=poi_type)
     
     if search_query:
         pois = pois.filter(
@@ -648,7 +648,7 @@ def poi_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    poi_types = POI.POI_TYPES
+    poi_types = PlaceType.choices()
     
     context = {
         'page_obj': page_obj,
@@ -667,7 +667,7 @@ def poi_detail(request, slug):
     """View POI details"""
     
     poi = get_object_or_404(
-        POI.objects.select_related('city', 'city__country', 'city__region', 'featured_media'),
+        POI.objects.select_related('city', 'city__country', 'city__region', 'featured_media', 'poi_type'),
         slug=slug
     )
         
@@ -701,6 +701,8 @@ def poi_add(request):
         parking_available = request.POST.get('parking_available') == 'on'
         featured_media_id = request.POST.get('featured_media_id')
         
+        if poi_type and not PlaceType.objects.filter(code=poi_type).exists():
+            poi_type = None
         if not all([name, city_id, poi_type, latitude, longitude]):
             messages.error(request, 'Please fill in all required fields.')
             return redirect('locations:poi_add')
@@ -714,7 +716,7 @@ def poi_add(request):
         poi = POI.objects.create(
             city=city,
             name=name,
-            poi_type=poi_type,
+            poi_type_id=poi_type,
             latitude=latitude,
             longitude=longitude,
             description=description,
@@ -750,7 +752,7 @@ def poi_add(request):
         approval_status=ApprovalStatus.APPROVED
     ).select_related('country').order_by('country__name', 'name')
     
-    poi_types = POI.POI_TYPES
+    poi_types = PlaceType.choices()
     user_media = Media.objects.filter(
         uploaded_by=request.user,
         media_type__in=['image', 'video']

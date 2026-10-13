@@ -292,7 +292,7 @@ class Command(BaseCommand):
                     city=city,
                     name=venue_data['name'],
                     defaults={
-                        'poi_type': 'sports',
+                        'poi_type_id': 'sports',
                         'latitude': Decimal(str(venue_data['lat'])),
                         'longitude': Decimal(str(venue_data['lon'])),
                         'description': venue_data['description'],

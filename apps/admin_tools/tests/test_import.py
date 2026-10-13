@@ -148,13 +148,30 @@ class LocationImportTests(ImportFixture):
         self.assertEqual((iceland.visa_required, iceland.approval_status, iceland.flag_emoji), (False, ApprovalStatus.APPROVED, "🇮🇸"))
         self.assertEqual((city.region.name, city.capital_type, city.is_capital), ("Capital Region", "country", True))
         poi = city.pois.get() if hasattr(city, "pois") else POI.objects.get(city=city)
-        self.assertEqual((poi.poi_type, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED))
+        self.assertEqual((poi.poi_type_id, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED))
         concert = Activity.objects.get(name="Organ concert")
         self.assertEqual((concert.venue, concert.city, concert.recurrence), (poi, city, "seasonal"))
         self.assertEqual(Event.objects.get(name="Organ concert June").poi, poi)
         # matched by ISO code: renaming via the file updates, not duplicates
         self.preview("country", "name,iso_code,iso3_code,continent\nIceland,is,ISL,Europe\n")
         self.assertEqual(self.client.get(reverse("admin_tools:import_preview")).context["counts"]["update"], 1)
+
+    def test_place_type_by_name_and_export_writes_the_name(self):
+        for kind, text in (("country", "name,iso_code,iso3_code,continent\nIceland,IS,ISL,Europe\n"),
+                           ("city", "name,country,latitude,longitude\nVik,Iceland,63.4,-19.0\n"),
+                           ("poi", "name,city,country,type,latitude,longitude\nReynisfjara,Vik,Iceland,beach,63.4,-19.0\n"
+                                   "Vik stadium,Vik,Iceland,Sports Venues,63.4,-19.0\n")):
+            page = self.preview(kind, text)
+            self.assertEqual(page.context["counts"]["error"], 0, [r.errors for r in page.context["importer"].rows])
+            self.confirm()
+        self.assertEqual(POI.objects.get(name="Vik stadium").poi_type_id, "sports")
+        page = self.preview("poi", "name,city,country,type,latitude,longitude\nX,Vik,Iceland,spaceport,1,2\n")
+        self.assertEqual(page.context["counts"]["error"], 1)
+        import io
+        from apps.admin_tools.importers import export_csv
+        out = io.StringIO()
+        export_csv("poi", out)
+        self.assertIn("Sports Venues", out.getvalue())
 
     def test_place_needs_an_existing_city_and_region_in_country(self):
         page = self.preview("poi", "name,city,latitude,longitude\nSomewhere,Atlantis,1,2\n")

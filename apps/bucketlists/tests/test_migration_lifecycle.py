@@ -39,6 +39,8 @@ class LifecycleMigrationTests(TransactionTestCase):
         user = User.objects.create(username="u", email="u@example.com")
         country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
         city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2)
+        # TransactionTestCase empties every table, including the place types locations 0012 seeded.
+        apps.get_model("locations", "PlaceType").objects.get_or_create(code="landmark", defaults={"name": "Landmark"})
         poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=city, latitude=1, longitude=2)
         festival, _ = ActivityCategory.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
         okto = Activity.objects.create(category=festival, name="Oktoberfest", slug="okto", description="d", created_by=user)
