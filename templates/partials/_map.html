@@ -1,0 +1,15 @@
+{# templates/partials/_map.html — one map. Pass data_url (a view returning GeoJSON), optional height (CSS, default 32rem) and route=True to join numbered points with a line. Drawn by static core/map.js through the adapter named by settings.MAP_PROVIDER ("osm": Leaflet + OpenStreetMap tiles). New maps use this partial and a GeoJSON view; never call a map provider's API directly, so the provider can be swapped. #}
+{% load static %}
+<div class="relative overflow-hidden rounded-xl border border-warm-200 bg-warm-100" style="height: {{ height|default:'32rem' }};">
+  <div class="h-full w-full" data-sbl-map data-url="{{ data_url }}" data-provider="{{ MAP_PROVIDER }}" data-tiles="{{ MAP_TILE_URL }}" data-attribution="{{ MAP_ATTRIBUTION }}"{% if route %} data-route="1"{% endif %}>
+    <p class="flex h-full items-center justify-center text-sm text-warm-500" data-sbl-map-status>Loading map…</p>
+  </div>
+</div>
+{% if MAP_PROVIDER == "osm" %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" integrity="sha512-mQ77VzAakzdpWdgfL/lM1ksNy89uFgibRQANsNneSTMD/bj0Y/8+94XMwYhnbzx8eki2hrbPpDm0vD0CiT2lcg==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" integrity="sha512-6ZCLMiYwTeli2rVh3XAPxy3YoR5fVxGdH/pz+KMCzRY2M65Emgkw00Yqmhh8qLGeYQ3LbVZGdmOX9KUjSKr0TA==" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js" integrity="sha512-OFs3W4DIZ5ZkrDhBFtsCP6JXtMEDGmhl0QPlmWYBJay40TT1n3gt2Xuw8Pf/iezgW9CdabjkNChRqozl/YADmg==" crossorigin="anonymous"></script>
+{% endif %}
+<script src="{% static 'core/map.js' %}"></script>

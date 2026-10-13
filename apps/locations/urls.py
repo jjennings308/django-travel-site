@@ -28,6 +28,8 @@ urlpatterns = [
     
     # POIs
     path('pois/', views.poi_list, name='poi_list'),
+    path('map/', views.poi_map, name='poi_map'),
+    path('map/data.json', views.poi_map_data, name='poi_map_data'),
     path('pois/add/', views.poi_add, name='poi_add'),
     path('pois/<slug:slug>/', views.poi_detail, name='poi_detail'),
     path('pois/<slug:slug>/edit/', views.poi_edit, name='poi_edit'),

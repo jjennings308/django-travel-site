@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{# locations/poi_map.html — published places on a map (GeoJSON from locations:poi_map_data, drawn by partials/_map.html), with the Places list's filters #}
+{% block title %}Places map{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="mb-2 text-4xl font-bold">Places map</h1>
+            <p class="text-warm-500">Every published place; zoom in to split the clusters, click a pin for details.</p>
+        </div>
+        {% include "locations/partials/_list_map_switch.html" with active="map" %}
+    </div>
+
+    <div class="sbl-card mb-6 shadow-sm">
+        <div class="p-5">
+            <form method="get">
+                <div class="grid grid-cols-12 gap-4">
+                    {% include "locations/partials/_place_filter_fields.html" %}
+                    <div class="col-span-12 flex items-end md:col-span-4">
+                        <button type="submit" class="sbl-btn sbl-btn-danger w-full"><i class="bi bi-funnel mr-2"></i>Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include "partials/_map.html" with data_url=map_data_url height="36rem" %}
+</div>
+{% endblock %}

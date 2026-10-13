@@ -216,6 +216,15 @@ SITE_TAGLINE = 'Plan it. Live it. Share it.'
 # Details used by the Terms, Privacy and Safety pages (apps/pages, templates under
 # pages/legal/). Set them in .env; while any is still a [bracketed] placeholder the
 # pages show a "draft" banner. Have the wording reviewed before public launch.
+# Maps (templates/partials/_map.html + core/map.js). Data is GeoJSON from our own views, so
+# the provider is swappable: "osm" (Leaflet + OpenStreetMap tiles, no key) is built in;
+# another provider means a new adapter in core/map.js plus these settings.
+MAP_PROVIDER = os.environ.get("MAP_PROVIDER", "osm")
+MAP_TILE_URL = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+MAP_ATTRIBUTION = os.environ.get(
+    "MAP_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until a Google adapter exists
+
 LEGAL = {
     "entity": os.environ.get("LEGAL_ENTITY_NAME", "[Legal entity name]"),
     "contact_email": os.environ.get("LEGAL_CONTACT_EMAIL", "[privacy@your-domain]"),

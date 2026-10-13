@@ -1,0 +1,5 @@
+{# locations/partials/_list_map_switch.html — List / Map toggle for places; keeps the filters (q, country, type). Pass active="list" or "map". #}
+<span class="inline-flex overflow-hidden rounded-lg border border-warm-300 text-sm font-medium">
+  <a href="{% url 'locations:poi_list' %}{% querystring page=None status=None %}" class="flex items-center gap-1.5 px-3 py-2 {% if active == 'list' %}bg-earth-clay text-white{% else %}bg-white text-warm-700 hover:bg-warm-100{% endif %}"><i class="bi bi-grid"></i> List</a>
+  <a href="{% url 'locations:poi_map' %}{% querystring page=None status=None %}" class="flex items-center gap-1.5 border-l border-warm-300 px-3 py-2 {% if active == 'map' %}bg-earth-clay text-white{% else %}bg-white text-warm-700 hover:bg-warm-100{% endif %}"><i class="bi bi-map"></i> Map</a>
+</span>

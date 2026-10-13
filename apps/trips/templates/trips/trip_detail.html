@@ -21,6 +21,7 @@
         {% if can_edit %}<a class="btn print:hidden" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
         <a class="btn-quiet print:hidden" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
         <a class="btn-quiet print:hidden" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>
+        <a class="btn-quiet print:hidden" href="{% url 'trips:trip_map' trip.pk %}">Map</a>
         {% if can_delete %}<a class="link-quiet font-medium hover:text-red-700 print:hidden" href="{% url 'trips:trip_delete' trip.pk %}">Delete</a>{% endif %}
         {% if can_edit and not trip.public_token %}<form method="post" action="{% url 'trips:trip_share' trip.pk %}" class="print:hidden">{% csrf_token %}<button type="submit" class="btn-quiet" title="Make a read-only link with the trip's name, dates and outline">Share</button></form>{% endif %}
       </div>

@@ -12,6 +12,10 @@ def site_branding(request):
         # In DEBUG, a changing ?v= on the stylesheet so the browser never shows
         # stale CSS while styles are being edited; empty in production.
         "TAILWIND_CSS_VERSION": int(time.time()) if settings.DEBUG else "",
+        # Map provider settings for templates/partials/_map.html (no key is ever exposed for "osm").
+        "MAP_PROVIDER": getattr(settings, "MAP_PROVIDER", "osm"),
+        "MAP_TILE_URL": getattr(settings, "MAP_TILE_URL", ""),
+        "MAP_ATTRIBUTION": getattr(settings, "MAP_ATTRIBUTION", ""),
     }
 
 

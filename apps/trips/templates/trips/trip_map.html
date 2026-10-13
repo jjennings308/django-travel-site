@@ -1,0 +1,40 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Trip map: the days' cities in date order (numbered, joined by a line) and the trip's other cities, drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
+{% endcomment %}
+{% block title %}Map — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Map</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Map</h1>
+      <p class="page-subtitle">{{ stops|length }} stop{{ stops|length|pluralize }} in day order{% if others %} · {{ others|length }} more cit{{ others|length|pluralize:"y,ies" }} on the trip{% endif %}</p>
+    </div>
+  </div>
+
+  {% if stops or others %}
+    {% url 'trips:trip_map_data' trip.pk as data_url %}
+    {% include "partials/_map.html" with data_url=data_url height="34rem" route=True %}
+    {% if stops %}
+      <ol class="card mt-6 divide-y divide-zinc-200 p-0">
+        {% for stop in stops %}
+          <li class="flex items-center gap-3 px-5 py-3">
+            <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-700 text-sm font-bold text-white">{{ forloop.counter }}</span>
+            <span class="min-w-0 grow"><a class="link-quiet font-medium" href="{% url 'locations:city_detail' stop.city.slug %}">{{ stop.city.name }}</a><span class="text-sm text-zinc-500">, {{ stop.city.country.name }}</span></span>
+            <span class="text-sm text-zinc-500">{% if stop.first.date == stop.last.date %}{{ stop.first.date|date:"M j" }}{% else %}{{ stop.first.date|date:"M j" }} – {{ stop.last.date|date:"M j" }}{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  {% else %}
+    <div class="card p-8 text-center text-zinc-500">
+      <p>No places on this trip yet.{% if can_edit %} Add the cities you're visiting under <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>, and give each day its city.{% endif %}</p>
+    </div>
+  {% endif %}
+{% endblock %}

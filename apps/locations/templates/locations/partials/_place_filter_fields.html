@@ -1,0 +1,25 @@
+{# locations/partials/_place_filter_fields.html — Search, Country and Type for the Places list and map (views._place_filters); three grid cells of a 12-column row #}
+                    <div class="col-span-12 md:col-span-3">
+                        <label for="filter_q" class="sbl-label text-sm font-semibold">Search</label>
+                        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search places..." class="sbl-input">
+                    </div>
+
+                    <div class="col-span-12 md:col-span-3">
+                        <label for="filter_country" class="sbl-label text-sm font-semibold">Country</label>
+                        <select id="filter_country" name="country" class="sbl-input">
+                            <option value="">All Countries</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-span-12 md:col-span-2">
+                        <label class="sbl-label text-sm font-semibold">Type</label>
+                        <select name="type" class="sbl-input">
+                            <option value="">All Types</option>
+                            {% for value, label in poi_types %}
+                                <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>

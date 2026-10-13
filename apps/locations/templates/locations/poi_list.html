@@ -14,9 +14,12 @@
             <h1 class="text-4xl font-bold mb-2">Points of Interest</h1>
             <p class="text-warm-500">Discover attractions, landmarks, and places</p>
         </div>
-        <a href="{% url 'locations:poi_add' %}" class="sbl-btn sbl-btn-danger">
-            <i class="bi bi-plus-lg mr-2"></i>Add POI
-        </a>
+        <div class="flex flex-wrap gap-2">
+            {% include "locations/partials/_list_map_switch.html" with active="list" %}
+            <a href="{% url 'locations:poi_add' %}" class="sbl-btn sbl-btn-danger">
+                <i class="bi bi-plus-lg mr-2"></i>Add POI
+            </a>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -25,30 +28,7 @@
             <form method="get">
                 {# Search, Country, Type, Status. Country lists only countries that have places. #}
                 <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12 md:col-span-3">
-                        <label for="filter_q" class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search places..." class="sbl-input">
-                    </div>
-
-                    <div class="col-span-12 md:col-span-3">
-                        <label for="filter_country" class="sbl-label text-sm font-semibold">Country</label>
-                        <select id="filter_country" name="country" class="sbl-input">
-                            <option value="">All Countries</option>
-                            {% for country in countries %}
-                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="col-span-12 md:col-span-2">
-                        <label class="sbl-label text-sm font-semibold">Type</label>
-                        <select name="type" class="sbl-input">
-                            <option value="">All Types</option>
-                            {% for value, label in poi_types %}
-                                <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                    {% include "locations/partials/_place_filter_fields.html" %}
 
                     <div class="col-span-12 md:col-span-2">
                         <label class="sbl-label text-sm font-semibold">Status</label>

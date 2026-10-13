@@ -4,9 +4,12 @@
 
 {% block content %}
 <div class="py-2">
-  <header class="mb-6">
-    <h1 class="text-3xl font-bold text-warm-900">Location Dashboard</h1>
-    <p class="mt-1 text-warm-500">Manage countries, regions, cities, and points of interest</p>
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-warm-900">Location Dashboard</h1>
+      <p class="mt-1 text-warm-500">Manage countries, regions, cities, and points of interest</p>
+    </div>
+    <a href="{% url 'locations:poi_map' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-map"></i> Places map</a>
   </header>
 
   <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" aria-label="Counts">

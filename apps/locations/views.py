@@ -1,5 +1,6 @@
 # locations/views.py
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import BooleanField, Count, ExpressionWrapper, Prefetch, Q
@@ -613,38 +614,75 @@ def city_add(request):
 # POI VIEWS
 # ============================================================================
 
+def _place_filters(request, pois):
+    """Apply the Places filters shared by the list and the map (search, country, type,
+    city) to ``pois``; returns the queryset and the values as given."""
+    filters = {name: request.GET.get(name, '') for name in ('q', 'country', 'type', 'city')}
+    if filters['city'].isdigit():
+        pois = pois.filter(city_id=filters['city'])
+    if filters['country'].isdigit():
+        pois = pois.filter(city__country_id=filters['country'])
+    if filters['type']:
+        pois = pois.filter(poi_type_id=filters['type'])
+    if filters['q']:
+        q = filters['q']
+        pois = pois.filter(Q(name__icontains=q) | Q(city__name__icontains=q) | Q(description__icontains=q))
+    return pois, filters
+
+
+def _place_filter_choices():
+    return {
+        'poi_types': PlaceType.choices(),
+        # Only countries that have places, so every choice finds something.
+        'countries': Country.objects.filter(cities__pois__isnull=False).distinct().order_by('name'),
+    }
+
+
+@login_required
+def poi_map(request):
+    """All published places on a map, with the same filters as the Places list."""
+    _, filters = _place_filters(request, POI.objects.none())
+    return render(request, 'locations/poi_map.html', {
+        **_place_filter_choices(),
+        'search_query': filters['q'], 'selected_type': filters['type'], 'selected_country': filters['country'],
+        'map_data_url': reverse('locations:poi_map_data') + (f"?{request.GET.urlencode()}" if request.GET else ''),
+        'breadcrumb_list': BreadcrumbPatterns.pois_list,
+    })
+
+
+@login_required
+def poi_map_data(request):
+    """Published places as GeoJSON (the map's data; provider-neutral)."""
+    pois = POI.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related(
+        'city__country', 'poi_type', 'featured_media')
+    pois, _ = _place_filters(request, pois)
+    features = []
+    for poi in pois.order_by('name'):
+        media = poi.featured_media
+        features.append({
+            'type': 'Feature',
+            'geometry': {'type': 'Point', 'coordinates': [float(poi.longitude), float(poi.latitude)]},
+            'properties': {
+                'name': poi.name,
+                'subtitle': f"{poi.poi_type.name} · {poi.city.name}, {poi.city.country.name}",
+                'url': reverse('locations:poi_detail', args=[poi.slug]),
+                'image': media.file.url if media and media.media_type == 'image' else '',
+            },
+        })
+    return JsonResponse({'type': 'FeatureCollection', 'features': features})
+
+
 @login_required
 def poi_list(request):
     """List all POIs with filtering"""
     
     status_filter = request.GET.get('status', 'all')
-    city_id = request.GET.get('city')
-    country_id = request.GET.get('country', '')
-    poi_type = request.GET.get('type')
-    search_query = request.GET.get('q', '')
-    
     pois = POI.objects.select_related('city', 'city__country', 'featured_media', 'poi_type').all()
-    
-    # Apply filters
     if status_filter != 'all':
         pois = pois.filter(approval_status=status_filter)
-    
-    if city_id:
-        pois = pois.filter(city_id=city_id)
+    pois, filters = _place_filters(request, pois)
+    search_query, poi_type, country_id = filters['q'], filters['type'], filters['country']
 
-    if country_id.isdigit():
-        pois = pois.filter(city__country_id=country_id)
-    
-    if poi_type:
-        pois = pois.filter(poi_type_id=poi_type)
-    
-    if search_query:
-        pois = pois.filter(
-            Q(name__icontains=search_query) |
-            Q(city__name__icontains=search_query) |
-            Q(description__icontains=search_query)
-        )
-    
     pois = pictures_first(pois, 'city__country__name', 'city__name', 'name')
     
     # Pagination
@@ -652,16 +690,12 @@ def poi_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    poi_types = PlaceType.choices()
-    
     context = {
+        **_place_filter_choices(),
         'page_obj': page_obj,
         'status_filter': status_filter,
         'search_query': search_query,
-        'poi_types': poi_types,
         'selected_type': poi_type,
-        # Only countries that have places, so every choice finds something.
-        'countries': Country.objects.filter(cities__pois__isnull=False).distinct().order_by('name'),
         'selected_country': country_id,
         'breadcrumb_list': BreadcrumbPatterns.pois_list
     }

@@ -1217,3 +1217,52 @@ def trip_photo_cover(request, pk, media_pk):
     trip.album.save(update_fields=["cover_image"])
     messages.success(request, "Cover photo set.")
     return redirect("trips:trip_photos", pk=trip.pk)
+
+
+# ---- map ---------------------------------------------------------------------------------
+def _trip_stops(trip):
+    """(stops, others): the days' cities in date order, consecutive repeats merged, as
+    dicts {city, first, last, days}; and the trip's other cities, not on any day."""
+    stops = []
+    for day in trip.days.filter(city__isnull=False).select_related("city__country").order_by("date"):
+        if stops and stops[-1]["city"].pk == day.city_id:
+            stops[-1]["last"] = day
+            stops[-1]["days"] += 1
+        else:
+            stops.append({"city": day.city, "first": day, "last": day, "days": 1})
+    on_days = {s["city"].pk for s in stops}
+    others = [c for c in trip.cities.select_related("country").order_by("name") if c.pk not in on_days]
+    return stops, others
+
+
+@login_required
+def trip_map(request, pk):
+    """The trip's places on a map: numbered stops in day order joined by a line, plus its
+    other cities. A separate page, so the printed detail page and its query count hold."""
+    trip = _readable_trip(request, pk, "view")
+    stops, others = _trip_stops(trip)
+    return render(request, "trips/trip_map.html", {
+        "trip": trip, "stops": stops, "others": others, "can_edit": trip.can(request.user, "edit"),
+    })
+
+
+@login_required
+def trip_map_data(request, pk):
+    """GeoJSON for trip_map (provider-neutral). Never part of the public view."""
+    from django.http import JsonResponse
+    trip = _readable_trip(request, pk, "view")
+    stops, others = _trip_stops(trip)
+
+    def feature(city, **props):
+        return {"type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(city.longitude), float(city.latitude)]},
+                "properties": {"name": city.name, "url": reverse("locations:city_detail", args=[city.slug]), **props}}
+
+    def when(stop):
+        first, last = stop["first"].date, stop["last"].date
+        span = f"{first:%b} {first.day}" if first == last else f"{first:%b} {first.day} – {last:%b} {last.day}"
+        return f"{span} · {stop['days']} day{'s' if stop['days'] != 1 else ''}, {stop['city'].country.name}"
+
+    features = [feature(s["city"], order=n, subtitle=when(s)) for n, s in enumerate(stops, start=1)]
+    features += [feature(c, subtitle=f"{c.country.name} · on this trip") for c in others]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
