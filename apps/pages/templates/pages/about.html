@@ -1,6 +1,56 @@
 {% extends "base.html" %}
-{% block title %}About{% endblock %}
+{# pages/about.html — what ShareBucketList is for. Keep it true: no invented history, team, users or numbers (see "Public pages stay honest" in CLAUDE.md). #}
+{% block title %}About · {{ SITE_NAME }}{% endblock %}
+
 {% block content %}
-<h1>About</h1>
-<p>About this site.</p>
+<article class="mx-auto max-w-3xl space-y-6">
+  <header>
+    <h1 class="sbl-page-title">About {{ SITE_NAME }}</h1>
+    <p class="sbl-page-subtitle">A place to keep the things you want to do in the world, and to actually get round to doing them.</p>
+  </header>
+
+  <section class="sbl-card p-6 text-warm-700">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">Why it exists</h2>
+    <p class="mb-3">Most of us carry a list in our heads: see the northern lights, go to Oktoberfest, watch the Steelers play at home, walk the Arches. The list rarely turns into plans. The ideas are scattered across notes, bookmarks and conversations, the dates come and go, and the trip, if it happens, lives in a different set of emails and spreadsheets.</p>
+    <p>{{ SITE_NAME }} keeps all of it in one place, from the first idea to the photos afterwards, so a wish has a clear next step at every stage.</p>
+  </section>
+
+  <section class="sbl-card p-6 text-warm-700">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">How it works</h2>
+    <ol class="list-decimal space-y-2 pl-5">
+      <li><strong>Discover</strong> activities, events and places, or add your own.</li>
+      <li><strong>Dream:</strong> put what you like on your bucket list.</li>
+      <li><strong>Pick a date</strong> from the upcoming dates we know about.</li>
+      <li><strong>Plan</strong> the trip with the people going: itinerary, bookings, budget and photos.</li>
+      <li><strong>Done:</strong> tick it off with a rating, notes and photos, and keep it in <em>My adventures</em>.</li>
+    </ol>
+    <p class="mt-3"><a class="sbl-link" href="{% url 'pages:features' %}">See every feature</a> or read <a class="sbl-link" href="{% url 'pages:help' %}">how it works</a> in more detail.</p>
+  </section>
+
+  <section class="sbl-card p-6 text-warm-700">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">The catalogue</h2>
+    <p>Activities, events and places come from our team and from members. Anything a member adds is checked before others see it. Today the catalogue holds {{ catalogue.activities }} activit{{ catalogue.activities|pluralize:"y,ies" }}, {{ catalogue.places }} place{{ catalogue.places|pluralize }} and {{ catalogue.cities }} cit{{ catalogue.cities|pluralize:"y,ies" }} in {{ catalogue.countries }} countr{{ catalogue.countries|pluralize:"y,ies" }}, and it grows as people add what they love. If something is missing or wrong, add it or <a class="sbl-link" href="{% url 'pages:contact' %}">tell us</a>.</p>
+  </section>
+
+  <section class="sbl-card p-6 text-warm-700">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">What we care about</h2>
+    <ul class="space-y-2">
+      <li><strong>Your list is yours.</strong> Bucket lists and trips are private unless you choose to share them. A shared trip link shows an outline, never bookings, confirmation numbers or who's travelling. See our <a class="sbl-link" href="{% url 'pages:privacy' %}">privacy policy</a>.</li>
+      <li><strong>Honest information.</strong> The numbers on this site are real counts, and reviews come from members, marked “Been there” when the reviewer ticked it off.</li>
+      <li><strong>Plans with other people.</strong> Trips are made to be shared with the people going, each with the access they need.</li>
+    </ul>
+  </section>
+
+  <section class="sbl-card p-6 text-warm-700">
+    <h2 class="mb-3 text-xl font-semibold text-warm-900">Get in touch</h2>
+    <p>Questions, ideas or something not working? <a class="sbl-link" href="{% url 'pages:contact' %}">Send us a message</a>.</p>
+  </section>
+
+  {% if not user.is_authenticated %}
+    <p class="flex flex-wrap justify-center gap-3 pb-4">
+      <a class="sbl-btn sbl-btn-primary" href="{% url 'register' %}">Start your bucket list</a>
+      <a class="sbl-btn sbl-btn-outline" href="{% url 'login' %}">Log in</a>
+    </p>
+  {% endif %}
+</article>
 {% endblock %}

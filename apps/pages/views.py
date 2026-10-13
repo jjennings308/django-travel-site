@@ -167,8 +167,8 @@ def dashboard(request):
 
 
 def about(request):
-    """About page"""
-    return render(request, 'pages/about.html')
+    """About page: what the site is for and how it works, with the real catalogue counts."""
+    return render(request, "pages/about.html", {"catalogue": _catalogue_counts()})
 
 
 def _legal_page(request, template, title):

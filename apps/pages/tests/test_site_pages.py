@@ -50,6 +50,12 @@ class SitePagesTests(TestCase):
         self.client.force_login(user)
         self.assertContains(self.client.get(reverse("pages:features")), reverse("pages:dashboard"))
 
+    def test_about_page_tells_what_the_site_is(self):
+        page = self.client.get(reverse("pages:about"))
+        self.assertContains(page, "Why it exists")
+        self.assertIn("catalogue", page.context)
+        self.assertNotContains(page, "About this site.")
+
     def test_help_page(self):
         self.assertContains(self.client.get(reverse("pages:help")), "The five steps")
 
