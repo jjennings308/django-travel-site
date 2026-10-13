@@ -33,10 +33,13 @@ class TransportLegInline(admin.TabularInline):
     model = TransportLeg
     form = TransportLegAdminForm
     extra = 1
+    autocomplete_fields = ("origin_city", "destination_city")
     fields = (
         "mode",
         "origin",
+        "origin_city",
         "destination",
+        "destination_city",
         "departure_local",
         "origin_timezone",
         "arrival_local",
@@ -552,6 +555,7 @@ class BookingTaskAdmin(admin.ModelAdmin):
 @admin.register(TransportLeg)
 class TransportLegAdmin(admin.ModelAdmin):
     form = TransportLegAdminForm
+    autocomplete_fields = ("origin_city", "destination_city")
     list_display = (
         "__str__",
         "trip",

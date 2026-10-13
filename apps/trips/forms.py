@@ -429,7 +429,9 @@ class TransportLegAdminForm(LocalLegTimeMixin, forms.ModelForm):
             "service_number",
             "confirmation_number",
             "origin",
+            "origin_city",
             "destination",
+            "destination_city",
             "departure_local",
             "origin_timezone",
             "arrival_local",
@@ -496,6 +498,25 @@ def _city_choices():
     from apps.approval_system.models import ApprovalStatus
     return (City.objects.filter(approval_status=ApprovalStatus.APPROVED)
             .select_related("region", "country").order_by("country__name", "name"))
+
+
+def _leg_city_fields(form, trip):
+    """Limit a leg's from/to city to the trip's cities when it names any (as the day form
+    does), else any approved city. The trip's cities are cached on the trip so a formset
+    of legs asks once."""
+    if "origin_city" not in form.fields:
+        return
+    if trip is None or not trip.pk:
+        choices = _city_choices()
+    else:
+        cached = getattr(trip, "_leg_city_choices", None)
+        if cached is None:
+            ids = list(trip.cities.values_list("pk", flat=True))
+            cached = trip._leg_city_choices = _city_choices().filter(pk__in=ids) if ids else _city_choices()
+        choices = cached
+    for name in ("origin_city", "destination_city"):
+        form.fields[name].queryset = choices
+        form.fields[name].label_from_instance = str
 
 
 class TripForm(forms.ModelForm):
@@ -658,9 +679,11 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         fields = [
             "mode",
             "origin",
+            "origin_city",
             "origin_timezone",
             "departure_local",
             "destination",
+            "destination_city",
             "destination_timezone",
             "arrival_local",
             "operator",
@@ -681,6 +704,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         for name in ("origin_timezone", "destination_timezone"):
             self.fields[name].widget.attrs["list"] = "transport-zone-suggestions"
             self.fields[name].widget.attrs["placeholder"] = "America/Denver"
+        _leg_city_fields(self, getattr(self.instance, "trip", None) if self.instance.trip_id else None)
         self.seed_local_time_initial()
 
     def clean(self):
@@ -880,6 +904,8 @@ class DayForm(forms.ModelForm):
             trip_cities = trip.cities.all() if trip.pk else City.objects.none()
             self.fields["city"].queryset = trip_cities if trip_cities.exists() else _city_choices()
             self.fields["city"].label_from_instance = str
+            self.fields["city"].help_text = ("Where you sleep that night. On a travel day, add the trains, flights "
+                                             "or drives under Edit trip → Transport, with their From and To cities.")
         # Prefill the next free day number: a new day is nearly always the next
         # one, and the unique constraint on (trip, day_number) would otherwise
         # make the first thing to do a guess. `date` is deliberately left alone —

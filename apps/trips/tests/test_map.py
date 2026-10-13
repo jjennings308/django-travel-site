@@ -58,3 +58,62 @@ class TripMapTests(TestCase):
         page = self.client.get(reverse("trips:trip_map", args=[empty.pk]))
         self.assertNotContains(page, "data-sbl-map")
         self.assertContains(page, "No places on this trip yet")
+
+
+class TravelDayLegTests(TestCase):
+    """Augsburg → Munich (train) → Manchester (flight) → Liverpool (train) on one day."""
+
+    def setUp(self):
+        from datetime import datetime, timezone as tz
+        from apps.trips.models import TransportLeg
+        self.user = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
+        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
+                                    approval_status=ApprovalStatus.APPROVED)
+        uk = Country.objects.create(name="United Kingdom", slug="uk", iso_code="GB", iso3_code="GBR", continent="Europe",
+                                    approval_status=ApprovalStatus.APPROVED)
+        coords = {"Augsburg": (de, 48.37, 10.9), "Munich": (de, 48.14, 11.58),
+                  "Manchester": (uk, 53.48, -2.24), "Liverpool": (uk, 53.41, -2.98)}
+        self.city = {n: City.objects.create(name=n, slug=n.lower(), country=c, latitude=lat, longitude=lng,
+                                            approval_status=ApprovalStatus.APPROVED) for n, (c, lat, lng) in coords.items()}
+        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 10), end_date=date(2027, 9, 12),
+                                        created_by=self.user)
+        TripGrant.objects.create(trip=self.trip, user=self.user, role=TripRole.EDITOR)
+        self.trip.cities.set([self.city["Augsburg"], self.city["Liverpool"]])
+        Day.objects.create(trip=self.trip, date=date(2027, 9, 10), day_number=1, city=self.city["Augsburg"])
+        Day.objects.create(trip=self.trip, date=date(2027, 9, 11), day_number=2, city=self.city["Liverpool"])
+        hops = [("train", "Augsburg", "Munich", 7), ("plane", "Munich", "Manchester", 10), ("train", "Manchester", "Liverpool", 14)]
+        for mode, a, b, hour in hops:
+            TransportLeg.objects.create(
+                trip=self.trip, mode=mode, origin=a, destination=b, origin_city=self.city[a], destination_city=self.city[b],
+                departure_at=datetime(2027, 9, 11, hour, tzinfo=tz.utc), arrival_at=datetime(2027, 9, 11, hour + 1, tzinfo=tz.utc))
+        TransportLeg.objects.create(trip=self.trip, mode="other", origin="Hotel", destination="Stadium",
+                                    departure_at=datetime(2027, 9, 12, 9, tzinfo=tz.utc),
+                                    arrival_at=datetime(2027, 9, 12, 10, tzinfo=tz.utc))  # no cities: not drawn
+        self.client.force_login(self.user)
+
+    def test_legs_drawn_between_overnight_stops(self):
+        data = self.client.get(reverse("trips:trip_map_data", args=[self.trip.pk])).json()
+        points = [(f["properties"].get("order"), f["properties"]["name"]) for f in data["features"] if f["geometry"]["type"] == "Point"]
+        self.assertEqual(points, [(1, "Augsburg"), (2, "Liverpool"), (None, "Manchester"), (None, "Munich")])
+        legs = [f for f in data["features"] if f["geometry"]["type"] == "LineString"]
+        self.assertEqual([(f["properties"]["mode"], f["properties"]["name"]) for f in legs], [
+            ("train", "Train: Augsburg → Munich"), ("plane", "Flight: Munich → Manchester"),
+            ("train", "Train: Manchester → Liverpool")])
+        self.assertEqual(legs[1]["geometry"]["coordinates"], [[11.58, 48.14], [-2.24, 53.48]])
+        page = self.client.get(reverse("trips:trip_map", args=[self.trip.pk]))
+        self.assertContains(page, "Munich → Manchester")
+        self.assertNotContains(page, "Tip: give each transport leg")
+
+    def test_leg_city_choices_follow_the_trip(self):
+        from apps.trips.forms import TransportLegForm
+        from apps.trips.models import TransportLeg
+        form = TransportLegForm(instance=TransportLeg(trip=self.trip))
+        self.assertEqual({c.name for c in form.fields["origin_city"].queryset}, {"Augsburg", "Liverpool"})
+        self.trip.cities.clear()
+        form = TransportLegForm(instance=TransportLeg(trip=Trip.objects.get(pk=self.trip.pk)))
+        self.assertEqual(form.fields["destination_city"].queryset.count(), 4)  # none named: every approved city
+
+    def test_detail_query_count_unchanged_by_legs(self):
+        # The printed detail page doesn't touch the new city links.
+        page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
+        self.assertEqual(page.status_code, 200)

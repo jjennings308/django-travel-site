@@ -778,6 +778,16 @@ class TransportLeg(models.Model):
     destination = models.CharField(
         max_length=120, blank=True, help_text="Airport code, station, or town"
     )
+    # Optional catalogue cities for the two ends, so the trip map can draw the leg (the
+    # free-text origin/destination above stay for airport codes and station names).
+    origin_city = models.ForeignKey(
+        City, on_delete=models.SET_NULL, null=True, blank=True, related_name="departing_legs",
+        verbose_name="from city", help_text="Catalogue city it leaves from (draws the leg on the trip map)",
+    )
+    destination_city = models.ForeignKey(
+        City, on_delete=models.SET_NULL, null=True, blank=True, related_name="arriving_legs",
+        verbose_name="to city", help_text="Catalogue city it arrives in",
+    )
     origin_timezone = models.CharField(
         max_length=64,
         blank=True,

@@ -14,11 +14,11 @@ Trip map: the days' cities in date order (numbered, joined by a line) and the tr
   <div class="page-header">
     <div>
       <h1 class="page-title">Map</h1>
-      <p class="page-subtitle">{{ stops|length }} stop{{ stops|length|pluralize }} in day order{% if others %} · {{ others|length }} more cit{{ others|length|pluralize:"y,ies" }} on the trip{% endif %}</p>
+      <p class="page-subtitle">{{ stops|length }} stop{{ stops|length|pluralize }} in day order (each day's city is where you sleep){% if legs %} · {{ legs|length }} leg{{ legs|length|pluralize }} of travel{% endif %}{% if others %} · {{ others|length }} more cit{{ others|length|pluralize:"y,ies" }}{% endif %}</p>
     </div>
   </div>
 
-  {% if stops or others %}
+  {% if stops or others or legs %}
     {% url 'trips:trip_map_data' trip.pk as data_url %}
     {% include "partials/_map.html" with data_url=data_url height="34rem" route=True %}
     {% if stops %}
@@ -32,6 +32,20 @@ Trip map: the days' cities in date order (numbered, joined by a line) and the tr
         {% endfor %}
       </ol>
     {% endif %}
+    {% if legs %}
+      <h2 class="card-kicker mt-6 mb-2">Travel</h2>
+      <ul class="card divide-y divide-zinc-200 p-0">
+        {% for leg in legs %}
+          <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm">
+            <span class="chip">{{ leg.get_mode_display }}</span>
+            <span class="font-medium">{{ leg.origin_city.name }} → {{ leg.destination_city.name }}</span>
+            {% if leg.operator or leg.service_number %}<span class="text-zinc-500">{{ leg.operator }} {{ leg.service_number }}</span>{% endif %}
+            <span class="ml-auto text-zinc-500">{{ leg.departure_local_date }} {{ leg.departure_local_str }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if not legs and can_edit %}<p class="note mt-4">Tip: give each transport leg a From and To city (Edit trip → Transport) to draw the actual trains, flights and drives between stops.</p>{% endif %}
   {% else %}
     <div class="card p-8 text-center text-zinc-500">
       <p>No places on this trip yet.{% if can_edit %} Add the cities you're visiting under <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>, and give each day its city.{% endif %}</p>

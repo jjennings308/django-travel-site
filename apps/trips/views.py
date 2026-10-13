@@ -1221,8 +1221,12 @@ def trip_photo_cover(request, pk, media_pk):
 
 # ---- map ---------------------------------------------------------------------------------
 def _trip_stops(trip):
-    """(stops, others): the days' cities in date order, consecutive repeats merged, as
-    dicts {city, first, last, days}; and the trip's other cities, not on any day."""
+    """(stops, others, legs) for the trip map.
+
+    stops: the days' cities in date order, consecutive repeats merged, as dicts
+    {city, first, last, days} (Day.city is where you sleep). legs: transport legs with
+    both a from and a to city, in departure order. others: the trip's other cities and
+    the legs' cities that aren't a stop, by name."""
     stops = []
     for day in trip.days.filter(city__isnull=False).select_related("city__country").order_by("date"):
         if stops and stops[-1]["city"].pk == day.city_id:
@@ -1230,9 +1234,17 @@ def _trip_stops(trip):
             stops[-1]["days"] += 1
         else:
             stops.append({"city": day.city, "first": day, "last": day, "days": 1})
-    on_days = {s["city"].pk for s in stops}
-    others = [c for c in trip.cities.select_related("country").order_by("name") if c.pk not in on_days]
-    return stops, others
+    legs = list(trip.transport.filter(origin_city__isnull=False, destination_city__isnull=False)
+                .select_related("origin_city__country", "destination_city__country").order_by("departure_at"))
+    shown = {s["city"].pk for s in stops}
+    others = {}
+    for city in trip.cities.select_related("country"):
+        others.setdefault(city.pk, city)
+    for leg in legs:
+        for city in (leg.origin_city, leg.destination_city):
+            others.setdefault(city.pk, city)
+    others = sorted((c for pk, c in others.items() if pk not in shown), key=lambda c: c.name)
+    return stops, others, legs
 
 
 @login_required
@@ -1240,9 +1252,9 @@ def trip_map(request, pk):
     """The trip's places on a map: numbered stops in day order joined by a line, plus its
     other cities. A separate page, so the printed detail page and its query count hold."""
     trip = _readable_trip(request, pk, "view")
-    stops, others = _trip_stops(trip)
+    stops, others, legs = _trip_stops(trip)
     return render(request, "trips/trip_map.html", {
-        "trip": trip, "stops": stops, "others": others, "can_edit": trip.can(request.user, "edit"),
+        "trip": trip, "stops": stops, "others": others, "legs": legs, "can_edit": trip.can(request.user, "edit"),
     })
 
 
@@ -1251,7 +1263,7 @@ def trip_map_data(request, pk):
     """GeoJSON for trip_map (provider-neutral). Never part of the public view."""
     from django.http import JsonResponse
     trip = _readable_trip(request, pk, "view")
-    stops, others = _trip_stops(trip)
+    stops, others, legs = _trip_stops(trip)
 
     def feature(city, **props):
         return {"type": "Feature",
@@ -1265,4 +1277,17 @@ def trip_map_data(request, pk):
 
     features = [feature(s["city"], order=n, subtitle=when(s)) for n, s in enumerate(stops, start=1)]
     features += [feature(c, subtitle=f"{c.country.name} · on this trip") for c in others]
+    for leg in legs:  # Times through the leg's own local-time helpers (never |date on a converted time).
+        what = " ".join(p for p in (leg.operator, leg.service_number) if p)
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": [
+                [float(leg.origin_city.longitude), float(leg.origin_city.latitude)],
+                [float(leg.destination_city.longitude), float(leg.destination_city.latitude)]]},
+            "properties": {
+                "mode": leg.mode,
+                "name": f"{leg.get_mode_display()}: {leg.origin_city.name} → {leg.destination_city.name}",
+                "subtitle": " · ".join(p for p in (what, f"{leg.departure_local_date} {leg.departure_local_str}") if p),
+            },
+        })
     return JsonResponse({"type": "FeatureCollection", "features": features})
