@@ -619,6 +619,7 @@ def poi_list(request):
     
     status_filter = request.GET.get('status', 'all')
     city_id = request.GET.get('city')
+    country_id = request.GET.get('country', '')
     poi_type = request.GET.get('type')
     search_query = request.GET.get('q', '')
     
@@ -630,6 +631,9 @@ def poi_list(request):
     
     if city_id:
         pois = pois.filter(city_id=city_id)
+
+    if country_id.isdigit():
+        pois = pois.filter(city__country_id=country_id)
     
     if poi_type:
         pois = pois.filter(poi_type_id=poi_type)
@@ -656,6 +660,9 @@ def poi_list(request):
         'search_query': search_query,
         'poi_types': poi_types,
         'selected_type': poi_type,
+        # Only countries that have places, so every choice finds something.
+        'countries': Country.objects.filter(cities__pois__isnull=False).distinct().order_by('name'),
+        'selected_country': country_id,
         'breadcrumb_list': BreadcrumbPatterns.pois_list
     }
     

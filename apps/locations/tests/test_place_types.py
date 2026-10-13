@@ -55,3 +55,35 @@ class PlaceTypeTests(TestCase):
         page = self.client.get(reverse("locations:poi_list") + "?type=historical")
         self.assertEqual([p.name for p in page.context["page_obj"]], ["Old Bridge"])
         self.assertEqual(list(self.client.get(reverse("locations:poi_list") + "?type=museum").context["page_obj"]), [])
+
+
+class PlaceListCountryFilterTests(TestCase):
+    """The places list filters by country; only countries that have places are offered."""
+
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("boss", "boss@example.com", "pw-1234-abcd"))
+        self.us = Country.objects.create(name="United States", slug="us", iso_code="US", iso3_code="USA",
+                                         continent="North America", approval_status=APPROVED)
+        self.ca = Country.objects.create(name="Canada", slug="ca", iso_code="CA", iso3_code="CAN",
+                                         continent="North America", approval_status=APPROVED)
+        Country.objects.create(name="Empty", slug="empty", iso_code="EM", iso3_code="EMP", continent="Europe",
+                               approval_status=APPROVED)
+        for country, place in ((self.us, "Arches"), (self.ca, "Bell Centre")):
+            city = City.objects.create(name=f"{place} town", slug=f"{place}-town".lower().replace(" ", "-"),
+                                       country=country, latitude=1, longitude=2, approval_status=APPROVED)
+            POI.objects.create(name=place, slug=place.lower().replace(" ", "-"), city=city, latitude=1, longitude=2,
+                               approval_status=APPROVED)
+
+    def test_filter_and_choices(self):
+        url = reverse("locations:poi_list")
+        page = self.client.get(url)
+        self.assertEqual([c.name for c in page.context["countries"]], ["Canada", "United States"])
+        page = self.client.get(f"{url}?country={self.ca.pk}")
+        self.assertEqual([p.name for p in page.context["page_obj"]], ["Bell Centre"])
+        self.assertContains(page, f'value="{self.ca.pk}" selected')
+        self.assertEqual(len(self.client.get(f"{url}?country=nonsense").context["page_obj"]), 2)
+
+    def test_admin_filters_by_country(self):
+        page = self.client.get(reverse("admin:locations_poi_changelist") + f"?city__country__id__exact={self.us.pk}")
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual([p.name for p in page.context["cl"].result_list], ["Arches"])

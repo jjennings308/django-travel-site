@@ -23,13 +23,34 @@
     <div class="sbl-card shadow-sm mb-6">
         <div class="p-5">
             <form method="get">
+                {# Search, Country, Type, Status. Country lists only countries that have places. #}
                 <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12 md:col-span-4">
-                        <label class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search POIs..." class="sbl-input">
-                    </div>
-                    
                     <div class="col-span-12 md:col-span-3">
+                        <label for="filter_q" class="sbl-label text-sm font-semibold">Search</label>
+                        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search places..." class="sbl-input">
+                    </div>
+
+                    <div class="col-span-12 md:col-span-3">
+                        <label for="filter_country" class="sbl-label text-sm font-semibold">Country</label>
+                        <select id="filter_country" name="country" class="sbl-input">
+                            <option value="">All Countries</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-span-12 md:col-span-2">
+                        <label class="sbl-label text-sm font-semibold">Type</label>
+                        <select name="type" class="sbl-input">
+                            <option value="">All Types</option>
+                            {% for value, label in poi_types %}
+                                <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-span-12 md:col-span-2">
                         <label class="sbl-label text-sm font-semibold">Status</label>
                         <select name="status" class="sbl-input">
                             <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
@@ -37,16 +58,6 @@
                             <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
                             <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
                             <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Type</label>
-                        <select name="type" class="sbl-input">
-                            <option value="">All Types</option>
-                            {% for value, label in poi_types %}
-                                <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
                         </select>
                     </div>
                     

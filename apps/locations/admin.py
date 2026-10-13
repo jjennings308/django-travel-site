@@ -292,7 +292,7 @@ class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     ]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
     
-    list_filter = ['poi_type', 'is_featured', 'wheelchair_accessible', 'parking_available']
+    list_filter = ['poi_type', ('city__country', admin.RelatedOnlyFieldListFilter), 'is_featured', 'wheelchair_accessible', 'parking_available']
     # ApprovableAdminMixin automatically adds: approval_status, approval_priority, submitted_at
     
     search_fields = ['name', 'address', 'city__name']
