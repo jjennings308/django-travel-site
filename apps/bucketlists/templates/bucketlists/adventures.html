@@ -35,7 +35,10 @@
                 {% if entry.photos %}
                   <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">{% for photo in entry.photos %}<a href="{{ photo.file.url }}" target="_blank" rel="noopener"><img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}" loading="lazy" class="aspect-square w-full rounded-lg object-cover"></a>{% endfor %}</div>
                 {% endif %}
-                <a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-link mt-3 inline-block text-sm"><i class="bi bi-camera"></i> Add photos or edit</a>
+                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                  <a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-link"><i class="bi bi-camera"></i> Add photos or edit</a>
+                  {% if item.live_trip.album.cover_image %}{% include "bucketlists/partials/_trip_album_link.html" with trip=item.live_trip %}{% endif %}
+                </div>
               </article>
             {% endwith %}{% else %}{% with trip=entry.trip %}
               <article class="sbl-card bg-warm-50 p-4">
@@ -43,6 +46,7 @@
                   <h3 class="font-semibold text-warm-900"><i class="bi bi-airplane text-warm-500"></i> <a class="hover:text-earth-clay" href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a></h3>
                   <span class="text-sm text-warm-500">{{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}</span>
                 </div>
+                {% if trip.album.cover_image %}<div class="mt-2 text-sm">{% include "bucketlists/partials/_trip_album_link.html" %}</div>{% endif %}
                 <form method="post" action="{% url 'bucketlists:trip_done' trip.pk %}" class="mt-1">{% csrf_token %}<button type="submit" class="sbl-link text-sm">Add it to your adventures with notes and photos</button></form>
               </article>
             {% endwith %}{% endif %}

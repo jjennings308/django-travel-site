@@ -505,7 +505,8 @@ def adventures(request):
     from django.contrib.contenttypes.models import ContentType
     from apps.media_app.models import Media
 
-    done = list(_items().filter(user=request.user, status="completed").order_by("-completed_date", "-updated_at"))
+    done = list(_items().select_related("trip__album__cover_image")
+                .filter(user=request.user, status="completed").order_by("-completed_date", "-updated_at"))
     photos = {}
     if done:
         for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
@@ -516,7 +517,7 @@ def adventures(request):
 
     today = timezone.now().date()
     trips = (Trip.objects.live().filter(grants__user=request.user, end_date__lt=today)
-             .exclude(bucket_list_items__user=request.user).distinct())
+             .exclude(bucket_list_items__user=request.user).select_related("album__cover_image").distinct())
     entries += [{"kind": "trip", "date": t.end_date, "trip": t} for t in trips]
     entries.sort(key=lambda e: e["date"] or date.min, reverse=True)
 

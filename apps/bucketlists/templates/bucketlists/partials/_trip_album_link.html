@@ -1,0 +1,2 @@
+{# bucketlists/partials/_trip_album_link.html — a trip's album cover and a link to its photos page; pass trip= (with album__cover_image selected) #}
+<a href="{% url 'trips:trip_photos' trip.pk %}" class="sbl-link inline-flex items-center gap-2"><img src="{{ trip.album.cover_image.file.url }}" alt="" loading="lazy" class="size-10 rounded-md object-cover"> <span><i class="bi bi-images"></i> {{ trip.name }} photos</span></a>

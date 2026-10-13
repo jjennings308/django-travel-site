@@ -1156,3 +1156,64 @@ def expense_edit(request, pk, expense_pk):
             messages.success(request, "Saved.")
             return redirect("trips:trip_budget", pk=trip.pk)
     return render(request, "trips/expense_form.html", {"trip": trip, "form": form, "expense": expense})
+
+
+# ---- photos ------------------------------------------------------------------------------
+@login_required
+def trip_photos(request, pk):
+    """The trip's shared photo album. Anyone who can see the trip sees it; commentors and
+    editors add photos (POST). A separate page, so the detail page's query count holds."""
+    from apps.media_app.forms import MAX_PHOTOS, MultipleImageField
+    from django import forms as dj_forms
+
+    class PhotoForm(dj_forms.Form):
+        photos = MultipleImageField(label="Add photos", help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.")
+
+    trip = _readable_trip(request, pk, "view")
+    can_add = trip.can(request.user, "comment")
+    can_edit = trip.can(request.user, "edit")
+    form = PhotoForm(request.POST or None, request.FILES or None) if can_add else None
+    if request.method == "POST":
+        if not can_add:
+            raise PermissionDenied
+        if form.is_valid() and form.cleaned_data["photos"]:
+            added = trip.add_photos(form.cleaned_data["photos"], request.user)
+            messages.success(request, f"Added {len(added)} photo{'s' if len(added) != 1 else ''}.")
+            return redirect("trips:trip_photos", pk=trip.pk)
+    photos = list(trip.photos())
+    return render(request, "trips/trip_photos.html", {
+        "trip": trip, "photos": photos, "form": form, "can_add": can_add, "can_edit": can_edit,
+        "cover_id": trip.album.cover_image_id if trip.album_id else None,
+    })
+
+
+def _trip_photo(request, pk, media_pk):
+    from apps.media_app.models import AlbumMedia
+    trip = _readable_trip(request, pk, "view")
+    item = get_object_or_404(AlbumMedia.objects.select_related("media"), album_id=trip.album_id, media_id=media_pk)
+    return trip, item.media
+
+
+@login_required
+@require_POST
+def trip_photo_delete(request, pk, media_pk):
+    """The person who added a photo, or an editor, may remove it."""
+    trip, media = _trip_photo(request, pk, media_pk)
+    if media.uploaded_by_id != request.user.pk and not trip.can(request.user, "edit"):
+        raise PermissionDenied
+    trip.remove_photo(media)
+    messages.success(request, "Photo removed.")
+    return redirect("trips:trip_photos", pk=trip.pk)
+
+
+@login_required
+@require_POST
+def trip_photo_cover(request, pk, media_pk):
+    """Editors choose the album's cover (shown in My adventures)."""
+    trip, media = _trip_photo(request, pk, media_pk)
+    if not trip.can(request.user, "edit"):
+        raise PermissionDenied
+    trip.album.cover_image = media
+    trip.album.save(update_fields=["cover_image"])
+    messages.success(request, "Cover photo set.")
+    return redirect("trips:trip_photos", pk=trip.pk)
