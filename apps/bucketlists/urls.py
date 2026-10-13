@@ -1,7 +1,7 @@
 # bucketlists/urls.py
 from django.urls import path
 
-from . import views
+from . import photos, views
 
 app_name = "bucketlists"
 
@@ -21,6 +21,16 @@ urlpatterns = [
     path("<int:pk>/link/", views.link_item, name="link_item"),
     path("<int:pk>/plan-trip/", views.plan_trip, name="plan_trip"),
     path("<int:pk>/complete/", views.item_complete, name="item_complete"),
+    path("<int:pk>/photos/", photos.item_photos, name="item_photos"),
+    path("<int:pk>/photos/<int:media_pk>/delete/", photos.item_photo_delete, name="item_photo_delete"),
+    path("albums/", photos.albums, name="albums"),
+    path("albums/new/", photos.album_new, name="album_new"),
+    path("albums/<int:pk>/", photos.album_detail, name="album_detail"),
+    path("albums/<int:pk>/edit/", photos.album_edit, name="album_edit"),
+    path("albums/<int:pk>/add/", photos.album_pick, name="album_pick"),
+    path("albums/<int:pk>/delete/", photos.album_delete, name="album_delete"),
+    path("albums/<int:pk>/photos/<int:media_pk>/remove/", photos.album_remove, name="album_remove"),
+    path("albums/<int:pk>/photos/<int:media_pk>/cover/", photos.album_cover, name="album_cover"),
     path("<int:pk>/delete/", views.item_delete, name="item_delete"),
     path("categories/", views.categories, name="categories"),
     path("categories/<int:pk>/", views.category_edit, name="category_edit"),

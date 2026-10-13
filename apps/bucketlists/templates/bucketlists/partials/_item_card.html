@@ -30,6 +30,7 @@
     {% if owner %}
       <span class="ml-auto flex gap-1">
         {% if item.status != 'completed' %}<a href="{% url 'bucketlists:item_complete' item.pk %}" class="sbl-btn sbl-btn-secondary sbl-btn-sm" title="Mark done"><i class="bi bi-check-lg"></i>Done</a>{% endif %}
+        <a href="{% url 'bucketlists:item_photos' item.pk %}" class="sbl-btn sbl-btn-outline sbl-btn-sm" title="Photos" aria-label="Photos"><i class="bi bi-images"></i></a>
         <a href="{% url 'bucketlists:item_edit' item.pk %}" class="sbl-btn sbl-btn-outline sbl-btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
       </span>
     {% endif %}

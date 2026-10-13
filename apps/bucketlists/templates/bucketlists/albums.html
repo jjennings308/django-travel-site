@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{# bucketlists/albums.html — the user's personal albums (MediaAlbum with no trip) #}
+{% block title %}My albums{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="sbl-page-title">My albums</h1>
+      <p class="sbl-page-subtitle">Gather photos from your goals and trips, or upload new ones.</p>
+    </div>
+    <a href="{% url 'bucketlists:album_new' %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i> New album</a>
+  </header>
+  {% if albums %}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for album in albums %}{% include "bucketlists/partials/_album_card.html" %}{% endfor %}
+    </div>
+  {% else %}
+    <p class="sbl-card p-8 text-center text-warm-500">No albums yet. Make one, for example “National parks 2026”, and pick photos from your adventures.</p>
+  {% endif %}
+</div>
+{% endblock %}

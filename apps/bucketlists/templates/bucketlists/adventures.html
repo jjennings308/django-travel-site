@@ -6,9 +6,12 @@
 
 {% block content %}
 <div class="mx-auto max-w-3xl space-y-8">
-  <header>
-    <h1 class="sbl-page-title">My adventures</h1>
-    <p class="sbl-page-subtitle">{{ goal_count }} goal{{ goal_count|pluralize }} ticked off{% if trip_count %} · {{ trip_count }} more trip{{ trip_count|pluralize }}{% endif %}</p>
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="sbl-page-title">My adventures</h1>
+      <p class="sbl-page-subtitle">{{ goal_count }} goal{{ goal_count|pluralize }} ticked off{% if trip_count %} · {{ trip_count }} more trip{{ trip_count|pluralize }}{% endif %}</p>
+    </div>
+    <a href="{% url 'bucketlists:albums' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-images"></i> My albums</a>
   </header>
   {% if badges %}
     <section aria-labelledby="badges-title">

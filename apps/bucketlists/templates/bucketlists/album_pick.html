@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{# bucketlists/album_pick.html — tick photos from your goals and trips to add to an album #}
+{% block title %}Add photos: {{ album.title }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+{% block content %}
+<form method="post" class="mx-auto max-w-5xl space-y-6">{% csrf_token %}
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="sbl-page-title">Add to “{{ album.title }}”</h1>
+      <p class="sbl-page-subtitle">Photos you added to your goals and trips. They stay there too.</p>
+    </div>
+    <div class="flex gap-2"><a href="{% url 'bucketlists:album_detail' album.pk %}" class="sbl-btn sbl-btn-outline">Cancel</a><button type="submit" class="sbl-btn sbl-btn-primary">Add the ticked photos</button></div>
+  </header>
+  {% if available %}
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {% for photo in available %}
+        <label class="sbl-card relative block cursor-pointer overflow-hidden has-[:checked]:ring-4 has-[:checked]:ring-earth-clay">
+          <input type="checkbox" name="media" value="{{ photo.pk }}" class="sbl-check absolute left-2 top-2">
+          <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}" loading="lazy" class="aspect-square w-full object-cover">
+          <span class="block truncate px-2 py-1 text-xs text-warm-600" title="{{ photo.title }}">{{ photo.title }}</span>
+        </label>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="sbl-card p-8 text-center text-warm-500">No more photos to add. Add photos to a goal or a trip first, or upload straight into the album.</p>
+  {% endif %}
+</form>
+{% endblock %}

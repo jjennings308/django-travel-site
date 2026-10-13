@@ -335,6 +335,38 @@ class MediaAlbum(TimeStampedModel):
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
+    # ---- helpers (trip albums: Trip.album; personal albums: bucketlists "My albums") ----
+    def items(self):
+        """AlbumMedia rows with their Media, in album order."""
+        return self.album_media_items.select_related("media", "media__uploaded_by").order_by("display_order", "created_at")
+
+    def add(self, media_list):
+        """Append Media rows (skipping ones already in the album); the first becomes the cover."""
+        from django.db.models import Max
+        have = set(self.album_media_items.values_list("media_id", flat=True))
+        order = self.album_media_items.aggregate(m=Max("display_order"))["m"] or 0
+        added = []
+        for media in media_list:
+            if media.pk in have:
+                continue
+            order += 1
+            AlbumMedia.objects.create(album=self, media=media, display_order=order)
+            have.add(media.pk)
+            added.append(media)
+        if added and self.cover_image_id is None:
+            self.cover_image = added[0]
+            self.save(update_fields=["cover_image"])
+        return added
+
+    def ensure_cover(self):
+        """After a removal: if the cover is gone, the first remaining photo takes over."""
+        self.refresh_from_db(fields=["cover_image"])
+        if self.cover_image_id is None:
+            first = self.items().first()
+            if first:
+                self.cover_image = first.media
+                self.save(update_fields=["cover_image"])
+
 
 class AlbumMedia(TimeStampedModel):
     """Many-to-many relationship between albums and media with order"""

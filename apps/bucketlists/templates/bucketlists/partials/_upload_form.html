@@ -1,0 +1,10 @@
+{# bucketlists/partials/_upload_form.html — several-photo upload (PhotosForm); pass form= and action= (optional) #}
+<form method="post" enctype="multipart/form-data" {% if action %}action="{{ action }}"{% endif %} class="sbl-card p-5">{% csrf_token %}
+  <label for="{{ form.photos.id_for_label }}" class="sbl-label">{{ form.photos.label }}</label>
+  <div class="flex flex-wrap items-start gap-2">
+    <div class="min-w-0 grow">{{ form.photos }}</div>
+    <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-upload"></i> Upload</button>
+  </div>
+  <p class="sbl-help">{{ form.photos.help_text }}</p>
+  {% for error in form.photos.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+</form>

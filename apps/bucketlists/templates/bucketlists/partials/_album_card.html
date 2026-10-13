@@ -1,0 +1,9 @@
+{# bucketlists/partials/_album_card.html — pass album= (with cover_image selected) #}
+<a href="{% url 'bucketlists:album_detail' album.pk %}" class="sbl-card sbl-card-hover block overflow-hidden">
+  {% if album.cover_image %}<img src="{{ album.cover_image.file.url }}" alt="" loading="lazy" class="h-44 w-full object-cover">
+  {% else %}<span class="flex h-44 items-center justify-center bg-earth-clay text-5xl text-white/70"><i class="bi bi-images"></i></span>{% endif %}
+  <span class="block p-4">
+    <span class="flex items-center justify-between gap-2"><span class="font-semibold text-warm-900">{{ album.title }}</span>{% if album.privacy == 'public' %}<span class="sbl-badge sbl-badge-success">Public</span>{% else %}<span class="sbl-badge sbl-badge-neutral">Only me</span>{% endif %}</span>
+    {% if album.description %}<span class="mt-1 line-clamp-2 block text-sm text-warm-600">{{ album.description }}</span>{% endif %}
+  </span>
+</a>

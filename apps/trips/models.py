@@ -581,47 +581,33 @@ class Trip(models.Model):
         if not self.album_id:
             from apps.media_app.models import AlbumMedia
             return AlbumMedia.objects.none()
-        return self.album.album_media_items.select_related("media", "media__uploaded_by").order_by("display_order", "created_at")
+        return self.album.items()
 
     def add_photos(self, files, user):
         """Store uploaded images in the trip's album (made on first use); the first photo
         becomes the cover. Scaled down like every upload; HEIC is stored as JPEG."""
-        from django.db.models import Max
         from apps.core.utils.images import shrink_image
         from apps.media_app.forms import MAX_PICTURE_SIDE
-        from apps.media_app.models import AlbumMedia, Media, MediaAlbum
+        from apps.media_app.models import Media, MediaAlbum
         if not files:
             return []
         if self.album_id is None:
             self.album = MediaAlbum.objects.create(user=self.created_by or user, title=f"{self.name} photos"[:200],
                                                    privacy="private")
             self.save(update_fields=["album"])
-        album = self.album
-        order = (album.album_media_items.aggregate(m=Max("display_order"))["m"] or 0)
-        added = []
+        media = []
         for f in files:
-            order += 1
-            media = Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
-                          title=self.name[:200], alt_text=self.name[:200], content_object=self, privacy="private")
-            media.save()
-            AlbumMedia.objects.create(album=album, media=media, display_order=order)
-            added.append(media)
-        if album.cover_image_id is None:
-            album.cover_image = added[0]
-            album.save(update_fields=["cover_image"])
-        return added
+            m = Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
+                      title=self.name[:200], alt_text=self.name[:200], content_object=self, privacy="private")
+            m.save()
+            media.append(m)
+        return self.album.add(media)
 
     def remove_photo(self, media):
         """Delete a photo; if it was the cover, the next photo becomes the cover."""
-        album = self.album
         media.delete()
-        if album is not None:
-            album.refresh_from_db()
-            if album.cover_image_id is None:
-                first = album.album_media_items.order_by("display_order", "created_at").first()
-                if first:
-                    album.cover_image = first.media
-                    album.save(update_fields=["cover_image"])
+        if self.album_id:
+            self.album.ensure_cover()
 
     def enable_public(self):
         """Mint a public token, and return it.

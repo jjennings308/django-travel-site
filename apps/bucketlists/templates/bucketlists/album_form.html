@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{% if album %}Edit {{ album.title }}{% else %}New album{% endif %}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl">
+  <form method="post" class="sbl-card p-6">{% csrf_token %}
+    <h1 class="mb-4 text-2xl font-bold text-warm-900">{% if album %}Edit album{% else %}New album{% endif %}</h1>
+    {% include "events/partials/_field.html" with field=form.title %}
+    {% include "events/partials/_field.html" with field=form.description %}
+    <fieldset class="mb-4">
+      <legend class="sbl-label">{{ form.privacy.label }}</legend>
+      {% for radio in form.privacy %}<label class="mb-1 flex items-center gap-2 text-sm text-warm-800">{{ radio.tag }} {{ radio.choice_label }}</label>{% endfor %}
+    </fieldset>
+    <div class="flex justify-end gap-2">
+      <a href="{% if album %}{% url 'bucketlists:album_detail' album.pk %}{% else %}{% url 'bucketlists:albums' %}{% endif %}" class="sbl-btn sbl-btn-outline">Cancel</a>
+      <button type="submit" class="sbl-btn sbl-btn-primary">{% if album %}Save{% else %}Make album{% endif %}</button>
+    </div>
+  </form>
+  {% if album %}
+    <form method="post" action="{% url 'bucketlists:album_delete' album.pk %}" class="mt-4 text-right" onsubmit="return confirm('Delete this album? Photos uploaded into it are deleted; photos from your goals and trips stay there.')">{% csrf_token %}
+      <button type="submit" class="sbl-btn sbl-btn-danger"><i class="bi bi-trash"></i> Delete album</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

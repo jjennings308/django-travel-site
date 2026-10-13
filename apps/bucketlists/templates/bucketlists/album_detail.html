@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{# bucketlists/album_detail.html — a personal album; the owner adds (upload or pick), removes and picks the cover #}
+{% block title %}{{ album.title }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="sbl-page-title">{{ album.title }}</h1>
+      <p class="sbl-page-subtitle">{% if not is_owner %}by @{{ album.user.username }} · {% endif %}{{ items|length }} photo{{ items|length|pluralize }}{% if is_owner %} · {% if album.privacy == 'public' %}public{% else %}only you{% endif %}{% endif %}</p>
+      {% if album.description %}<p class="mt-2 whitespace-pre-line text-warm-700">{{ album.description }}</p>{% endif %}
+    </div>
+    {% if is_owner %}
+      <div class="flex flex-wrap gap-2">
+        <a href="{% url 'bucketlists:album_pick' album.pk %}" class="sbl-btn sbl-btn-primary"><i class="bi bi-images"></i> Add from my photos</a>
+        <a href="{% url 'bucketlists:album_edit' album.pk %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-pencil"></i> Edit</a>
+      </div>
+    {% endif %}
+  </header>
+  {% if is_owner %}{% include "bucketlists/partials/_upload_form.html" %}{% endif %}
+  {% if items %}
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {% for entry in items %}{% with photo=entry.media %}
+        <figure class="sbl-card overflow-hidden">
+          <a href="{{ photo.file.url }}" target="_blank" rel="noopener" class="relative block">
+            <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}" loading="lazy" class="aspect-square w-full object-cover">
+            {% if is_owner and photo.pk == album.cover_image_id %}<span class="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold uppercase text-warm-900 shadow">Cover</span>{% endif %}
+          </a>
+          <figcaption class="px-3 py-2 text-xs text-warm-500">
+            <span class="block truncate" title="{{ photo.title }}">{{ photo.title }}</span>
+            {% if is_owner %}
+              <span class="mt-1 flex gap-3">
+                {% if photo.pk != album.cover_image_id %}<form method="post" action="{% url 'bucketlists:album_cover' album.pk photo.pk %}">{% csrf_token %}<button type="submit" class="hover:text-earth-clay">Make cover</button></form>{% endif %}
+                <form method="post" action="{% url 'bucketlists:album_remove' album.pk photo.pk %}">{% csrf_token %}<button type="submit" class="hover:text-red-700">Take out</button></form>
+              </span>
+            {% endif %}
+          </figcaption>
+        </figure>
+      {% endwith %}{% endfor %}
+    </div>
+  {% else %}
+    <p class="sbl-card p-8 text-center text-warm-500">No photos in this album yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

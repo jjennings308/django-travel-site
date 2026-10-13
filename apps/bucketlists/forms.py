@@ -4,6 +4,7 @@ from django import forms
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI
+from apps.media_app.models import MediaAlbum
 from apps.media_app.forms import MAX_PHOTOS, MultipleImageField  # noqa: F401  (MAX_PHOTOS used by views/tests)
 
 from .models import BucketListCategory, BucketListItem
@@ -195,3 +196,24 @@ class PlanTripForm(forms.Form):
         if start and end and end < start:
             self.add_error("end_date", "The last day is before the first day.")
         return cleaned
+
+
+class PhotosForm(forms.Form):
+    """Upload several photos (a goal's photos page, an album)."""
+    photos = MultipleImageField(
+        label="Add photos",
+        help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
+    )
+
+
+class AlbumForm(forms.ModelForm):
+    """A personal album (media_app.MediaAlbum with no trip): title, note and who sees it."""
+    PRIVACY = [("private", "Only me"), ("public", "Public (on your public bucket list, when your profile is public)")]
+    privacy = forms.ChoiceField(choices=PRIVACY, label="Who can see it", widget=forms.RadioSelect(attrs={"class": "sbl-check"}))
+
+    class Meta:
+        model = MediaAlbum
+        fields = ["title", "description", "privacy"]
+        labels = {"title": "Album name", "description": "About this album (optional)"}
+        widgets = {"title": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. National parks 2026"}),
+                   "description": forms.Textarea(attrs={**INPUT, "rows": 3})}

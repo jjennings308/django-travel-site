@@ -75,7 +75,7 @@
     <label class="flex items-center gap-2 text-sm text-warm-700">{{ form.is_public }} {{ form.is_public.label }}</label>
     <p class="sbl-help mb-4">Your public page is only visible if your profile visibility is set to Public.</p>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-warm-200 pt-5">
-      {% if item %}<a href="{% url 'bucketlists:item_delete' item.pk %}" class="sbl-btn sbl-btn-outline-danger"><i class="bi bi-trash"></i>Remove</a>{% else %}<span></span>{% endif %}
+      {% if item %}<span class="flex flex-wrap gap-2"><a href="{% url 'bucketlists:item_delete' item.pk %}" class="sbl-btn sbl-btn-outline-danger"><i class="bi bi-trash"></i>Remove</a><a href="{% url 'bucketlists:item_photos' item.pk %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-images"></i>Photos</a></span>{% else %}<span></span>{% endif %}
       <div class="flex gap-2">
         <a href="{% url 'bucketlists:dashboard' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
         <button type="submit" class="sbl-btn sbl-btn-primary">{% if item %}Save{% else %}Add to bucket list{% endif %}</button>

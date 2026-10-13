@@ -81,6 +81,19 @@ def _find_or_start(user, kind, target):
     return BucketListItem(user=user, **{kind: target}), False
 
 
+def _attach_first_photos(items):
+    """Set ``item.first_photo`` (its oldest photo) on each item, in one query."""
+    items = list(items)
+    if items:
+        from django.contrib.contenttypes.models import ContentType
+        from apps.media_app.models import Media
+        by_pk = {i.pk: i for i in items}
+        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
+                                           object_id__in=list(by_pk), media_type="image").order_by("-created_at")):
+            by_pk[media.object_id].first_photo = media
+    return items
+
+
 @login_required
 def dashboard(request):
     """The user's bucket list, with progress and filters."""
@@ -112,7 +125,7 @@ def dashboard(request):
     )
     counts["percent"] = round(100 * counts["completed"] / counts["total"]) if counts["total"] else 0
     return render(request, "bucketlists/dashboard.html", {
-        "items": items,
+        "items": _attach_first_photos(items),
         "counts": counts,
         "categories": BucketListCategory.objects.filter(user=request.user).annotate(n=Count("items")),
         "status_choices": BucketListItem.STATUS_CHOICES,
@@ -592,18 +605,13 @@ def public_list(request, username):
         _items().filter(user=owner, is_public=True).exclude(status="abandoned")
         .order_by("status", "-priority", "-completed_date")
     )
+    items = _attach_first_photos(items)
     done = [i for i in items if i.status == "completed"]
     todo = [i for i in items if i.status != "completed"]
-    if done:  # first photo of each finished goal, in one query
-        from django.contrib.contenttypes.models import ContentType
-        from apps.media_app.models import Media
-        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
-                                           object_id__in=[i.pk for i in done], media_type="image")
-                      .order_by("-created_at")):
-            for item in done:
-                if item.pk == media.object_id:
-                    item.first_photo = media
+    from apps.media_app.models import MediaAlbum
+    albums = (MediaAlbum.objects.filter(user=owner, trip__isnull=True, privacy="public")
+              .select_related("cover_image").order_by("-updated_at"))
     from .badges import progress
     return render(request, "bucketlists/public_list.html", {
-        "owner": owner, "todo": todo, "done": done, "is_owner": is_owner, "badges": progress(owner),
+        "owner": owner, "todo": todo, "done": done, "is_owner": is_owner, "badges": progress(owner), "albums": albums,
     })

@@ -10,5 +10,6 @@
 <div class="mb-6"></div>
 {% if todo %}<h2 class="sbl-section-title">Still to do</h2><div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{% for item in todo %}{% include "bucketlists/partials/_item_card.html" %}{% endfor %}</div>{% endif %}
 {% if done %}<h2 class="sbl-section-title">Done</h2><div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{% for item in done %}{% include "bucketlists/partials/_item_card.html" %}{% endfor %}</div>{% endif %}
-{% if not todo and not done %}<div class="sbl-card p-10 text-center text-warm-500">Nothing shared yet.</div>{% endif %}
+{% if albums %}<h2 class="sbl-section-title mt-8">Albums</h2><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{% for album in albums %}{% include "bucketlists/partials/_album_card.html" %}{% endfor %}</div>{% endif %}
+{% if not todo and not done and not albums %}<div class="sbl-card p-10 text-center text-warm-500">Nothing shared yet.</div>{% endif %}
 {% endblock %}

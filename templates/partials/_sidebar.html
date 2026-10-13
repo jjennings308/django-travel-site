@@ -15,7 +15,7 @@
 
   <p class="{{ step }}"><span class="{{ num }}">2</span>Dream</p>
   <ul class="flex flex-col gap-1">
-    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and current != 'bucketlists:adventures' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>My bucket list</a></li>
+    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and current != 'bucketlists:adventures' and current|slice:':17' != 'bucketlists:album' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>My bucket list</a></li>
   </ul>
 
   <p class="{{ step }}"><span class="{{ num }}">3</span>Pick a date</p>
@@ -31,6 +31,7 @@
   <p class="{{ step }}"><span class="{{ num }}">5</span>Done</p>
   <ul class="flex flex-col gap-1">
     <li><a class="{{ base }} {% if current == 'bucketlists:adventures' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:adventures' %}"><i class="bi bi-trophy"></i>My adventures</a></li>
+    <li><a class="{{ base }} {% if current|slice:':17' == 'bucketlists:album' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:albums' %}"><i class="bi bi-images"></i>My albums</a></li>
   </ul>
 
   <ul class="mt-4 flex flex-col gap-1 border-t border-warm-200 pt-3">
