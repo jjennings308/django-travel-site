@@ -1,7 +1,7 @@
-{# templates/partials/_map.html — one map. Pass data_url (a view returning GeoJSON), optional height (CSS, default 32rem) and route=True to join numbered points with a line. Drawn by static core/map.js through the adapter named by settings.MAP_PROVIDER ("osm": Leaflet + OpenStreetMap tiles). New maps use this partial and a GeoJSON view; never call a map provider's API directly, so the provider can be swapped. #}
+{# templates/partials/_map.html — one map. Pass data_url (a view returning GeoJSON), optional extra_urls (more GeoJSON views, space-separated, merged in), height (CSS, default 32rem), route=True to join numbered points with a line, and controls (the id of an element holding <input type=checkbox data-layer=…> switches for the features' properties.layer). Drawn by static core/map.js through the adapter named by settings.MAP_PROVIDER ("osm": Leaflet + OpenStreetMap tiles). New maps use this partial and a GeoJSON view; never call a map provider's API directly, so the provider can be swapped. #}
 {% load static %}
 <div class="relative overflow-hidden rounded-xl border border-warm-200 bg-warm-100" style="height: {{ height|default:'32rem' }};">
-  <div class="h-full w-full" data-sbl-map data-url="{{ data_url }}" data-provider="{{ MAP_PROVIDER }}" data-tiles="{{ MAP_TILE_URL }}" data-attribution="{{ MAP_ATTRIBUTION }}"{% if route %} data-route="1"{% endif %}>
+  <div class="h-full w-full" data-sbl-map data-url="{{ data_url }}" data-provider="{{ MAP_PROVIDER }}" data-tiles="{{ MAP_TILE_URL }}" data-attribution="{{ MAP_ATTRIBUTION }}"{% if route %} data-route="1"{% endif %}{% if extra_urls %} data-extra-urls="{{ extra_urls }}"{% endif %}{% if controls %} data-controls="{{ controls }}"{% endif %}>
     <p class="flex h-full items-center justify-center text-sm text-warm-500" data-sbl-map-status>Loading map…</p>
   </div>
 </div>

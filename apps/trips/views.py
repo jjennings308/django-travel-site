@@ -1275,8 +1275,8 @@ def trip_map_data(request, pk):
         span = f"{first:%b} {first.day}" if first == last else f"{first:%b} {first.day} – {last:%b} {last.day}"
         return f"{span} · {stop['days']} day{'s' if stop['days'] != 1 else ''}, {stop['city'].country.name}"
 
-    features = [feature(s["city"], order=n, subtitle=when(s)) for n, s in enumerate(stops, start=1)]
-    features += [feature(c, subtitle=f"{c.country.name} · on this trip") for c in others]
+    features = [feature(s["city"], order=n, subtitle=when(s), layer="cities") for n, s in enumerate(stops, start=1)]
+    features += [feature(c, subtitle=f"{c.country.name} · on this trip", layer="cities") for c in others]
     for leg in legs:  # Times through the leg's own local-time helpers (never |date on a converted time).
         what = " ".join(p for p in (leg.operator, leg.service_number) if p)
         features.append({
@@ -1285,6 +1285,7 @@ def trip_map_data(request, pk):
                 [float(leg.origin_city.longitude), float(leg.origin_city.latitude)],
                 [float(leg.destination_city.longitude), float(leg.destination_city.latitude)]]},
             "properties": {
+                "layer": "legs",
                 "mode": leg.mode,
                 "name": f"{leg.get_mode_display()}: {leg.origin_city.name} → {leg.destination_city.name}",
                 "subtitle": " · ".join(p for p in (what, f"{leg.departure_local_date} {leg.departure_local_str}") if p),

@@ -763,3 +763,39 @@ class ShareReviewTests(BucketFixture):
         self.client.force_login(self.bob)
         self.client.post(reverse("reviews:write", args=["poi", self.poi.slug]), {"rating": 2, "comment": "Meh"})
         self.assertFalse(Review.objects.get(user=self.bob).is_verified_visit)
+
+
+class TripMapPlacesTests(BucketFixture):
+    """The trip map's "Places of interest" layer: your own goals' places on that trip."""
+
+    def setUp(self):
+        super().setUp()
+        self.trip = Trip.objects.create(name="Testland week", start_date=date(2027, 5, 1), end_date=date(2027, 5, 7),
+                                        created_by=self.alice)
+        for user in (self.alice, self.bob):
+            TripGrant.objects.create(trip=self.trip, user=user, role=TripRole.VIEWER)
+        self.hall = POI.objects.create(name="Music Hall", slug="music-hall", city=self.city, latitude=3, longitude=4,
+                                       approval_status=ApprovalStatus.APPROVED)
+        self.activity.venue = self.hall
+        self.activity.save()
+        poi_goal = BucketListItem.objects.create(user=self.alice, custom_title="Bridges", trip=self.trip)
+        poi_goal.pois.add(self.poi)
+        BucketListItem.objects.create(user=self.alice, activity=self.activity, trip=self.trip)
+        hidden = POI.objects.create(name="Unapproved", slug="unapproved", city=self.city, latitude=5, longitude=6,
+                                    approval_status=ApprovalStatus.PENDING)
+        BucketListItem.objects.create(user=self.alice, custom_title="Secret", trip=self.trip).pois.add(hidden)
+        BucketListItem.objects.create(user=self.bob, custom_title="Bob's", trip=self.trip).pois.add(self.hall)
+        self.url = reverse("bucketlists:trip_map_places", args=[self.trip.pk])
+
+    def test_own_goals_places_only(self):
+        data = self.client.get(self.url).json()
+        names = [(f["properties"]["name"], f["properties"]["layer"], f["properties"]["marker"]) for f in data["features"]]
+        self.assertEqual(names, [("Music Hall", "pois", "poi"), ("Old Bridge", "pois", "poi")])
+        self.assertIn("for Ridge Walk", data["features"][0]["properties"]["subtitle"])
+        self.client.force_login(self.bob)
+        self.assertEqual([f["properties"]["name"] for f in self.client.get(self.url).json()["features"]], ["Music Hall"])
+
+    def test_no_grant_is_404(self):
+        stranger = User.objects.create_user("carol", "carol@example.com", "pw-1234-abcd")
+        self.client.force_login(stranger)
+        self.assertEqual(self.client.get(self.url).status_code, 404)

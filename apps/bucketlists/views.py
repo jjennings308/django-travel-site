@@ -615,3 +615,40 @@ def public_list(request, username):
     return render(request, "bucketlists/public_list.html", {
         "owner": owner, "todo": todo, "done": done, "is_owner": is_owner, "badges": progress(owner), "albums": albums,
     })
+
+
+@login_required
+def trip_map_places(request, trip_pk):
+    """GeoJSON of the places of interest on *your* goals linked to a trip: a goal's own
+    places, its activity's venue and its event's venue (published places only). Feeds the
+    trip map's "Places of interest" layer; lives here because trips may not read bucket
+    lists. Goals are private, so on a shared trip each person sees only their own."""
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
+    items = (BucketListItem.objects.filter(user=request.user, trip=trip)
+             .select_related("city", "activity__venue__city__country", "activity__venue__poi_type", "activity__venue__featured_media",
+                             "event__poi__city__country", "event__poi__poi_type", "event__poi__featured_media")
+             .prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city__country", "poi_type", "featured_media"))))
+    places = {}  # poi pk -> (poi, [goal titles])
+    for item in items:
+        candidates = list(item.pois.all())
+        if item.activity_id and item.activity.venue_id:
+            candidates.append(item.activity.venue)
+        if item.event_id and item.event.poi_id:
+            candidates.append(item.event.poi)
+        for poi in candidates:
+            if poi.approval_status == ApprovalStatus.APPROVED:
+                places.setdefault(poi.pk, (poi, []))[1].append(item.title)
+    features = []
+    for poi, goals in sorted(places.values(), key=lambda pg: pg[0].name):
+        media = poi.featured_media
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(poi.longitude), float(poi.latitude)]},
+            "properties": {
+                "layer": "pois", "marker": "poi", "name": poi.name,
+                "subtitle": f"{poi.poi_type.name} · {poi.city.name} · for " + ", ".join(sorted(set(goals))),
+                "url": reverse("locations:poi_detail", args=[poi.slug]),
+                "image": media.file.url if media and media.media_type == "image" else "",
+            },
+        })
+    return JsonResponse({"type": "FeatureCollection", "features": features})

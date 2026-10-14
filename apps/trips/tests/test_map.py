@@ -56,8 +56,7 @@ class TripMapTests(TestCase):
         empty = Trip.objects.create(name="Blank", start_date=date(2027, 6, 1), end_date=date(2027, 6, 2), created_by=self.user)
         TripGrant.objects.create(trip=empty, user=self.user, role=TripRole.EDITOR)
         page = self.client.get(reverse("trips:trip_map", args=[empty.pk]))
-        self.assertNotContains(page, "data-sbl-map")
-        self.assertContains(page, "No places on this trip yet")
+        self.assertContains(page, "No cities on this trip yet")
 
 
 class TravelDayLegTests(TestCase):
@@ -117,3 +116,14 @@ class TravelDayLegTests(TestCase):
         # The printed detail page doesn't touch the new city links.
         page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertEqual(page.status_code, 200)
+
+
+class TripMapLayerTests(TripMapTests):
+    def test_features_carry_their_layer_and_page_has_switches(self):
+        data = self.client.get(reverse("trips:trip_map_data", args=[self.trip.pk])).json()
+        self.assertEqual({f["properties"]["layer"] for f in data["features"]}, {"cities"})
+        page = self.client.get(reverse("trips:trip_map", args=[self.trip.pk]))
+        for layer in ("cities", "pois", "legs"):
+            self.assertContains(page, f'data-layer="{layer}"')
+        self.assertContains(page, 'data-controls="trip-map-layers"')
+        self.assertContains(page, f'data-extra-urls="{reverse("bucketlists:trip_map_places", args=[self.trip.pk])}"')

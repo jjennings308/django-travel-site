@@ -16,6 +16,7 @@ urlpatterns = [
     path("<int:pk>/pick-date/", views.pick_date, name="pick_date"),
     path("trip/<int:trip_pk>/done/", views.trip_done, name="trip_done"),
     path("trip/<int:trip_pk>/", views.trip_goals, name="trip_goals"),
+    path("trip/<int:trip_pk>/map-places.json", views.trip_map_places, name="trip_map_places"),
     path("<int:pk>/add-to-trip/", views.add_to_trip, name="add_to_trip"),
     path("<int:pk>/remove-from-trip/", views.remove_from_trip, name="remove_from_trip"),
     path("<int:pk>/link/", views.link_item, name="link_item"),

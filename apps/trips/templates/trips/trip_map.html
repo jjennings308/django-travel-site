@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Trip map: the days' cities in date order (numbered, joined by a line) and the trip's other cities, drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
+Trip map: the days' cities in date order (numbered, joined by a line or by the transport legs), the trip's other cities, and your own goals' places of interest (bucketlists:trip_map_places), with switches per layer; drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
 {% endcomment %}
 {% block title %}Map — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
@@ -18,9 +18,17 @@ Trip map: the days' cities in date order (numbered, joined by a line) and the tr
     </div>
   </div>
 
+  {# Layer switches for the map: cities (stops + other trip cities), your goals' places of interest (from bucketlists, via url-as so trips doesn't depend on it), travel legs. #}
+  {% url 'trips:trip_map_data' trip.pk as data_url %}
+  {% url 'bucketlists:trip_map_places' trip.pk as places_url %}
+  <div id="trip-map-layers" class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" role="group" aria-label="Show on the map">
+    <span class="card-kicker">Show</span>
+    <label class="flex items-center gap-2"><input type="checkbox" data-layer="cities" checked> <span class="inline-block size-3 rounded-full bg-accent-700"></span> Cities</label>
+    {% if places_url %}<label class="flex items-center gap-2" title="Places on your bucket-list goals linked to this trip"><input type="checkbox" data-layer="pois" checked> <span class="inline-block size-3 rounded-full bg-green-600"></span> Places of interest</label>{% endif %}
+    <label class="flex items-center gap-2"><input type="checkbox" data-layer="legs" checked> <span class="inline-block h-0.5 w-4 bg-blue-600"></span> Travel legs</label>
+  </div>
+  {% include "partials/_map.html" with data_url=data_url extra_urls=places_url height="34rem" route=True controls="trip-map-layers" %}
   {% if stops or others or legs %}
-    {% url 'trips:trip_map_data' trip.pk as data_url %}
-    {% include "partials/_map.html" with data_url=data_url height="34rem" route=True %}
     {% if stops %}
       <ol class="card mt-6 divide-y divide-zinc-200 p-0">
         {% for stop in stops %}
@@ -47,8 +55,8 @@ Trip map: the days' cities in date order (numbered, joined by a line) and the tr
     {% endif %}
     {% if not legs and can_edit %}<p class="note mt-4">Tip: give each transport leg a From and To city (Edit trip → Transport) to draw the actual trains, flights and drives between stops.</p>{% endif %}
   {% else %}
-    <div class="card p-8 text-center text-zinc-500">
-      <p>No places on this trip yet.{% if can_edit %} Add the cities you're visiting under <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>, and give each day its city.{% endif %}</p>
+    <div class="card mt-6 p-8 text-center text-zinc-500">
+      <p>No cities on this trip yet.{% if can_edit %} Add the cities you're visiting under <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>, and give each day its city.{% endif %}</p>
     </div>
   {% endif %}
 {% endblock %}
