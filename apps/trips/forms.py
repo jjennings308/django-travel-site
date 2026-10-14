@@ -500,11 +500,11 @@ def _city_choices():
             .select_related("region", "country").order_by("country__name", "name"))
 
 
-def _leg_city_fields(form, trip):
-    """Limit a leg's from/to city to the trip's cities when it names any (as the day form
-    does), else any approved city. The trip's cities are cached on the trip so a formset
-    of legs asks once."""
-    if "origin_city" not in form.fields:
+def _leg_city_fields(form, trip, names=("origin_city", "destination_city")):
+    """Limit city fields (a leg's from/to, a stay's city) to the trip's cities when it names
+    any (as the day form does), else any approved city. The trip's cities are cached on the
+    trip so a formset asks once."""
+    if names[0] not in form.fields:
         return
     if trip is None or not trip.pk:
         choices = _city_choices()
@@ -514,7 +514,7 @@ def _leg_city_fields(form, trip):
             ids = list(trip.cities.values_list("pk", flat=True))
             cached = trip._leg_city_choices = _city_choices().filter(pk__in=ids) if ids else _city_choices()
         choices = cached
-    for name in ("origin_city", "destination_city"):
+    for name in names:
         form.fields[name].queryset = choices
         form.fields[name].label_from_instance = str
 
@@ -621,7 +621,16 @@ class AddTravelerForm(forms.Form):
 # ---------------------------------------------------------------------------
 
 
-class LodgingForm(forms.ModelForm):
+class LocatingStayMixin:
+    """Look a stay's address up on save (``Lodging.locate``): the trip map's pin."""
+
+    def save(self, commit=True):
+        self.instance.locate(address_changed="address" in self.changed_data,
+                             coordinates_edited=bool({"latitude", "longitude"} & set(self.changed_data)))
+        return super().save(commit)
+
+
+class LodgingForm(LocatingStayMixin, forms.ModelForm):
     """One place to stay. Check-out has to follow check-in."""
 
     class Meta:
@@ -629,6 +638,9 @@ class LodgingForm(forms.ModelForm):
         fields = [
             "name",
             "address",
+            "city",
+            "latitude",
+            "longitude",
             "check_in",
             "check_out",
             "confirmation_number",
@@ -645,6 +657,7 @@ class LodgingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # "USD" is the model default; make the admin-type-please not type it.
         self.fields["currency"].required = False
+        _leg_city_fields(self, self.instance.trip if self.instance.trip_id else None, names=("city",))
 
     def clean(self):
         cleaned_data = super().clean()
@@ -801,6 +814,14 @@ class ScopedBookingTaskFormSet(TripScopedFormSet):
     """The one formset with cross-trip choices to narrow."""
 
     trip_scoped_fields = ("day", "confirmation")
+
+
+class LodgingAdminForm(LocatingStayMixin, forms.ModelForm):
+    """Admin form for a stay: looks the address up on save, like the trip edit page."""
+
+    class Meta:
+        model = Lodging
+        fields = "__all__"
 
 
 LodgingFormSet = inlineformset_factory(

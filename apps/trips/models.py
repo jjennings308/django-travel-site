@@ -914,6 +914,16 @@ class Lodging(models.Model):
     )
     currency = models.CharField(max_length=3, default="USD")
     notes = models.TextField(blank=True)
+    # Where it is, for the trip map (a stay is a private booking, never a catalogue POI).
+    # The coordinates come from the address (``locate``) or are typed in; the city is the
+    # fallback pin.
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="stays",
+                             help_text="Catalogue city it's in (the map pin if the address can't be found)")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True,
+                                   help_text="Filled in from the address; correct it if the pin is off")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geocoded_address = models.TextField(blank=True, editable=False,
+                                        help_text="The address last looked up (found or not), so it isn't looked up again")
 
     class Meta:
         ordering = ["check_in"]
@@ -925,6 +935,39 @@ class Lodging(models.Model):
     @property
     def nights(self):
         return max((self.check_out - self.check_in).days, 0)
+
+    def locate(self, address_changed=False, coordinates_edited=False):
+        """Fill in the coordinates from the address (apps.core.geocoding), without saving.
+
+        A changed address clears coordinates that weren't typed in alongside it; then an
+        address with no coordinates that hasn't been looked up yet is looked up once, then
+        as "name, address" if that finds nothing (a failed lookup isn't retried until the
+        address changes). Called by the stay forms,
+        never on a plain save, so imports and fixtures don't call the network."""
+        if address_changed and not coordinates_edited:
+            self.latitude = self.longitude = None
+        address = (self.address or "").strip()
+        if address and self.latitude is None and address != self.geocoded_address:
+            from apps.core.geocoding import geocode
+            found = geocode(address)
+            if not found and self.name.strip():
+                # A vague address ("Butzbach Old Town") often finds the hotel by name; wait a
+                # second first, as the lookup service asks.
+                import time
+                time.sleep(1)
+                found = geocode(f"{self.name.strip()}, {address}")
+            self.geocoded_address = address
+            if found:
+                self.latitude, self.longitude = found
+
+    @property
+    def map_position(self):
+        """(lat, lng) for the map: its own coordinates, else its city's centre, else None."""
+        if self.latitude is not None and self.longitude is not None:
+            return self.latitude, self.longitude
+        if self.city_id:
+            return self.city.latitude, self.city.longitude
+        return None
 
 
 class TripExpense(models.Model):

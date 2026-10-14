@@ -1,3 +1,4 @@
+import sys
 from .base import *
 
 try:
@@ -29,3 +30,7 @@ INTERNAL_IPS = [
 if DEBUG:
     INSTALLED_APPS += ['django_browser_reload']
     MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
+
+# The test suite never calls the address lookup (apps/core/geocoding.py); tests mock it.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    GEOCODING_ENABLED = False

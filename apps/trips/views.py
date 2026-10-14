@@ -1255,6 +1255,7 @@ def trip_map(request, pk):
     stops, others, legs = _trip_stops(trip)
     return render(request, "trips/trip_map.html", {
         "trip": trip, "stops": stops, "others": others, "legs": legs, "can_edit": trip.can(request.user, "edit"),
+        "stays": list(trip.lodging.select_related("city").order_by("check_in")),
     })
 
 
@@ -1277,6 +1278,24 @@ def trip_map_data(request, pk):
 
     features = [feature(s["city"], order=n, subtitle=when(s), layer="cities") for n, s in enumerate(stops, start=1)]
     features += [feature(c, subtitle=f"{c.country.name} · on this trip", layer="cities") for c in others]
+    for stay in trip.lodging.select_related("city").order_by("check_in"):
+        # Name, place and dates only: never the confirmation number, rate or notes.
+        position = stay.map_position
+        if position is None:
+            continue
+        nights = stay.nights
+        dates = f"{stay.check_in:%b} {stay.check_in.day} – {stay.check_out:%b} {stay.check_out.day}"
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(position[1]), float(position[0])]},
+            "properties": {
+                "layer": "stays", "marker": "stay", "name": stay.name,
+                "subtitle": " · ".join(p for p in (
+                    f"{dates} ({nights} night{'s' if nights != 1 else ''})",
+                    stay.city.name if stay.city_id else "",
+                    "" if stay.latitude is not None else "pin on the city centre") if p),
+            },
+        })
     for leg in legs:  # Times through the leg's own local-time helpers (never |date on a converted time).
         what = " ".join(p for p in (leg.operator, leg.service_number) if p)
         features.append({

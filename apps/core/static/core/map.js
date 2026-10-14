@@ -13,7 +13,7 @@
 //   toggle(map, group, visible)     -> show or hide a layer
 //   fit(map, features)              -> zoom to show them all (points and lines)
 // Feature properties: name, subtitle, url, image, order (route stops), mode (legs),
-// layer (which switch it belongs to, default "places"), marker ("poi" for a small dot).
+// layer (which switch it belongs to, default "places"), marker ("poi": small dot, "stay": house).
 // Layer switches: <input type="checkbox" data-layer="cities"> inside the element named by
 // data-controls; a layer with nothing to show disables its switch.
 // Text from the catalogue is user-submitted, so popups are built with DOM methods only.
@@ -103,6 +103,11 @@
           marker = L.marker(ll, { icon: L.divIcon({
             className: "", iconSize: [28, 28], iconAnchor: [14, 14],
             html: '<span style="display:flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:9999px;background:#8B5A3C;color:#fff;font:700 13px/1 sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">' + Number(f.properties.order) + "</span>"
+          }) });
+        } else if (f.properties.marker === "stay") {
+          marker = L.marker(ll, { icon: L.divIcon({
+            className: "", iconSize: [26, 26], iconAnchor: [13, 13],
+            html: '<span style="display:flex;width:26px;height:26px;align-items:center;justify-content:center;border-radius:6px;background:#7c3aed;color:#fff;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"><i class="bi bi-house-door-fill"></i></span>'
           }) });
         } else if (f.properties.marker === "poi") {
           marker = L.marker(ll, { icon: L.divIcon({

@@ -224,6 +224,9 @@ MAP_TILE_URL = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z
 MAP_ATTRIBUTION = os.environ.get(
     "MAP_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until a Google adapter exists
+# Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
+GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
+GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
 
 LEGAL = {
     "entity": os.environ.get("LEGAL_ENTITY_NAME", "[Legal entity name]"),

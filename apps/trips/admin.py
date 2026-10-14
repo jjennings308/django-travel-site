@@ -7,7 +7,7 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .forms import DayAdminForm, TransportLegAdminForm
+from .forms import DayAdminForm, LodgingAdminForm, TransportLegAdminForm
 from .models import (
     TripExpense,
     BookingTask,
@@ -53,8 +53,10 @@ class TransportLegInline(admin.TabularInline):
 
 class LodgingInline(admin.TabularInline):
     model = Lodging
+    form = LodgingAdminForm
     extra = 1
-    fields = ("name", "check_in", "check_out", "nightly_rate", "currency", "confirmation_number")
+    fields = ("name", "address", "city", "check_in", "check_out", "nightly_rate", "currency", "confirmation_number")
+    autocomplete_fields = ("city",)
 
 
 class TripExpenseInline(admin.TabularInline):
@@ -596,10 +598,16 @@ class TransportLegAdmin(admin.ModelAdmin):
 
 @admin.register(Lodging)
 class LodgingAdmin(admin.ModelAdmin):
-    list_display = ("name", "trip", "check_in", "check_out", "nightly_rate", "currency")
+    form = LodgingAdminForm
+    autocomplete_fields = ("city",)
+    list_display = ("name", "trip", "city", "check_in", "check_out", "has_pin", "nightly_rate", "currency")
     list_filter = ("trip",)
     date_hierarchy = "check_in"
     search_fields = ("name", "address")
+
+    @admin.display(boolean=True, description="Pin")
+    def has_pin(self, obj):
+        return obj.latitude is not None
 
 
 @admin.register(Section)
