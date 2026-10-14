@@ -122,3 +122,92 @@ class StaysLayerTests(StayFixture):
     def test_stay_city_choices_follow_the_trip(self):
         form = LodgingForm(instance=Lodging(trip=self.trip))
         self.assertEqual(list(form.fields["city"].queryset), [self.liverpool])
+
+
+class FillDayCitiesTests(StayFixture):
+    """A stay with a city fills the city on the nights it covers, where days have none."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.trips.models import Day
+        uk = self.liverpool.country
+        self.manchester = City.objects.create(name="Manchester", slug="manchester", country=uk, latitude=53.48,
+                                              longitude=-2.24, approval_status=ApprovalStatus.APPROVED)
+        self.days = {d: Day.objects.create(trip=self.trip, date=date(2027, 9, d), day_number=d - 9)
+                     for d in (10, 11, 12, 13)}
+        self.days[12].city = self.manchester  # set by hand: must stay
+        self.days[12].save()
+        self.trip.cities.clear()
+
+    def city_of(self, day):
+        self.days[day].refresh_from_db()
+        return self.days[day].city
+
+    @mock.patch("apps.core.geocoding.geocode", return_value=None)
+    def test_saving_a_stay_fills_blank_nights_only(self, _geocode):
+        form_stay = self.save(city=self.liverpool.pk)  # Sep 11 -> Sep 13
+        self.assertEqual([self.city_of(d) for d in (10, 11, 12, 13)], [None, self.liverpool, self.manchester, None])
+        self.assertIn(self.liverpool, self.trip.cities.all())
+        self.assertIsNotNone(form_stay.pk)
+
+    @mock.patch("apps.core.geocoding.geocode", return_value=None)
+    def test_stay_without_city_changes_nothing(self, _geocode):
+        self.save(city="")
+        self.assertIsNone(self.city_of(11))
+
+    def test_plain_create_does_not_fill(self):
+        Lodging.objects.create(trip=self.trip, name="Imported", city=self.liverpool,
+                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        self.assertIsNone(self.city_of(11))
+
+    def test_backfill_command(self):
+        from io import StringIO
+        from django.core.management import call_command
+        Lodging.objects.create(trip=self.trip, name="Imported", city=self.liverpool,
+                               check_in=date(2027, 9, 10), check_out=date(2027, 9, 12))
+        out = StringIO()
+        call_command("geocode_stays", "--fill-days", stdout=out)
+        self.assertEqual([self.city_of(d) for d in (10, 11)], [self.liverpool, self.liverpool])
+        self.assertIn("2 day city(ies) filled", out.getvalue())
+
+    @mock.patch("apps.core.geocoding.geocode", return_value=None)
+    def test_trip_edit_page_says_how_many(self, _geocode):
+        Lodging.objects.create(trip=self.trip, name="Hard Days Night Hotel", city=self.liverpool,
+                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+        data = {}
+        for key, value in self._form_data(page).items():
+            data[key] = value
+        stay_prefix = "lodging-0-"
+        data[stay_prefix + "notes"] = "edited"
+        response = self.client.post(reverse("trips:trip_edit", args=[self.trip.pk]), data, follow=True)
+        self.assertContains(response, "Filled in the city for 1 day from your stays.")
+
+    @staticmethod
+    def _form_data(page):
+        """Every field the edit page would submit, from its bound forms' initial values."""
+        context = page.context
+        data = {}
+        form = context["form"]
+        for name, field in form.fields.items():
+            value = form[name].value()
+            if value is None:
+                continue
+            data[form.add_prefix(name)] = [str(v) for v in value] if isinstance(value, (list, tuple)) else str(value)
+        traveler_form = context["traveler_form"]
+        for name in traveler_form.fields:
+            data[traveler_form.add_prefix(name)] = ""
+        for _key, _label, formset in context["formsets"]:
+            mf = formset.management_form
+            for name in mf.fields:
+                data[mf.add_prefix(name)] = str(mf[name].value())
+            for f in formset.forms:
+                for name in f.fields:
+                    value = f[name].value()
+                    if value is None or value is False:
+                        continue
+                    if isinstance(value, (list, tuple)):
+                        data[f.add_prefix(name)] = [str(v) for v in value]
+                    else:
+                        data[f.add_prefix(name)] = str(value)
+        return data

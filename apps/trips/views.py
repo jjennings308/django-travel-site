@@ -467,6 +467,9 @@ def trip_edit(request, pk):
                 for _key, _label, formset in formsets:
                     formset.save()
             messages.success(request, f"Saved “{trip.name}”.")
+            filled = sum(getattr(f, "days_filled", 0) for _key, _label, fs in formsets for f in fs.forms)
+            if filled:
+                messages.info(request, f"Filled in the city for {filled} day{'s' if filled != 1 else ''} from your stays.")
             _warn_if_ready_with_open_tasks(request, trip)
             return redirect("trips:trip_detail", pk=trip.pk)
 

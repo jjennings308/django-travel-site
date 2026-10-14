@@ -622,12 +622,19 @@ class AddTravelerForm(forms.Form):
 
 
 class LocatingStayMixin:
-    """Look a stay's address up on save (``Lodging.locate``): the trip map's pin."""
+    """On save, look a stay's address up (``Lodging.locate``: the trip map's pin) and give
+    the days it covers its city where they have none (``Lodging.fill_day_cities``);
+    ``days_filled`` says how many."""
+
+    days_filled = 0
 
     def save(self, commit=True):
         self.instance.locate(address_changed="address" in self.changed_data,
                              coordinates_edited=bool({"latitude", "longitude"} & set(self.changed_data)))
-        return super().save(commit)
+        stay = super().save(commit)
+        if commit:
+            self.days_filled = stay.fill_day_cities()
+        return stay
 
 
 class LodgingForm(LocatingStayMixin, forms.ModelForm):
