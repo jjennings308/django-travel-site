@@ -1797,8 +1797,10 @@ class TripExpenseForm(forms.ModelForm):
 
 
 class LegProposalForm(forms.Form):
-    """One travel row of a logistics table, as a planned leg to confirm (section_to_legs)."""
+    """One travel row of a logistics table, reviewed as a leg (``travel_tables``): linked to
+    the day's existing leg when it already is one, else a planned leg to create."""
     include = forms.BooleanField(required=False, label="Make this leg")
+    section = forms.IntegerField(widget=forms.HiddenInput)
     row = forms.IntegerField(widget=forms.HiddenInput)
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     mode = forms.ChoiceField(choices=TransportLeg.Mode.choices)
@@ -1807,6 +1809,8 @@ class LegProposalForm(forms.Form):
     destination = forms.CharField(max_length=120, label="To")
     destination_city = forms.ModelChoiceField(queryset=City.objects.none(), required=False, label="To city")
     operator = forms.CharField(max_length=120, required=False)
+    duration = forms.CharField(max_length=40, required=False, label="Rough time",
+                               help_text='e.g. "45 min", "2 h 30 min"')
     notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
 
     def __init__(self, *args, cities=None, **kwargs):
@@ -1814,6 +1818,16 @@ class LegProposalForm(forms.Form):
         for name in ("origin_city", "destination_city"):
             self.fields[name].queryset = cities if cities is not None else _city_choices()
             self.fields[name].label_from_instance = str
+
+    def clean_duration(self):
+        from .logistics import rough_duration
+        text = self.cleaned_data["duration"].strip()
+        if not text:
+            return None
+        value = rough_duration(text)
+        if value is None:
+            raise forms.ValidationError('Write it like "45 min" or "2 h 30 min", or leave it blank.')
+        return value
 
 
 LegProposalFormSet = formset_factory(LegProposalForm, extra=0)

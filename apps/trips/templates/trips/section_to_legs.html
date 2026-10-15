@@ -1,8 +1,8 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Review a logistics table's travel rows as planned transport legs (trips:section_to_legs). Nothing is saved until "Make the ticked legs"; times are never guessed - planned legs carry their day, and the table's rough durations go into notes.
+Review logistics tables' travel rows as legs (trips:section_to_legs for one table, trips:trip_travel_review for the whole trip; apps/trips/travel_tables.py). A row already on that day links to the existing leg; others become planned legs. Rows found only by the word "to" start unticked. Nothing is saved until confirming; times are never guessed.
 {% endcomment %}
-{% block title %}Make legs — {{ section.title|default:"logistics" }}{% endblock %}
+{% block title %}Make legs — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
@@ -13,8 +13,8 @@ Review a logistics table's travel rows as planned transport legs (trips:section_
   </nav>
   <div class="page-header">
     <div>
-      <h1 class="page-title">Turn these rows into legs</h1>
-      <p class="page-subtitle">Day {{ day.day_number }} · {{ day.date|date:"D, M j" }} · “{{ section.title|default:"Logistics" }}”. They'll be planned legs: no times until you add them once booked.</p>
+      <h1 class="page-title">{{ heading }}</h1>
+      <p class="page-subtitle">{{ subtitle }} New legs are planned: no times until you add them once booked. Each table you convert becomes a travel section: its converted rows and “Total” rows go, other rows stay for reference.</p>
     </div>
   </div>
 
@@ -23,37 +23,46 @@ Review a logistics table's travel rows as planned transport legs (trips:section_
       {% csrf_token %}
       {{ formset.management_form }}
       {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}
-      <div class="space-y-3">
-        {% for form, proposal in rows %}
-          <fieldset class="card p-4">
-            {{ form.row }}
-            <div class="mb-3 flex flex-wrap items-center gap-3">
-              <label class="flex items-center gap-2 font-medium">{{ form.include }} {{ proposal.origin }} → {{ proposal.destination }}</label>
-              {% if proposal.duplicate %}<span class="badge badge-mode">Already a leg on this day</span>{% endif %}
-            </div>
-            <div class="grid gap-3 sm:grid-cols-4">
-              {% for field in form %}{% if field.name != "include" and field.name != "row" %}
-                <div class="{% if field.name == 'notes' %}sm:col-span-4{% endif %}">
-                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                  {{ field }}
-                  {{ field.errors }}
+      {% for section_plan, items in groups %}
+        <h2 class="section-title mt-6 mb-2">Day {{ section_plan.day.day_number }} · {{ section_plan.day.date|date:"D, M j" }} · “{{ section_plan.section.title|default:"Logistics" }}”</h2>
+        <div class="space-y-3">
+          {% for form, proposal in items %}
+            <fieldset class="card p-4">
+              {{ form.section }}{{ form.row }}
+              <div class="mb-3 flex flex-wrap items-center gap-3">
+                <label class="flex items-center gap-2 font-medium">{{ form.include }} {{ proposal.origin }} → {{ proposal.destination }}</label>
+                {% if proposal.leg %}<span class="badge badge-mode">Link to existing leg: {{ proposal.leg.origin }} → {{ proposal.leg.destination }}</span>
+                {% else %}<span class="badge badge-mode">Create planned leg</span>{% endif %}
+                {% if proposal.strength == "possible" %}<span class="badge badge-medium">Possible — check it's a journey</span>{% endif %}
+              </div>
+              {% if proposal.leg %}
+                <p class="note">Ticked, this row is removed from the table and the leg is shown in its place; the leg only gains a rough time, operator or notes it doesn't have yet.</p>
+                {% for field in form %}{% if field.name != "include" and field.name != "row" and field.name != "section" %}{{ field.as_hidden }}{% endif %}{% endfor %}
+              {% else %}
+                <div class="grid gap-3 sm:grid-cols-4">
+                  {% for field in form %}{% if field.name != "include" and field.name != "row" and field.name != "section" %}
+                    <div class="{% if field.name == 'notes' %}sm:col-span-4{% endif %}">
+                      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                      {{ field }}
+                      {{ field.errors }}
+                    </div>
+                  {% endif %}{% endfor %}
                 </div>
-              {% endif %}{% endfor %}
-            </div>
-            {% if not form.origin_city.value or not form.destination_city.value %}<p class="note mt-2">Pick the city for any end left blank to draw this leg on the map (e.g. München → Munich).</p>{% endif %}
-          </fieldset>
-        {% endfor %}
-      </div>
-      <label class="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" name="remove_rows"> Remove the converted rows from the table afterwards (other rows stay)</label>
+                {% if not form.origin_city.value or not form.destination_city.value %}<p class="note mt-2">Pick the city for any end left blank to draw this leg on the map (e.g. München → Munich).</p>{% endif %}
+              {% endif %}
+            </fieldset>
+          {% endfor %}
+        </div>
+      {% endfor %}
       <div class="mt-4 flex gap-2">
-        <button type="submit" class="btn">Make the ticked legs</button>
-        <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}#day-{{ day.day_number }}">Cancel</a>
+        <button type="submit" class="btn">Convert the ticked rows</button>
+        <a class="btn-quiet" href="{{ back }}">Cancel</a>
       </div>
     </form>
   {% else %}
     <div class="card p-8 text-center text-zinc-500">
-      <p>No travel rows found: this table has no “A → B” rows. It stays as notes.</p>
-      <p class="mt-3"><a class="link-quiet font-medium" href="{% url 'trips:trip_detail' trip.pk %}#day-{{ day.day_number }}">Back to the trip</a></p>
+      <p>No travel rows found: no table here has “A → B” rows. They stay as notes.</p>
+      <p class="mt-3"><a class="link-quiet font-medium" href="{{ back }}">Back to the trip</a></p>
     </div>
   {% endif %}
 {% endblock %}

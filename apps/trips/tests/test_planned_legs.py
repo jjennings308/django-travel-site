@@ -121,33 +121,39 @@ class SectionToLegsTests(Fixture):
         self.assertFalse(TransportLeg.objects.exists())
         first = page.context["rows"][0][1]
         self.assertEqual((first["origin_city"], first["destination_city"]),
-                         (self.city["Butzbach"].pk, self.city["Frankfurt"].pk))  # Frankfurt from the catalogue
+                         (self.city["Butzbach"], self.city["Frankfurt"]))  # Frankfurt from the catalogue
         self.client.post(self.url, self.post_data(page))
         legs = list(TransportLeg.objects.order_by("pk"))
         self.assertEqual([(l.origin, l.destination, l.mode, l.operator, l.is_planned, l.date) for l in legs], [
             ("Butzbach", "Frankfurt Hbf", "train", "RE30", True, date(2027, 9, 20)),
             ("Frankfurt Hbf", "Augsburg Hbf", "train", "ICE direct", True, date(2027, 9, 20))])
-        self.assertEqual(legs[0].notes, "~45 min · Frequent")
+        self.assertEqual((legs[0].notes, legs[0].est_duration_str), ("Frequent", "~45 min"))
+        self.assertEqual(legs[1].notes, "Book ahead · Mid-afternoon")  # the total row's note
         self.assertIn(self.city["Frankfurt"], self.trip.cities.all())
         self.section.refresh_from_db()
-        self.assertEqual(len(self.section.content["rows"]), 3)  # table kept
+        # Phase C: the table became a travel section holding its legs; every row was converted.
+        self.assertEqual(self.section.section_type, Section.Type.TRAVEL)
+        self.assertNotIn("rows", self.section.content)
+        self.assertEqual(list(self.section.legs.order_by("order")), legs)
 
-    def test_duplicates_unticked_and_remove_rows_keeps_the_rest(self):
-        TransportLeg.objects.create(trip=self.trip, date=date(2027, 9, 20), origin="Butzbach", destination="Frankfurt Hbf")
+    def test_existing_leg_is_linked_not_duplicated(self):
+        existing = TransportLeg.objects.create(trip=self.trip, date=date(2027, 9, 20), origin="Butzbach",
+                                               destination="Frankfurt Hbf")
         self.client.force_login(self.editor)
         page = self.client.get(self.url)
-        self.assertTrue(page.context["rows"][0][1]["duplicate"])
-        self.client.post(self.url, self.post_data(page, remove_rows="on"))
+        self.assertEqual([p["action"] for _, p in page.context["rows"]], ["link", "create"])
+        self.client.post(self.url, self.post_data(page))
         self.assertEqual(TransportLeg.objects.count(), 2)  # the existing one + Frankfurt → Augsburg
-        self.section.refresh_from_db()
-        self.assertEqual([r[0] for r in self.section.content["rows"]], ["Butzbach → Frankfurt Hbf", "Total journey"])
+        existing.refresh_from_db()
+        self.assertEqual((existing.section, existing.operator, existing.est_duration_str),
+                         (self.section, "RE30", "~45 min"))  # placed, and gained what it lacked
 
-    def test_duplicate_found_by_cities_when_worded_differently(self):
+    def test_existing_leg_found_by_cities_when_worded_differently(self):
         TransportLeg.objects.create(trip=self.trip, date=date(2027, 9, 20), origin="Butzbach Hof",
                                     destination="Frankfurt Hof")
         self.client.force_login(self.editor)
         rows = self.client.get(self.url).context["rows"]
-        self.assertEqual([p["duplicate"] for _, p in rows], [True, False])
+        self.assertEqual([p["action"] for _, p in rows], ["link", "create"])
 
     def test_editors_only(self):
         self.client.force_login(self.viewer)

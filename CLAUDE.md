@@ -217,13 +217,23 @@ that matter most:
 - **Planned legs:** a leg has a `date` and its times are optional (trips 0020): with no times it is
   *planned* (`TransportLeg.is_planned`), shown as "planned · no times yet" and drawn fainter on the map;
   times, once booked, set `date` from the local departure (`save()`). Forms need both times or neither,
-  and a date when there are none. Legs order by date, then time. **Logistics tables → legs:** a
-  `logistics_table` section with "A → B" rows has a "Turn into legs" link for editors
-  (`trips:section_to_legs`): `apps/trips/logistics.py` (pure) reads each travel row (mode from its words,
-  operator from a Train/Mode/Operator column, the rest — "~45 min", notes — into notes; "Total…" rows
-  skipped), cities are matched by name (trip's first, then the catalogue; "München" needs picking), and a
-  review page creates planned legs on that day (duplicates unticked; optionally removes the converted
-  rows). Nothing is saved before confirming; times are never guessed (see `docx_europe`'s docstring).
+  and a date when there are none. Legs order by date, then time. **Logistics tables → legs** (`apps/trips/travel_tables.py`, trip-items plan Phase C): one
+  plan, three callers — "Turn into legs" on a table (`trips:section_to_legs`), the trip-wide review
+  (`trips:trip_travel_review`, `/trips/<pk>/travel-tables/`, linked from an editors' banner on the trip
+  page while any table still has an arrow row; `travel_tables.has_pending` reads the prefetched
+  sections, no query) and `manage.py convert_travel_tables --trip <pk> [--apply]` (dry run by
+  default). `apps/trips/logistics.py` (pure) reads each travel row: mode from its words, operator
+  from a Train/Mode/Operator column, `duration` from a Time column or the first "~35 min" in the
+  row, a leading verb dropped ("Depart ABQ → SLC" is ABQ → SLC), and a `strength` — `arrow` rows are
+  ticked, `possible` ones (found only by the word "to", or "Via A → B") start unticked, so day
+  schedules ("Continue to Angel Fire") are left alone. A row that is already a leg on that day (same
+  wording, same city pair, or each end naming the other's: "Depart ABQ" / "ABQ") **links**: the leg
+  is placed in the section and only gains an empty rough time / operator / notes; otherwise a
+  planned leg is created (`est_duration`, `order` = row order, cities matched by name, trip's
+  first). Each table with a ticked row becomes a `travel` section: converted rows and "Total…" rows
+  go (their non-time text joins the last leg's notes, `logistics.total_notes`), other rows stay as
+  reference rows. Nothing is saved before confirming; times are never guessed (see `docx_europe`'s
+  docstring).
 - **One leg, two views (trip-items plan, Phase A):** a leg is shown once in the trip-wide
   **Getting around** list and once on its day, both through `trips/partials/_leg_row.html`
   (mode, A → B, operator, local times or "planned · ~45 min", stage badge, editors' Edit link).
@@ -583,7 +593,8 @@ trip-wide lists and on its day; confirmations attached to the items they confirm
 one branch each, in order; "Ask James" decisions there must be answered before the phase that
 needs them. Status: Phase A (legs evolve in place, shown once in each view) done on branch
 `phase-a-legs-in-place`; Phase B (confirmations attached to items, Quick reference generated) done
-on branch `phase-b-confirmations`; Phase C (convert logistics tables into linked legs) next.
+on branch `phase-b-confirmations`; Phase C (convert logistics tables into linked legs, trip-wide)
+done on branch `phase-c-convert-tables`; Phase D (new itineraries start as legs) next.
 
 ### Rules carried over from the itinerary project
 
