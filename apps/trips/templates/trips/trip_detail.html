@@ -121,14 +121,15 @@
                     <dd>{{ stay.nightly_rate }} {{ stay.currency }}</dd>
                   </div>
                 {% endif %}
-                {% if stay.confirmation_number %}
+                {% if stay.confirmation_list %}
                   <div>
                     <dt class="card-kicker">Confirmation</dt>
-                    <dd>{{ stay.confirmation_number }}</dd>
+                    <dd>{% for c in stay.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider and c.provider != stay.name %} · {{ c.provider }}{% endif %}</span> {% endfor %}</dd>
                   </div>
                 {% endif %}
               </dl>
               {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
+              {% if can_edit and not stay.confirmation_list %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:confirmation_new' trip.pk %}?stay={{ stay.pk }}&amp;next={{ request.path|urlencode }}">Add confirmation</a></p>{% endif %}
             </div>
           {% endfor %}
         </div>
@@ -355,18 +356,26 @@
         <h2 class="day-heading">Quick reference</h2>
       </header>
 
-      {% if trip.confirmations.all %}
-        <h3 class="grid-label">Confirmations</h3>
-        <div class="card-grid mb-8">
-          {% for item in trip.confirmations.all %}
-            <div class="card">
-              <p class="card-kicker">{{ item.label }}</p>
-              <p class="card-title mt-1">{{ item.confirmation_number|default:"&mdash;" }}</p>
-              {% if item.provider %}<p class="mt-1 text-sm text-zinc-600">{{ item.provider }}</p>{% endif %}
-              {% if item.notes %}<p class="mt-2 text-sm text-zinc-600">{{ item.notes|linebreaksbr }}</p>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
+      {% if trip.confirmations.all or can_edit %}
+        {# Generated from the confirmations and what they cover (views.confirmation_groups): each once, grouped and dated by its items. #}
+        <h3 class="grid-label">Confirmations{% if can_edit %} <a class="link-quiet ml-2 text-xs font-medium normal-case print:hidden" href="{% url 'trips:confirmation_new' trip.pk %}">Add</a>{% endif %}</h3>
+        {% for title, items in confirmation_groups %}
+          <p class="card-kicker mb-2 mt-4">{{ title }}</p>
+          <div class="card-grid mb-4">
+            {% for item in items %}
+              <div class="card">
+                <p class="card-kicker">{{ item.label|default:item.description|default:"Booking" }}</p>
+                <p class="card-title mt-1">{{ item.confirmation_number|default:"&mdash;" }}</p>
+                {% if item.provider %}<p class="mt-1 text-sm text-zinc-600">{{ item.provider }}</p>{% endif %}
+                {% if item.label and item.description %}<p class="mt-1 text-sm text-zinc-600">{{ item.description }}</p>{% endif %}
+                {% if item.travelers.all %}<p class="mt-1 text-sm text-zinc-600">For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+                {% if item.url %}<p class="mt-1 text-sm"><a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking</a></p>{% endif %}
+                {% if item.notes %}<p class="mt-2 text-sm text-zinc-600">{{ item.notes|linebreaksbr }}</p>{% endif %}
+                {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23quick-reference">Edit</a></p>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
       {% endif %}
 
       {% if trip.contacts.all %}

@@ -35,7 +35,7 @@ class RoundTripTests(TestCase):
             "mode": "plane", "origin": "MUC", "origin_city": self.munich.pk, "origin_timezone": "Europe/Berlin",
             "departure_local": "2027-07-02 09:00", "destination": "LHR", "destination_city": self.london.pk,
             "destination_timezone": "Europe/London", "arrival_local": "2027-07-02 10:00", "operator": "Lufthansa",
-            "service_number": "LH2470", "confirmation_number": "ABC123", "cost": "199", "currency": "EUR",
+            "service_number": "LH2470", "cost": "199", "currency": "EUR",
             "notes": "Window seat", "add_return": "on",
             "return_departure_local": "2027-07-05 18:00", "return_arrival_local": "2027-07-05 21:00",
         }
@@ -55,11 +55,12 @@ class RoundTripTests(TestCase):
                          ("LHR", "MUC", self.london, self.munich))
         self.assertEqual((back.origin_timezone, back.destination_timezone), ("Europe/London", "Europe/Berlin"))
         self.assertEqual((back.mode, back.operator, back.currency), ("plane", "Lufthansa", "EUR"))
-        self.assertEqual((back.service_number, back.confirmation_number, back.cost, back.notes), ("", "", None, ""))
+        self.assertEqual((back.service_number, back.cost, back.notes), ("", None, ""))
+        self.assertFalse(back.confirmations.exists())  # a booking reference isn't copied to the return
         # 18:00 in London (BST, UTC+1) = 17:00 UTC; 21:00 in Munich (CEST, UTC+2) = 19:00 UTC
         self.assertEqual(back.departure_at, datetime(2027, 7, 5, 17, 0, tzinfo=UTC))
         self.assertEqual(back.arrival_at, datetime(2027, 7, 5, 19, 0, tzinfo=UTC))
-        self.assertEqual(outbound.confirmation_number, "ABC123")
+        self.assertEqual(outbound.service_number, "LH2470")
 
     def test_unticked_makes_one_leg(self):
         form = self.form(add_return="", return_departure_local="", return_arrival_local="")

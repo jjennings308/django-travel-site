@@ -1,6 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: Phase A done (2026-10-15, branch `phase-a-legs-in-place`); Phases B–F planned. Hand to Claude
+Status: Phases A and B done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`);
+Phases C–F planned. Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -147,6 +148,16 @@ editor OK); detail query count unchanged; non-UTC user renders leg times correct
 
 ## Phase B — confirmations attached to items, Quick reference generated
 
+**Status: done** on branch `phase-b-confirmations` (migrations `trips 0022`–`0024`; tests in
+`apps/trips/tests/test_confirmations.py`). As built: `Confirmation.attach_number` is the one
+link-or-create rule (migration 0023 carries a copy, as migrations must); stays and meals have no
+edit page of their own, so they are attached from the confirmation's page (`?stay=` pre-ticks)
+rather than from a stay/meal edit block; the leg edit page has the attach/detach block. Tours &
+tickets is not a group yet (nothing models a tour); no standalone `trips:trip_confirmations` page.
+Query pin 20 → 24 (`confirmations__legs`, `__stays`, `__meals`, `__travelers`), instead of
+prefetching from the items' side. Dev check on Taos: GCH7JS is one confirmation covering the four
+Delta legs (all Booked), Hotel Chimayo linked, Angel Fire's second number its own stay confirmation.
+
 **Model (`trips 0022`–`0024`, hand-written: schema / data / drop, because of the Postgres
 "index after data change in one transaction" problem noted in CLAUDE.md):**
 - `Confirmation` gains: `legs` M2M `TransportLeg` (`related_name="confirmations"`), `stays` M2M
@@ -154,12 +165,18 @@ editor OK); detail query count unchanged; non-UTC user renders leg times correct
   `travelers` M2M `Traveler` (blank = everyone on the items), `url` (manage-booking link,
   optional), `booked_on` (date, optional), `cost` + `currency` (optional; total for the booking,
   so a PNR's price isn't split across legs). `label` becomes optional (defaults to a description
-  of what it covers). **Ask James** whether `travelers` is wanted now (the split group in Europe
-  2027 suggests yes).
+  of what it covers). `travelers` is in Phase B (**decided 2026-10-15**: yes, for split groups).
 - Data migration: every non-empty `TransportLeg.confirmation_number` / `Lodging.confirmation_number`
-  becomes a `Confirmation` (provider = leg operator / stay name), **deduplicated per trip by
-  number** so a PNR typed on two legs becomes one confirmation covering both. Existing loose
-  `Confirmation` rows are kept as loose (no items). Then drop both inline columns.
+  is **linked to the trip's existing `Confirmation` with the same number** (compared trimmed,
+  case-insensitive) when there is one, and only otherwise becomes a new `Confirmation` (provider =
+  leg operator / stay name), deduplicated per trip by number so a PNR typed on two legs becomes one
+  confirmation covering both (**decided 2026-10-15**). Real case, Taos (trip 30): GCH7JS is on four
+  Delta legs *and* already in Quick reference as "Flights (Delta, all 4 legs)" — the migration links
+  that one confirmation to the four legs instead of creating a second; Hotel Chimayo's 5305434791
+  links to "Hotel Chimayo, Santa Fe". Numbers that differ (Angel Fire stay "Reservation-1216125" vs
+  the list's "EVRN0002048844001") stay two confirmations, both shown, for James to tidy. Loose
+  confirmations with no matching item (Hertz, Allianz insurance) stay loose. Then drop both inline
+  columns (**decided 2026-10-15**: drop).
 - `BookingTask.confirmation` stays.
 
 **Editing (item-first):** on the leg edit page, stay edit, and meal edit, a "Confirmation" block:
@@ -263,8 +280,8 @@ sections plus a booking task, with nowhere to put the confirmation.
 
 ## Open decisions (Ask James)
 
-1. Drop the inline `confirmation_number` columns after migrating (recommended), or keep them?
-2. `Confirmation.travelers` in Phase B, or later?
+1. ~~Drop the inline `confirmation_number` columns after migrating?~~ **Drop** (2026-10-15).
+2. ~~`Confirmation.travelers` in Phase B, or later?~~ **Phase B** (2026-10-15).
 3. Booking tasks: auto-tick vs offer when the item is confirmed (Phase E).
 4. Derived "Not booked yet" list alongside tasks (Phase E)?
 5. Phase F before or after E?

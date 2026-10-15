@@ -472,7 +472,6 @@ class TransportLegAdminForm(LocalLegTimeMixin, forms.ModelForm):
             "date",
             "operator",
             "service_number",
-            "confirmation_number",
             "origin",
             "origin_city",
             "destination",
@@ -695,7 +694,6 @@ class LodgingForm(LocatingStayMixin, forms.ModelForm):
             "longitude",
             "check_in",
             "check_out",
-            "confirmation_number",
             "nightly_rate",
             "currency",
             "notes",
@@ -755,7 +753,6 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             "arrival_local",
             "operator",
             "service_number",
-            "confirmation_number",
             "cost",
             "currency",
             "notes",
@@ -1832,7 +1829,7 @@ class LegEditForm(TransportLegForm):
         ("Route", ("origin", "origin_city", "destination", "destination_city", "mode")),
         ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
                       "est_duration", "order")),
-        ("Details", ("operator", "service_number", "confirmation_number", "cost", "currency", "notes")),
+        ("Details", ("operator", "service_number", "cost", "currency", "notes")),
         ("Placement", ("section",)),
         ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date")),
     )
@@ -1867,3 +1864,35 @@ class LegQuickAddForm(forms.Form):
     est_duration = RoughDurationField(label="~Duration", help_text="")
     notes = forms.CharField(max_length=500, required=False, label="Note")
     section = forms.IntegerField(required=False, widget=forms.HiddenInput)
+
+
+class ConfirmationEditForm(forms.ModelForm):
+    """A booking reference and what it covers (``trips:confirmation_edit``). The legs, stays,
+    meals and travellers offered are this trip's only, so a post can't link another trip's."""
+
+    class Meta:
+        model = Confirmation
+        fields = ["confirmation_number", "provider", "label", "url", "booked_on", "cost", "currency", "notes",
+                  "legs", "stays", "meals", "travelers"]
+        labels = {"confirmation_number": "Confirmation number", "travelers": "Who's on it"}
+        help_texts = {"label": "Optional: blank shows what it covers, e.g. “BWI→ATL, ATL→ABQ · Sat Sep 12”.",
+                      "travelers": "Leave empty when it covers everyone on these items."}
+        widgets = {
+            "booked_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "legs": forms.CheckboxSelectMultiple, "stays": forms.CheckboxSelectMultiple,
+            "meals": forms.CheckboxSelectMultiple, "travelers": forms.CheckboxSelectMultiple,
+        }
+
+    def __init__(self, *args, trip, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["legs"].queryset = trip.transport.all()
+        self.fields["legs"].label_from_instance = lambda leg: (
+            f"{leg.origin} → {leg.destination}" + (f" · {leg.date:%a %b} {leg.date.day}" if leg.date else ""))
+        self.fields["stays"].queryset = trip.lodging.all()
+        self.fields["stays"].label_from_instance = lambda stay: f"{stay.name} · {stay.check_in:%b} {stay.check_in.day}"
+        self.fields["meals"].queryset = Meal.objects.filter(day__trip=trip).select_related("day").order_by("day__date", "order")
+        self.fields["meals"].label_from_instance = lambda meal: (
+            f"{meal.name} · Day {meal.day.day_number}" if meal.day_id else meal.name)
+        self.fields["travelers"].queryset = trip.travelers.all()
+        self.fields["currency"].required = False

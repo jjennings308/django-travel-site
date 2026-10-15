@@ -366,13 +366,17 @@ class Command(BaseCommand):
         if travelers:
             trip.travelers.set(travelers)
 
+        # The document's own confirmation list first, so a number typed on a leg or stay links
+        # to it instead of making a second confirmation (Confirmation.attach_number).
+        for record in parsed.confirmations:
+            Confirmation.objects.create(trip=trip, **record)
+
         for record in parsed.transport:
-            TransportLeg.objects.create(
+            leg = TransportLeg.objects.create(
                 trip=trip,
                 mode=record["mode"],
                 operator=record["operator"],
                 service_number=record["service_number"],
-                confirmation_number=record["confirmation_number"],
                 origin=record["origin"],
                 destination=record["destination"],
                 origin_timezone=record["origin_timezone"],
@@ -387,22 +391,21 @@ class Command(BaseCommand):
                 currency=record["currency"],
                 notes=record["notes"],
             )
+            # The booking reference is a Confirmation linked to the leg (one per number).
+            Confirmation.attach_number(trip, record.get("confirmation_number", ""), leg, record["operator"])
 
         for record in parsed.lodging:
-            Lodging.objects.create(
+            stay = Lodging.objects.create(
                 trip=trip,
                 name=record["name"],
                 address=record["address"],
-                confirmation_number=record["confirmation_number"],
                 check_in=record["check_in"],
                 check_out=record["check_out"],
                 nightly_rate=record["nightly_rate"] or None,
                 currency=record["currency"],
                 notes=record["notes"],
             )
-
-        for record in parsed.confirmations:
-            Confirmation.objects.create(trip=trip, **record)
+            Confirmation.attach_number(trip, record.get("confirmation_number", ""), stay, record["name"])
 
         for record in parsed.contacts:
             Contact.objects.create(trip=trip, **record)

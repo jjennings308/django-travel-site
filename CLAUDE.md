@@ -233,8 +233,8 @@ that matter most:
   day's automatic "Getting around" block; legs on a date that is no day of the trip are flagged for
   editors. `views._place_legs` does the grouping in Python from the existing `transport` /
   `days__sections` prefetch (`section.placed_legs`, `day.auto_legs`, `day.travel_total` "2 legs ·
-  ~3 h 15 min") — no new queries. `stage` is derived ("planned" without times, "scheduled" with;
-  "booked" comes in Phase B); `est_duration` holds the rough time (`logistics.rough_duration`
+  ~3 h 15 min") — no new queries. `stage` is derived ("planned" without times, "scheduled" with,
+  "booked" once a confirmation covers it); `est_duration` holds the rough time (`logistics.rough_duration`
   parses "~45 min", "2.5 hrs", "1:15"); `order` sequences same-day legs without times. A `travel`
   section's payload is `{"intro"?, "columns"?, "rows"?}` — rows are reference rows only, never hops.
   Editing: `trips:leg_edit` (grouped Route / Schedule / Details / Placement / Return, `next`
@@ -245,10 +245,27 @@ that matter most:
 - **Round trips:** a leg on the trip edit page (`TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
-  mode/operator/currency copied, but not service number, confirmation, cost or notes. The fields are
+  mode/operator/currency copied, but not service number, confirmations, cost or notes. The fields are
   added in `__init__` (`LocalLegTimeMixin` rebuilds `declared_fields`). The admin stays one-way.
-- **The detail page is printed to PDF** and holds a fixed query count (20 here, 4 of them from this site's
-  middleware/context processors; one is the trip's cities); `test_detail.QueryCountTests`
+- **Confirmations** (trips 0022–0024) live with what they confirm: `Confirmation.legs` / `stays` /
+  `meals` / `travelers` (M2M, `related_name="confirmations"`; travellers blank = everyone on the
+  items), plus `url` (manage booking), `booked_on`, `cost` + `currency` (the whole booking, never
+  split per leg); `label` is optional (`description()` says what it covers, "BWI→ATL, ATL→ABQ · Sat
+  Sep 12"). Legs and stays have no inline number any more; code that has a number for an item calls
+  `Confirmation.attach_number(trip, number, item, provider)` (links to the trip's confirmation with
+  that number, trimmed and case-insensitive, else creates one — what migration 0023 and
+  `import_itinerary` do). The trip page's Quick reference → Confirmations is generated
+  (`views.confirmation_groups`: Flights / Trains / Stays / Meals / Other by `Confirmation.kind`, each
+  ordered by `first_date`, loose ones under Other); `views._attach_confirmations` sets
+  `leg.confirmation_list` / `stay.confirmation_list` from the prefetch so chips and `stage` cost no
+  query. Editing: `trips:confirmation_new` (`?leg=` / `?stay=` pre-ticks; "Add confirmation" on leg
+  rows and stay cards), `confirmation_edit` (tick boxes limited to this trip), `confirmation_delete`
+  (items stay), and on the leg edit page attach-existing / detach (`trips:leg_confirmation`, detach
+  never deletes). The trip edit page's Confirmations formset stays the bulk view. `audit_public_leak`
+  takes numbers from `trip.confirmations`; confirmations are never public.
+- **The detail page is printed to PDF** and holds a fixed query count (24 here, 4 of them from this site's
+  middleware/context processors; one is the trip's cities; four prefetch the confirmations' legs,
+  stays, meals and travellers — fixed per page, not per item); `test_detail.QueryCountTests`
   pins it.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
@@ -565,7 +582,8 @@ Plan: `docs/plans/trip-items-and-confirmations.md` (one record per trip item, sh
 trip-wide lists and on its day; confirmations attached to the items they confirm). Phases A–F,
 one branch each, in order; "Ask James" decisions there must be answered before the phase that
 needs them. Status: Phase A (legs evolve in place, shown once in each view) done on branch
-`phase-a-legs-in-place`; Phase B (confirmations attached to items) next.
+`phase-a-legs-in-place`; Phase B (confirmations attached to items, Quick reference generated) done
+on branch `phase-b-confirmations`; Phase C (convert logistics tables into linked legs) next.
 
 ### Rules carried over from the itinerary project
 
