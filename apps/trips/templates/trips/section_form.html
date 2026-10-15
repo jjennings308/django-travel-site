@@ -101,5 +101,31 @@
         {% endif %}
       </div>
     </form>
+
+    {% if section_legs is not None %}
+      {# A travel section's legs are TransportLegs placed here: edited as legs, never as rows. #}
+      {% url 'trips:section_edit' trip.pk day.pk section.pk as here %}
+      <section class="form-section mt-6">
+        <h2 class="form-section-title">Legs shown here</h2>
+        {% if section_legs %}
+          <ul class="divide-y divide-zinc-200 text-sm">
+            {% for leg in section_legs %}
+              <li class="flex flex-wrap items-center gap-3 py-2">
+                <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
+                <span class="font-medium">{{ leg.origin }} → {{ leg.destination }}</span>
+                <span class="text-zinc-500">{{ leg.stage|capfirst }}{% if leg.est_duration_str and leg.is_planned %} · {{ leg.est_duration_str }}{% endif %}</span>
+                <a class="link-quiet ml-auto font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ here|urlencode }}">Edit</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="note">No legs here yet.</p>
+        {% endif %}
+        <p class="form-section-lede mt-4">Add a planned leg to this section (times come later, once booked):</p>
+        {% include "trips/partials/_leg_quick_add.html" with section=section next=here %}
+      </section>
+    {% elif turn_into_legs %}
+      <p class="note mt-6">This table has “A → B” rows. <a class="link-quiet font-medium" href="{% url 'trips:section_to_legs' trip.pk day.pk section.pk %}">Turn them into legs</a> — each becomes a planned leg (or links to the day's existing one) and the table becomes a travel section.</p>
+    {% endif %}
   {% endif %}
 {% endblock %}

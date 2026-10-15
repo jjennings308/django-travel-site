@@ -392,8 +392,13 @@ class EuropeImportTests(TestCase):
         self.assertEqual(Lodging.objects.filter(trip=trip).count(), 1)
         self.assertEqual(trip.contacts.count(), 1)
 
-    def test_leg_tables_do_not_become_transport_rows(self):
+    def test_leg_tables_become_planned_legs_never_invented_times(self):
+        # Phase D: hops become *planned* legs (a date and a rough duration); a duration is
+        # still never turned into a departure time. --keep-tables imports the tables as written.
         run_import(self.path, apply=True)
+        self.assertTrue(TransportLeg.objects.exists())
+        self.assertFalse(TransportLeg.objects.filter(departure_at__isnull=False).exists())
+        run_import(self.path, apply=True, replace=True, keep_tables=True)
         self.assertEqual(TransportLeg.objects.count(), 0)
 
     def test_a_second_import_is_refused_as_a_duplicate(self):

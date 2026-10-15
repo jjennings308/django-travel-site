@@ -889,7 +889,22 @@ def _section_context(trip, day, section, payload_form, *, is_create):
         "options_formset": getattr(payload_form, "options", None),
         "unsupported_type": None if payload_form is not None else section.section_type,
         "is_create": is_create,
+        **_section_legs_context(section),
     }
+
+
+def _section_legs_context(section):
+    """A travel section's legs (edited as legs, not rows) and the quick add; a logistics
+    table with "A → B" rows gets a link to turn them into legs (trip-items plan, Phase D)."""
+    if section is None or section.pk is None:
+        return {}
+    if section.section_type == Section.Type.TRAVEL:
+        return {"section_legs": list(section.legs.all()), "leg_modes": TransportLeg.Mode.choices}
+    if section.section_type == Section.Type.LOGISTICS_TABLE:
+        from .logistics import proposed_legs
+        content = section.content or {}
+        return {"turn_into_legs": bool(proposed_legs(content.get("columns"), content.get("rows")))}
+    return {}
 
 
 def _save_section(request, trip, day, section, section_type):
@@ -1582,7 +1597,7 @@ def leg_quick_add(request, pk, day_pk):
     from .forms import LegQuickAddForm
     from .logistics import match_city
     trip, day = _editable_day(request, pk, day_pk)
-    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     form = LegQuickAddForm(request.POST)
     if not form.is_valid():
         errors = "; ".join(f"{form.fields[f].label}: {' '.join(e)}" if f in form.fields else " ".join(e)

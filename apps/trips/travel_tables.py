@@ -174,6 +174,21 @@ def apply(trip, plans, chosen):
     return {"created": created, "linked": linked, "sections": converted}
 
 
+def automatic_choices(plans):
+    """The review's defaults: every ticked (arrow) row, as planned."""
+    return {(p.section.pk, row["row"]): row for p in plans for row in p.rows if row["include"]}
+
+
+def convert_automatically(trip):
+    """Convert the trip's tables with the automatic choices (``import_itinerary``,
+    ``convert_travel_tables --apply``). Returns ``apply``'s result."""
+    plans = plan(trip, logistics_sections(trip))
+    chosen = automatic_choices(plans)
+    if not chosen:
+        return {"created": [], "linked": [], "sections": 0}
+    return apply(trip, plans, chosen)
+
+
 def has_pending(days):
     """Does any of these (prefetched) days still have a logistics table with an arrow row?
     Reads the ``day.ordered_sections`` prefetch only: no query."""
