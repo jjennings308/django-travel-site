@@ -541,6 +541,14 @@ found. What stays at the root: `config/`, `theme/` (django-tailwind finds it by
 - Retire the itinerary repo and its systemd service; redirect `/public/<uuid>/` on the old
   host to this site so shared links keep working.
 
+### Trip items and confirmations
+
+Plan: `docs/plans/trip-items-and-confirmations.md` (one record per trip item, shown in the
+trip-wide lists and on its day; confirmations attached to the items they confirm). Phases A–F,
+one branch each, in order; "Ask James" decisions there must be answered before the phase that
+needs them. Status: Phase A (legs evolve in place, shown once in each view) in progress on
+branch `phase-a-legs-in-place`.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
