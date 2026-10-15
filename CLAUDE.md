@@ -96,8 +96,11 @@ group-writable; `james` is in group www-data), gunicorn 2 workers as `travel_sit
 via smtp2go. `sudo` there needs a password, so service/nginx changes are run by James.
 
 **Deploying an update:** push to `main`, then on the server `bash /var/www/travel_site/scripts/deploy.sh`
-(pull, requirements, `check --deploy`, `pg_dump` + migrate when migrations are pending,
-`collectstatic --clear`, restart, live check). Production uses `ManifestStaticFilesStorage`:
+(asks for sudo first, then pull, requirements, `check --deploy`, `pg_dump` + migrate when migrations are
+pending, `collectstatic` **without** `--clear` so the still-running app keeps its old hashed files,
+restart, a live check that exits 1 if the home page or stylesheet isn't 200, then prunes hashed static
+files the manifest no longer uses once they're a week old). A `--clear` before a restart that never
+happened once left the site unstyled. Production uses `ManifestStaticFilesStorage`:
 CSS/JS are served under content-hashed names, so a restart after `collectstatic` is required and a
 `{% static %}` path that doesn't exist is a 500 (not a broken image) — check new static references
 exist. `staticfiles/` is build output and is not committed; never rely on files that exist only there.

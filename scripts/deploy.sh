@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # Deploy the latest `main` to production. Run ON the server:
 #     bash /var/www/travel_site/scripts/deploy.sh
-# Steps: pull -> install requirements -> check --deploy -> (backup +) migrate ->
-# collectstatic --clear -> restart (sudo) -> live check. Stops at the first failure;
-# the running site keeps serving until the restart.
+# Steps: sudo up front -> pull -> install requirements -> check --deploy -> (backup +)
+# migrate -> collectstatic (keeping the old hashed files) -> restart (sudo) -> live check
+# -> prune stale static files. Stops at the first failure; the running site keeps serving
+# (with its own static files still on disk) until the restart.
+#
+# Why the old files are kept: production uses ManifestStaticFilesStorage, so the running
+# gunicorn links pages to the hashed names it loaded at start-up (styles.<hash>.css). A
+# `collectstatic --clear` before a restart that then didn't happen (sudo prompt cancelled)
+# deleted those files and left the site unstyled. Now the old names stay until a restart
+# has succeeded, and stale ones are pruned only once they're a week old.
 set -euo pipefail
 APP=/var/www/travel_site
 SITE=https://sharebucketlist.com
@@ -11,6 +18,9 @@ cd "$APP"
 umask 002                                   # files stay group-writable for www-data
 export DJANGO_SETTINGS_MODULE=config.settings.prod
 PY="$APP/.venv/bin/python"
+
+echo "== sudo (asked now so the restart at the end can't fail half-way)"
+sudo -v
 
 echo "== code (was $(git log --oneline -1))"
 # staticfiles/ is build output and no longer tracked. On a checkout from before that
@@ -49,7 +59,8 @@ else
 fi
 
 echo "== static files"
-"$PY" manage.py collectstatic --noinput --clear | tail -1
+# No --clear: the running app still links to the previous hashed files until it restarts.
+"$PY" manage.py collectstatic --noinput | tail -1
 
 echo "== restart (sudo)"
 sudo systemctl restart travel_site
@@ -57,6 +68,32 @@ sleep 3
 systemctl is-active travel_site
 
 echo "== live check"
-printf '   %-8s %s\n' "/" "$(curl -s -o /dev/null -w '%{http_code}' "$SITE/")"
+HOME_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE/")
+printf '   %-8s %s\n' "/" "$HOME_STATUS"
 CSS=$(curl -s "$SITE/accounts/login/" | grep -oE '/static/css/dist/styles[^"]*\.css' | head -1)
-printf '   %-8s %s -> %s\n' "css" "${CSS:-not found}" "$(curl -s -o /dev/null -w '%{http_code}' "$SITE$CSS")"
+CSS_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$CSS")
+printf '   %-8s %s -> %s\n' "css" "${CSS:-not found}" "$CSS_STATUS"
+if [ "$HOME_STATUS" != "200" ] || [ -z "$CSS" ] || [ "$CSS_STATUS" != "200" ]; then
+  echo "!! The live site isn't right (home $HOME_STATUS, stylesheet ${CSS_STATUS:-none})."
+  echo "!! Try: sudo systemctl restart travel_site   then run this script again."
+  exit 1
+fi
+
+echo "== prune stale static files"
+# Hashed copies (name.<12 hex>.ext) the current manifest no longer uses, once a week old.
+"$PY" - <<'PRUNE'
+import json, os, re, time
+root = "staticfiles"
+with open(os.path.join(root, "staticfiles.json")) as f:
+    keep = set(json.load(f)["paths"].values())
+hashed = re.compile(r"\.[0-9a-f]{12}\.[^./]+$")
+cutoff, removed = time.time() - 7 * 86400, 0
+for folder, _dirs, files in os.walk(root):
+    for name in files:
+        path = os.path.join(folder, name)
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        if hashed.search(name) and rel not in keep and os.path.getmtime(path) < cutoff:
+            os.remove(path)
+            removed += 1
+print(f"   removed {removed} stale file(s)")
+PRUNE
