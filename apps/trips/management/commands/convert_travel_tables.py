@@ -26,7 +26,7 @@ class Command(BaseCommand):
         if trip is None:
             raise CommandError("No such trip.")
         plans = travel_tables.plan(trip, travel_tables.logistics_sections(trip))
-        chosen = {}
+        chosen = travel_tables.automatic_choices(plans)
         for section_plan in plans:
             day = section_plan.day
             self.stdout.write(f"Day {day.day_number} {day.date} “{section_plan.section.title or 'Logistics'}”")
@@ -35,7 +35,6 @@ class Command(BaseCommand):
                 if not row["include"]:
                     self.stdout.write(f"  skip    {hop} (possible, not an arrow row)")
                     continue
-                chosen[(section_plan.section.pk, row["row"])] = row
                 if row["leg"] is not None:
                     self.stdout.write(f"  link    {hop} = existing leg {row['leg'].origin} → {row['leg'].destination}")
                     continue

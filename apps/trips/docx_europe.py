@@ -13,14 +13,16 @@ module. It is pure in the same way ``docx_import`` is: no Django, no database.
 Two things about this document are worth stating up front, because they shape
 what can be imported at all:
 
-**Transport is not importable as ``TransportLeg`` rows.** Every leg table in
-the draft gives a *duration* (``~45 min``, ``~2.5 hrs``), never a departure
-time, and ``TransportLeg.departure_at`` is a required datetime. Inventing times
-would be exactly the failure ``docx_import`` warns about elsewhere — a
-plausible-looking guess that is silently hours wrong. The leg tables are
-therefore kept as ``logistics_table`` sections, which loses nothing, and the
+**Transport is not importable as scheduled ``TransportLeg`` rows.** Every leg
+table in the draft gives a *duration* (``~45 min``, ``~2.5 hrs``), never a
+departure time. Inventing times would be exactly the failure ``docx_import``
+warns about elsewhere — a plausible-looking guess that is silently hours wrong.
+So this parser keeps the leg tables as ``logistics_table`` sections, and the
 scheduled flights (described in the draft as "overnight flight", "~7–9am") are
-reported as warnings rather than guessed.
+reported as warnings rather than guessed. ``import_itinerary`` then turns each
+table's "A → B" rows into *planned* legs (a date and a rough duration, no times)
+in a ``travel`` section (``apps/trips/travel_tables.py``; ``--keep-tables`` to
+skip) — still nothing invented.
 
 **Rosters come from the Group Key table.** Each day heading carries a badge
 like ``[Group of 4]``, and the ``Badge | Travelers | Leg | Notes`` table near

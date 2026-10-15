@@ -1,7 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: Phases A–C done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
-`phase-c-convert-tables`); Phases D–F planned. Hand to Claude
+Status: Phases A–D done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
+`phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`); Phases E–F planned. Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -244,6 +244,15 @@ table keeps its info rows and gains the leg; totals dropped; dry run saves nothi
 second run finds nothing to do.
 
 ## Phase D — new itineraries start as legs
+
+**Status: done** on branch `phase-d-new-itineraries-as-legs` (no migrations; tests in
+`test_import_legs.py`). As built, the conversion runs in `import_itinerary` (after the trip, its
+legs and days are written, same transaction) rather than in the pure parsers: only there can a row
+link to the document's own scheduled flight (Taos's "Depart ABQ → SLC") and match catalogue
+cities, so imports reuse Phase C's `travel_tables` with its automatic choices. `--keep-tables`
+skips it; the dry run lists the hops. The travel section editor (intro + reference rows) already
+existed from Phase A; it now lists the section's legs with Edit links and the quick add, and a
+logistics table with arrow rows links to "Turn into legs". Query pin unchanged at 24.
 
 - `docx_import` / `docx_europe`: hop rows become planned legs placed in a `travel` section
   (reusing `logistics.proposed_legs` + `rough_duration`); the rest of the table stays as

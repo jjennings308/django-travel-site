@@ -233,7 +233,13 @@ that matter most:
   first). Each table with a ticked row becomes a `travel` section: converted rows and "Total…" rows
   go (their non-time text joins the last leg's notes, `logistics.total_notes`), other rows stay as
   reference rows. Nothing is saved before confirming; times are never guessed (see `docx_europe`'s
-  docstring).
+  docstring). **New itineraries start as legs** (Phase D): `import_itinerary --apply` runs
+  `travel_tables.convert_automatically` on the new trip in the same transaction (arrow rows only;
+  a row naming one of the document's own flights links to it), `--keep-tables` skips it, and the dry
+  run lists the hops. The parsers stay pure and still emit `logistics_table` sections. The section
+  editor lists a travel section's legs ("Legs shown here", Edit links that come back to it) with the
+  quick add (`leg_quick_add` honours `next`), and a logistics table with arrow rows links to "Turn
+  into legs".
 - **One leg, two views (trip-items plan, Phase A):** a leg is shown once in the trip-wide
   **Getting around** list and once on its day, both through `trips/partials/_leg_row.html`
   (mode, A → B, operator, local times or "planned · ~45 min", stage badge, editors' Edit link).
@@ -594,7 +600,8 @@ one branch each, in order; "Ask James" decisions there must be answered before t
 needs them. Status: Phase A (legs evolve in place, shown once in each view) done on branch
 `phase-a-legs-in-place`; Phase B (confirmations attached to items, Quick reference generated) done
 on branch `phase-b-confirmations`; Phase C (convert logistics tables into linked legs, trip-wide)
-done on branch `phase-c-convert-tables`; Phase D (new itineraries start as legs) next.
+done on branch `phase-c-convert-tables`; Phase D (new itineraries start as legs) done on branch
+`phase-d-new-itineraries-as-legs`; Phase E (booking tasks point at what they're about) next.
 
 ### Rules carried over from the itinerary project
 

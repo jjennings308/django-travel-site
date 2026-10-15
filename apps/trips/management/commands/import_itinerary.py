@@ -10,7 +10,9 @@ from zoneinfo import ZoneInfo
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from apps.trips import travel_tables
 from apps.trips.docx_import import parse_document
+from apps.trips.logistics import proposed_legs
 from apps.trips.models import (
     BookingTask,
     Confirmation,
@@ -52,6 +54,15 @@ class Command(BaseCommand):
                 "Delete the existing trip with the same name and start date, then "
                 "import again. Use this after fixing the parser; it discards any "
                 "edits made to the existing trip in the admin."
+            ),
+        )
+        parser.add_argument(
+            "--keep-tables",
+            action="store_true",
+            help=(
+                "Keep logistics tables exactly as written. By default each table's "
+                "\"A → B\" rows become planned legs in a travel section (linked to the "
+                "document's own leg when it is one), as the trip page's review would."
             ),
         )
         parser.add_argument(
@@ -147,6 +158,17 @@ class Command(BaseCommand):
                     # confirmations and contacts that hang off the trip.
                     replaced.delete()
             trip = self._write(parsed, status=status, warn=write_warnings.append)
+            converted = None
+            if not options.get("keep_tables"):
+                # New itineraries start as legs (trip-items plan, Phase D): the same
+                # conversion as the trip page's review, with its automatic choices.
+                converted = travel_tables.convert_automatically(trip)
+        if converted and (converted["created"] or converted["linked"]):
+            self.stdout.write(
+                f"Travel tables: made {len(converted['created'])} planned legs, linked "
+                f"{len(converted['linked'])} to the document's legs; {converted['sections']} "
+                "tables became travel sections."
+            )
         if replaced_pk is not None:
             self.stdout.write(
                 self.style.WARNING(f"Replaced Trip {replaced_pk} with this import.")
@@ -312,6 +334,22 @@ class Command(BaseCommand):
                     f"      {section['order']:>2}. {section['section_type']:22} "
                     f"{section['icon']}{section['title'][:52]}"
                 )
+
+        hops = [
+            (record, section, leg)
+            for record in parsed.days
+            for section in record["sections"]
+            if section["section_type"] == "logistics_table"
+            for leg in proposed_legs(section["content"].get("columns"), section["content"].get("rows"))
+            if leg["strength"] == "arrow"
+        ]
+        if hops:
+            heading = "Travel rows -> legs" if not options.get("keep_tables") else "Travel rows (kept as tables)"
+            out(self.style.MIGRATE_HEADING(f"\n=== {heading} ==="))
+            for record, section, leg in hops:
+                out(f"  Day {record['day_number']:>2}  {leg['origin']} -> {leg['destination']}  ({leg['mode']})")
+            if not options.get("keep_tables"):
+                out("  Each becomes a planned leg, or links to one of the legs above when it is the same hop.")
 
         if parsed.confirmations:
             out(self.style.MIGRATE_HEADING("\n=== Confirmations ==="))
