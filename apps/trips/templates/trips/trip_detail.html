@@ -75,6 +75,8 @@
     {% if trip.notes %}<p class="note mt-5 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
   </header>
 
+  {% if travel_tables_pending %}<div class="callout callout-info mb-6 print:hidden"><p>Some days' tables still list journeys as “A → B” rows. <a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn them into legs</a> in one review: rows already on a day link to their leg instead of making a second.</p></div>{% endif %}
+
   {% comment %}Screen-only jump list. Reads the same prefetched days the page renders, so it costs no query.{% endcomment %}
   {% if trip.days.all %}
     <nav class="day-nav no-print" aria-label="Days">

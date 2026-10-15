@@ -1,7 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: Phases A and B done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`);
-Phases C–F planned. Hand to Claude
+Status: Phases A–C done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
+`phase-c-convert-tables`); Phases D–F planned. Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -205,6 +205,16 @@ from a leg; quick-reference grouping and ordering; leg `stage` becomes `booked`;
 1 on a planted number; admin still lists confirmations.
 
 ## Phase C — convert existing logistics tables into linked legs (whole trip at once)
+
+**Status: done** on branch `phase-c-convert-tables` (no migrations; `apps/trips/travel_tables.py`,
+tests in `test_travel_tables.py`). As built: the row reader got stricter first — on the real data
+the word "to" made Taos's day schedules look like hop tables ("Continue to Angel Fire", "Via Hwy 503
+→ Hwy 76"), so each hop has a `strength` and only arrow rows are ticked or raise the banner; a
+leading verb is dropped so "Depart ABQ → SLC" links to the ABQ→SLC leg; matching also accepts each
+end naming the other's. The per-section page lost its "remove converted rows" box (conversion always
+removes them). `rough_duration` already existed from Phase A. Query pin unchanged at 24. Dev dry
+runs: trip 36 links Sep 20's two legs and creates 6 (Sep 21, 25, 28), skipping the hire-car and
+LHR-options tables; Taos only links the two flight-home legs.
 
 The per-section "Turn into legs" page stays, but changes behaviour, and a trip-wide version is
 added so a 17-day trip is one review, not 17.

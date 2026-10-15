@@ -335,12 +335,15 @@ def trip_detail(request, pk):
     capabilities = trip.capabilities_for(request.user)
     stray_legs = _place_legs(trip)
     _attach_confirmations(trip)
+    from .travel_tables import has_pending
+    travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
     return render(
         request,
         "trips/trip_detail.html",
         {
             "trip": trip,
             "stray_legs": stray_legs,
+            "travel_tables_pending": travel_tables_pending,
             "confirmation_groups": confirmation_groups(trip),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
@@ -1424,84 +1427,96 @@ def trip_map_data(request, pk):
 # ---- logistics table -> planned legs -------------------------------------------------------
 @login_required
 def section_to_legs(request, trip_pk, day_pk, pk):
-    """Review the travel rows of a logistics table as planned transport legs, then make
-    them (editors only). Nothing is saved before confirming; times are never guessed."""
-    from apps.approval_system.models import ApprovalStatus
-    from apps.locations.models import City
-    from .forms import LegProposalFormSet
-    from .logistics import match_city, proposed_legs
-
+    """One logistics table's travel rows, reviewed as legs (editors only): each row links to
+    the day's existing leg or becomes a planned one, and the table becomes a travel section.
+    Nothing is saved before confirming; times are never guessed."""
     trip, day = _editable_day(request, trip_pk, day_pk)
-    section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.LOGISTICS_TABLE), pk=pk)
-    content = section.content or {}
-    proposals = proposed_legs(content.get("columns"), content.get("rows"))
-    trip_cities = list(trip.cities.select_related("country"))
-    catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related("country"))
-    choices = City.objects.filter(pk__in=[c.pk for c in trip_cities]) if trip_cities else None
-    def city_for(text):
-        return match_city(text, trip_cities) or match_city(text, catalogue)
+    section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.LOGISTICS_TABLE)
+                                .select_related("day"), pk=pk)
+    return _review_travel_tables(
+        request, trip, [section], back=f"{reverse('trips:trip_detail', args=[trip.pk])}#day-{day.day_number}",
+        heading="Turn these rows into legs",
+        subtitle=f"Day {day.day_number} · {day.date:%a, %b} {day.date.day} · “{section.title or 'Logistics'}”.")
 
-    # A row is already a leg when that day has one with the same wording, or between the
-    # same two cities (its own cities, else the ones its wording names: "Butzbach Hof").
-    existing_text, existing_cities = set(), set()
-    for leg in trip.transport.filter(date=day.date):
-        existing_text.add((leg.origin, leg.destination))
-        a = leg.origin_city or city_for(leg.origin)
-        b = leg.destination_city or city_for(leg.destination)
-        if a and b:
-            existing_cities.add((a.pk, b.pk))
 
-    initial = []
-    for p in proposals:
-        a, b = city_for(p["origin"]), city_for(p["destination"])
-        dup = ((p["origin"], p["destination"]) in existing_text
-               or (a is not None and b is not None and (a.pk, b.pk) in existing_cities))
-        initial.append({**p, "include": not dup, "date": day.date,
-                        "origin_city": a.pk if a else None, "destination_city": b.pk if b else None,
-                        "duplicate": dup})
-    # A matched catalogue city that isn't on the trip still has to be choosable.
-    extra_ids = {i[k] for i in initial for k in ("origin_city", "destination_city") if i[k]}
-    if choices is not None:
-        choices = City.objects.filter(pk__in={c.pk for c in trip_cities} | extra_ids)
+@login_required
+def trip_travel_review(request, pk):
+    """Every logistics table of the trip at once (editors only): one review instead of one
+    per day. Same rules as ``section_to_legs``."""
+    from . import travel_tables
+    trip = _readable_trip(request, pk, "edit")
+    return _review_travel_tables(
+        request, trip, travel_tables.logistics_sections(trip),
+        back=reverse("trips:trip_detail", args=[trip.pk]), heading="Turn travel tables into legs",
+        subtitle="Every table on this trip with “A → B” rows, by day.")
+
+
+def _rough_text(value):
+    """A timedelta as the review form's "45 min" / "2 h 30 min" ("" for None)."""
+    if not value:
+        return ""
+    hours, minutes = divmod(int(value.total_seconds() // 60), 60)
+    return f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min"
+
+
+def _review_travel_tables(request, trip, sections, back, heading, subtitle):
+    from apps.locations.models import City
+    from . import travel_tables
+    from .forms import LegProposalFormSet
+
+    city_for = travel_tables.city_finder(trip)
+    plans = travel_tables.plan(trip, sections, city_for=city_for)
+    pairs = [(section_plan, row) for section_plan in plans for row in section_plan.rows]
+    initial = [{
+        "include": row["include"], "section": section_plan.section.pk, "row": row["row"], "date": row["date"],
+        "mode": row["mode"], "origin": row["origin"], "destination": row["destination"],
+        "origin_city": row["origin_city"].pk if row["origin_city"] else None,
+        "destination_city": row["destination_city"].pk if row["destination_city"] else None,
+        "operator": row["operator"], "duration": _rough_text(row["duration"]), "notes": row["notes"],
+    } for section_plan, row in pairs]
+    # The city choices are the trip's cities (all when it has none), plus any catalogue city a
+    # row matched, which still has to be choosable.
+    choices = None
+    if city_for.trip_cities:
+        extra = {i[k] for i in initial for k in ("origin_city", "destination_city") if i[k]}
+        choices = City.objects.filter(pk__in={c.pk for c in city_for.trip_cities} | extra) \
+            .select_related("country").order_by("name")
     formset = LegProposalFormSet(request.POST or None, initial=initial, prefix="legs",
-                                 form_kwargs={"cities": choices.select_related("country").order_by("name")
-                                              if choices is not None else None})
+                                 form_kwargs={"cities": choices})
 
     if request.method == "POST" and formset.is_valid():
-        made, rows_done = [], []
-        with transaction.atomic():
-            for form in formset:
-                data = form.cleaned_data
-                if not data.get("include"):
-                    continue
-                leg = TransportLeg.objects.create(
-                    trip=trip, date=data["date"], mode=data["mode"], origin=data["origin"],
-                    destination=data["destination"], origin_city=data["origin_city"],
-                    destination_city=data["destination_city"], operator=data["operator"], notes=data["notes"])
-                made.append(leg)
-                rows_done.append(data["row"])
-                for city in (leg.origin_city, leg.destination_city):
-                    if city is not None:
-                        trip.cities.add(city)
-            if made and request.POST.get("remove_rows"):
-                rows = [r for i, r in enumerate(content.get("rows") or []) if i not in set(rows_done)]
-                if rows:
-                    section.content = {**content, "rows": rows}
-                    section.save(update_fields=["content"])
-                else:
-                    section.delete()
-        if made:
-            messages.success(request, f"Made {len(made)} planned leg{'s' if len(made) != 1 else ''}. "
-                                      "Add their times under Edit trip → Transport once they're booked.")
+        # Only rows the plan has (this trip's tables, as they are now) can be carried out.
+        planned = {(section_plan.section.pk, row["row"]) for section_plan, row in pairs}
+        chosen = {}
+        for form in formset:
+            data = form.cleaned_data
+            key = (data.get("section"), data.get("row"))
+            if data.get("include") and key in planned:
+                chosen[key] = data
+        result = travel_tables.apply(trip, plans, chosen)
+        made, linked = len(result["created"]), len(result["linked"])
+        if made or linked:
+            parts = []
+            if made:
+                parts.append(f"made {made} planned leg{'s' if made != 1 else ''}")
+            if linked:
+                parts.append(f"linked {linked} existing leg{'s' if linked != 1 else ''}")
+            tables = result["sections"]
+            messages.success(request, f"{' and '.join(parts).capitalize()}; {tables} table{'s' if tables != 1 else ''} "
+                                      "became travel sections. Add times once they're booked.")
         else:
             messages.info(request, "No legs made.")
-        return redirect(f"{reverse('trips:trip_detail', args=[trip.pk])}#day-{day.day_number}")
+        return redirect(back)
 
-    rows = list(zip(formset.forms, initial))
+    rows = [(form, row) for form, (_plan, row) in zip(formset.forms, pairs)]
+    groups, start = [], 0
+    for section_plan in plans:
+        groups.append((section_plan, rows[start:start + len(section_plan.rows)]))
+        start += len(section_plan.rows)
     return render(request, "trips/section_to_legs.html", {
-        "trip": trip, "day": day, "section": section, "formset": formset, "rows": rows,
+        "trip": trip, "formset": formset, "groups": groups, "rows": rows,
+        "back": back, "heading": heading, "subtitle": subtitle,
     })
-
 
 
 # ---- legs: edit in place, quick add from a day ------------------------------------------
