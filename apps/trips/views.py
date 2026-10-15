@@ -467,6 +467,11 @@ def trip_edit(request, pk):
                 for _key, _label, formset in formsets:
                     formset.save()
             messages.success(request, f"Saved “{trip.name}”.")
+            for _key, _label, fs in formsets:
+                for f in fs.forms:
+                    back = getattr(f, "return_leg", None)
+                    if back is not None:
+                        messages.info(request, f"Added the return: {back.origin or '?'} → {back.destination or '?'}.")
             filled = sum(getattr(f, "days_filled", 0) for _key, _label, fs in formsets for f in fs.forms)
             if filled:
                 messages.info(request, f"Filled in the city for {filled} day{'s' if filled != 1 else ''} from your stays.")

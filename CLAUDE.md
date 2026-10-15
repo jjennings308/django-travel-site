@@ -214,6 +214,11 @@ that matter most:
 - **Photos:** each trip has one shared album (`Trip.album`, a `media_app.MediaAlbum`, made on first upload by `Trip.add_photos`; trips 0017; the first photo is the cover). `trips:trip_photos` (`/trips/<pk>/photos/`, linked from the trip header): anyone who can see the trip sees them, `comment` capability adds, the uploader or an editor removes (`Trip.remove_photo` moves the cover on), editors pick the cover. Photos are `Media` attached to the trip, privacy private; never in the public view; a separate page so the detail query count holds. My adventures shows the album cover. The multi-photo upload field (`MultipleImageField`, `MAX_PHOTOS`) lives in `apps.media_app.forms`.
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
+- **Round trips:** a leg on the trip edit page (`TransportLegForm`) has "Also add the return trip"
+  plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
+  cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
+  mode/operator/currency copied, but not service number, confirmation, cost or notes. The fields are
+  added in `__init__` (`LocalLegTimeMixin` rebuilds `declared_fields`). The admin stays one-way.
 - **The detail page is printed to PDF** and holds a fixed query count (20 here, 4 of them from this site's
   middleware/context processors; one is the trip's cities); `test_detail.QueryCountTests`
   pins it.

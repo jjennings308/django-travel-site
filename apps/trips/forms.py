@@ -726,11 +726,77 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             self.fields[name].widget.attrs["placeholder"] = "America/Denver"
         _leg_city_fields(self, getattr(self.instance, "trip", None) if self.instance.trip_id else None)
         self.seed_local_time_initial()
+        # "Also add the return trip": a second leg with the ends swapped, made on save.
+        # Added here, not declared, because LocalLegTimeMixin rebuilds declared_fields.
+        self.fields["add_return"] = forms.BooleanField(
+            required=False, label="Also add the return trip",
+            help_text="Makes a second leg back the other way when you save; only its times are needed.")
+        self.fields["return_departure_local"] = LocalDateTimeField(
+            required=False, label="Return departs (local)",
+            help_text="Wall-clock time where this leg arrives (the destination's zone).")
+        self.fields["return_arrival_local"] = LocalDateTimeField(
+            required=False, label="Return arrives (local)",
+            help_text="Wall-clock time back where this leg left from (the origin's zone).")
+        self._return_times = None
+        self.return_leg = None
 
     def clean(self):
         cleaned_data = super().clean()
         self.clean_local_leg_times()
+        if cleaned_data.get("add_return"):
+            self._clean_return(cleaned_data)
         return cleaned_data
+
+    def _return_utc(self, raw, zone_name, field):
+        """A return time as aware UTC: typed with an offset is trusted, else converted
+        in ``zone_name`` (the swapped end's zone)."""
+        if raw is None:
+            self.add_error(field, "Needed for the return trip.")
+            return None
+        if django_timezone.is_aware(raw):
+            return raw.astimezone(django_timezone.UTC)
+        if not zone_name:
+            self.add_error(field, "Give this leg's time zones so the return time can be converted.")
+            return None
+        try:
+            converted = local_to_utc(raw, zone_name)
+        except (ZoneInfoNotFoundError, ValueError, KeyError):
+            self.add_error(field, f"{zone_name!r} is not a valid timezone.")
+            return None
+        if converted is None:
+            self.add_error(field, "Give this leg's time zones so the return time can be converted.")
+        return converted
+
+    def _clean_return(self, cleaned_data):
+        """The return leaves from this leg's destination zone and arrives in its origin zone."""
+        departure = self._return_utc(cleaned_data.get("return_departure_local"),
+                                     cleaned_data.get("destination_timezone"), "return_departure_local")
+        arrival = self._return_utc(cleaned_data.get("return_arrival_local"),
+                                   cleaned_data.get("origin_timezone"), "return_arrival_local")
+        if departure is None or arrival is None:
+            return
+        if arrival < departure:
+            self.add_error("return_arrival_local", "The return arrives before it departs. Check the times.")
+            return
+        outbound_arrival = self.instance.arrival_at
+        if outbound_arrival and departure < outbound_arrival:
+            self.add_error("return_departure_local", "The return leaves before this leg arrives.")
+            return
+        self._return_times = (departure, arrival)
+
+    def save(self, commit=True):
+        leg = super().save(commit)
+        if commit and self._return_times:
+            departure, arrival = self._return_times
+            self.return_leg = TransportLeg.objects.create(
+                trip=leg.trip, mode=leg.mode, operator=leg.operator,
+                origin=leg.destination, destination=leg.origin,
+                origin_city=leg.destination_city, destination_city=leg.origin_city,
+                origin_timezone=leg.destination_timezone, destination_timezone=leg.origin_timezone,
+                departure_at=departure, arrival_at=arrival, currency=leg.currency,
+            )  # Not copied: service number, confirmation, cost, notes (they differ on the way back).
+            self._return_times = None
+        return leg
 
 
 class ConfirmationForm(forms.ModelForm):
