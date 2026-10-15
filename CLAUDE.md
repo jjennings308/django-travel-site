@@ -214,6 +214,16 @@ that matter most:
 - **Photos:** each trip has one shared album (`Trip.album`, a `media_app.MediaAlbum`, made on first upload by `Trip.add_photos`; trips 0017; the first photo is the cover). `trips:trip_photos` (`/trips/<pk>/photos/`, linked from the trip header): anyone who can see the trip sees them, `comment` capability adds, the uploader or an editor removes (`Trip.remove_photo` moves the cover on), editors pick the cover. Photos are `Media` attached to the trip, privacy private; never in the public view; a separate page so the detail query count holds. My adventures shows the album cover. The multi-photo upload field (`MultipleImageField`, `MAX_PHOTOS`) lives in `apps.media_app.forms`.
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
+- **Planned legs:** a leg has a `date` and its times are optional (trips 0020): with no times it is
+  *planned* (`TransportLeg.is_planned`), shown as "planned · no times yet" and drawn fainter on the map;
+  times, once booked, set `date` from the local departure (`save()`). Forms need both times or neither,
+  and a date when there are none. Legs order by date, then time. **Logistics tables → legs:** a
+  `logistics_table` section with "A → B" rows has a "Turn into legs" link for editors
+  (`trips:section_to_legs`): `apps/trips/logistics.py` (pure) reads each travel row (mode from its words,
+  operator from a Train/Mode/Operator column, the rest — "~45 min", notes — into notes; "Total…" rows
+  skipped), cities are matched by name (trip's first, then the catalogue; "München" needs picking), and a
+  review page creates planned legs on that day (duplicates unticked; optionally removes the converted
+  rows). Nothing is saved before confirming; times are never guessed (see `docx_europe`'s docstring).
 - **Round trips:** a leg on the trip edit page (`TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and

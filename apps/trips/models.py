@@ -800,8 +800,12 @@ class TransportLeg(models.Model):
         validators=[validate_timezone_name],
         help_text="IANA name for the destination, e.g. America/Denver",
     )
-    departure_at = models.DateTimeField()
-    arrival_at = models.DateTimeField()
+    # The day it happens. Set from the local departure when there is one; on its own for a
+    # *planned* leg whose times aren't known yet (an itinerary that only says "~45 min").
+    date = models.DateField(null=True, blank=True)
+    # Blank while planned (``is_planned``); never invented -- see docx_europe's docstring.
+    departure_at = models.DateTimeField(null=True, blank=True)
+    arrival_at = models.DateTimeField(null=True, blank=True)
     cost = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -813,8 +817,22 @@ class TransportLeg(models.Model):
     notes = models.TextField(blank=True)
 
     class Meta:
-        ordering = ["trip", "departure_at"]
+        ordering = ["trip", "date", models.F("departure_at").asc(nulls_last=True)]
         verbose_name_plural = "transport legs"
+
+    @property
+    def is_planned(self):
+        """No booked time yet: only a date (and maybe a rough duration in the notes)."""
+        return self.departure_at is None
+
+    def save(self, *args, **kwargs):
+        # The date follows the local departure whenever there is one.
+        local = self.departure_local
+        if local is not None:
+            self.date = local.date()
+            if kwargs.get("update_fields") is not None and "date" not in kwargs["update_fields"]:
+                kwargs["update_fields"] = list(kwargs["update_fields"]) + ["date"]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         number = f" {self.service_number}" if self.service_number else ""

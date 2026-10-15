@@ -309,12 +309,13 @@ class LocalLegTimeMixin:
             "origin_timezone": cls.zone_field("America/New_York"),
             "destination_timezone": cls.zone_field("America/Denver"),
             "departure_local": LocalDateTimeField(
-                required=True,
+                required=False,
                 label="Departure (local)",
-                help_text="Wall-clock time at the origin. Converted to UTC on save.",
+                help_text="Wall-clock time at the origin. Converted to UTC on save. "
+                          "Leave both times blank while it's only planned; add them when booked.",
             ),
             "arrival_local": LocalDateTimeField(
-                required=True,
+                required=False,
                 label="Arrival (local)",
                 help_text="Wall-clock time at the destination. Converted to UTC on save.",
             ),
@@ -352,9 +353,9 @@ class LocalLegTimeMixin:
         )
 
     def _resolve(self, raw, zone_name, zone_field_name, field_name, label):
-        """Turn one local input into an aware UTC datetime."""
+        """Turn one local input into an aware UTC datetime (None when left blank)."""
         if raw is None:
-            return self.instance.__getattribute__(field_name)
+            return None
 
         if django_timezone.is_aware(raw):
             # Typed with its own offset — trust it, ignore the zone dropdown.
@@ -402,6 +403,19 @@ class LocalLegTimeMixin:
             "Arrival",
         )
 
+        departure_given = self.cleaned_data.get("departure_local") is not None
+        arrival_given = self.cleaned_data.get("arrival_local") is not None
+        if departure_given != arrival_given:
+            # Both or neither: a leg with one time would show half a journey.
+            missing = "arrival_local" if departure_given else "departure_local"
+            self.add_error(missing, "Give both times, or leave both blank while the leg is only planned.")
+        if not departure_given and not arrival_given:
+            # Planned: no times, so it needs its day.
+            self.instance.departure_at = self.instance.arrival_at = None
+            if "date" in self.fields and not self.cleaned_data.get("date"):
+                self.add_error("date", "Give the day, or the departure time.")
+            return self.cleaned_data
+
         if departure is not None:
             self.instance.departure_at = departure
         if arrival is not None:
@@ -425,6 +439,7 @@ class TransportLegAdminForm(LocalLegTimeMixin, forms.ModelForm):
         fields = [
             "trip",
             "mode",
+            "date",
             "operator",
             "service_number",
             "confirmation_number",
@@ -698,6 +713,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         model = TransportLeg
         fields = [
             "mode",
+            "date",
             "origin",
             "origin_city",
             "origin_timezone",
@@ -713,7 +729,9 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             "currency",
             "notes",
         ]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2}),
+                   "date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
+        help_texts = {"date": "The day it happens. Filled in from the departure once there is one."}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -737,6 +755,10 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         self.fields["return_arrival_local"] = LocalDateTimeField(
             required=False, label="Return arrives (local)",
             help_text="Wall-clock time back where this leg left from (the origin's zone).")
+        self.fields["return_date"] = forms.DateField(
+            required=False, label="Return day (if no times yet)",
+            widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            help_text="For a planned return: just the day, without times.")
         self._return_times = None
         self.return_leg = None
 
@@ -768,7 +790,21 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         return converted
 
     def _clean_return(self, cleaned_data):
-        """The return leaves from this leg's destination zone and arrives in its origin zone."""
+        """The return leaves from this leg's destination zone and arrives in its origin zone.
+        With no return times it is a planned return on ``return_date``."""
+        if cleaned_data.get("return_departure_local") is None and cleaned_data.get("return_arrival_local") is None:
+            return_date = cleaned_data.get("return_date")
+            if not return_date:
+                self.add_error("return_date", "Give the return's day, or its departure and arrival times.")
+                return
+            outbound_day = self.instance.date or cleaned_data.get("date")
+            if self.instance.departure_local is not None:
+                outbound_day = self.instance.departure_local.date()
+            if outbound_day and return_date < outbound_day:
+                self.add_error("return_date", "The return can't be before this leg.")
+                return
+            self._return_times = ("planned", return_date)
+            return
         departure = self._return_utc(cleaned_data.get("return_departure_local"),
                                      cleaned_data.get("destination_timezone"), "return_departure_local")
         arrival = self._return_utc(cleaned_data.get("return_arrival_local"),
@@ -787,13 +823,17 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
     def save(self, commit=True):
         leg = super().save(commit)
         if commit and self._return_times:
-            departure, arrival = self._return_times
+            first, second = self._return_times
+            if first == "planned":  # a planned return: its day only
+                times = {"date": second}
+            else:
+                times = {"departure_at": first, "arrival_at": second}
             self.return_leg = TransportLeg.objects.create(
                 trip=leg.trip, mode=leg.mode, operator=leg.operator,
                 origin=leg.destination, destination=leg.origin,
                 origin_city=leg.destination_city, destination_city=leg.origin_city,
                 origin_timezone=leg.destination_timezone, destination_timezone=leg.origin_timezone,
-                departure_at=departure, arrival_at=arrival, currency=leg.currency,
+                currency=leg.currency, **times,
             )  # Not copied: service number, confirmation, cost, notes (they differ on the way back).
             self._return_times = None
         return leg
@@ -1686,3 +1726,26 @@ class TripExpenseForm(forms.ModelForm):
         if len(currency) != 3 or not currency.isalpha():
             raise forms.ValidationError("Use a three-letter currency code, e.g. USD or EUR.")
         return currency
+
+
+class LegProposalForm(forms.Form):
+    """One travel row of a logistics table, as a planned leg to confirm (section_to_legs)."""
+    include = forms.BooleanField(required=False, label="Make this leg")
+    row = forms.IntegerField(widget=forms.HiddenInput)
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    mode = forms.ChoiceField(choices=TransportLeg.Mode.choices)
+    origin = forms.CharField(max_length=120, label="From")
+    origin_city = forms.ModelChoiceField(queryset=City.objects.none(), required=False, label="From city")
+    destination = forms.CharField(max_length=120, label="To")
+    destination_city = forms.ModelChoiceField(queryset=City.objects.none(), required=False, label="To city")
+    operator = forms.CharField(max_length=120, required=False)
+    notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
+
+    def __init__(self, *args, cities=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("origin_city", "destination_city"):
+            self.fields[name].queryset = cities if cities is not None else _city_choices()
+            self.fields[name].label_from_instance = str
+
+
+LegProposalFormSet = formset_factory(LegProposalForm, extra=0)

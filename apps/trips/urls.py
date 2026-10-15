@@ -53,6 +53,11 @@ urlpatterns = [
         name="section_edit",
     ),
     path(
+        "<int:trip_pk>/days/<int:day_pk>/sections/<int:pk>/legs/",
+        views.section_to_legs,
+        name="section_to_legs",
+    ),
+    path(
         "<int:trip_pk>/days/<int:day_pk>/sections/<int:pk>/delete/",
         views.section_delete,
         name="section_delete",

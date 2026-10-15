@@ -569,7 +569,7 @@ class TransportLegAdmin(admin.ModelAdmin):
         "currency",
     )
     list_filter = ("trip", "mode")
-    date_hierarchy = "departure_at"
+    date_hierarchy = "date"
 
     @admin.display(description="departs (local)")
     def departure_when_local(self, obj):

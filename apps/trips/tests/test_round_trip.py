@@ -68,10 +68,12 @@ class RoundTripTests(TestCase):
         self.assertEqual(TransportLeg.objects.count(), 1)
         self.assertIsNone(form.return_leg)
 
-    def test_return_times_required_when_ticked(self):
+    def test_return_needs_times_or_a_day_when_ticked(self):
         form = self.form(return_departure_local="", return_arrival_local="")
         self.assertFalse(form.is_valid())
-        self.assertIn("return_departure_local", form.errors)
+        self.assertIn("return_date", form.errors)
+        form = self.form(return_arrival_local="")  # one time without the other
+        self.assertFalse(form.is_valid())
         self.assertIn("return_arrival_local", form.errors)
 
     def test_return_cannot_arrive_before_it_departs(self):

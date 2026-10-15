@@ -56,6 +56,7 @@ from .models import (
     Trip,
     TripGrant,
     TripRole,
+    TransportLeg,
     can_create_trip,
     role_capabilities,
     comment_kind,
@@ -1243,7 +1244,7 @@ def _trip_stops(trip):
         else:
             stops.append({"city": day.city, "first": day, "last": day, "days": 1})
     legs = list(trip.transport.filter(origin_city__isnull=False, destination_city__isnull=False)
-                .select_related("origin_city__country", "destination_city__country").order_by("departure_at"))
+                .select_related("origin_city__country", "destination_city__country"))  # Meta order: date, then time
     shown = {s["city"].pk for s in stops}
     others = {}
     for city in trip.cities.select_related("country"):
@@ -1314,8 +1315,94 @@ def trip_map_data(request, pk):
             "properties": {
                 "layer": "legs",
                 "mode": leg.mode,
+                "planned": leg.is_planned,
                 "name": f"{leg.get_mode_display()}: {leg.origin_city.name} → {leg.destination_city.name}",
-                "subtitle": " · ".join(p for p in (what, f"{leg.departure_local_date} {leg.departure_local_str}") if p),
+                "subtitle": " · ".join(p for p in (what, (
+                    f"{leg.date:%a, %b} {leg.date.day} · planned, no times yet" if leg.is_planned and leg.date
+                    else "planned, no times yet" if leg.is_planned
+                    else f"{leg.departure_local_date} {leg.departure_local_str}"), leg.notes[:80] if leg.is_planned else "") if p),
             },
         })
     return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+# ---- logistics table -> planned legs -------------------------------------------------------
+@login_required
+def section_to_legs(request, trip_pk, day_pk, pk):
+    """Review the travel rows of a logistics table as planned transport legs, then make
+    them (editors only). Nothing is saved before confirming; times are never guessed."""
+    from apps.approval_system.models import ApprovalStatus
+    from apps.locations.models import City
+    from .forms import LegProposalFormSet
+    from .logistics import match_city, proposed_legs
+
+    trip, day = _editable_day(request, trip_pk, day_pk)
+    section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.LOGISTICS_TABLE), pk=pk)
+    content = section.content or {}
+    proposals = proposed_legs(content.get("columns"), content.get("rows"))
+    trip_cities = list(trip.cities.select_related("country"))
+    catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related("country"))
+    choices = City.objects.filter(pk__in=[c.pk for c in trip_cities]) if trip_cities else None
+    def city_for(text):
+        return match_city(text, trip_cities) or match_city(text, catalogue)
+
+    # A row is already a leg when that day has one with the same wording, or between the
+    # same two cities (its own cities, else the ones its wording names: "Butzbach Hof").
+    existing_text, existing_cities = set(), set()
+    for leg in trip.transport.filter(date=day.date):
+        existing_text.add((leg.origin, leg.destination))
+        a = leg.origin_city or city_for(leg.origin)
+        b = leg.destination_city or city_for(leg.destination)
+        if a and b:
+            existing_cities.add((a.pk, b.pk))
+
+    initial = []
+    for p in proposals:
+        a, b = city_for(p["origin"]), city_for(p["destination"])
+        dup = ((p["origin"], p["destination"]) in existing_text
+               or (a is not None and b is not None and (a.pk, b.pk) in existing_cities))
+        initial.append({**p, "include": not dup, "date": day.date,
+                        "origin_city": a.pk if a else None, "destination_city": b.pk if b else None,
+                        "duplicate": dup})
+    # A matched catalogue city that isn't on the trip still has to be choosable.
+    extra_ids = {i[k] for i in initial for k in ("origin_city", "destination_city") if i[k]}
+    if choices is not None:
+        choices = City.objects.filter(pk__in={c.pk for c in trip_cities} | extra_ids)
+    formset = LegProposalFormSet(request.POST or None, initial=initial, prefix="legs",
+                                 form_kwargs={"cities": choices.select_related("country").order_by("name")
+                                              if choices is not None else None})
+
+    if request.method == "POST" and formset.is_valid():
+        made, rows_done = [], []
+        with transaction.atomic():
+            for form in formset:
+                data = form.cleaned_data
+                if not data.get("include"):
+                    continue
+                leg = TransportLeg.objects.create(
+                    trip=trip, date=data["date"], mode=data["mode"], origin=data["origin"],
+                    destination=data["destination"], origin_city=data["origin_city"],
+                    destination_city=data["destination_city"], operator=data["operator"], notes=data["notes"])
+                made.append(leg)
+                rows_done.append(data["row"])
+                for city in (leg.origin_city, leg.destination_city):
+                    if city is not None:
+                        trip.cities.add(city)
+            if made and request.POST.get("remove_rows"):
+                rows = [r for i, r in enumerate(content.get("rows") or []) if i not in set(rows_done)]
+                if rows:
+                    section.content = {**content, "rows": rows}
+                    section.save(update_fields=["content"])
+                else:
+                    section.delete()
+        if made:
+            messages.success(request, f"Made {len(made)} planned leg{'s' if len(made) != 1 else ''}. "
+                                      "Add their times under Edit trip → Transport once they're booked.")
+        else:
+            messages.info(request, "No legs made.")
+        return redirect(f"{reverse('trips:trip_detail', args=[trip.pk])}#day-{day.day_number}")
+
+    rows = list(zip(formset.forms, initial))
+    return render(request, "trips/section_to_legs.html", {
+        "trip": trip, "day": day, "section": section, "formset": formset, "rows": rows,
+    })

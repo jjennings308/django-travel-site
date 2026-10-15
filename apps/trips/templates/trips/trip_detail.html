@@ -98,7 +98,7 @@
                     <span class="text-amber-700">(+1 day)</span>
                   {% endif %}
                 </p>
-                <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
+                <span class="flex gap-1">{% if leg.is_planned %}<span class="badge badge-mode">Planned</span>{% endif %}<span class="badge badge-mode">{{ leg.get_mode_display }}</span></span>
               </div>
               {% if leg.operator or leg.service_number %}
                 <p class="mt-1 text-sm text-zinc-600">
@@ -113,6 +113,12 @@
                   settings.TIME_ZONE (UTC) and silently undo the local zone the
                   property already applied.
                 {% endcomment %}
+                {% if leg.is_planned %}
+                  <div>
+                    <dt class="card-kicker">Day</dt>
+                    <dd>{{ leg.date|date:"D, M j"|default:"&mdash;" }} <span class="text-zinc-500">· no times yet</span></dd>
+                  </div>
+                {% else %}
                 <div>
                   <dt class="card-kicker">Departs</dt>
                   <dd>{{ leg.departure_local_date|default:"&mdash;" }} {{ leg.departure_local_str }}</dd>
@@ -121,6 +127,7 @@
                   <dt class="card-kicker">Arrives</dt>
                   <dd>{{ leg.arrival_local_date|default:"&mdash;" }} {{ leg.arrival_local_str }}</dd>
                 </div>
+                {% endif %}
                 {% if leg.duration_str %}
                   <div>
                     <dt class="card-kicker">Duration</dt>
@@ -236,7 +243,7 @@
 
         {% elif section.section_type == "logistics_table" %}
           <div class="section">
-            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title }}</h3>
+            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title }}{% if can_edit and "→" in section.content.rows|stringformat:"s" %} <a class="link-quiet ml-2 text-xs font-medium normal-case print:hidden" href="{% url 'trips:section_to_legs' trip.pk day.pk section.pk %}">Turn into legs</a>{% endif %}</h3>
             {% comment %}
               One card per row, each cell labelled with its column name. The
               columns vary per table (2-4 wide, different names), so a label

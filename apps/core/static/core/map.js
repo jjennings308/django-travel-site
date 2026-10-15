@@ -12,7 +12,7 @@
 //   addRoute(map, group, coordinates) -> a line through [lng, lat] points
 //   toggle(map, group, visible)     -> show or hide a layer
 //   fit(map, features)              -> zoom to show them all (points and lines)
-// Feature properties: name, subtitle, url, image, order (route stops), mode (legs),
+// Feature properties: name, subtitle, url, image, order (route stops), mode and planned (legs: fainter),
 // layer (which switch it belongs to, default "places"), marker ("poi": small dot, "stay": house).
 // Layer switches: <input type="checkbox" data-layer="cities"> inside the element named by
 // data-controls; a layer with nothing to show disables its switch.
@@ -132,7 +132,7 @@
       features.forEach(function (f) {
         var pts = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
         if (f.properties.mode === "plane" && pts.length === 2) pts = SBLMap.arc(pts[0], pts[1]);
-        var line = L.polyline(pts, Object.assign({ opacity: 0.85 }, styles[f.properties.mode] || road));
+        var line = L.polyline(pts, Object.assign({ opacity: f.properties.planned ? 0.45 : 0.85 }, styles[f.properties.mode] || road));
         line.bindPopup(function () { return SBLMap.card(f.properties); });
         group.addLayer(line);
       });
