@@ -181,7 +181,7 @@ class FillDayCitiesTests(StayFixture):
         stay_prefix = "lodging-0-"
         data[stay_prefix + "notes"] = "edited"
         response = self.client.post(reverse("trips:trip_edit", args=[self.trip.pk]), data, follow=True)
-        self.assertContains(response, "Filled in the city for 1 day from your stays.")
+        self.assertContains(response, "Filled in the city for 1 day from your stays; change any day trips by hand.")
 
     @staticmethod
     def _form_data(page):

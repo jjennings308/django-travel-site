@@ -961,8 +961,9 @@ class Lodging(models.Model):
                 self.latitude, self.longitude = found
 
     def fill_day_cities(self):
-        """Give the trip's days this stay covers (check-in up to, not including, check-out:
-        the nights you sleep here) its city, where a day has none. Never overwrites a day's
+        """Give the trip's days this stay covers (check-in up to, not including, check-out)
+        its city, where a day has none: a best guess at where you spend those days, which
+        day trips correct by hand. Never overwrites a day's
         city; adds the city to the trip's cities so the day form still offers it. Returns how
         many days changed. Called by the stay forms and ``geocode_stays --fill-days``."""
         if not self.city_id or not self.trip_id:

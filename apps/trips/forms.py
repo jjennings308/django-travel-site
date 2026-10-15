@@ -998,8 +998,10 @@ class DayForm(forms.ModelForm):
             trip_cities = trip.cities.all() if trip.pk else City.objects.none()
             self.fields["city"].queryset = trip_cities if trip_cities.exists() else _city_choices()
             self.fields["city"].label_from_instance = str
-            self.fields["city"].help_text = ("Where you sleep that night. On a travel day, add the trains, flights "
-                                             "or drives under Edit trip → Transport, with their From and To cities.")
+            self.fields["city"].help_text = (
+                "Where you spend the day (Munich for Oktoberfest, even if you sleep in Augsburg). "
+                "Days a stay covers are filled in from its city when blank; change day trips here. "
+                "Add the trains, flights or drives under Edit trip → Transport.")
         # Prefill the next free day number: a new day is nearly always the next
         # one, and the unique constraint on (trip, day_number) would otherwise
         # make the first thing to do a guess. `date` is deliberately left alone —

@@ -474,7 +474,7 @@ def trip_edit(request, pk):
                         messages.info(request, f"Added the return: {back.origin or '?'} → {back.destination or '?'}.")
             filled = sum(getattr(f, "days_filled", 0) for _key, _label, fs in formsets for f in fs.forms)
             if filled:
-                messages.info(request, f"Filled in the city for {filled} day{'s' if filled != 1 else ''} from your stays.")
+                messages.info(request, f"Filled in the city for {filled} day{'s' if filled != 1 else ''} from your stays; change any day trips by hand.")
             _warn_if_ready_with_open_tasks(request, trip)
             return redirect("trips:trip_detail", pk=trip.pk)
 
@@ -1232,7 +1232,7 @@ def _trip_stops(trip):
     """(stops, others, legs) for the trip map.
 
     stops: the days' cities in date order, consecutive repeats merged, as dicts
-    {city, first, last, days} (Day.city is where you sleep). legs: transport legs with
+    {city, first, last, days} (Day.city is where you spend the day). legs: transport legs with
     both a from and a to city, in departure order. others: the trip's other cities and
     the legs' cities that aren't a stop, by name."""
     stops = []

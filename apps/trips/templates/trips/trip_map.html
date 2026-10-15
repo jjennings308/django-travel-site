@@ -14,7 +14,7 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
   <div class="page-header">
     <div>
       <h1 class="page-title">Map</h1>
-      <p class="page-subtitle">{{ stops|length }} stop{{ stops|length|pluralize }} in day order (each day's city is where you sleep){% if legs %} · {{ legs|length }} leg{{ legs|length|pluralize }} of travel{% endif %}{% if others %} · {{ others|length }} more cit{{ others|length|pluralize:"y,ies" }}{% endif %}</p>
+      <p class="page-subtitle">{{ stops|length }} stop{{ stops|length|pluralize }} in day order (where you spend each day; stays show where you sleep){% if legs %} · {{ legs|length }} leg{{ legs|length|pluralize }} of travel{% endif %}{% if others %} · {{ others|length }} more cit{{ others|length|pluralize:"y,ies" }}{% endif %}</p>
     </div>
   </div>
 
