@@ -22,6 +22,7 @@ from django.urls import reverse
 from apps.trips.models import TripRole
 from apps.trips.models import (
     BookingTask,
+    Confirmation,
     Contact,
     Day,
     Lodging,
@@ -275,13 +276,14 @@ class TripChromeTests(DetailFixture):
         self.assertIn("10:15 AM MDT", html)
 
     def test_lodging_shows_dates_and_confirmation(self):
-        Lodging.objects.create(
+        stay = Lodging.objects.create(
             trip=self.trip,
             name="Hotel Taos",
             check_in=date(2026, 9, 12),
             check_out=date(2026, 9, 19),
-            confirmation_number="ABC123",
         )
+        # Phase B: the number is a Confirmation linked to the stay, shown as a chip on it.
+        Confirmation.attach_number(self.trip, "ABC123", stay)
         html = self.get().content.decode()
         self.assertIn("Hotel Taos", html)
         self.assertIn("ABC123", html)
@@ -423,6 +425,12 @@ class QueryCountTests(DetailFixture):
             TransportLeg.objects.create(trip=self.trip, date=day.date, origin="A", destination="B",
                                         section=travel, est_duration=timedelta(minutes=45))
             TransportLeg.objects.create(trip=self.trip, date=day.date, origin="B", destination="C", order=2)
+            # Phase B: a confirmation per day covering its legs and meal, one more for a stay.
+            confirmation = Confirmation.objects.create(trip=self.trip, confirmation_number=f"PNR{offset}",
+                                                       provider="Delta")
+            confirmation.legs.set(TransportLeg.objects.filter(trip=self.trip, date=day.date))
+            confirmation.meals.set(day.meals.all())
+            confirmation.travelers.add(ada)
 
         # The comment threads add a few fixed queries:
         #
@@ -445,11 +453,19 @@ class QueryCountTests(DetailFixture):
         # * 1 for the trip's catalogue cities (the chips under the title). Each
         #   day's city comes with the days query (select_related), so it is free.
         #
-        # 20 in all on this site, four of which are the site shell's, added to
+        # 24 in all on this site, four of which are the site shell's, added to
         # every page — UserTimezoneMiddleware (user_preferences),
         # UserThemeMiddleware (account_settings), and the travel_preferences and
         # rewards context processors. None of them depends on the trip.
-        with self.assertNumQueries(20):
+        # * 4 for what the confirmations cover (trip-items plan, Phase B): their legs, stays,
+        #   meals (with each meal's day) and travellers — one query each, fixed however many
+        #   confirmations or covered items. Legs and stays get their confirmation chips from
+        #   these lists in Python (views._attach_confirmations), not a reverse prefetch each.
+        #   Raised deliberately from 20 to 24.
+        stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
+                                      check_out=self.trip.start_date + timedelta(days=2))
+        Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").stays.add(stay)
+        with self.assertNumQueries(24):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

@@ -1,6 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: Phase A done (2026-10-15, branch `phase-a-legs-in-place`); Phases B–F planned. Hand to Claude
+Status: Phases A and B done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`);
+Phases C–F planned. Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -146,6 +147,16 @@ editor OK); detail query count unchanged; non-UTC user renders leg times correct
 `|at_zone` rule).
 
 ## Phase B — confirmations attached to items, Quick reference generated
+
+**Status: done** on branch `phase-b-confirmations` (migrations `trips 0022`–`0024`; tests in
+`apps/trips/tests/test_confirmations.py`). As built: `Confirmation.attach_number` is the one
+link-or-create rule (migration 0023 carries a copy, as migrations must); stays and meals have no
+edit page of their own, so they are attached from the confirmation's page (`?stay=` pre-ticks)
+rather than from a stay/meal edit block; the leg edit page has the attach/detach block. Tours &
+tickets is not a group yet (nothing models a tour); no standalone `trips:trip_confirmations` page.
+Query pin 20 → 24 (`confirmations__legs`, `__stays`, `__meals`, `__travelers`), instead of
+prefetching from the items' side. Dev check on Taos: GCH7JS is one confirmation covering the four
+Delta legs (all Booked), Hotel Chimayo linked, Angel Fire's second number its own stay confirmation.
 
 **Model (`trips 0022`–`0024`, hand-written: schema / data / drop, because of the Postgres
 "index after data change in one transaction" problem noted in CLAUDE.md):**

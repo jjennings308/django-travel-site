@@ -14,7 +14,7 @@ zone filter.
     <span class="flex flex-wrap items-center gap-1">
       {% if show_day and leg.on_day %}<a class="chip print:hidden" href="#day-{{ leg.on_day.day_number }}">Day {{ leg.on_day.day_number }}</a>{% endif %}
       <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
-      <span class="badge badge-mode">{% if leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
+      <span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
     </span>
   </div>
   {% if leg.operator or leg.service_number %}
@@ -38,8 +38,8 @@ zone filter.
       {% if leg.duration_str %}<div><dt class="card-kicker">Duration</dt><dd>{{ leg.duration_str }}</dd></div>{% endif %}
     {% endif %}
     {% if leg.cost is not None %}<div><dt class="card-kicker">Cost</dt><dd>{{ leg.cost }} {{ leg.currency }}</dd></div>{% endif %}
-    {% if leg.confirmation_number %}<div><dt class="card-kicker">Confirmation</dt><dd>{{ leg.confirmation_number }}</dd></div>{% endif %}
+    {% if leg.confirmation_list %}<div><dt class="card-kicker">Confirmation</dt><dd>{% for c in leg.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</dd></div>{% endif %}
   </dl>
   {% if leg.notes %}<p class="mt-2 text-sm text-zinc-600">{{ leg.notes|linebreaksbr }}</p>{% endif %}
-  {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a></p>{% endif %}
+  {% if can_edit %}<p class="mt-2 flex gap-3 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a>{% if not leg.confirmation_list %}<a class="link-quiet font-medium" href="{% url 'trips:confirmation_new' trip.pk %}?leg={{ leg.pk }}&amp;next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Add confirmation</a>{% endif %}</p>{% endif %}
 </div>

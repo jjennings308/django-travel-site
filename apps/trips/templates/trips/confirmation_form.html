@@ -1,0 +1,51 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+A booking reference and what it covers (trips:confirmation_edit / confirmation_new). Legs, stays,
+meals and travellers offered are this trip's only (ConfirmationEditForm).
+{% endcomment %}
+{% block title %}{% if confirmation %}Confirmation {{ confirmation.confirmation_number }}{% else %}New confirmation{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Confirmation</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-4">{% if confirmation %}Confirmation {{ confirmation.confirmation_number }}{% else %}New confirmation{% endif %}</h1>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    <fieldset class="form-section">
+      <legend class="form-section-title">Booking</legend>
+      <div class="field-grid">
+        {% for field in form %}{% if field.name != "legs" and field.name != "stays" and field.name != "meals" and field.name != "travelers" %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+            {{ field.errors }}
+          </div>
+        {% endif %}{% endfor %}
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend class="form-section-title">What it covers</legend>
+      {% for field in form %}{% if field.name == "legs" or field.name == "stays" or field.name == "meals" or field.name == "travelers" %}
+        <div class="mb-4">
+          <p class="card-kicker mb-1">{% if field.name == "legs" %}Legs{% elif field.name == "stays" %}Stays{% elif field.name == "meals" %}Meals{% else %}{{ field.label }}{% endif %}</p>
+          {% if field.field.queryset.exists %}<div class="space-y-1 text-sm">{% for box in field %}<label class="flex items-center gap-2">{{ box.tag }} {{ box.choice_label }}</label>{% endfor %}</div>
+          {% else %}<p class="text-sm text-zinc-500">None on this trip.</p>{% endif %}
+          {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endif %}{% endfor %}
+    </fieldset>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      {% if confirmation %}<a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:confirmation_delete' trip.pk confirmation.pk %}?next={{ next|urlencode }}">Delete</a>{% endif %}
+    </div>
+  </form>
+{% endblock %}

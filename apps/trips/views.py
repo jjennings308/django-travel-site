@@ -19,6 +19,8 @@ app's models, so nothing private is reachable from it even by a mistake in a
 template.
 """
 
+from datetime import date
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -57,6 +59,7 @@ from .models import (
     TripGrant,
     TripRole,
     TransportLeg,
+    Confirmation,
     can_create_trip,
     role_capabilities,
     comment_kind,
@@ -308,6 +311,13 @@ def trip_detail(request, pk):
             "lodging",
             "transport",
             "confirmations",
+            # What each confirmation covers (trip-items plan, Phase B): four fixed queries,
+            # however many confirmations or items. Legs and stays get their confirmations from
+            # these lists in Python (_attach_confirmations) rather than a reverse prefetch each.
+            "confirmations__legs",
+            "confirmations__stays",
+            Prefetch("confirmations__meals", queryset=Meal.objects.select_related("day")),
+            "confirmations__travelers",
             "contacts",
             "booking_tasks",
             "travelers",
@@ -324,12 +334,14 @@ def trip_detail(request, pk):
     # is a query, and this page pins its query count (QueryCountTests).
     capabilities = trip.capabilities_for(request.user)
     stray_legs = _place_legs(trip)
+    _attach_confirmations(trip)
     return render(
         request,
         "trips/trip_detail.html",
         {
             "trip": trip,
             "stray_legs": stray_legs,
+            "confirmation_groups": confirmation_groups(trip),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
             "comments_by_target": comments_by_target,
@@ -338,6 +350,42 @@ def trip_detail(request, pk):
             "can_delete": "delete" in capabilities,
         },
     )
+
+
+CONFIRMATION_GROUPS = (("flight", "Flights"), ("train", "Trains"), ("stay", "Stays"), ("meal", "Meals"),
+                       ("other", "Other"))
+
+
+def _attach_confirmations(trip):
+    """Give each prefetched leg and stay its ``confirmation_list`` from the prefetched
+    confirmations (no query): the chip in both views, and ``leg.stage`` "booked"."""
+    legs = {leg.pk: leg for leg in trip.transport.all()}
+    stays = {stay.pk: stay for stay in trip.lodging.all()}
+    for item in list(legs.values()) + list(stays.values()):
+        item.confirmation_list = []
+    for confirmation in trip.confirmations.all():
+        for leg in confirmation.legs.all():
+            if leg.pk in legs:
+                legs[leg.pk].confirmation_list.append(confirmation)
+        for stay in confirmation.stays.all():
+            if stay.pk in stays:
+                stays[stay.pk].confirmation_list.append(confirmation)
+
+
+def confirmation_groups(trip):
+    """Quick reference, generated: [(title, [confirmation, ...])] grouped Flights / Trains /
+    Stays / Meals / Other by what each covers, ordered by its first covered date; loose ones
+    (covering nothing) last within Other. Uses the prefetched rows."""
+    buckets = {key: [] for key, _title in CONFIRMATION_GROUPS}
+    for confirmation in trip.confirmations.all():
+        buckets[confirmation.kind].append(confirmation)
+    groups = []
+    for key, title in CONFIRMATION_GROUPS:
+        items = sorted(buckets[key], key=lambda c: (c.first_date is None, c.first_date or date.min,
+                                                    (c.label or c.confirmation_number).lower()))
+        if items:
+            groups.append((title, items))
+    return groups
 
 
 def _place_legs(trip):
@@ -1487,9 +1535,12 @@ def leg_edit(request, pk, leg_pk):
             messages.info(request, f"Added the return: {form.return_leg.origin} → {form.return_leg.destination}.")
         return redirect(_back(request, _leg_back(trip, leg)))
     from .forms import COMMON_ZONE_SUGGESTIONS
+    attached = list(leg.confirmations.prefetch_related("legs", "stays"))
     return render(request, "trips/leg_form.html", {
         "trip": trip, "leg": leg, "form": form, "next": _back(request, _leg_back(trip, leg)),
         "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
+        "attached": attached,
+        "attachable": [c for c in trip.confirmations.prefetch_related("legs", "stays") if c not in attached],
     })
 
 
@@ -1555,3 +1606,63 @@ def day_add_travel(request, pk, day_pk):
                            order=(last or 0) + 1, content={})
     messages.success(request, f"Added a travel section to day {day.day_number}.")
     return redirect(reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
+
+
+# ---- confirmations: attached to the items they confirm (trip-items plan, Phase B) ----------
+@login_required
+def confirmation_edit(request, pk, confirmation_pk=None):
+    """Add or edit a booking reference and tick what it covers. ``?leg=`` / ``?stay=`` on a
+    new one pre-ticks the item it was added from."""
+    from .forms import ConfirmationEditForm
+    trip = _readable_trip(request, pk, "edit")
+    confirmation = None
+    if confirmation_pk is not None:
+        confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
+    initial = {}
+    if confirmation is None:
+        if request.GET.get("leg", "").isdigit():
+            initial["legs"] = list(trip.transport.filter(pk=request.GET["leg"]).values_list("pk", flat=True))
+        if request.GET.get("stay", "").isdigit():
+            initial["stays"] = list(trip.lodging.filter(pk=request.GET["stay"]).values_list("pk", flat=True))
+    form = ConfirmationEditForm(request.POST or None, instance=confirmation or Confirmation(trip=trip),
+                                initial=initial, trip=trip)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#quick-reference")
+    if request.method == "POST" and form.is_valid():
+        saved = form.save()
+        messages.success(request, f"Saved confirmation {saved.confirmation_number}.")
+        return redirect(back)
+    return render(request, "trips/confirmation_form.html", {
+        "trip": trip, "form": form, "confirmation": confirmation, "next": back,
+    })
+
+
+@login_required
+def confirmation_delete(request, pk, confirmation_pk):
+    trip = _readable_trip(request, pk, "edit")
+    confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#quick-reference")
+    if request.method == "POST":
+        number = confirmation.confirmation_number
+        confirmation.delete()
+        messages.success(request, f"Deleted confirmation {number}. The legs and stays it covered are kept.")
+        return redirect(back)
+    return render(request, "trips/confirmation_confirm_delete.html",
+                  {"trip": trip, "confirmation": confirmation, "next": back})
+
+
+@login_required
+@require_POST
+def leg_confirmation(request, pk, leg_pk):
+    """Attach an existing confirmation of this trip to a leg, or detach one (never deletes it)."""
+    trip = _readable_trip(request, pk, "edit")
+    leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
+    confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
+    if request.POST.get("action") == "detach":
+        confirmation.legs.remove(leg)
+        messages.success(request, f"Detached {confirmation.confirmation_number} from this leg (it's kept).")
+    else:
+        confirmation.legs.add(leg)
+        messages.success(request, f"Attached {confirmation.confirmation_number}.")
+    from urllib.parse import quote
+    back = _back(request, _leg_back(trip, leg))
+    return redirect(reverse("trips:leg_edit", args=[trip.pk, leg.pk]) + f"?next={quote(back, safe='/#')}")

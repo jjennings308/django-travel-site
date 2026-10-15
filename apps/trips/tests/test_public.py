@@ -89,20 +89,18 @@ class PublicFixture(TestCase):
             why_recommended="James Beard Award winner, family-run since 1965",
             reservation_notes="Book under James Jennings, 8pm",
         )
-        Lodging.objects.create(
+        stay = Lodging.objects.create(
             trip=cls.trip,
             name="Hotel Chimayo",
             check_in=date(2026, 9, 12),
             check_out=date(2026, 9, 15),
-            confirmation_number="5305434791",
             notes="Room: Junior Suite · Guest Name: James Jennings",
         )
-        TransportLeg.objects.create(
+        leg = TransportLeg.objects.create(
             trip=cls.trip,
             mode=TransportLeg.Mode.PLANE,
             operator="Delta",
             service_number="DL 447",
-            confirmation_number="GCH7JS",
             origin="PIT",
             destination="DEN",
             departure_at="2026-09-12T14:00:00Z",
@@ -111,6 +109,10 @@ class PublicFixture(TestCase):
         Confirmation.objects.create(
             trip=cls.trip, label="Flights (Delta, all 4 legs)", confirmation_number="GCH7JS"
         )
+        # Phase B: numbers are Confirmations linked to what they cover (the leg links to the
+        # existing GCH7JS; the stay's number becomes its own confirmation).
+        Confirmation.attach_number(cls.trip, "GCH7JS", leg, "Delta")
+        Confirmation.attach_number(cls.trip, "5305434791", stay)
         Contact.objects.create(trip=cls.trip, name="Regan's mom", phone="555-0100")
         cls.task = BookingTask.objects.create(trip=cls.trip, title="fix Regan status")
 

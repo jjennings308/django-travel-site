@@ -32,7 +32,7 @@ class StayFixture(TestCase):
     def save(self, instance=None, **data):
         values = {"name": "Hard Days Night Hotel", "address": "Central Buildings, North John St, Liverpool",
                   "city": self.liverpool.pk, "latitude": "", "longitude": "", "check_in": "2027-09-11",
-                  "check_out": "2027-09-13", "confirmation_number": "SECRET123", "nightly_rate": "189",
+                  "check_out": "2027-09-13", "nightly_rate": "189",
                   "currency": "GBP", "notes": "Room with a view"}
         if instance is not None:
             values.update({k: ("" if getattr(instance, k) is None else getattr(instance, k))
@@ -92,9 +92,11 @@ class LocateTests(StayFixture):
 
 class StaysLayerTests(StayFixture):
     def test_layer_has_name_dates_and_city_fallback_but_no_private_details(self):
-        Lodging.objects.create(trip=self.trip, name="Pinned", address="x", latitude=FOUND[0], longitude=FOUND[1],
-                               confirmation_number="SECRET123", nightly_rate=189, notes="Room with a view",
-                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        pinned = Lodging.objects.create(trip=self.trip, name="Pinned", address="x", latitude=FOUND[0],
+                                        longitude=FOUND[1], nightly_rate=189, notes="Room with a view",
+                                        check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        from apps.trips.models import Confirmation
+        Confirmation.attach_number(self.trip, "SECRET123", pinned)
         Lodging.objects.create(trip=self.trip, name="City only", city=self.liverpool,
                                check_in=date(2027, 9, 13), check_out=date(2027, 9, 14))
         Lodging.objects.create(trip=self.trip, name="Nowhere", check_in=date(2027, 9, 10), check_out=date(2027, 9, 11))

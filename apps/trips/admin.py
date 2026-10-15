@@ -55,7 +55,7 @@ class LodgingInline(admin.TabularInline):
     model = Lodging
     form = LodgingAdminForm
     extra = 1
-    fields = ("name", "address", "city", "check_in", "check_out", "nightly_rate", "currency", "confirmation_number")
+    fields = ("name", "address", "city", "check_in", "check_out", "nightly_rate", "currency")
     autocomplete_fields = ("city",)
 
 
@@ -532,6 +532,9 @@ class ConfirmationAdmin(admin.ModelAdmin):
     list_display = ("label", "confirmation_number", "provider", "trip")
     list_filter = ("trip",)
     search_fields = ("label", "confirmation_number", "provider")
+    # What it covers (trip-items plan, Phase B). The choices aren't limited to the trip here;
+    # the site's confirmation page (trips:confirmation_edit) is, and is the place to edit them.
+    filter_horizontal = ("legs", "stays", "meals", "travelers")
 
 
 @admin.register(Contact)

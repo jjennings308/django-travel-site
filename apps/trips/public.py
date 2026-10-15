@@ -237,13 +237,7 @@ def trip_leak_finders(trip):
     for traveler in trip.travelers.all():
         for word in traveler.name.split():
             names.add(word)
-    numbers = set()
-    for source in (
-        list(trip.confirmations.all())
-        + list(trip.lodging.all())
-        + list(trip.transport.all())
-    ):
-        value = getattr(source, "confirmation_number", "")
-        if value:
-            numbers.add(value)
+    # Every booking reference is a Confirmation (linked to the legs and stays it covers since
+    # trips 0023/0024), so the trip's confirmations are the whole list of numbers to look for.
+    numbers = {c.confirmation_number for c in trip.confirmations.all() if c.confirmation_number}
     return names, numbers

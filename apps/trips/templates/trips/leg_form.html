@@ -42,4 +42,38 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
       <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:leg_delete' trip.pk leg.pk %}?next={{ next|urlencode }}">Delete this leg</a>
     </div>
   </form>
+
+  {# Confirmations covering this leg (Phase B): attach an existing one, detach, or add a new one. #}
+  <section class="card mt-6 p-6">
+    <h2 class="form-section-title mb-3">Confirmations</h2>
+    {% if attached %}
+      <ul class="mb-4 space-y-2 text-sm">
+        {% for c in attached %}
+          <li class="flex flex-wrap items-center gap-3">
+            <span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span>
+            <span class="text-zinc-500">{{ c.description }}</span>
+            <a class="link-quiet font-medium" href="{% url 'trips:confirmation_edit' trip.pk c.pk %}?next={{ request.get_full_path|urlencode }}">Edit</a>
+            <form method="post" action="{% url 'trips:leg_confirmation' trip.pk leg.pk %}">{% csrf_token %}
+              <input type="hidden" name="confirmation" value="{{ c.pk }}"><input type="hidden" name="action" value="detach"><input type="hidden" name="next" value="{{ next }}">
+              <button type="submit" class="link-quiet hover:text-red-700">Detach</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mb-4 text-sm text-zinc-500">None yet. Once there is one, this leg shows as Booked.</p>
+    {% endif %}
+    <div class="flex flex-wrap items-end gap-3">
+      {% if attachable %}
+        <form method="post" action="{% url 'trips:leg_confirmation' trip.pk leg.pk %}" class="flex flex-wrap items-end gap-2">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+          <label class="flex flex-col text-sm"><span class="card-kicker">Attach an existing one</span>
+            <select name="confirmation">{% for c in attachable %}<option value="{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.description %} — {{ c.description }}{% endif %}</option>{% endfor %}</select>
+          </label>
+          <button type="submit" class="btn-quiet">Attach</button>
+        </form>
+      {% endif %}
+      <a class="btn-quiet" href="{% url 'trips:confirmation_new' trip.pk %}?leg={{ leg.pk }}&amp;next={{ request.get_full_path|urlencode }}">Add a new one</a>
+    </div>
+  </section>
 {% endblock %}

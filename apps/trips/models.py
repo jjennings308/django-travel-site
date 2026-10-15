@@ -92,7 +92,7 @@ being discussed.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -769,7 +769,8 @@ class TransportLeg(models.Model):
         blank=True,
         help_text="Flight number, train service number, or booking reference",
     )
-    confirmation_number = models.CharField(max_length=40, blank=True)
+    # Booking references are Confirmations linked to the leg (``leg.confirmations``); the
+    # inline confirmation_number was moved there by trips 0023 and dropped in 0024.
     # IATA codes for a plane, but a train leg has stations and a drive has
     # towns, so this is sized for whatever the mode needs rather than 3 chars.
     origin = models.CharField(
@@ -835,8 +836,13 @@ class TransportLeg(models.Model):
 
     @property
     def stage(self):
-        """Derived, never stored: "planned" (a day, no times) or "scheduled" (times).
-        "booked" (a confirmation) arrives with Phase B of the trip-items plan."""
+        """Derived, never stored: "booked" (has a confirmation), else "scheduled" (times),
+        else "planned" (a day only). Reads ``confirmation_list`` when the view attached it
+        (the trip page, no query); otherwise asks the database."""
+        attached = getattr(self, "confirmation_list", None)
+        booked = bool(attached) if attached is not None else (self.pk is not None and self.confirmations.exists())
+        if booked:
+            return "booked"
         return "planned" if self.departure_at is None else "scheduled"
 
     @property
@@ -974,7 +980,7 @@ class Lodging(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="lodging")
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
-    confirmation_number = models.CharField(max_length=40, blank=True)
+    # Booking references: ``stay.confirmations`` (moved from an inline field by trips 0023/0024).
     check_in = models.DateField()
     check_out = models.DateField()
     nightly_rate = models.DecimalField(
@@ -1307,18 +1313,98 @@ class Confirmation(models.Model):
     )
     label = models.CharField(
         max_length=200,
-        help_text="What this is, e.g. 'Hotel' or 'Airport transfer'",
+        blank=True,
+        help_text="What this is, e.g. 'Hotel' or 'Airport transfer'. Blank: described from what it covers.",
     )
     confirmation_number = models.CharField(max_length=60)
     provider = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True)
+    # What it confirms (trip-items plan, Phase B): one booking reference can cover several
+    # items (a PNR for two flights) and an item can have several (rooms booked separately).
+    legs = models.ManyToManyField("TransportLeg", blank=True, related_name="confirmations")
+    stays = models.ManyToManyField("Lodging", blank=True, related_name="confirmations")
+    meals = models.ManyToManyField("Meal", blank=True, related_name="confirmations")
+    # Who's on this booking; blank = everyone on the items it covers.
+    travelers = models.ManyToManyField("Traveler", blank=True, related_name="confirmations")
+    url = models.URLField(blank=True, verbose_name="manage-booking link")
+    booked_on = models.DateField(null=True, blank=True)
+    # The booking's total (a PNR's price isn't split across its legs).
+    cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                               validators=[MinValueValidator(Decimal("0"))])
+    currency = models.CharField(max_length=3, blank=True)
 
     class Meta:
         ordering = ["label"]
         verbose_name_plural = "confirmations"
 
     def __str__(self):
-        return f"{self.label}: {self.confirmation_number}"
+        return f"{self.label or self.description()}: {self.confirmation_number}"
+
+    # ---- what it covers (all from prefetched rows when the trip page prefetched them) ----
+    def covered_items(self):
+        """Its legs, stays and meals, in date order."""
+        dated = [(leg.date, 0, leg) for leg in self.legs.all()]
+        dated += [(stay.check_in, 1, stay) for stay in self.stays.all()]
+        dated += [(meal.day.date if meal.day_id else None, 2, meal) for meal in self.meals.all()]
+        return [item for _when, _kind, item in sorted(dated, key=lambda d: (d[0] is None, d[0] or date.min, d[1]))]
+
+    @property
+    def kind(self):
+        """flight / train / stay / meal / other, from what it covers (Quick reference groups)."""
+        legs = list(self.legs.all())
+        if legs:
+            modes = {leg.mode for leg in legs}
+            if modes == {TransportLeg.Mode.PLANE}:
+                return "flight"
+            if modes == {TransportLeg.Mode.TRAIN}:
+                return "train"
+            return "other"
+        if list(self.stays.all()):
+            return "stay"
+        if list(self.meals.all()):
+            return "meal"
+        return "other"
+
+    @property
+    def first_date(self):
+        for item in self.covered_items():
+            when = getattr(item, "date", None) or getattr(item, "check_in", None)
+            if when is None and getattr(item, "day_id", None):
+                when = item.day.date
+            if when:
+                return when
+        return None
+
+    def description(self):
+        """What it covers, e.g. "BWI→ATL, ATL→ABQ · Sat Sep 12" (empty when loose)."""
+        parts = []
+        for item in self.covered_items():
+            if isinstance(item, TransportLeg):
+                parts.append(f"{item.origin}→{item.destination}")
+            else:
+                parts.append(item.name)
+        if not parts:
+            return ""
+        when = self.first_date
+        return ", ".join(parts) + (f" · {when:%a %b} {when.day}" if when else "")
+
+    @classmethod
+    def attach_number(cls, trip, number, item, provider=""):
+        """Link ``item`` (a leg or stay) to ``trip``'s confirmation with this number (trimmed,
+        case-insensitive), creating it when there's none. Returns the confirmation, or None
+        for a blank number. Used by importers; trips 0023 did the same for existing data."""
+        number = " ".join((number or "").split())
+        if not number:
+            return None
+        key = number.casefold()
+        confirmation = next((c for c in cls.objects.filter(trip=trip).order_by("pk")
+                             if " ".join(c.confirmation_number.split()).casefold() == key), None)
+        if confirmation is None:
+            label = item.name if isinstance(item, Lodging) else f"{item.get_mode_display()} {item.origin}→{item.destination}"
+            confirmation = cls.objects.create(trip=trip, confirmation_number=number, provider=provider[:120],
+                                              label=label[:200])
+        (confirmation.stays if isinstance(item, Lodging) else confirmation.legs).add(item)
+        return confirmation
 
 
 class Contact(models.Model):
