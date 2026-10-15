@@ -1,0 +1,45 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+One transport leg on its own page (trips:leg_edit), reached from either view of it (the trip-wide
+"Getting around" list or its day). Fieldsets come from LegEditForm.grouped().
+{% endcomment %}
+{% block title %}Edit leg — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Leg</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">{{ leg.origin }} &rarr; {{ leg.destination }}</h1>
+    <p class="page-subtitle mb-4">{% if leg.is_planned %}Planned — add the times once it's booked.{% else %}Scheduled.{% endif %}</p>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% for heading, fields in form.grouped %}
+      {% if fields %}
+        <fieldset class="form-section">
+          <legend class="form-section-title">{{ heading }}</legend>
+          <div class="field-grid">
+            {% for field in fields %}
+              <div class="mb-4">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+                {{ field.errors }}
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endif %}
+    {% endfor %}
+    <datalist id="transport-zone-suggestions">{% for zone in zone_suggestions %}<option value="{{ zone }}"></option>{% endfor %}</datalist>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:leg_delete' trip.pk leg.pk %}?next={{ next|urlencode }}">Delete this leg</a>
+    </div>
+  </form>
+{% endblock %}

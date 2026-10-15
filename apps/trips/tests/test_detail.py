@@ -416,6 +416,13 @@ class QueryCountTests(DetailFixture):
             )
             Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER)
             day.travelers.add(ada)
+            # Phase A: legs shown on their day cost nothing either — one placed in a travel
+            # section, one in the day's automatic block, both from the one transport prefetch.
+            travel = section(day, Section.Type.TRAVEL, {"rows": [["Ticket", "Bayern Ticket"]],
+                                                       "columns": ["What", "Info"]}, order=offset + 100)
+            TransportLeg.objects.create(trip=self.trip, date=day.date, origin="A", destination="B",
+                                        section=travel, est_duration=timedelta(minutes=45))
+            TransportLeg.objects.create(trip=self.trip, date=day.date, origin="B", destination="C", order=2)
 
         # The comment threads add a few fixed queries:
         #

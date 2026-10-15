@@ -1,0 +1,45 @@
+{% comment %}
+One transport leg as a compact row, used by the trip-wide "Getting around" list AND on its day
+(in its travel section or the day's automatic block), so the two views show the same record the
+same way. Pass leg=; show_day=True adds a "Day N" link (leg.on_day, set by views._place_legs);
+can_edit adds the Edit link. Times come from the leg's own *_local_* helpers, never |date after a
+zone filter.
+{% endcomment %}
+<div class="card leg-row{% if leg.is_planned %} opacity-75{% endif %}" id="leg-{{ leg.pk }}">
+  <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <p class="card-title">
+      {{ leg.origin }} &rarr; {{ leg.destination }}
+      {% if leg.departs_on_a_different_day %}<span class="text-amber-700">(+1 day)</span>{% endif %}
+    </p>
+    <span class="flex flex-wrap items-center gap-1">
+      {% if show_day and leg.on_day %}<a class="chip print:hidden" href="#day-{{ leg.on_day.day_number }}">Day {{ leg.on_day.day_number }}</a>{% endif %}
+      <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
+      <span class="badge badge-mode">{% if leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
+    </span>
+  </div>
+  {% if leg.operator or leg.service_number %}
+    <p class="mt-1 text-sm text-zinc-600">{% if leg.operator %}{{ leg.operator }}{% endif %} {% if leg.service_number %}{{ leg.service_number }}{% endif %}</p>
+  {% endif %}
+  <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+    {% if leg.is_planned %}
+      <div>
+        <dt class="card-kicker">Day</dt>
+        <dd>{{ leg.date|date:"D, M j"|default:"&mdash;" }} <span class="text-zinc-500">· planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}</span></dd>
+      </div>
+    {% else %}
+      <div>
+        <dt class="card-kicker">Departs</dt>
+        <dd>{{ leg.departure_local_date|default:"&mdash;" }} {{ leg.departure_local_str }}</dd>
+      </div>
+      <div>
+        <dt class="card-kicker">Arrives</dt>
+        <dd>{{ leg.arrival_local_date|default:"&mdash;" }} {{ leg.arrival_local_str }}</dd>
+      </div>
+      {% if leg.duration_str %}<div><dt class="card-kicker">Duration</dt><dd>{{ leg.duration_str }}</dd></div>{% endif %}
+    {% endif %}
+    {% if leg.cost is not None %}<div><dt class="card-kicker">Cost</dt><dd>{{ leg.cost }} {{ leg.currency }}</dd></div>{% endif %}
+    {% if leg.confirmation_number %}<div><dt class="card-kicker">Confirmation</dt><dd>{{ leg.confirmation_number }}</dd></div>{% endif %}
+  </dl>
+  {% if leg.notes %}<p class="mt-2 text-sm text-zinc-600">{{ leg.notes|linebreaksbr }}</p>{% endif %}
+  {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a></p>{% endif %}
+</div>

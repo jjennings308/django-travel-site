@@ -1,6 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: planning only (2026-10-15). Hand to Claude Code one phase per branch/PR, in order.
+Status: Phase A done (2026-10-15, branch `phase-a-legs-in-place`); Phases B–F planned. Hand to Claude
+Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
 
@@ -78,6 +79,15 @@ All new models and fields live in `trips` (layer 4); no new cross-app imports.
 ---
 
 ## Phase A — legs evolve in place, and the trip page shows each once in each view
+
+**Status: done** on branch `phase-a-legs-in-place` (migration `trips 0021_leg_placement`). As built:
+`TransportLeg.section` / `est_duration` / `order`, `stage` (planned/scheduled), section type
+`travel` (payload form `TravelPayloadForm`), `trips/partials/_leg_row.html` in both views, the day
+grouping done in Python from the existing prefetch (`views._place_legs`; `QueryCountTests` still
+20 with placed and automatic legs in its fixture), `trips:leg_edit` / `leg_delete` /
+`leg_quick_add` / `day_add_travel`. `logistics.rough_duration` arrived here (the quick add and edit
+form need it) rather than in Phase C, which reuses it. Deviation: the quick-add and "Add travel"
+controls sit in a collapsed "Add travel to this day" on days with no legs and no travel section.
 
 Goal: the minimal-to-full lifecycle for legs, and a day shows the same leg records as the
 trip-wide list.

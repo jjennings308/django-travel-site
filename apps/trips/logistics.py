@@ -75,3 +75,27 @@ def match_city(text, cities):
         if re.search(r"(?<!\w)" + re.escape(city.name.lower()) + r"(?!\w)", words):
             return city
     return None
+
+
+_DURATION_PART = re.compile(r"(\d+(?:[.,]\d+)?)\s*(d|days?|h|hrs?|hours?|m|mins?|minutes?)\b", re.IGNORECASE)
+
+
+def rough_duration(text):
+    """A rough door-to-door time as a ``timedelta``, or None: "~45 min", "2.5 hrs",
+    "~1 hr 15 min", "1:15" (h:mm), "90m". Approximate on purpose (``TransportLeg.est_duration``)."""
+    from datetime import timedelta
+    text = (text or "").strip().lstrip("~≈ ").strip()
+    if not text:
+        return None
+    clock = re.fullmatch(r"(\d{1,2}):(\d{2})", text)
+    if clock:
+        return timedelta(hours=int(clock.group(1)), minutes=int(clock.group(2)))
+    total, found = 0.0, False
+    for number, unit in _DURATION_PART.findall(text):
+        value = float(number.replace(",", "."))
+        unit = unit.lower()
+        total += value * (1440 if unit.startswith("d") else 60 if unit.startswith("h") else 1)
+        found = True
+    if not found or total <= 0:
+        return None
+    return timedelta(minutes=round(total))

@@ -224,6 +224,24 @@ that matter most:
   skipped), cities are matched by name (trip's first, then the catalogue; "München" needs picking), and a
   review page creates planned legs on that day (duplicates unticked; optionally removes the converted
   rows). Nothing is saved before confirming; times are never guessed (see `docx_europe`'s docstring).
+- **One leg, two views (trip-items plan, Phase A):** a leg is shown once in the trip-wide
+  **Getting around** list and once on its day, both through `trips/partials/_leg_row.html`
+  (mode, A → B, operator, local times or "planned · ~45 min", stage badge, editors' Edit link).
+  On its day it sits in the `travel` section it's placed in (`TransportLeg.section`, a `travel`
+  section of the day whose date is the leg's `date`: checked in `clean()`, cleared by `save()` if
+  the date or section type no longer fits, so the leg falls back instead of vanishing), else in the
+  day's automatic "Getting around" block; legs on a date that is no day of the trip are flagged for
+  editors. `views._place_legs` does the grouping in Python from the existing `transport` /
+  `days__sections` prefetch (`section.placed_legs`, `day.auto_legs`, `day.travel_total` "2 legs ·
+  ~3 h 15 min") — no new queries. `stage` is derived ("planned" without times, "scheduled" with;
+  "booked" comes in Phase B); `est_duration` holds the rough time (`logistics.rough_duration`
+  parses "~45 min", "2.5 hrs", "1:15"); `order` sequences same-day legs without times. A `travel`
+  section's payload is `{"intro"?, "columns"?, "rows"?}` — rows are reference rows only, never hops.
+  Editing: `trips:leg_edit` (grouped Route / Schedule / Details / Placement / Return, `next`
+  checked with `url_has_allowed_host_and_scheme`), `trips:leg_delete`, `trips:leg_quick_add` (a
+  planned leg typed like a table row on a day, cities matched by name), `trips:day_add_travel`.
+  The trip edit page's Transport formset stays the bulk view (with `est_duration`, without
+  placement).
 - **Round trips:** a leg on the trip edit page (`TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
@@ -546,8 +564,8 @@ found. What stays at the root: `config/`, `theme/` (django-tailwind finds it by
 Plan: `docs/plans/trip-items-and-confirmations.md` (one record per trip item, shown in the
 trip-wide lists and on its day; confirmations attached to the items they confirm). Phases A–F,
 one branch each, in order; "Ask James" decisions there must be answered before the phase that
-needs them. Status: Phase A (legs evolve in place, shown once in each view) in progress on
-branch `phase-a-legs-in-place`.
+needs them. Status: Phase A (legs evolve in place, shown once in each view) done on branch
+`phase-a-legs-in-place`; Phase B (confirmations attached to items) next.
 
 ### Rules carried over from the itinerary project
 

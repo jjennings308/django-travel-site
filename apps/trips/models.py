@@ -806,6 +806,14 @@ class TransportLeg(models.Model):
     # Blank while planned (``is_planned``); never invented -- see docx_europe's docstring.
     departure_at = models.DateTimeField(null=True, blank=True)
     arrival_at = models.DateTimeField(null=True, blank=True)
+    # Where on its day the leg is shown: a ``travel`` section of the day whose date is
+    # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
+    # day's automatic "Getting around" block. There is no day FK: the date decides.
+    section = models.ForeignKey("Section", on_delete=models.SET_NULL, null=True, blank=True, related_name="legs")
+    # Rough door-to-door time while planned ("~45 min"); a scheduled leg has its real duration.
+    est_duration = models.DurationField(null=True, blank=True, verbose_name="rough duration")
+    # Sequence among same-day legs without times (Butzbach→Frankfurt before Frankfurt→Augsburg).
+    order = models.PositiveSmallIntegerField(default=0)
     cost = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -817,7 +825,7 @@ class TransportLeg(models.Model):
     notes = models.TextField(blank=True)
 
     class Meta:
-        ordering = ["trip", "date", models.F("departure_at").asc(nulls_last=True)]
+        ordering = ["trip", "date", models.F("departure_at").asc(nulls_last=True), "order", "id"]
         verbose_name_plural = "transport legs"
 
     @property
@@ -825,13 +833,59 @@ class TransportLeg(models.Model):
         """No booked time yet: only a date (and maybe a rough duration in the notes)."""
         return self.departure_at is None
 
+    @property
+    def stage(self):
+        """Derived, never stored: "planned" (a day, no times) or "scheduled" (times).
+        "booked" (a confirmation) arrives with Phase B of the trip-items plan."""
+        return "planned" if self.departure_at is None else "scheduled"
+
+    @property
+    def est_duration_str(self):
+        """The rough duration as "~45 min" / "~2 h 30 min" (empty when unknown)."""
+        if not self.est_duration:
+            return ""
+        minutes = int(self.est_duration.total_seconds() // 60)
+        hours, minutes = divmod(minutes, 60)
+        if hours and minutes:
+            return f"~{hours} h {minutes} min"
+        return f"~{hours} h" if hours else f"~{minutes} min"
+
+    @property
+    def travel_time(self):
+        """The real duration when scheduled, else the rough one (None if neither)."""
+        return self.duration if self.departure_at is not None else self.est_duration
+
+    def day_for(self, days_by_date):
+        """The trip's Day on this leg's date, from a ``{date: Day}`` map (no query)."""
+        return days_by_date.get(self.date)
+
+    def _section_fits(self, section):
+        return (section is not None and section.section_type == Section.Type.TRAVEL
+                and section.day.trip_id == self.trip_id and section.day.date == self.date)
+
+    def clean(self):
+        super().clean()
+        if self.section_id:
+            section = Section.objects.select_related("day").filter(pk=self.section_id).first()
+            if not self._section_fits(section):
+                raise ValidationError({"section": "Choose a travel section of this leg's day."})
+
     def save(self, *args, **kwargs):
         # The date follows the local departure whenever there is one.
         local = self.departure_local
+        changed = []
         if local is not None:
             self.date = local.date()
-            if kwargs.get("update_fields") is not None and "date" not in kwargs["update_fields"]:
-                kwargs["update_fields"] = list(kwargs["update_fields"]) + ["date"]
+            changed.append("date")
+        # A placement that no longer fits (date moved, section changed type) is cleared, so the
+        # leg falls back to its day's automatic block instead of vanishing.
+        if self.section_id:
+            section = Section.objects.select_related("day").filter(pk=self.section_id).first()
+            if not self._section_fits(section):
+                self.section = None
+                changed.append("section")
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = list(set(kwargs["update_fields"]) | set(changed))
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -1133,6 +1187,9 @@ class Section(models.Model):
     class Type(models.TextChoices):
         PHASE = "phase", "Phase"
         LOGISTICS_TABLE = "logistics_table", "Logistics table"
+        # "This day's legs go here": renders its TransportLegs (``section.legs``) as rows,
+        # then leftover reference rows. Payload {"intro"?, "columns"?, "rows"?}.
+        TRAVEL = "travel", "Travel"
         CALLOUT = "callout", "Callout"
         CHOOSE_YOUR_ADVENTURE = "choose_your_adventure", "Choose your adventure"
         FREE_TEXT = "free_text", "Free text"
@@ -1185,6 +1242,15 @@ class Section(models.Model):
             rows = content.get("rows")
             count = len(rows) if isinstance(rows, list) else 0
             return f"{count} row{'' if count == 1 else 's'}"
+        if self.section_type == self.Type.TRAVEL:
+            rows = content.get("rows")
+            count = len(rows) if isinstance(rows, list) else 0
+            legs = getattr(self, "placed_legs", None)
+            legs = len(legs) if legs is not None else self.legs.count()
+            parts = [f"{legs} leg{'' if legs == 1 else 's'}"]
+            if count:
+                parts.append(f"{count} reference row{'' if count == 1 else 's'}")
+            return " · ".join(parts)
         if self.section_type == self.Type.CHOOSE_YOUR_ADVENTURE:
             options = content.get("options")
             count = len(options) if isinstance(options, list) else 0

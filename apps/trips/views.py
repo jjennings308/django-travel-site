@@ -323,11 +323,14 @@ def trip_detail(request, pk):
     # One capabilities lookup for every action the page offers: each trip.can()
     # is a query, and this page pins its query count (QueryCountTests).
     capabilities = trip.capabilities_for(request.user)
+    stray_legs = _place_legs(trip)
     return render(
         request,
         "trips/trip_detail.html",
         {
             "trip": trip,
+            "stray_legs": stray_legs,
+            "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
             "comments_by_target": comments_by_target,
             "can_comment": "comment" in capabilities,
@@ -335,6 +338,50 @@ def trip_detail(request, pk):
             "can_delete": "delete" in capabilities,
         },
     )
+
+
+def _place_legs(trip):
+    """Put each leg on its day, from the rows the detail page already prefetched (no
+    queries): ``section.placed_legs`` for a travel section it's placed in, ``day.auto_legs``
+    for the rest of that date, ``day.travel_total`` ("2 legs · ~3 h 15 min") when every
+    leg there has a time or an estimate. Returns the legs whose date matches no day."""
+    legs = list(trip.transport.all())  # Meta order: date, time, order
+    days = list(trip.days.all())
+    days_by_date = {day.date: day for day in days if day.date}
+    sections_by_id = {}
+    for day in days:
+        day.auto_legs, day.day_legs = [], []
+        day.has_travel = False
+        for section in getattr(day, "ordered_sections", []):
+            section.placed_legs = []
+            sections_by_id[section.pk] = section
+            if section.section_type == Section.Type.TRAVEL:
+                day.has_travel = True
+    stray = []
+    for leg in legs:
+        day = leg.day_for(days_by_date)
+        if day is None:
+            leg.on_day = None
+            stray.append(leg)
+            continue
+        day.day_legs.append(leg)
+        leg.on_day = day
+        section = sections_by_id.get(leg.section_id)
+        if section is not None and section.day_id == day.pk:
+            section.placed_legs.append(leg)
+        else:
+            day.auto_legs.append(leg)
+    for day in days:
+        times = [leg.travel_time for leg in day.day_legs]
+        day.travel_total = ""
+        if day.day_legs and all(times):
+            minutes = int(sum(t.total_seconds() for t in times) // 60)
+            hours, minutes = divmod(minutes, 60)
+            span = f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min"
+            approx = "~" if any(leg.is_planned for leg in day.day_legs) else ""
+            count = len(day.day_legs)
+            day.travel_total = f"{count} leg{'' if count == 1 else 's'} · {approx}{span}"
+    return stray
 
 
 # ---------------------------------------------------------------------------
@@ -1406,3 +1453,105 @@ def section_to_legs(request, trip_pk, day_pk, pk):
     return render(request, "trips/section_to_legs.html", {
         "trip": trip, "day": day, "section": section, "formset": formset, "rows": rows,
     })
+
+
+
+# ---- legs: edit in place, quick add from a day ------------------------------------------
+def _back(request, fallback):
+    """The ``next`` page if it's on this site, else ``fallback``."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    target = request.POST.get("next") or request.GET.get("next")
+    if target and url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()},
+                                                  require_https=request.is_secure()):
+        return target
+    return fallback
+
+
+def _leg_back(trip, leg):
+    day = trip.days.filter(date=leg.date).first() if leg.date else None
+    anchor = f"#day-{day.day_number}" if day else "#getting-around"
+    return reverse("trips:trip_detail", args=[trip.pk]) + anchor
+
+
+@login_required
+def leg_edit(request, pk, leg_pk):
+    """One leg on its own page: route, schedule, details and where on its day it's shown."""
+    from .forms import LegEditForm
+    trip = _readable_trip(request, pk, "edit")
+    leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
+    form = LegEditForm(request.POST or None, instance=leg)
+    if request.method == "POST" and form.is_valid():
+        leg = form.save()
+        messages.success(request, f"Saved {leg.origin} → {leg.destination}.")
+        if form.return_leg is not None:
+            messages.info(request, f"Added the return: {form.return_leg.origin} → {form.return_leg.destination}.")
+        return redirect(_back(request, _leg_back(trip, leg)))
+    from .forms import COMMON_ZONE_SUGGESTIONS
+    return render(request, "trips/leg_form.html", {
+        "trip": trip, "leg": leg, "form": form, "next": _back(request, _leg_back(trip, leg)),
+        "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
+    })
+
+
+@login_required
+def leg_delete(request, pk, leg_pk):
+    trip = _readable_trip(request, pk, "edit")
+    leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
+    back = _back(request, _leg_back(trip, leg))
+    if request.method == "POST":
+        label = f"{leg.origin} → {leg.destination}"
+        leg.delete()
+        messages.success(request, f"Deleted {label}.")
+        return redirect(back)
+    return render(request, "trips/leg_confirm_delete.html", {"trip": trip, "leg": leg, "next": back})
+
+
+@login_required
+@require_POST
+def leg_quick_add(request, pk, day_pk):
+    """A planned leg typed like a table row, on a day (and in one of its travel sections)."""
+    from django.db.models import Max
+    from apps.approval_system.models import ApprovalStatus
+    from apps.locations.models import City
+    from .forms import LegQuickAddForm
+    from .logistics import match_city
+    trip, day = _editable_day(request, pk, day_pk)
+    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    form = LegQuickAddForm(request.POST)
+    if not form.is_valid():
+        errors = "; ".join(f"{form.fields[f].label}: {' '.join(e)}" if f in form.fields else " ".join(e)
+                           for f, e in form.errors.items())
+        messages.error(request, f"The leg wasn't added. {errors}")
+        return redirect(back)
+    data = form.cleaned_data
+    section = None
+    if data.get("section"):
+        section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.TRAVEL),
+                                    pk=data["section"])
+    trip_cities = list(trip.cities.all())
+    catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
+    origin_city = match_city(data["origin"], trip_cities) or match_city(data["origin"], catalogue)
+    destination_city = match_city(data["destination"], trip_cities) or match_city(data["destination"], catalogue)
+    last = trip.transport.filter(date=day.date).aggregate(m=Max("order"))["m"]
+    leg = TransportLeg.objects.create(
+        trip=trip, date=day.date, section=section, mode=data["mode"], origin=data["origin"],
+        destination=data["destination"], origin_city=origin_city, destination_city=destination_city,
+        est_duration=data["est_duration"], notes=data["notes"], order=(last or 0) + 1)
+    for city in (origin_city, destination_city):
+        if city is not None:
+            trip.cities.add(city)
+    messages.success(request, f"Added {leg.origin} → {leg.destination} (planned).")
+    return redirect(back)
+
+
+@login_required
+@require_POST
+def day_add_travel(request, pk, day_pk):
+    """Give a day a travel section ("Getting around") to place its legs in."""
+    from django.db.models import Max
+    trip, day = _editable_day(request, pk, day_pk)
+    last = day.sections.aggregate(m=Max("order"))["m"]
+    Section.objects.create(day=day, section_type=Section.Type.TRAVEL, title="Getting around",
+                           order=(last or 0) + 1, content={})
+    messages.success(request, f"Added a travel section to day {day.day_number}.")
+    return redirect(reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")

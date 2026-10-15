@@ -1,0 +1,17 @@
+{% comment %}
+Quick add on a day: a planned leg typed like a table row (trips:leg_quick_add). Pass day=,
+section= (a travel section, or nothing for the day's automatic block) and leg_modes. Editors only;
+never printed.
+{% endcomment %}
+<form method="post" action="{% url 'trips:leg_quick_add' trip.pk day.pk %}" class="mt-2 flex flex-wrap items-end gap-2 text-sm print:hidden">
+  {% csrf_token %}
+  {% if section %}<input type="hidden" name="section" value="{{ section.pk }}">{% endif %}
+  <label class="flex flex-col"><span class="card-kicker">From</span><input name="origin" required maxlength="120" class="w-36"></label>
+  <label class="flex flex-col"><span class="card-kicker">To</span><input name="destination" required maxlength="120" class="w-36"></label>
+  <label class="flex flex-col"><span class="card-kicker">Mode</span>
+    <select name="mode">{% for value, label in leg_modes %}<option value="{{ value }}"{% if value == "train" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="flex flex-col"><span class="card-kicker">~Duration</span><input name="est_duration" maxlength="40" placeholder="45 min" class="w-24"></label>
+  <label class="flex flex-col"><span class="card-kicker">Note</span><input name="notes" maxlength="500" class="w-48"></label>
+  <button type="submit" class="btn-quiet">Add leg</button>
+</form>

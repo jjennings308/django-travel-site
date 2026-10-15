@@ -431,6 +431,36 @@ class LocalLegTimeMixin:
         return self.cleaned_data
 
 
+class RoughDurationField(forms.CharField):
+    """A rough travel time typed the way itineraries write it: "~45 min", "2.5 hrs",
+    "1 hr 15 min", "1:15". Stored as a timedelta (``TransportLeg.est_duration``)."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("required", False)
+        kwargs.setdefault("max_length", 40)
+        kwargs.setdefault("label", "Rough duration")
+        kwargs.setdefault("help_text", "For a planned leg, e.g. “~45 min” or “2.5 hrs”.")
+        super().__init__(**kwargs)
+
+    def prepare_value(self, value):
+        from datetime import timedelta
+        if isinstance(value, timedelta):
+            minutes = int(value.total_seconds() // 60)
+            hours, minutes = divmod(minutes, 60)
+            return (f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min")
+        return value
+
+    def clean(self, value):
+        from .logistics import rough_duration
+        text = super().clean(value)
+        if not text:
+            return None
+        duration = rough_duration(text)
+        if duration is None:
+            raise forms.ValidationError("Write it like “45 min”, “2.5 hrs” or “1 h 15 min”.")
+        return duration
+
+
 class TransportLegAdminForm(LocalLegTimeMixin, forms.ModelForm):
     """Admin inline form for a transport leg. See ``LocalLegTimeMixin``."""
 
@@ -714,6 +744,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         fields = [
             "mode",
             "date",
+            "est_duration",
             "origin",
             "origin_city",
             "origin_timezone",
@@ -744,6 +775,8 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             self.fields[name].widget.attrs["placeholder"] = "America/Denver"
         _leg_city_fields(self, getattr(self.instance, "trip", None) if self.instance.trip_id else None)
         self.seed_local_time_initial()
+        if "est_duration" in self.fields:
+            self.fields["est_duration"] = RoughDurationField()
         # "Also add the return trip": a second leg with the ends swapped, made on save.
         # Added here, not declared, because LocalLegTimeMixin rebuilds declared_fields.
         self.fields["add_return"] = forms.BooleanField(
@@ -1358,6 +1391,43 @@ class LogisticsTablePayloadForm(PayloadForm):
         return cleaned_data
 
 
+class TravelPayloadForm(LogisticsTablePayloadForm):
+    """A ``travel`` section: an optional intro and optional *reference* rows (Bayern Ticket
+    price, what a pass covers). Its legs are TransportLegs placed here
+    (``TransportLeg.section``), edited as legs, never as rows."""
+
+    intro = forms.CharField(label="Intro", required=False, widget=forms.Textarea(attrs={"rows": 2}),
+                            help_text="Optional line above the legs.")
+
+    payload_keys = ("intro", "columns", "rows")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["columns"].required = False
+        self.fields["rows"].required = False
+        self.fields["columns"].help_text = "Only for reference rows (prices, what a ticket covers): one name per line."
+        self.fields["rows"].help_text = ("Reference rows, cells separated by “|”. The legs themselves are added "
+                                         "on the trip page and edited as legs.")
+        self.order_fields(["intro", "columns", "rows"])
+
+    def initial_from_content(self, content):
+        initial = super().initial_from_content(content)
+        initial["intro"] = content.get("intro", "")
+        return initial
+
+    def managed_content(self):
+        content = {}
+        intro = (self.cleaned_data.get("intro") or "").strip()
+        if intro or "intro" in self.stored:
+            content["intro"] = intro
+        columns = _lines_to_list(self.cleaned_data.get("columns"))
+        rows = [[cell.strip() for cell in line.split(ROW_CELL_SEPARATOR)]
+                for line in (self.cleaned_data.get("rows") or "").splitlines() if line.strip()]
+        if columns or "columns" in self.stored:
+            content["columns"] = columns
+        return _list_payload(content, "rows", rows)
+
+
 class AdventureOptionForm(forms.Form):
     """One of the interchangeable options in a ``choose_your_adventure``.
 
@@ -1491,6 +1561,7 @@ class ChooseYourAdventurePayloadForm(PayloadForm):
 SECTION_PAYLOAD_FORMS = {
     Section.Type.PHASE: PhasePayloadForm,
     Section.Type.LOGISTICS_TABLE: LogisticsTablePayloadForm,
+    Section.Type.TRAVEL: TravelPayloadForm,
     Section.Type.CALLOUT: CalloutPayloadForm,
     Section.Type.CHOOSE_YOUR_ADVENTURE: ChooseYourAdventurePayloadForm,
     Section.Type.FREE_TEXT: FreeTextPayloadForm,
@@ -1749,3 +1820,50 @@ class LegProposalForm(forms.Form):
 
 
 LegProposalFormSet = formset_factory(LegProposalForm, extra=0)
+
+
+class LegEditForm(TransportLegForm):
+    """One leg on its own page (``trips:leg_edit``): everything the formset row has, plus
+    where on its day it's shown (``section``: a travel section of the leg's day) and its
+    order among same-day legs without times."""
+
+    #: Fieldsets for the template: (heading, field names).
+    GROUPS = (
+        ("Route", ("origin", "origin_city", "destination", "destination_city", "mode")),
+        ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
+                      "est_duration", "order")),
+        ("Details", ("operator", "service_number", "confirmation_number", "cost", "currency", "notes")),
+        ("Placement", ("section",)),
+        ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date")),
+    )
+
+    class Meta(TransportLegForm.Meta):
+        fields = TransportLegForm.Meta.fields + ["section", "order"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        leg = self.instance
+        day_sections = Section.objects.none()
+        if leg.trip_id and leg.date:
+            day_sections = (Section.objects.filter(day__trip_id=leg.trip_id, day__date=leg.date,
+                                                   section_type=Section.Type.TRAVEL).select_related("day"))
+        self.fields["section"].queryset = day_sections
+        self.fields["section"].required = False
+        self.fields["section"].empty_label = "This day's “Getting around” block"
+        self.fields["section"].label = "Shown on its day under"
+        self.fields["section"].label_from_instance = lambda sec: f"Day {sec.day.day_number}: {sec.title or 'Travel'}"
+        self.fields["order"].help_text = "Order among this day's legs that have no times yet (lower first)."
+
+    def grouped(self):
+        """[(heading, [bound fields])] for the fieldsets, skipping names this form lacks."""
+        return [(heading, [self[name] for name in names if name in self.fields]) for heading, names in self.GROUPS]
+
+
+class LegQuickAddForm(forms.Form):
+    """A planned leg typed like a table row, from a day on the trip page."""
+    origin = forms.CharField(max_length=120, label="From")
+    destination = forms.CharField(max_length=120, label="To")
+    mode = forms.ChoiceField(choices=TransportLeg.Mode.choices, initial=TransportLeg.Mode.TRAIN)
+    est_duration = RoughDurationField(label="~Duration", help_text="")
+    notes = forms.CharField(max_length=500, required=False, label="Note")
+    section = forms.IntegerField(required=False, widget=forms.HiddenInput)

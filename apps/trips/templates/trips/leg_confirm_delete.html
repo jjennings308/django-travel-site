@@ -1,0 +1,15 @@
+{% extends "trips/base_trips.html" %}
+{% block title %}Delete leg — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-xl{% endblock %}
+{% block content %}
+  <form method="post" class="card p-6">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-2">Delete {{ leg.origin }} &rarr; {{ leg.destination }}?</h1>
+    <p class="mb-4 text-zinc-600">It disappears from the trip's “Getting around” list and from its day.</p>
+    <div class="flex gap-3">
+      <button type="submit" class="btn-danger">Delete</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
