@@ -30,6 +30,8 @@ from .models import (
     Comment,
     Confirmation,
     Contact,
+    ItemLink,
+    TripInfo,
     Day,
     Lodging,
     Meal,
@@ -884,8 +886,109 @@ class ContactForm(forms.ModelForm):
 
     class Meta:
         model = Contact
-        fields = ["name", "role", "phone", "email", "notes"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        fields = ["name", "role", "phone", "email", "address", "url", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "address": forms.Textarea(attrs={"rows": 2})}
+
+
+def linkable_choices(trip):
+    """Every item of ``trip`` a contact or info note can be linked to, as ("kind:pk", label)
+    choices in day order (U4): each day, then its legs, the stays checking in, activities, meals
+    and sections."""
+    from .models import LINKABLE, item_label  # noqa: F401  (LINKABLE documents the kinds)
+    days = list(trip.days.order_by("date", "day_number"))
+    legs = list(trip.transport.all())
+    stays = list(trip.lodging.all())
+    activities = list(trip.activities.all())
+    meals = list(Meal.objects.filter(day__trip=trip).order_by("order", "id"))
+    sections = list(Section.objects.filter(day__trip=trip).order_by("order", "id"))
+    choices = []
+    for day in days:
+        prefix = f"Day {day.day_number}"
+        choices.append((f"day:{day.pk}", f"{prefix} (the whole day)"))
+        choices += [(f"leg:{leg.pk}", f"{prefix} · {item_label(leg)}") for leg in legs if leg.date == day.date]
+        choices += [(f"stay:{stay.pk}", f"{prefix} · {stay.name}") for stay in stays if stay.check_in == day.date]
+        choices += [(f"activity:{a.pk}", f"{prefix} · {a.title}") for a in activities if a.day_id == day.pk]
+        choices += [(f"meal:{m.pk}", f"{prefix} · {m.name}") for m in meals if m.day_id == day.pk]
+        choices += [(f"section:{sec.pk}", f"{prefix} · {item_label(sec)}") for sec in sections if sec.day_id == day.pk]
+    dated = {day.date for day in days}
+    choices += [(f"leg:{leg.pk}", item_label(leg)) for leg in legs if leg.date not in dated]
+    choices += [(f"stay:{stay.pk}", stay.name) for stay in stays if stay.check_in not in dated]
+    return choices
+
+
+class _LinksMixin:
+    """A ``links`` field ticking which of the trip's items this contact or note is linked to;
+    ``save_links()`` adds and removes ItemLink rows to match (never touching other trips)."""
+
+    def setup_links(self, trip):
+        from django.contrib.contenttypes.models import ContentType
+        from .models import LINKABLE
+        self.trip = trip
+        self.fields["links"] = forms.MultipleChoiceField(
+            choices=linkable_choices(trip), required=False, widget=forms.CheckboxSelectMultiple,
+            label="Show it on", help_text="It appears on these items and their days, and always in Reference.")
+        if self.instance.pk:
+            kinds = {ContentType.objects.get_for_model(model).pk: kind for kind, model in LINKABLE.items()}
+            self.initial["links"] = [f"{kinds[link.target_type_id]}:{link.target_id}"
+                                     for link in self.instance.item_links.all() if link.target_type_id in kinds]
+
+    def save_links(self):
+        from .models import LINKABLE
+        wanted = set(self.cleaned_data.get("links") or [])
+        current = set(self.initial.get("links") or [])
+        for value in wanted - current:
+            kind, pk = value.split(":")
+            target = LINKABLE[kind].objects.get(pk=pk)
+            ItemLink.link(self.instance, target)
+        for value in current - wanted:
+            kind, pk = value.split(":")
+            target = LINKABLE[kind].objects.filter(pk=pk).first()
+            if target is not None:
+                ItemLink.unlink(self.instance, target)
+
+
+class ContactEditForm(_LinksMixin, forms.ModelForm):
+    """A contact on its own page (``trips:contact_edit``), with the items it's linked to."""
+
+    class Meta:
+        model = Contact
+        fields = ["name", "role", "phone", "email", "address", "url", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "address": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, trip, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setup_links(trip)
+
+
+class TripInfoForm(_LinksMixin, forms.ModelForm):
+    """An info note on its own page (``trips:info_edit``), with the items it's linked to."""
+
+    class Meta:
+        model = TripInfo
+        fields = ["title", "body", "url", "order"]
+        widgets = {"body": forms.Textarea(attrs={"rows": 8})}
+
+    def __init__(self, *args, trip, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+        self.setup_links(trip)
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
+
+
+class QuickContactForm(forms.Form):
+    """Create a contact from an item's Contacts & info block."""
+    name = forms.CharField(max_length=200)
+    role = forms.CharField(max_length=120, required=False)
+    phone = forms.CharField(max_length=40, required=False)
+    email = forms.EmailField(required=False)
+
+
+class QuickInfoForm(forms.Form):
+    """Create an info note from an item's Contacts & info block."""
+    title = forms.CharField(max_length=200)
+    body = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
 class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):

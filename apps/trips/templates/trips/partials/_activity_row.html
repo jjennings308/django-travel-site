@@ -12,6 +12,7 @@ An activity as a timeline row on its day (U3). Pass activity= and time=. Its chi
     {% if activity.travelers.all %}<p class="text-sm text-zinc-500">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     {% if activity.est_cost is not None %}<p class="text-sm text-zinc-500">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
     {% if activity.notes %}<p class="text-sm text-zinc-500">{{ activity.notes|linebreaksbr }}</p>{% endif %}
+    {% if activity.refs %}{% include "trips/partials/_refs.html" with refs=activity.refs %}{% endif %}
     {% if activity.open_tasks %}<p class="text-sm text-amber-700">Still to book: {% for task in activity.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
   </div>
 </div>

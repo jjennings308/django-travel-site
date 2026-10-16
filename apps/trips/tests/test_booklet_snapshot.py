@@ -18,8 +18,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (BookingTask, Confirmation, Contact, Day, Lodging, Meal, Section, TransportLeg,
-                               Traveler, Trip, TripActivity, TripGrant, TripRole)
+from apps.trips.models import (BookingTask, Confirmation, Contact, Day, ItemLink, Lodging, Meal, Section,
+                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -105,9 +105,17 @@ def build_trip():
     Confirmation.objects.create(trip=trip, confirmation_number="EUSP2592862107", provider="Allianz",
                                 label="Travel insurance")
 
-    Contact.objects.create(trip=trip, name="Taxi Augsburg", role="Taxi", phone="+49 821 35025")
-    Contact.objects.create(trip=trip, name="Hotel Hessischer Hof", phone="+49 6033 1234",
-                           email="info@example.com", notes="Front desk 24 h")
+    taxi = Contact.objects.create(trip=trip, name="Taxi Augsburg", role="Taxi", phone="+49 821 35025")
+    desk = Contact.objects.create(trip=trip, name="Hotel Hessischer Hof", phone="+49 6033 1234",
+                                  email="info@example.com", notes="Front desk 24 h",
+                                  address="Farbgasse 1, 35510 Butzbach", url="https://example.com/hof")
+    rules = TripInfo.objects.create(trip=trip, title="Bayern Ticket rules",
+                                    body="Valid on regional trains only.\n\nUp to 5 people.", url="https://example.com/bt")
+    TripInfo.objects.create(trip=trip, title="Currency", body="Cards almost everywhere.")  # linked to nothing
+    ItemLink.link(desk, hof)       # on each night of the stay
+    ItemLink.link(taxi, planned)   # under a leg
+    ItemLink.link(rules, travel)   # a section: the day's Good to know
+    ItemLink.link(rules, d2)       # the day itself
     BookingTask.objects.create(trip=trip, title="ICE seats", priority=2, leg=planned, due_note="before Sept 1")
     BookingTask.objects.create(trip=trip, title="Hotel Augusta deposit", priority=1, stay=augusta,
                                due=date(2027, 8, 1))

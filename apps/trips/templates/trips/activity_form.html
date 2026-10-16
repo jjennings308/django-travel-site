@@ -32,6 +32,7 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
       </section>
     {% endif %}
     {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
+    {% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}
   {% else %}
     <p class="note mt-4">Save it first, then add its confirmation number here.</p>
   {% endif %}

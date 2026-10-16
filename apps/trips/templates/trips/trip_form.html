@@ -176,7 +176,8 @@ would mean two places to fix the next time a field is added.
                 <td class="text-zinc-500">{{ row.what }}</td>
                 <td class="font-medium text-zinc-900">{{ row.label }}</td>
                 <td>{% for c in row.confirmations %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% empty %}<span class="text-zinc-400">—</span>{% endfor %}</td>
-                <td class="text-right whitespace-nowrap"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Confirmations</a></td>
+                <td class="text-right whitespace-nowrap"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Confirmations</a>
+                  <a class="link-quiet ml-3 font-medium" href="{% url 'trips:item_links' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Contacts &amp; info</a></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -188,6 +189,25 @@ would mean two places to fix the next time a field is added.
     {% if loose_confirmations %}
       <p class="card-kicker mt-6 mb-2">Not attached to anything</p>
       <ul class="text-sm">{% for c in loose_confirmations %}<li class="py-1"><span class="chip">{{ c.confirmation_number }}</span> {{ c.label|default:c.provider }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:confirmation_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23bookings">Edit</a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  {% comment %}Contacts and info notes (U4): each has its own page with the items it's linked to. The Contacts formset above stays as the bulk view.{% endcomment %}
+  <section class="form-section mt-10" id="contacts-info">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="form-section-title">Contacts &amp; info</h2>
+        <p class="form-section-lede">Who to call and trip-wide know-how. Link each to the items it matters for and it shows there and on their days, as well as in Reference.</p>
+      </div>
+      <p class="flex gap-2"><a class="btn-quiet" href="{% url 'trips:contact_new' trip.pk %}?next={{ edit_url|urlencode }}%23contacts-info">New contact</a><a class="btn-quiet" href="{% url 'trips:info_new' trip.pk %}?next={{ edit_url|urlencode }}%23contacts-info">New info note</a></p>
+    </div>
+    {% if trip.contacts.all or trip.infos.all %}
+      <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
+        {% for c in trip.contacts.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>☎</span><span class="font-medium">{{ c.name }}</span><span class="text-zinc-500">{{ c.role }} {{ c.phone }}</span><span class="ml-auto text-zinc-500">{{ c.item_links.count }} link{{ c.item_links.count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:contact_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
+        {% for i in trip.infos.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>ⓘ</span><span class="font-medium">{{ i.title }}</span><span class="ml-auto text-zinc-500">{{ i.item_links.count }} link{{ i.item_links.count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:info_edit' trip.pk i.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state py-6">None yet.</p>
     {% endif %}
   </section>
 {% endif %}

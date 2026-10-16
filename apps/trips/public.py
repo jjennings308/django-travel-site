@@ -240,4 +240,7 @@ def trip_leak_finders(trip):
     # Every booking reference is a Confirmation (linked to the legs and stays it covers since
     # trips 0023/0024), so the trip's confirmations are the whole list of numbers to look for.
     numbers = {c.confirmation_number for c in trip.confirmations.all() if c.confirmation_number}
+    # Contacts are private too (U4): their phone numbers and emails must never reach the public view.
+    for contact in trip.contacts.all():
+        numbers.update(value for value in (contact.phone.strip(), contact.email.strip()) if value)
     return names, numbers

@@ -1,0 +1,4 @@
+{% comment %}
+Contacts and info notes linked to an item, printed in full where they surface (U4): paper can't link, so the booklet repeats them on purpose (they're also in Reference). Pass refs=.
+{% endcomment %}
+{% for ref in refs %}<div class="ref">{% if ref.is_info %}<strong>ⓘ {{ ref.title }}</strong>{% for paragraph in ref.paragraphs %}<br>{{ paragraph|linebreaksbr }}{% endfor %}{% if ref.url %}<br><span class="muted">{{ ref.url }}</span>{% endif %}{% else %}<strong>☎ {{ ref.name }}</strong>{% if ref.role %} · {{ ref.role }}{% endif %}{% if ref.phone %} · {{ ref.phone }}{% endif %}{% if ref.email %} · {{ ref.email }}{% endif %}{% if ref.address %}<br><span class="muted">{{ ref.address }}</span>{% endif %}{% endif %}</div>{% endfor %}

@@ -15,11 +15,15 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
   ``day.attention``. Run after ``place_legs`` and ``attach_stays``.
 - ``open_day(days, today)``: which day the page opens on — today's during the trip, Day 1 before
   it, none after it.
+- ``attach_links(trip, days)``: contacts and info notes linked to items (U4) — each item's
+  ``refs``, each day's ``good_to_know`` (linked to the day or one of its sections) and each
+  contact/note's ``on`` (where it's linked: label, anchor, day). Run after ``place_legs``.
+- ``anchor(item)``: the trip page id of an item's row or card, else of its day.
 - ``timeline(days)``: each day's ``day.timeline`` (legs, activities and reserved meals in local
   time order), ``day.any_time`` (untimed legs in their order, then untimed activities) and
   ``day.food_ideas`` (meals with no reservation time) (U3). Run after ``place_legs``.
 """
-from .models import Section
+from .models import Contact, Day, Lodging, Meal, Section, TransportLeg, TripActivity, item_label
 
 
 def travel_total(legs):
@@ -179,3 +183,66 @@ def timeline(days):
         timed.sort(key=lambda e: (e["time"], rank[e["kind"]]))
         day.timeline = timed
         day.any_time = any_time  # legs first (Meta order), then activities
+
+
+def anchor(item):
+    """The trip page id of an item's row or card (legs, stays, activities, meals), else of its
+    day (sections, days)."""
+    for model, prefix in ((TransportLeg, "leg"), (Lodging, "stay"), (TripActivity, "activity"), (Meal, "meal")):
+        if isinstance(item, model):
+            return f"{prefix}-{item.pk}"
+    day = item if isinstance(item, Day) else getattr(item, "day", None)
+    return f"day-{day.day_number}" if day is not None else ""
+
+
+def _day_of(item, days_by_date):
+    if isinstance(item, Day):
+        return item
+    if isinstance(item, TransportLeg):
+        return getattr(item, "on_day", None)
+    if isinstance(item, Lodging):
+        return days_by_date.get(item.check_in)
+    return getattr(item, "day", None)
+
+
+def attach_links(trip, days):
+    """Resolve the trip's prefetched ``item_links`` against the rows already loaded (see the
+    module docstring); no queries."""
+    days_by_date = {day.date: day for day in days if day.date}
+    targets = {("day", day.pk): day for day in days}
+    for leg in trip.transport.all():
+        targets[("transportleg", leg.pk)] = leg
+    for stay in trip.lodging.all():
+        targets[("lodging", stay.pk)] = stay
+    for day in days:
+        day.good_to_know = []
+        for section in getattr(day, "ordered_sections", []):
+            section.day = day
+            targets[("section", section.pk)] = section
+        for meal in getattr(day, "ordered_meals", []):
+            meal.day = day
+            targets[("meal", meal.pk)] = meal
+        for activity in getattr(day, "ordered_activities", []):
+            activity.day = day
+            targets[("tripactivity", activity.pk)] = activity
+    for target in targets.values():
+        target.refs = []
+    sources = {("contact", c.pk): c for c in trip.contacts.all()}
+    sources.update({("tripinfo", i.pk): i for i in trip.infos.all()})
+    for source in sources.values():
+        source.on = []
+        source.is_info = isinstance(source, Contact) is False
+    for link in trip.item_links.all():
+        source = sources.get((link.source_type.model, link.source_id))
+        target = targets.get((link.target_type.model, link.target_id))
+        if source is None or target is None:
+            continue
+        target.refs.append(source)
+        day = _day_of(target, days_by_date)
+        source.on.append({"label": "whole day" if isinstance(target, Day) else item_label(target),
+                          "anchor": anchor(target),
+                          "day_number": day.day_number if day is not None else None})
+        if isinstance(target, (Day, Section)) and day is not None and source not in day.good_to_know:
+            day.good_to_know.append(source)
+    for source in sources.values():
+        source.on.sort(key=lambda on: (on["day_number"] is None, on["day_number"] or 0))

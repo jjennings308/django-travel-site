@@ -40,7 +40,7 @@
       {% include "trips/_formset.html" with formset=meal_formset label="Meals" %}
       {% if day.meals.exists %}
         <p class="card-kicker mt-4 mb-1">Meal confirmations (a booked table)</p>
-        <ul class="text-sm">{% for meal in day.meals.all %}<li class="py-0.5">{{ meal.name }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_confirmations' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Confirmations</a></li>{% endfor %}</ul>
+        <ul class="text-sm">{% for meal in day.meals.all %}<li class="py-0.5">{{ meal.name }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_confirmations' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Confirmations</a> <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_links' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a></li>{% endfor %}</ul>
       {% endif %}
     {% endif %}
 
@@ -58,6 +58,8 @@
       a logistics table's rows are not a callout's text — so one table cannot
       hold all five without showing every possible field on every row.
     {% endcomment %}
+    <p class="mt-6 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'day' day.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info for the whole day</a> <span class="text-zinc-500">— when nothing on the day fits (they show in its Good to know).</span></p>
+
     {% comment %}Activities: tours, timed entries, tickets, tables, car hire. Each has its own page, where its confirmations are added.{% endcomment %}
     <section class="form-section mt-10" id="activities">
       <div class="flex flex-wrap items-start justify-between gap-4">
@@ -100,6 +102,7 @@
               </a>
               <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ s.content_summary }}</span>
               <a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' s.pk %}?next={{ request.path|urlencode }}">Confirmations</a>
+              <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'section' s.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a>
               <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk s.pk %}">Delete</a>
             </li>
           {% endfor %}

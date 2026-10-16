@@ -11,5 +11,6 @@ A meal with a reservation time, as a timeline row on its day (U3). Pass meal= an
     </p>
     {% if meal.why_recommended %}<p class="text-sm text-zinc-500">{{ meal.why_recommended }}</p>{% endif %}
     {% if meal.reservation_notes %}<p class="text-sm text-zinc-500">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
+    {% if meal.refs %}{% include "trips/partials/_refs.html" with refs=meal.refs %}{% endif %}
   </div>
 </div>

@@ -1,0 +1,12 @@
+{% comment %}
+Contacts and info notes linked to an item (U4, itinerary.attach_links): one compact line each. Pass refs=. A contact links tel:/mailto: and to its full entry in Reference; an info note expands in place.
+{% endcomment %}
+{% for ref in refs %}
+  {% if ref.is_info %}
+    <details class="ref-line"><summary><span aria-hidden="true">ⓘ</span> {{ ref.title }}</summary>
+      <div class="mt-1 text-zinc-600">{% for paragraph in ref.paragraphs %}<p class="mb-1">{{ paragraph|linebreaksbr }}</p>{% endfor %}{% if ref.url %}<a class="link-quiet font-medium" href="{{ ref.url }}" target="_blank" rel="noopener noreferrer">Link ↗</a>{% endif %}</div>
+    </details>
+  {% else %}
+    <p class="ref-line"><span aria-hidden="true">☎</span> <a class="link-quiet font-medium" href="#contact-{{ ref.pk }}">{{ ref.name }}</a>{% if ref.role %} <span class="text-zinc-500">{{ ref.role }}</span>{% endif %}{% if ref.phone %} · <a class="link-quiet" href="tel:{{ ref.tel }}">{{ ref.phone }}</a>{% endif %}{% if ref.email %} · <a class="link-quiet" href="mailto:{{ ref.email }}">{{ ref.email }}</a>{% endif %}</p>
+  {% endif %}
+{% endfor %}

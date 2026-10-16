@@ -162,7 +162,7 @@
       {% if day.checking_in %}
         <div class="section card-grid">{% for stay in day.checking_in %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
       {% elif day.stay %}
-        <p class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a></p>
+        <div class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay.refs %}{% include "trips/partials/_refs.html" with refs=day.stay.refs %}{% endif %}</div>
       {% endif %}
 
       {% comment %}
@@ -298,6 +298,14 @@
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
 
+      {% if day.good_to_know %}
+        {# Contacts and notes linked to this day or one of its sections (U4). #}
+        <div class="section good-to-know">
+          <p class="card-kicker mb-1">Good to know</p>
+          {% include "trips/partials/_refs.html" with refs=day.good_to_know %}
+        </div>
+      {% endif %}
+
       {% if day.food_ideas %}
         {# Meals with no reservation time; a booked table is in the timeline (U3). #}
         <div class="section">
@@ -316,6 +324,7 @@
                 {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
                 {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
                 {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
+                {% if meal.refs %}<div class="mt-2">{% include "trips/partials/_refs.html" with refs=meal.refs %}</div>{% endif %}
               </div>
             {% endfor %}
           </div>
@@ -453,21 +462,46 @@
     {% endif %}
 
     {% if trip.contacts.all %}
+      {# The home of each contact (U4); items it's linked to show a one-line ☎ that links here. #}
       <h3 class="grid-label mt-8" id="contacts">Contacts</h3>
       <ul class="card divide-y divide-zinc-100 p-0 text-sm">
         {% for person in trip.contacts.all %}
-          <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5">
-            <span class="font-medium text-zinc-900">{{ person.name }}</span>
-            {% if person.role %}<span class="text-zinc-500">{{ person.role }}</span>{% endif %}
-            {% if person.phone %}<a class="link-quiet" href="tel:{{ person.phone|cut:' ' }}">{{ person.phone }}</a>{% endif %}
-            {% if person.email %}<a class="link-quiet" href="mailto:{{ person.email }}">{{ person.email }}</a>{% endif %}
-            {% if person.notes %}<p class="w-full text-zinc-500">{{ person.notes|linebreaksbr }}</p>{% endif %}
+          <li class="px-4 py-2.5 scroll-mt-32" id="contact-{{ person.pk }}">
+            <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span class="font-medium text-zinc-900">{{ person.name }}</span>
+              {% if person.role %}<span class="text-zinc-500">{{ person.role }}</span>{% endif %}
+              {% if person.phone %}<a class="link-quiet" href="tel:{{ person.tel }}">{{ person.phone }}</a>{% endif %}
+              {% if person.email %}<a class="link-quiet" href="mailto:{{ person.email }}">{{ person.email }}</a>{% endif %}
+              {% if person.url %}<a class="link-quiet" href="{{ person.url }}" target="_blank" rel="noopener noreferrer">Website ↗</a>{% endif %}
+              {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:contact_edit' trip.pk person.pk %}?next={{ request.path|urlencode }}%23contact-{{ person.pk }}">Edit</a>{% endif %}
+            </div>
+            {% if person.address %}<p class="text-zinc-500">{{ person.address|linebreaksbr }}</p>{% endif %}
+            {% if person.notes %}<p class="text-zinc-500">{{ person.notes|linebreaksbr }}</p>{% endif %}
+            {% if person.on %}<p class="text-zinc-500">On: {% for on in person.on %}<a class="link-quiet" href="#{{ on.anchor }}">{% if on.day_number %}Day {{ on.day_number }} · {% endif %}{{ on.label }}</a>{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
           </li>
         {% endfor %}
       </ul>
     {% endif %}
 
-    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all %}
+    {% if trip.infos.all %}
+      {# The home of each info note (U4): trip-wide know-how, shown in full here. #}
+      <h3 class="grid-label mt-8" id="info">Info</h3>
+      <div class="space-y-3">
+        {% for info in trip.infos.all %}
+          <div class="card scroll-mt-32 text-sm" id="info-{{ info.pk }}">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <p class="card-title">{{ info.title }}</p>
+              {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:info_edit' trip.pk info.pk %}?next={{ request.path|urlencode }}%23info-{{ info.pk }}">Edit</a>{% endif %}
+            </div>
+            {% for paragraph in info.paragraphs %}<p class="mt-1 text-zinc-700">{{ paragraph|linebreaksbr }}</p>{% endfor %}
+            {% if info.url %}<p class="mt-1"><a class="link-quiet font-medium" href="{{ info.url }}" target="_blank" rel="noopener noreferrer">Link ↗</a></p>{% endif %}
+            {% if info.on %}<p class="mt-1 text-zinc-500">On: {% for on in info.on %}<a class="link-quiet" href="#{{ on.anchor }}">{% if on.day_number %}Day {{ on.day_number }} · {% endif %}{{ on.label }}</a>{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all and not trip.infos.all %}
       <p class="empty-state">Nothing here yet: confirmations, contacts and things to book appear here.</p>
     {% endif %}
   </section>

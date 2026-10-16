@@ -53,4 +53,5 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
   {% endif %}
   {# Confirmations on this leg, added here like comments (trips:item_confirmations). #}
   {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
+  {% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}
 {% endblock %}

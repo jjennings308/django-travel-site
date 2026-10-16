@@ -1,0 +1,48 @@
+{% comment %}
+An item's contacts and info notes (U4), managed like its confirmations: attach one the trip has, create a contact or note on the spot, or remove it (never deleted). Pass trip, link_kind, link_item, linked_refs, link_choices, contact_form, info_form, return_to. Posts to trips:item_links.
+{% endcomment %}
+{% url 'trips:item_links' trip.pk link_kind link_item.pk as links_url %}
+<section class="card mt-6 p-6" id="contacts-info">
+  <h2 class="form-section-title mb-3">Contacts &amp; info</h2>
+  {% if linked_refs %}
+    <ul class="mb-4 space-y-2 text-sm">
+      {% for ref in linked_refs %}
+        <li class="flex flex-wrap items-center gap-3">
+          <span>{% if ref.kind == "info" %}ⓘ{% else %}☎{% endif %} <span class="font-medium">{{ ref.obj }}</span>{% if ref.kind == "contact" and ref.obj.phone %} <span class="text-zinc-500">{{ ref.obj.phone }}</span>{% endif %}</span>
+          <a class="link-quiet font-medium" href="{% if ref.kind == 'info' %}{% url 'trips:info_edit' trip.pk ref.obj.pk %}{% else %}{% url 'trips:contact_edit' trip.pk ref.obj.pk %}{% endif %}?next={{ return_to|urlencode }}">Edit</a>
+          <form method="post" action="{{ links_url }}">{% csrf_token %}
+            <input type="hidden" name="action" value="detach"><input type="hidden" name="source" value="{{ ref.kind }}:{{ ref.obj.pk }}"><input type="hidden" name="return_to" value="{{ return_to }}">
+            <button type="submit" class="link-quiet hover:text-red-700">Remove from this</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mb-4 text-sm text-zinc-500">None yet. A contact or note added here shows on this and its day, and always in Reference.</p>
+  {% endif %}
+
+  {% if link_choices %}
+    <form method="post" action="{{ links_url }}" class="mb-4 flex flex-wrap items-end gap-2">{% csrf_token %}
+      <input type="hidden" name="action" value="attach"><input type="hidden" name="return_to" value="{{ return_to }}">
+      <label class="flex flex-col text-sm"><span class="card-kicker">Pick one this trip has</span>
+        <select name="source">{% for kind, obj in link_choices %}<option value="{{ kind }}:{{ obj.pk }}">{% if kind == "info" %}ⓘ{% else %}☎{% endif %} {{ obj }}</option>{% endfor %}</select>
+      </label>
+      <button type="submit" class="btn-quiet">Add</button>
+    </form>
+  {% endif %}
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <form method="post" action="{{ links_url }}" class="space-y-2 text-sm" novalidate>{% csrf_token %}
+      <input type="hidden" name="action" value="new_contact"><input type="hidden" name="return_to" value="{{ return_to }}">
+      <p class="card-kicker">New contact</p>
+      {% for field in contact_form %}<label class="block"><span class="sr-only">{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}
+      <button type="submit" class="btn-quiet">Add contact</button>
+    </form>
+    <form method="post" action="{{ links_url }}" class="space-y-2 text-sm" novalidate>{% csrf_token %}
+      <input type="hidden" name="action" value="new_info"><input type="hidden" name="return_to" value="{{ return_to }}">
+      <p class="card-kicker">New info note</p>
+      {% for field in info_form %}<label class="block"><span class="sr-only">{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}
+      <button type="submit" class="btn-quiet">Add note</button>
+    </form>
+  </div>
+</section>
