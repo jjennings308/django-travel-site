@@ -117,16 +117,16 @@ class PageTests(Fixture):
         self.assertContains(self.page(), "isn't one of this trip's days")
         self.assertNotContains(self.page(self.viewer), "isn't one of this trip's days")
 
-    def test_editors_see_edit_and_quick_add_viewers_dont(self):
+    def test_editors_see_edit_viewers_dont_and_adding_is_on_edit_trip(self):
         leg = self.leg(section=self.travel)
         edit = reverse("trips:leg_edit", args=[self.trip.pk, leg.pk])
         add = reverse("trips:leg_quick_add", args=[self.trip.pk, self.day2.pk])
         page = self.page()
         self.assertContains(page, edit)
-        self.assertContains(page, add)
+        self.assertNotContains(page, add)  # the view page is for reading; legs are added on Edit trip
+        self.assertContains(self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])), add)
         page = self.page(self.viewer)
         self.assertNotContains(page, edit)
-        self.assertNotContains(page, add)
 
     def test_scheduled_times_in_the_legs_zones_for_a_non_utc_reader(self):
         AccountSettings.objects.update_or_create(user=self.viewer, defaults={"timezone": "America/Los_Angeles"})

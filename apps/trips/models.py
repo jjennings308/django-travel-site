@@ -99,7 +99,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from apps.accounts.models import Role
 from apps.locations.models import City
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -769,7 +769,7 @@ class TransportLeg(models.Model):
         blank=True,
         help_text="Flight number, train service number, or booking reference",
     )
-    # Booking references are Confirmations linked to the leg (``leg.confirmations``); the
+    # Booking references are Confirmations linked to the leg (``confirmation_links``); the
     # inline confirmation_number was moved there by trips 0023 and dropped in 0024.
     # IATA codes for a plane, but a train leg has stations and a drive has
     # towns, so this is sized for whatever the mode needs rather than 3 chars.
@@ -807,6 +807,9 @@ class TransportLeg(models.Model):
     # Blank while planned (``is_planned``); never invented -- see docx_europe's docstring.
     departure_at = models.DateTimeField(null=True, blank=True)
     arrival_at = models.DateTimeField(null=True, blank=True)
+    # Confirmations attached to this leg (``ConfirmationLink``, like comments); the relation
+    # also deletes the links with the leg.
+    confirmation_links = GenericRelation("ConfirmationLink", related_query_name="leg")
     # Where on its day the leg is shown: a ``travel`` section of the day whose date is
     # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
     # day's automatic "Getting around" block. There is no day FK: the date decides.
@@ -840,7 +843,7 @@ class TransportLeg(models.Model):
         else "planned" (a day only). Reads ``confirmation_list`` when the view attached it
         (the trip page, no query); otherwise asks the database."""
         attached = getattr(self, "confirmation_list", None)
-        booked = bool(attached) if attached is not None else (self.pk is not None and self.confirmations.exists())
+        booked = bool(attached) if attached is not None else (self.pk is not None and self.confirmation_links.exists())
         if booked:
             return "booked"
         return "planned" if self.departure_at is None else "scheduled"
@@ -978,9 +981,10 @@ class Lodging(models.Model):
     """A place to stay for part or all of a trip."""
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="lodging")
+    confirmation_links = GenericRelation("ConfirmationLink", related_query_name="stay")
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
-    # Booking references: ``stay.confirmations`` (moved from an inline field by trips 0023/0024).
+    # Booking references: ``confirmation_links`` (moved from an inline field by trips 0023/0024).
     check_in = models.DateField()
     check_out = models.DateField()
     nightly_rate = models.DecimalField(
@@ -1200,6 +1204,7 @@ class Section(models.Model):
         CHOOSE_YOUR_ADVENTURE = "choose_your_adventure", "Choose your adventure"
         FREE_TEXT = "free_text", "Free text"
 
+    confirmation_links = GenericRelation("ConfirmationLink", related_query_name="section")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="sections")
     section_type = models.CharField(max_length=32, choices=Type.choices)
     title = models.CharField(max_length=200, blank=True)
@@ -1280,6 +1285,7 @@ class Meal(models.Model):
         UPSCALE = "$$$", "$$$"
         FINE_DINING = "$$$$", "$$$$"
 
+    confirmation_links = GenericRelation("ConfirmationLink", related_query_name="meal")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="meals")
     name = models.CharField(max_length=200)
     meal_type = models.CharField(max_length=16, choices=MealType.choices)
@@ -1304,7 +1310,14 @@ class Meal(models.Model):
 
 
 class Confirmation(models.Model):
-    """A booking reference, collected so it is all in one place."""
+    """A booking reference, collected so it is all in one place.
+
+    What it confirms is a set of ``ConfirmationLink`` rows, each pointing at one item of the
+    trip (a leg, a stay, a day's section or a meal) the way a comment points at what it's
+    about. One reference can cover several items (GCH7JS on four Delta legs) and an item can
+    have several references (rooms booked separately). A confirmation with no links is
+    "loose" (travel insurance, a rail pass).
+    """
 
     trip = models.ForeignKey(
         Trip,
@@ -1319,11 +1332,6 @@ class Confirmation(models.Model):
     confirmation_number = models.CharField(max_length=60)
     provider = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True)
-    # What it confirms (trip-items plan, Phase B): one booking reference can cover several
-    # items (a PNR for two flights) and an item can have several (rooms booked separately).
-    legs = models.ManyToManyField("TransportLeg", blank=True, related_name="confirmations")
-    stays = models.ManyToManyField("Lodging", blank=True, related_name="confirmations")
-    meals = models.ManyToManyField("Meal", blank=True, related_name="confirmations")
     # Who's on this booking; blank = everyone on the items it covers.
     travelers = models.ManyToManyField("Traveler", blank=True, related_name="confirmations")
     url = models.URLField(blank=True, verbose_name="manage-booking link")
@@ -1340,18 +1348,22 @@ class Confirmation(models.Model):
     def __str__(self):
         return f"{self.label or self.description()}: {self.confirmation_number}"
 
-    # ---- what it covers (all from prefetched rows when the trip page prefetched them) ----
+    # ---- what it covers ----------------------------------------------------------------
     def covered_items(self):
-        """Its legs, stays and meals, in date order."""
-        dated = [(leg.date, 0, leg) for leg in self.legs.all()]
-        dated += [(stay.check_in, 1, stay) for stay in self.stays.all()]
-        dated += [(meal.day.date if meal.day_id else None, 2, meal) for meal in self.meals.all()]
-        return [item for _when, _kind, item in sorted(dated, key=lambda d: (d[0] is None, d[0] or date.min, d[1]))]
+        """The items it's linked to, in date order. The trip page sets ``_items`` from its
+        prefetches (``views._attach_confirmations``); otherwise each link loads its item."""
+        items = getattr(self, "_items", None)
+        if items is None:
+            items = [link.item for link in self.links.all() if link.item is not None]
+        return sorted(items, key=lambda item: (item_date(item) is None, item_date(item) or date.min,
+                                               CONFIRMABLE_ORDER.get(type(item).__name__, 9)))
 
     @property
     def kind(self):
-        """flight / train / stay / meal / other, from what it covers (Quick reference groups)."""
-        legs = list(self.legs.all())
+        """flight / train / stay / activity / meal / other, from what it covers (Quick
+        reference groups). A day's plan section is an activity (a tour, a timed entry)."""
+        items = self.covered_items()
+        legs = [item for item in items if isinstance(item, TransportLeg)]
         if legs:
             modes = {leg.mode for leg in legs}
             if modes == {TransportLeg.Mode.PLANE}:
@@ -1359,52 +1371,137 @@ class Confirmation(models.Model):
             if modes == {TransportLeg.Mode.TRAIN}:
                 return "train"
             return "other"
-        if list(self.stays.all()):
-            return "stay"
-        if list(self.meals.all()):
-            return "meal"
+        for model, name in ((Lodging, "stay"), (Section, "activity"), (Meal, "meal")):
+            if any(isinstance(item, model) for item in items):
+                return name
         return "other"
 
     @property
     def first_date(self):
         for item in self.covered_items():
-            when = getattr(item, "date", None) or getattr(item, "check_in", None)
-            if when is None and getattr(item, "day_id", None):
-                when = item.day.date
-            if when:
-                return when
+            if item_date(item):
+                return item_date(item)
         return None
 
     def description(self):
         """What it covers, e.g. "BWI→ATL, ATL→ABQ · Sat Sep 12" (empty when loose)."""
-        parts = []
-        for item in self.covered_items():
-            if isinstance(item, TransportLeg):
-                parts.append(f"{item.origin}→{item.destination}")
-            else:
-                parts.append(item.name)
+        parts = [item_label(item) for item in self.covered_items()]
         if not parts:
             return ""
         when = self.first_date
         return ", ".join(parts) + (f" · {when:%a %b} {when.day}" if when else "")
 
+    def link(self, item):
+        """Attach ``item`` (once); it must belong to this confirmation's trip."""
+        if item_trip_id(item) != self.trip_id:
+            raise ValueError("A confirmation can only be linked to items of its own trip.")
+        link, _created = ConfirmationLink.objects.get_or_create(
+            confirmation=self, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk)
+        return link
+
+    def unlink(self, item):
+        ConfirmationLink.objects.filter(confirmation=self, content_type=ContentType.objects.get_for_model(type(item)),
+                                        object_id=item.pk).delete()
+
     @classmethod
-    def attach_number(cls, trip, number, item, provider=""):
-        """Link ``item`` (a leg or stay) to ``trip``'s confirmation with this number (trimmed,
-        case-insensitive), creating it when there's none. Returns the confirmation, or None
-        for a blank number. Used by importers; trips 0023 did the same for existing data."""
+    def for_item(cls, item):
+        """The confirmations linked to ``item``."""
+        return cls.objects.filter(links__content_type=ContentType.objects.get_for_model(type(item)),
+                                  links__object_id=item.pk).distinct()
+
+    @classmethod
+    def find_number(cls, trip, number):
+        """The trip's confirmation with this number (trimmed, case-insensitive), or None."""
+        key = " ".join((number or "").split()).casefold()
+        if not key:
+            return None
+        return next((c for c in cls.objects.filter(trip=trip).order_by("pk")
+                     if " ".join(c.confirmation_number.split()).casefold() == key), None)
+
+    @classmethod
+    def attach_number(cls, trip, number, item, provider="", label=""):
+        """Link ``item`` to ``trip``'s confirmation with this number (trimmed, case-insensitive),
+        creating it when there's none. Returns the confirmation, or None for a blank number.
+        Used when adding a confirmation from an item and by the importers."""
         number = " ".join((number or "").split())
         if not number:
             return None
-        key = number.casefold()
-        confirmation = next((c for c in cls.objects.filter(trip=trip).order_by("pk")
-                             if " ".join(c.confirmation_number.split()).casefold() == key), None)
+        confirmation = cls.find_number(trip, number)
         if confirmation is None:
-            label = item.name if isinstance(item, Lodging) else f"{item.get_mode_display()} {item.origin}→{item.destination}"
-            confirmation = cls.objects.create(trip=trip, confirmation_number=number, provider=provider[:120],
-                                              label=label[:200])
-        (confirmation.stays if isinstance(item, Lodging) else confirmation.legs).add(item)
+            confirmation = cls.objects.create(trip=trip, confirmation_number=number, provider=(provider or "")[:120],
+                                              label=(label or default_label(item))[:200])
+        confirmation.link(item)
         return confirmation
+
+
+class ConfirmationLink(models.Model):
+    """One item a confirmation covers: a leg, a stay, a day's section or a meal, attached
+    with a ``GenericForeignKey`` like ``Comment``. Each item model has a ``GenericRelation``
+    (``confirmation_links``) so deleting the item deletes its links."""
+
+    confirmation = models.ForeignKey(Confirmation, on_delete=models.CASCADE, related_name="links")
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveBigIntegerField()
+    item = GenericForeignKey("content_type", "object_id")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["confirmation", "content_type", "object_id"],
+                                    name="confirmationlink_once_per_item"),
+        ]
+        indexes = [models.Index(fields=["content_type", "object_id"])]
+
+    def __str__(self):
+        return f"{self.confirmation.confirmation_number} → {self.content_type.model} {self.object_id}"
+
+    def clean(self):
+        super().clean()
+        item = self.item
+        if item is None or type(item) not in CONFIRMABLE.values():
+            raise ValidationError("A confirmation is linked to a leg, a stay, a day's section or a meal.")
+        if item_trip_id(item) != self.confirmation.trip_id:
+            raise ValidationError("That item belongs to another trip.")
+
+
+# kind (URL part) -> model, for the item a confirmation can be linked to.
+CONFIRMABLE = {
+    "leg": TransportLeg,
+    "stay": Lodging,
+    "section": Section,
+    "meal": Meal,
+}
+CONFIRMABLE_ORDER = {"TransportLeg": 0, "Lodging": 1, "Section": 2, "Meal": 3}
+
+
+def confirmable_kind(item):
+    return next((kind for kind, model in CONFIRMABLE.items() if type(item) is model), None)
+
+
+def item_trip_id(item):
+    return item.trip_id if hasattr(item, "trip_id") else item.day.trip_id
+
+
+def item_date(item):
+    """The day an item happens (a stay: its check-in)."""
+    if isinstance(item, TransportLeg):
+        return item.date
+    if isinstance(item, Lodging):
+        return item.check_in
+    return item.day.date if item.day_id else None
+
+
+def item_label(item):
+    if isinstance(item, TransportLeg):
+        return f"{item.origin}→{item.destination}"
+    if isinstance(item, Section):
+        return item.title or item.content_summary() or item.get_section_type_display()
+    return item.name
+
+
+def default_label(item):
+    if isinstance(item, TransportLeg):
+        return f"{item.get_mode_display()} {item.origin}→{item.destination}"
+    return item_label(item)
 
 
 class Contact(models.Model):

@@ -107,7 +107,7 @@ class TripPageTests(Fixture):
                                              destination="MAN", order=2)
         booked = Lodging.objects.create(trip=self.trip, name="The Christopher", check_in=date(2027, 9, 21),
                                         check_out=date(2027, 9, 22))
-        Confirmation.objects.create(trip=self.trip, confirmation_number="CHR1").stays.add(booked)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="CHR1").link(booked)
         BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=self.hof)
         items = self.page().context["not_booked"]
         self.assertEqual([item for item, _kind in items], [self.ice, flight])  # U-Bahn, booked stay, tasked stay out
@@ -121,8 +121,8 @@ class OfferTests(Fixture):
         self.client.force_login(self.editor)
 
     def test_first_confirmation_offers_its_tasks_and_ticks_only_the_chosen(self):
-        response = self.client.post(reverse("trips:confirmation_new", args=[self.trip.pk]), {
-            "confirmation_number": "DB123", "legs": [self.ice.pk], "next": self.detail})
+        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]), {
+            "action": "add", "confirmation_number": "DB123"})
         self.assertTrue(response["Location"].startswith(reverse("trips:task_offer", args=[self.trip.pk])))
         offer = self.client.get(response["Location"])
         self.assertContains(offer, "ICE seats for 6")
@@ -135,16 +135,16 @@ class OfferTests(Fixture):
         self.assertEqual((self.seats.done, self.other.done), (True, False))
 
     def test_no_offer_for_a_second_confirmation(self):
-        Confirmation.objects.create(trip=self.trip, confirmation_number="FIRST").legs.add(self.ice)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="FIRST").link(self.ice)
         second = Confirmation.objects.create(trip=self.trip, confirmation_number="SECOND")
-        response = self.client.post(reverse("trips:leg_confirmation", args=[self.trip.pk, self.ice.pk]),
-                                    {"confirmation": second.pk})
+        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
+                                    {"action": "attach", "confirmation": second.pk})
         self.assertNotIn("tasks/done", response["Location"])
 
-    def test_attaching_on_the_leg_page_offers_too(self):
+    def test_attaching_an_existing_one_offers_too(self):
         conf = Confirmation.objects.create(trip=self.trip, confirmation_number="DB123")
-        response = self.client.post(reverse("trips:leg_confirmation", args=[self.trip.pk, self.ice.pk]),
-                                    {"confirmation": conf.pk})
+        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
+                                    {"action": "attach", "confirmation": conf.pk})
         self.assertIn("tasks/done", response["Location"])
 
     def test_offer_ignores_other_trips_tasks(self):

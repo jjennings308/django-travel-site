@@ -162,8 +162,8 @@ class SectionToLegsTests(Fixture):
         self.client.force_login(stranger)
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
-    def test_link_on_the_trip_page_for_editors(self):
+    def test_link_on_the_section_page_not_the_view_page(self):
         self.client.force_login(self.editor)
-        self.assertContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), self.url)
-        self.client.force_login(self.viewer)
         self.assertNotContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), self.url)
+        self.assertContains(self.client.get(reverse("trips:section_edit",
+                                                    args=[self.trip.pk, self.day.pk, self.section.pk])), self.url)

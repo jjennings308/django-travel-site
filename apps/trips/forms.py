@@ -1890,32 +1890,33 @@ class LegQuickAddForm(forms.Form):
 
 
 class ConfirmationEditForm(forms.ModelForm):
-    """A booking reference and what it covers (``trips:confirmation_edit``). The legs, stays,
-    meals and travellers offered are this trip's only, so a post can't link another trip's."""
+    """A booking reference's own details (``trips:confirmation_edit``). What it covers is
+    attached from each item (``trips:item_confirmations``), the way comments are; the
+    travellers offered are this trip's only."""
 
     class Meta:
         model = Confirmation
         fields = ["confirmation_number", "provider", "label", "url", "booked_on", "cost", "currency", "notes",
-                  "legs", "stays", "meals", "travelers"]
+                  "travelers"]
         labels = {"confirmation_number": "Confirmation number", "travelers": "Who's on it"}
         help_texts = {"label": "Optional: blank shows what it covers, e.g. “BWI→ATL, ATL→ABQ · Sat Sep 12”.",
                       "travelers": "Leave empty when it covers everyone on these items."}
         widgets = {
             "booked_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "notes": forms.Textarea(attrs={"rows": 2}),
-            "legs": forms.CheckboxSelectMultiple, "stays": forms.CheckboxSelectMultiple,
-            "meals": forms.CheckboxSelectMultiple, "travelers": forms.CheckboxSelectMultiple,
+            "travelers": forms.CheckboxSelectMultiple,
         }
 
     def __init__(self, *args, trip, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["legs"].queryset = trip.transport.all()
-        self.fields["legs"].label_from_instance = lambda leg: (
-            f"{leg.origin} → {leg.destination}" + (f" · {leg.date:%a %b} {leg.date.day}" if leg.date else ""))
-        self.fields["stays"].queryset = trip.lodging.all()
-        self.fields["stays"].label_from_instance = lambda stay: f"{stay.name} · {stay.check_in:%b} {stay.check_in.day}"
-        self.fields["meals"].queryset = Meal.objects.filter(day__trip=trip).select_related("day").order_by("day__date", "order")
-        self.fields["meals"].label_from_instance = lambda meal: (
-            f"{meal.name} · Day {meal.day.day_number}" if meal.day_id else meal.name)
         self.fields["travelers"].queryset = trip.travelers.all()
         self.fields["currency"].required = False
+
+
+class AddConfirmationForm(forms.Form):
+    """Add a confirmation from an item (``trips:item_confirmations``): a number the trip
+    already has links the item to that record; a new one makes it."""
+
+    confirmation_number = forms.CharField(max_length=60, label="Confirmation number")
+    provider = forms.CharField(max_length=120, required=False, help_text="Only used for a new number.")
+    label = forms.CharField(max_length=200, required=False, help_text="Optional, for a new number.")

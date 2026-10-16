@@ -27,7 +27,6 @@ urlpatterns = [
     path("<int:pk>/map/", views.trip_map, name="trip_map"),
     path("<int:pk>/legs/<int:leg_pk>/", views.leg_edit, name="leg_edit"),
     path("<int:pk>/legs/<int:leg_pk>/delete/", views.leg_delete, name="leg_delete"),
-    path("<int:pk>/legs/<int:leg_pk>/confirmation/", views.leg_confirmation, name="leg_confirmation"),
     path("<int:pk>/confirmations/new/", views.confirmation_edit, name="confirmation_new"),
     path("<int:pk>/confirmations/<int:confirmation_pk>/", views.confirmation_edit, name="confirmation_edit"),
     path("<int:pk>/confirmations/<int:confirmation_pk>/delete/", views.confirmation_delete, name="confirmation_delete"),
@@ -63,6 +62,7 @@ urlpatterns = [
     path("<int:pk>/travel-tables/", views.trip_travel_review, name="trip_travel_review"),
     path("<int:pk>/booklet.pdf", views.trip_pdf, name="trip_pdf"),
     path("<int:pk>/tasks/done/", views.task_offer, name="task_offer"),
+    path("<int:pk>/confirmations/<str:kind>/<int:item_pk>/", views.item_confirmations, name="item_confirmations"),
     path("<int:pk>/tasks/<int:task_pk>/link/", views.task_link, name="task_link"),
     path(
         "<int:trip_pk>/days/<int:day_pk>/sections/<int:pk>/legs/",

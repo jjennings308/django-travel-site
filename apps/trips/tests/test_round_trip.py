@@ -56,7 +56,7 @@ class RoundTripTests(TestCase):
         self.assertEqual((back.origin_timezone, back.destination_timezone), ("Europe/London", "Europe/Berlin"))
         self.assertEqual((back.mode, back.operator, back.currency), ("plane", "Lufthansa", "EUR"))
         self.assertEqual((back.service_number, back.cost, back.notes), ("", None, ""))
-        self.assertFalse(back.confirmations.exists())  # a booking reference isn't copied to the return
+        self.assertFalse(back.confirmation_links.exists())  # a booking reference isn't copied to the return
         # 18:00 in London (BST, UTC+1) = 17:00 UTC; 21:00 in Munich (CEST, UTC+2) = 19:00 UTC
         self.assertEqual(back.departure_at, datetime(2027, 7, 5, 17, 0, tzinfo=UTC))
         self.assertEqual(back.arrival_at, datetime(2027, 7, 5, 19, 0, tzinfo=UTC))

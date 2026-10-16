@@ -28,7 +28,7 @@ class BookletTests(TestCase):
         leg = TransportLeg.objects.create(trip=self.trip, mode="plane", operator="DL", service_number="2579",
                                           origin="BWI", destination="ATL", departure_at=when, arrival_at=when,
                                           origin_timezone="America/New_York", destination_timezone="America/New_York")
-        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", provider="Delta").legs.add(leg)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", provider="Delta").link(leg)
         self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Chimayo", address="125 Washington Ave",
                                            check_in=date(2026, 9, 12), check_out=date(2026, 9, 13))
         Contact.objects.create(trip=self.trip, name="Hertz ABQ", phone="(505) 842-4235")

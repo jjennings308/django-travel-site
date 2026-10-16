@@ -90,11 +90,11 @@ def not_booked(trip):
 
 def confirmed_items(trip):
     """{("leg", pk), ("stay", pk)} covered by at least one of the trip's confirmations."""
-    from .models import Confirmation
-    through_legs = Confirmation.legs.through.objects.filter(confirmation__trip=trip)
-    through_stays = Confirmation.stays.through.objects.filter(confirmation__trip=trip)
-    return ({("leg", pk) for pk in through_legs.values_list("transportleg_id", flat=True)}
-            | {("stay", pk) for pk in through_stays.values_list("lodging_id", flat=True)})
+    from .models import ConfirmationLink
+    kinds = {"transportleg": "leg", "lodging": "stay"}
+    rows = ConfirmationLink.objects.filter(confirmation__trip=trip, content_type__app_label="trips",
+                                           content_type__model__in=kinds).values_list("content_type__model", "object_id")
+    return {(kinds[model], pk) for model, pk in rows}
 
 
 def offer_for(trip, before):
