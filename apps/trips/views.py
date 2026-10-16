@@ -65,6 +65,7 @@ from .models import (
     TripActivity,
     Confirmation,
     ConfirmationLink,
+    ItemLink,
     can_create_trip,
     role_capabilities,
     comment_kind,
@@ -318,6 +319,9 @@ def _trip_page_queryset(user):
             Prefetch("confirmations__links", queryset=ConfirmationLink.objects.select_related("content_type")),
             "confirmations__travelers",
             "contacts",
+            # Contacts and info notes linked to items (trip-page UX plan, U4): two fixed queries.
+            "infos",
+            Prefetch("item_links", queryset=ItemLink.objects.select_related("source_type", "target_type")),
             "booking_tasks",
             "travelers",
         )
@@ -362,6 +366,7 @@ def trip_detail(request, pk):
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
     itinerary.overview(days, not_booked, open_tasks)
     itinerary.timeline(days)
+    itinerary.attach_links(trip, days)
     opened = itinerary.open_day(days, django_timezone.localdate())
     return render(
         request,
@@ -402,6 +407,7 @@ def trip_pdf(request, pk):
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     booking_tasks.attach(trip)
+    itinerary.attach_links(trip, list(trip.days.all()))
     html = render_to_string("trips/pdf/booklet.html", {
         "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
         "printed": django_timezone.localdate(), **booklet_context(trip),
@@ -456,12 +462,8 @@ def _attach_confirmations(trip):
 
 
 def _item_anchor(item):
-    """The trip page id of an item's row or card (legs, stays, activities, meals), else of its day."""
-    for model, prefix in ((TransportLeg, "leg"), (Lodging, "stay"), (TripActivity, "activity"), (Meal, "meal")):
-        if isinstance(item, model):
-            return f"{prefix}-{item.pk}"
-    day = getattr(item, "day", None)
-    return f"day-{day.day_number}" if day is not None else ""
+    """The trip page id of an item's row or card, else of its day (itinerary.anchor)."""
+    return itinerary.anchor(item)
 
 
 def confirmation_groups(trip):
@@ -1662,6 +1664,7 @@ def leg_edit(request, pk, leg_pk):
         "trip": trip, "leg": leg, "form": form, "next": _back(request, _leg_back(trip, leg)),
         "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
         **_item_confirmations_context(request, trip, "leg", leg),
+        **_item_links_context(trip, "leg", leg),
         "open_tasks": list(leg.booking_tasks.filter(done=False)),
     })
 
@@ -1751,6 +1754,7 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     context = {"trip": trip, "day": day, "activity": activity, "form": form, "next": back}
     if activity is not None:
         context.update(_item_confirmations_context(request, trip, "activity", activity))
+        context.update(_item_links_context(trip, "activity", activity))
     return render(request, "trips/activity_form.html", context)
 
 
@@ -1766,6 +1770,140 @@ def activity_delete(request, pk, day_pk, activity_pk):
         return redirect(back)
     return render(request, "trips/activity_confirm_delete.html",
                   {"trip": trip, "day": day, "activity": activity, "next": back})
+
+
+# ---- contacts and info notes linked to items (trip-page UX plan, U4) -------------------------
+def _item_links_context(trip, kind, item):
+    """What an item's Contacts & info block needs (leg / activity pages and ``item_links``)."""
+    from .forms import QuickContactForm, QuickInfoForm
+    from .models import ItemLink, LINK_SOURCES
+    from django.contrib.contenttypes.models import ContentType
+    links = ItemLink.objects.filter(target_type=ContentType.objects.get_for_model(type(item)), target_id=item.pk)
+    by_type = {ContentType.objects.get_for_model(model).pk: (key, model) for key, model in LINK_SOURCES.items()}
+    linked = []
+    for link in links:
+        key, model = by_type[link.source_type_id]
+        source = model.objects.filter(pk=link.source_id).first()
+        if source is not None:
+            linked.append({"kind": key, "obj": source})
+    linked_keys = {(entry["kind"], entry["obj"].pk) for entry in linked}
+    choices = [("contact", c) for c in trip.contacts.all() if ("contact", c.pk) not in linked_keys]
+    choices += [("info", i) for i in trip.infos.all() if ("info", i.pk) not in linked_keys]
+    return {"link_kind": kind, "link_item": item, "linked_refs": linked, "link_choices": choices,
+            "contact_form": QuickContactForm(prefix="contact"), "info_form": QuickInfoForm(prefix="info")}
+
+
+@login_required
+def item_links(request, pk, kind, item_pk):
+    """The contacts and info notes on one item — a leg, stay, activity, meal, section or day —
+    added and removed here like its confirmations (editors). Unlinking never deletes."""
+    from .forms import QuickContactForm, QuickInfoForm
+    from .models import LINK_SOURCES, LINKABLE, Contact, ItemLink, TripInfo, item_label, item_trip_id
+    model = LINKABLE.get(kind)
+    if model is None:
+        raise Http404
+    trip = _readable_trip(request, pk, "edit")
+    item = get_object_or_404(model.objects.all(), pk=item_pk)
+    if item_trip_id(item) != trip.pk:
+        raise Http404
+    here = request.get_full_path()
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    context = {"trip": trip, "item_label": item_label(item), "next": back}
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action in ("attach", "detach"):
+            source_kind, _, source_pk = (request.POST.get("source") or "").partition(":")
+            source_model = LINK_SOURCES.get(source_kind)
+            if source_model is None or not source_pk.isdigit():
+                raise Http404
+            source = get_object_or_404(source_model.objects.filter(trip=trip), pk=source_pk)
+            if action == "attach":
+                ItemLink.link(source, item)
+                messages.success(request, f"Added {source} to {item_label(item)}.")
+            else:
+                ItemLink.unlink(source, item)
+                messages.success(request, f"Removed {source} from {item_label(item)} (it's kept in Reference).")
+        elif action == "new_contact":
+            form = QuickContactForm(request.POST, prefix="contact")
+            if not form.is_valid():
+                ctx = _item_links_context(trip, kind, item)
+                ctx["contact_form"] = form
+                return render(request, "trips/item_links.html", {**context, **ctx})
+            contact = Contact.objects.create(trip=trip, **form.cleaned_data)
+            ItemLink.link(contact, item)
+            messages.success(request, f"Added {contact.name} to {item_label(item)}.")
+        elif action == "new_info":
+            form = QuickInfoForm(request.POST, prefix="info")
+            if not form.is_valid():
+                ctx = _item_links_context(trip, kind, item)
+                ctx["info_form"] = form
+                return render(request, "trips/item_links.html", {**context, **ctx})
+            info = TripInfo.objects.create(trip=trip, **form.cleaned_data)
+            ItemLink.link(info, item)
+            messages.success(request, f"Added “{info.title}” to {item_label(item)}.")
+        from django.utils.http import url_has_allowed_host_and_scheme
+        return_to = request.POST.get("return_to") or ""
+        if not url_has_allowed_host_and_scheme(return_to, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+            return_to = here
+        return redirect(return_to)
+    return render(request, "trips/item_links.html", {**context, **_item_links_context(trip, kind, item)})
+
+
+def _source_edit(request, pk, form_class, model, source_pk, template, label):
+    trip = _readable_trip(request, pk, "edit")
+    instance = get_object_or_404(model.objects.filter(trip=trip), pk=source_pk) if source_pk else model(trip=trip)
+    form = form_class(request.POST or None, instance=instance, trip=trip)
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            saved = form.save()
+            form.save_links()
+        messages.success(request, f"Saved {label} “{saved}”.")
+        return redirect(back)
+    return render(request, template, {"trip": trip, "form": form, "obj": instance if source_pk else None,
+                                      "next": back})
+
+
+def _source_delete(request, pk, model, source_pk, label):
+    trip = _readable_trip(request, pk, "edit")
+    obj = get_object_or_404(model.objects.filter(trip=trip), pk=source_pk)
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    if request.method == "POST":
+        name = str(obj)
+        obj.delete()  # its links go with it (GenericRelation); the items stay
+        messages.success(request, f"Deleted {label} “{name}”. The items it was on are kept.")
+        return redirect(back)
+    return render(request, "trips/source_confirm_delete.html", {"trip": trip, "obj": obj, "label": label,
+                                                                 "next": back})
+
+
+@login_required
+def contact_edit(request, pk, contact_pk=None):
+    """A contact's own page: its details and the items it's linked to (editors)."""
+    from .forms import ContactEditForm
+    from .models import Contact
+    return _source_edit(request, pk, ContactEditForm, Contact, contact_pk, "trips/contact_form.html", "contact")
+
+
+@login_required
+def contact_delete(request, pk, contact_pk):
+    from .models import Contact
+    return _source_delete(request, pk, Contact, contact_pk, "contact")
+
+
+@login_required
+def info_edit(request, pk, info_pk=None):
+    """An info note's own page: title, body, link and the items it's linked to (editors)."""
+    from .forms import TripInfoForm
+    from .models import TripInfo
+    return _source_edit(request, pk, TripInfoForm, TripInfo, info_pk, "trips/info_form.html", "info note")
+
+
+@login_required
+def info_delete(request, pk, info_pk):
+    from .models import TripInfo
+    return _source_delete(request, pk, TripInfo, info_pk, "info note")
 
 
 # ---- confirmations: attached to items like comments (trips:item_confirmations) ------------

@@ -31,5 +31,6 @@ A stay in full, on its check-in day (trips:trip_detail; U2 of docs/plans/trip-pa
     {% endif %}
   </dl>
   {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
-  {% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+  {% if stay.refs %}<div class="mt-2">{% include "trips/partials/_refs.html" with refs=stay.refs %}</div>{% endif %}
+{% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
 </div>

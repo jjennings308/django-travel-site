@@ -311,9 +311,10 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (24 here, 4 of them from this site's
+- **The detail page** holds a fixed query count (26 here, 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
-  travellers; two are the days' activities and their travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
+  travellers; two are the days' activities and their travellers; two are item links and info notes —
+  fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
   so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
@@ -342,10 +343,28 @@ that matter most:
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.
+- **Contacts and info notes link to items** (trip-page UX plan, U4; trips 0031): `TripInfo` (trip-wide
+  know-how: title, body paragraphs, url, order) and `Contact` (now with `address`, `url`) are the
+  *sources*; `ItemLink` links one to a *target* of the same trip — a leg, stay, activity, meal, a
+  day's section, or the day itself (`models.LINK_SOURCES` / `LINKABLE`; generic keys on both ends,
+  `ItemLink.link()` checks the trip, once per pair; `GenericRelation`s on both ends delete links with
+  either). `itinerary.attach_links` resolves the trip's prefetched `item_links` (two fixed queries
+  with `infos`): `item.refs` (a one-line ☎ with tel:/mailto:, or an ⓘ that expands, via
+  `partials/_refs.html`, on each item's row/card; a stay's contact also on every "Sleeping" line),
+  `day.good_to_know` (linked to the day or its sections) and each source's `on` ("On: Day 5 · …"
+  links). Reference → Contacts (`#contact-N`) and Info (`#info-N`) are their homes. The booklet prints
+  them in full where they surface and in Reference (Contacts, Info). Editing: the **Contacts & info**
+  block (`partials/_item_links.html`, `trips:item_links` `/trips/<pk>/links/<kind>/<id>/`: attach one
+  the trip has, create a contact or note on the spot, or remove — never deletes) on the leg and
+  activity pages and reached from Edit trip's Bookings, the day page (sections, meals, the whole day)
+  and the section page; each contact/note has its own page with ticks for its items
+  (`trips:contact_new/edit/delete`, `trips:info_new/edit/delete`, `forms.linkable_choices`); Edit trip
+  lists them under Contacts & info (the Contacts formset stays the bulk view). Never public;
+  `trip_leak_finders` also forbids contact phones and emails.
 - **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
   the trip page's prefetch, used by both the web page and the booklet — `place_legs` (legs per day,
   placement, `travel_total`, stray legs), `timeline` (U3: a day's timed items, Any time, Food
-  ideas), `overview` / `open_day` (U2) and `attach_stays` (`day.stay` = where you sleep that night,
+  ideas), `attach_links` / `anchor` (U4), `overview` / `open_day` (U2) and `attach_stays` (`day.stay` = where you sleep that night,
   `checking_in` / `checking_out`). Put new per-day derivations there, not in a view or a template.
 - **The booklet is snapshot-guarded:** `tests/test_booklet_snapshot.py` renders the booklet HTML for a
   fixture with every item kind and compares it to `tests/snapshots/booklet.html` (whitespace

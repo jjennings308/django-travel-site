@@ -809,6 +809,9 @@ class TransportLeg(models.Model):
     arrival_at = models.DateTimeField(null=True, blank=True)
     # Confirmations attached to this leg (``ConfirmationLink``, like comments); the relation
     # also deletes the links with the leg.
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="leg_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="leg")
     # Where on its day the leg is shown: a ``travel`` section of the day whose date is
     # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
@@ -981,6 +984,9 @@ class Lodging(models.Model):
     """A place to stay for part or all of a trip."""
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="lodging")
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="stay_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="stay")
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
@@ -1117,6 +1123,9 @@ class Day(models.Model):
     optional day trip while two stay in town.
     """
 
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="day_target")
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="days")
     day_number = models.PositiveSmallIntegerField()
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_days",
@@ -1204,6 +1213,9 @@ class Section(models.Model):
         CHOOSE_YOUR_ADVENTURE = "choose_your_adventure", "Choose your adventure"
         FREE_TEXT = "free_text", "Free text"
 
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="section_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="section")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="sections")
     section_type = models.CharField(max_length=32, choices=Type.choices)
@@ -1285,6 +1297,9 @@ class Meal(models.Model):
         UPSCALE = "$$$", "$$$"
         FINE_DINING = "$$$$", "$$$$"
 
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="meal_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="meal")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="meals")
     name = models.CharField(max_length=200)
@@ -1348,6 +1363,9 @@ class TripActivity(models.Model):
     currency = models.CharField(max_length=3, blank=True)
     notes = models.TextField(blank=True)
     order = models.PositiveSmallIntegerField(default=0)
+    # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
+    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
+                                  related_query_name="activity_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
 
     class Meta:
@@ -1559,6 +1577,8 @@ def item_trip_id(item):
 
 def item_date(item):
     """The day an item happens (a stay: its check-in)."""
+    if isinstance(item, Day):
+        return item.date
     if isinstance(item, TransportLeg):
         return item.date
     if isinstance(item, Lodging):
@@ -1567,6 +1587,8 @@ def item_date(item):
 
 
 def item_label(item):
+    if isinstance(item, Day):
+        return f"Day {item.day_number}"
     if isinstance(item, TransportLeg):
         return f"{item.origin}→{item.destination}"
     if isinstance(item, Section):
@@ -1590,13 +1612,108 @@ class Contact(models.Model):
     role = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=40, blank=True)
     email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    url = models.URLField(blank=True, verbose_name="website")
     notes = models.TextField(blank=True)
+    # The items it matters for (ItemLink, U4): it shows on them and their days.
+    item_links = GenericRelation("ItemLink", content_type_field="source_type", object_id_field="source_id",
+                                 related_query_name="contact_source")
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    @property
+    def tel(self):
+        """The phone number for a tel: link (spaces and punctuation other than + dropped)."""
+        return "".join(ch for ch in self.phone if ch.isdigit() or ch == "+")
+
+
+class TripInfo(models.Model):
+    """Trip-wide know-how with a home in Reference (U4): Bayern Ticket rules, the Oktoberfest tent
+    guide, taxis, currency. Linked to items (ItemLink) it also shows on them and their days."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="infos")
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True, help_text="Paragraphs separated by a blank line.")
+    url = models.URLField(blank=True, verbose_name="link")
+    order = models.PositiveSmallIntegerField(default=0)
+    item_links = GenericRelation("ItemLink", content_type_field="source_type", object_id_field="source_id",
+                                 related_query_name="info_source")
+
+    class Meta:
+        db_table = "trips_tripinfo"
+        ordering = ["order", "title", "id"]
+        verbose_name = "info note"
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def paragraphs(self):
+        return [p.strip() for p in self.body.replace("\r\n", "\n").split("\n\n") if p.strip()]
+
+
+class ItemLink(models.Model):
+    """A contact or info note (source) linked to an item of the same trip (target): a leg, stay,
+    activity, meal, a day's section, or the day itself when nothing on it fits. The same shape
+    as ConfirmationLink, with a generic key on both ends."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="item_links")
+    source_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    source_id = models.PositiveBigIntegerField()
+    source = GenericForeignKey("source_type", "source_id")
+    target_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    target_id = models.PositiveBigIntegerField()
+    target = GenericForeignKey("target_type", "target_id")
+
+    class Meta:
+        db_table = "trips_itemlink"
+        constraints = [
+            models.UniqueConstraint(fields=["source_type", "source_id", "target_type", "target_id"],
+                                    name="itemlink_once"),
+        ]
+        indexes = [
+            models.Index(fields=["source_type", "source_id"]),
+            models.Index(fields=["target_type", "target_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.source} → {self.target}"
+
+    @classmethod
+    def link(cls, source, target):
+        """Link ``source`` (a Contact or TripInfo) to ``target`` (a LINKABLE item); both must
+        belong to the same trip. Once per pair."""
+        if type(source) not in LINK_SOURCES.values() or type(target) not in LINKABLE.values():
+            raise ValueError("Link a contact or info note to a leg, stay, activity, meal, section or day.")
+        trip_id = source.trip_id
+        if item_trip_id(target) != trip_id:
+            raise ValueError("Both ends of a link must belong to the same trip.")
+        link, _ = cls.objects.get_or_create(
+            source_type=ContentType.objects.get_for_model(type(source)), source_id=source.pk,
+            target_type=ContentType.objects.get_for_model(type(target)), target_id=target.pk,
+            defaults={"trip_id": trip_id})
+        return link
+
+    @classmethod
+    def unlink(cls, source, target):
+        cls.objects.filter(source_type=ContentType.objects.get_for_model(type(source)), source_id=source.pk,
+                           target_type=ContentType.objects.get_for_model(type(target)), target_id=target.pk).delete()
+
+
+# kind (URL part) -> model, for both ends of an ItemLink.
+LINK_SOURCES = {"contact": Contact, "info": TripInfo}
+LINKABLE = {
+    "leg": TransportLeg,
+    "stay": Lodging,
+    "activity": TripActivity,
+    "meal": Meal,
+    "section": Section,
+    "day": Day,
+}
 
 
 class BookingTask(models.Model):

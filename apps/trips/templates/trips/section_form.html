@@ -102,7 +102,7 @@
       </div>
     </form>
 
-    {% if not is_create %}<p class="mt-6 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' section.pk %}?next={{ request.path|urlencode }}">Confirmations for this</a> <span class="text-zinc-500">— a booked tour or timed entry described here.</span></p>{% endif %}
+    {% if not is_create %}<p class="mt-6 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' section.pk %}?next={{ request.path|urlencode }}">Confirmations for this</a> · <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'section' section.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a> <span class="text-zinc-500">— a booked tour or timed entry described here.</span></p>{% endif %}
 
     {% if section_legs is not None %}
       {# A travel section's legs are TransportLegs placed here: edited as legs, never as rows. #}

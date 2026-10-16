@@ -1,7 +1,7 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1–U3 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`);
-U4–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U4 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
+`u4-contacts-info`); U5–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -203,6 +203,14 @@ Food row shows the reservation time — the snapshot diff was exactly that line 
   unreserved one under Food ideas, non-UTC viewer sees leg local times unchanged (the `at_zone` rule).
 
 ## U4 — Reference things linked to items: contacts and Info
+
+**Status: done** on branch `u4-contacts-info` (migration `trips 0031_contacts_info_links`: adds only;
+query count 24 → 26 as planned; tests `test_item_links.py`). As built: `itinerary.attach_links` and
+`itinerary.anchor` (moved from the view's `_item_anchor`); `partials/_refs.html` (web) and
+`pdf/_refs.html` (booklet). The item block is `trips:item_links` (inline on the leg and activity
+pages; stays, meals, sections and days reach it by links). A note linked to a whole day reads "Day 2 ·
+whole day". The booklet snapshot now includes a contact on a stay, one on a leg and an info note on a
+section and a day (all deliberate).
 
 - **`TripInfo`** (new, trips): `trip`, `title`, `body` (text, paragraphs), `url` (optional), `order`;
   `db_table` set. The home for trip-wide know-how: Bayern Ticket rules, Augsburg taxis, the Oktoberfest
