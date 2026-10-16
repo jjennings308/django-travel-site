@@ -1846,6 +1846,19 @@ class TaskOption(models.Model):
         return self.title
 
 
+class TidyDismissal(models.Model):
+    """A content clean-up suggestion an editor said "Not this" to (trip-page UX plan, U7). The
+    key is the suggestion's stable hash (``tidy.Suggestion.key``), so it doesn't come back."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="tidy_dismissals")
+    key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "trips_tidydismissal"
+        constraints = [models.UniqueConstraint(fields=["trip", "key"], name="tidydismissal_once")]
+
+
 # --------------------------------------------------------------------------
 # Comments
 # --------------------------------------------------------------------------

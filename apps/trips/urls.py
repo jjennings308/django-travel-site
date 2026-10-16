@@ -62,6 +62,7 @@ urlpatterns = [
     path("<int:pk>/travel-tables/", views.trip_travel_review, name="trip_travel_review"),
     path("<int:pk>/booklet.pdf", views.trip_pdf, name="trip_pdf"),
     path("<int:pk>/tasks/done/", views.task_offer, name="task_offer"),
+    path("<int:pk>/tidy/", views.trip_tidy, name="trip_tidy"),
     path("<int:pk>/tasks/<int:task_pk>/options/", views.task_options, name="task_options"),
     path("<int:pk>/options/<int:option_pk>/add/", views.option_add, name="option_add"),
     path("<int:pk>/links/<str:kind>/<int:item_pk>/", views.item_links, name="item_links"),

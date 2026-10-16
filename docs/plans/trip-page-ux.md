@@ -1,7 +1,8 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1–U6 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
-`u4-contacts-info`, `u5-edit-this-day`, `u6-decisions`); U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U7 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
+`u4-contacts-info`, `u5-edit-this-day`, `u6-decisions`, `u7-tidy`). The plan is complete; the
+"Data to fix by hand" list below still stands. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -280,6 +281,16 @@ stay row or the day's new-activity page and saves nothing. The booklet's Still t
   count (+1 for options, stated).
 
 ## U7 — Content clean-up review
+
+**Status: done** on branch `u7-tidy` (migration `trips 0033_tidy_dismissal`: adds only; query count
+unchanged at 27 — the trip page only links to the review; tests `test_tidy.py`). As built:
+`tidy.py` (pure detector) + `tidying.py` (snapshot, apply with a stale re-check per suggestion,
+dismiss). Refinements from running it on Europe 2027 (29 suggestions): high confidence needs the
+item to *lead* the line (so "Easy dinner in Butzbach. Ristorante Da Franco…" and "Borough Market →
+Tate Modern" are low); a phone in a line naming a meal becomes that meal's contact; a
+"name / description / Phone:" block in the trip notes becomes one contact (named from its first
+line, notes from the middle) and the block is removed. "Keep and link" for a callout means: keep
+its text as an info note linked to the task's item. Every suggestion starts unticked.
 
 A review page that suggests moving retyped facts to their homes. **Suggestions only**: nothing is
 saved until an editor ticks and confirms; one transaction; dismissals are remembered.

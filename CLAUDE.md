@@ -353,6 +353,23 @@ that matter most:
   `next` when it's on this site (Edit trip's days table passes its own address), else to
   `trip_detail#day-N`, which opens that day (`views._day_back`). Saving a section returns to the day
   page's `#on-this-day`. Edit trip keeps its bulk views; both edit the same records.
+- **Tidy suggestions** (trip-page UX plan, U7; trips 0033 `TidyDismissal`): `apps/trips/tidy.py` is pure
+  (no Django) and takes a plain snapshot (`tidying.snapshot(trip)`); it suggests where text repeats
+  something that has a home: a narrative line naming the day's leg / stay / meal / activity
+  (`repeats_item`), a "Book…" callout repeating an open task (`callout_task`: delete it, or keep it as an
+  info note on the task's item), a phone number in text or trip notes (`phone` → a contact linked to the
+  named meal/section; a "name / notes / Phone:" block in the trip notes becomes one contact), trip notes
+  repeating legs/stays or listing numbered options (`notes_repeat`, `notes_options` → a decision task),
+  a logistics table titled like an activity (`table_activity` → an info note on it) and "Day N" written
+  on another day (`day_slip`, flag only). **High confidence** only for kinds 1–2 when the item *leads*
+  the line (after an optional "Lunch:" label, followed by a dash/bracket/end — not "Borough Market →
+  Tate Modern") or the callout's title says Book/Reserve/Critical. **Suggestions only**: the review page
+  `trips:trip_tidy` (`/trips/<pk>/tidy/`, editors; linked from the trip page's Overview) shows them by
+  day, unticked, with before → after; `tidying.apply` runs the ticked ones in one transaction,
+  re-checking each against the current text (a stale one is skipped and reported); "Not this" stores a
+  `TidyDismissal` (the suggestion's stable key). `manage.py tidy_trip --trip <pk> [--apply]`: dry run
+  lists everything; `--apply` applies only high-confidence kinds 1–2, never phones, notes, tables or
+  slips. No detection runs on the trip page.
 - **Decisions are tasks with options** (trip-page UX plan, U6; trips 0032): `BookingTask.kind` is
   `book` (default) or `decide`; a decision's `TaskOption`s (title, detail, url, est_cost + currency,
   order; at most one `chosen` per task — partial unique index `taskoption_one_chosen`) are edited on
