@@ -78,6 +78,15 @@ python manage.py migrate
 
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
+## Testing
+- Always run tests with `--keepdb` and `--noinput`.
+- While iterating on a change, run only the affected app's tests:
+  `.venv/bin/python manage.py test apps.<app> --keepdb --noinput`
+- Before finishing a task, run the full suite in parallel:
+  `.venv/bin/python manage.py test --keepdb --parallel --noinput`
+- If a test fails only under `--parallel`, report it as a test-isolation
+  bug rather than dropping the flag.
+
 ## Deploying (staging / production)
 
 `config.settings.prod` refuses to start without a real `DJANGO_SECRET_KEY` (≥ 50 chars, not
