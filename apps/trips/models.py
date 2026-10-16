@@ -1462,6 +1462,14 @@ class BookingTask(models.Model):
         null=True,
         blank=True,
     )
+    # What the task is about (trip-items plan, Phase E): a leg or a stay, at most one. Shown on
+    # the item; SET_NULL so deleting the item keeps the task. Phase F adds ``booking``.
+    leg = models.ForeignKey(
+        "TransportLeg", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
+    )
+    stay = models.ForeignKey(
+        "Lodging", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
+    )
     title = models.CharField(max_length=200)
     priority = models.IntegerField(choices=Priority.choices, default=Priority.MEDIUM)
     due = models.DateField(
@@ -1486,9 +1494,27 @@ class BookingTask(models.Model):
         verbose_name = "booking task"
         verbose_name_plural = "booking tasks"
         indexes = [models.Index(fields=["trip", "done"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(leg__isnull=True) | Q(stay__isnull=True), name="bookingtask_one_item"
+            ),
+        ]
 
     def __str__(self):
         return self.title
+
+    #: Written into ``notes`` by "Not this one", so the suggestion for that item doesn't return.
+    NOT_ABOUT = "Not about: "
+
+    @property
+    def visible_notes(self):
+        """The notes without the "Not about: …" lines (those are for the suggestion only)."""
+        return "\n".join(line for line in self.notes.splitlines() if not line.startswith(self.NOT_ABOUT)).strip()
+
+    def dismissed(self):
+        """Names of items this task was marked as not being about (lower case)."""
+        return {line[len(self.NOT_ABOUT):].strip().lower() for line in self.notes.splitlines()
+                if line.startswith(self.NOT_ABOUT)}
 
 
 # --------------------------------------------------------------------------

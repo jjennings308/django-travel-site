@@ -549,12 +549,15 @@ class BookingTaskAdmin(admin.ModelAdmin):
     # `title` leads so it stays the link to the change page; `done` and
     # `priority` are editable inline because ticking tasks off in bulk is the
     # whole point of the list view.
-    list_display = ("title", "done", "priority", "trip", "due", "day", "confirmation")
+    list_display = ("title", "done", "priority", "trip", "due", "day", "leg", "stay", "confirmation")
     list_display_links = ("title",)
     list_editable = ("done", "priority")
     list_filter = ("done", "priority", "trip")
     search_fields = ("title", "notes", "due_note")
     autocomplete_fields = ("trip", "day", "confirmation")
+    # What the task is about (trip-items plan, Phase E); raw ids so any trip's legs and stays
+    # aren't loaded into one dropdown. The trip edit page offers this trip's only.
+    raw_id_fields = ("leg", "stay")
 
 
 @admin.register(TransportLeg)

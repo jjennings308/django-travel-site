@@ -1,7 +1,7 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
-Status: Phases A–D done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
-`phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`); Phases E–F planned. Hand to Claude
+Status: Phases A–E done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
+`phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`, `phase-e-booking-tasks`); Phase F planned. Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -261,6 +261,14 @@ logistics table with arrow rows links to "Turn into legs". Query pin unchanged a
 
 ## Phase E — booking tasks point at what they're about
 
+**Status: done** on branch `phase-e-booking-tasks` (migration `trips 0025_booking_task_items`; logic in
+`apps/trips/booking_tasks.py`; tests in `test_booking_tasks.py`). Decisions (2026-10-15): **offer**,
+don't auto-tick; **yes** to the derived "Not booked yet" list; existing tasks are **suggested, James
+confirms** (no data migration). As built: `booking` waits for Phase F; suggestions match a stay by
+name or a leg by the first word of each end, only when exactly one item matches, editors only, with
+"Not this one" remembered as a "Not about: …" line in the task's notes. On dev, Europe's tasks
+suggest exactly the three hotels and the ICE leg. Query pin unchanged at 24.
+
 - `BookingTask` gains optional `leg`, `stay`, `booking` (Phase F) FKs, `SET_NULL`, at most one
   set (`CheckConstraint`). "ICE seats Frankfurt→Augsburg" points at that leg.
 - The item views show its open tasks ("still to book: seats for 6"); the Still to book list shows
@@ -301,9 +309,9 @@ sections plus a booking task, with nowhere to put the confirmation.
 
 1. ~~Drop the inline `confirmation_number` columns after migrating?~~ **Drop** (2026-10-15).
 2. ~~`Confirmation.travelers` in Phase B, or later?~~ **Phase B** (2026-10-15).
-3. Booking tasks: auto-tick vs offer when the item is confirmed (Phase E).
-4. Derived "Not booked yet" list alongside tasks (Phase E)?
-5. Phase F before or after E?
+3. ~~Booking tasks: auto-tick vs offer?~~ **Offer** (2026-10-15).
+4. ~~Derived "Not booked yet" list?~~ **Yes** (2026-10-15).
+5. ~~Phase F before or after E?~~ **After** (E done first).
 
 ## Done means
 

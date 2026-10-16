@@ -903,12 +903,21 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             "due",
             "due_note",
             "day",
+            "leg",
+            "stay",
             "confirmation",
             "done",
             "order",
             "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        labels = {"leg": "About leg", "stay": "About stay"}
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("leg") and cleaned.get("stay"):
+            raise forms.ValidationError("A task is about one leg or one stay, not both.")
+        return cleaned
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -956,7 +965,7 @@ class TripScopedFormSet(BaseInlineFormSet):
 class ScopedBookingTaskFormSet(TripScopedFormSet):
     """The one formset with cross-trip choices to narrow."""
 
-    trip_scoped_fields = ("day", "confirmation")
+    trip_scoped_fields = ("day", "leg", "stay", "confirmation")
 
 
 class LodgingAdminForm(LocatingStayMixin, forms.ModelForm):

@@ -1,0 +1,24 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Offered after an item gets its first confirmation (views.task_offer, Phase E): tick off its open booking tasks, or leave them. Never automatic: a task like "seats for 6" may still be open after the first booking.
+{% endcomment %}
+{% block title %}Tasks done? — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-xl{% endblock %}
+{% block content %}
+  <form method="post" class="card p-6">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <input type="hidden" name="tasks" value="{{ ids }}">
+    <h1 class="page-title mb-2">Mark these done?</h1>
+    <p class="mb-4 text-zinc-600">That booking is now confirmed. These tasks were about it:</p>
+    <ul class="mb-5 space-y-2">
+      {% for task in tasks %}
+        <li><label class="flex items-start gap-2"><input type="checkbox" name="done" value="{{ task.pk }}" checked class="mt-1"> <span><span class="font-medium">{{ task.title }}</span>{% if task.item_label %} <span class="text-sm text-zinc-500">· {{ task.item_label }}</span>{% endif %}</span></label></li>
+      {% endfor %}
+    </ul>
+    <div class="flex gap-3">
+      <button type="submit" class="btn">Mark ticked done</button>
+      <a class="btn-quiet" href="{{ next }}">Not yet</a>
+    </div>
+  </form>
+{% endblock %}
