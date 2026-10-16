@@ -338,7 +338,7 @@ class TripChromeTests(DetailFixture):
         Confirmation.objects.create(trip=self.trip, label="Hotel", confirmation_number="XYZ789")
         Contact.objects.create(trip=self.trip, name="Front desk", phone="555-0100")
         html = self.get().content.decode()
-        self.assertIn("Quick reference", html)
+        self.assertIn('id="reference"', html)  # Reference (U2) is the home of confirmations and contacts
         self.assertIn("XYZ789", html)
         self.assertIn("Front desk", html)
         self.assertIn("555-0100", html)
@@ -351,7 +351,7 @@ class TripChromeTests(DetailFixture):
         self.assertNotIn("Already done", html)
 
     def test_task_priority_drives_the_badge_colour(self):
-        # Same card grid, four badge classes: colour is how the list ranks at a
+        # One list in Reference, four badge classes: colour is how the list ranks at a
         # glance. IntegerChoices are compared as ints, so `task.priority == 1`
         # matches the stored value.
         BookingTask.objects.create(trip=self.trip, title="Flights", priority=1)
@@ -363,7 +363,7 @@ class TripChromeTests(DetailFixture):
         self.assertIn('<span class="badge badge-high">High</span>', html)
         self.assertIn('<span class="badge badge-medium">Medium</span>', html)
         self.assertIn('<span class="badge badge-low">Low</span>', html)
-        self.assertIn('<div class="card-grid">', html)
+        self.assertIn('id="still-to-book"', html)
 
     def test_meals_render_for_the_day(self):
         Meal.objects.create(

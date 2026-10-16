@@ -231,12 +231,13 @@ class QuickReferenceTests(Fixture):
         titles = [title for title, _items in page.context["confirmation_groups"]]
         self.assertEqual(titles, ["Flights", "Stays", "Activities", "Meals", "Other"])
         html = page.content.decode()
-        quick = html[html.index('id="quick-reference"'):]
-        self.assertEqual(quick.count("GCH7JS"), 1)  # once in Quick reference
+        quick = html[html.index('id="reference"'):]
+        self.assertEqual(quick.count("GCH7JS"), 1)  # once in Reference, its home
         self.assertIn("BWI→ATL, ATL→ABQ · Sat Sep 12", quick)
         self.assertIn("For Sara Test", quick)
-        body = html[:html.index('id="quick-reference"')]
-        self.assertEqual(body.count("GCH7JS · Delta"), 4)  # both legs, in Getting around and on the day
+        body = html[:html.index('id="reference"')]
+        self.assertEqual(body.count("GCH7JS · Delta"), 2)  # a chip on each of its two legs, on their day
+        self.assertIn(f'href="#confirmation-{flights.pk}"', body)  # chips link to their row
         self.assertIn("378234488 · Ghost Ranch", body)  # the day's plan section
         self.assertIn("TABLE1", body)  # the meal
         self.assertIn("Booked", html)

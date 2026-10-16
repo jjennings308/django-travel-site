@@ -121,11 +121,15 @@ class TripWideReviewTests(Fixture):
 
     def test_link_on_edit_trip_while_arrow_rows_remain(self):
         edit = reverse("trips:trip_edit", args=[self.trip.pk])
+        detail = reverse("trips:trip_detail", args=[self.trip.pk])
+        self.client.force_login(self.viewer)
+        self.assertNotContains(self.client.get(detail), self.url)
         self.client.force_login(self.editor)
-        self.assertNotContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), self.url)
+        self.assertContains(self.client.get(detail), self.url)  # U2: editors' Needs attention links to it
         self.assertContains(self.client.get(edit), self.url)
         Section.objects.filter(pk__in=[self.bayern.pk, self.muc.pk]).update(section_type="travel")
         self.assertNotContains(self.client.get(edit), self.url)  # only "possible" rows left
+        self.assertNotContains(self.client.get(detail), self.url)
 
 
 class CommandTests(Fixture):

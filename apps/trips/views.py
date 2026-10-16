@@ -54,6 +54,7 @@ from .models import (
     BookingTask,
     Comment,
     Day,
+    Lodging,
     Meal,
     Section,
     Traveler,
@@ -353,14 +354,26 @@ def trip_detail(request, pk):
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
+    # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
+    # day and the day to open on arrival — all from the rows above, no queries.
+    days = list(trip.days.all())
+    stray_stays = itinerary.attach_stays(days, list(trip.lodging.all()))
+    not_booked = booking_tasks.not_booked(trip)
+    open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
+    itinerary.overview(days, not_booked, open_tasks)
+    opened = itinerary.open_day(days, django_timezone.localdate())
     return render(
         request,
         "trips/trip_detail.html",
         {
             "trip": trip,
+            "days": days,
+            "open_day_pk": opened.pk if opened else None,
             "stray_legs": stray_legs,
+            "stray_stays": stray_stays,
+            "open_tasks": open_tasks,
             "travel_tables_pending": travel_tables_pending,
-            "not_booked": booking_tasks.not_booked(trip),
+            "not_booked": not_booked,
             "confirmation_groups": confirmation_groups(trip),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
@@ -436,6 +449,18 @@ def _attach_confirmations(trip):
             if item is not None:
                 confirmation._items.append(item)
                 item.confirmation_list.append(confirmation)
+        # Where its Reference row links to: its first item's card, or that item's day.
+        first = confirmation.covered_items()[:1]
+        confirmation.anchor = _item_anchor(first[0]) if first else ""
+
+
+def _item_anchor(item):
+    """The trip page id of an item's card (legs, stays, activities), else of its day."""
+    for model, prefix in ((TransportLeg, "leg"), (Lodging, "stay"), (TripActivity, "activity")):
+        if isinstance(item, model):
+            return f"{prefix}-{item.pk}"
+    day = getattr(item, "day", None)
+    return f"day-{day.day_number}" if day is not None else ""
 
 
 def confirmation_groups(trip):

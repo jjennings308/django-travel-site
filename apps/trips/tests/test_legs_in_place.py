@@ -92,12 +92,13 @@ class StageAndPlacementTests(Fixture):
 
 
 class PageTests(Fixture):
-    def test_leg_once_in_getting_around_and_once_on_its_day(self):
+    def test_leg_once_on_its_day(self):
+        # U2: the trip-wide "Getting around" list is gone; a leg's one home is its day.
         placed = self.leg(section=self.travel, est_duration=timedelta(minutes=45), origin="PlacedFrom")
         auto = self.leg(date=date(2027, 9, 21), origin="AutoFrom", destination="Somewhere")
         html = self.page().content.decode()
-        self.assertEqual(html.count('id="leg-%d"' % placed.pk), 2)
-        self.assertEqual(html.count('id="leg-%d"' % auto.pk), 2)
+        self.assertEqual(html.count('id="leg-%d"' % placed.pk), 1)
+        self.assertEqual(html.count('id="leg-%d"' % auto.pk), 1)
         day2 = html[html.index('id="day-2"'):html.index('id="day-3"')]
         self.assertIn("Morning — train south", day2)
         self.assertIn("PlacedFrom", day2)
@@ -112,10 +113,14 @@ class PageTests(Fixture):
                  section=self.travel, order=2)
         self.assertContains(self.page(), "2 legs · ~3 h 15 min")
 
-    def test_stray_leg_flagged_for_editors_only(self):
-        self.leg(date=date(2027, 12, 1), origin="Lost", destination="Found")
-        self.assertContains(self.page(), "isn't one of this trip's days")
-        self.assertNotContains(self.page(self.viewer), "isn't one of this trip's days")
+    def test_stray_leg_shown_to_all_and_flagged_for_editors(self):
+        stray = self.leg(date=date(2027, 12, 1), origin="Lost", destination="Found")
+        for user in (None, self.viewer):
+            html = self.page(user).content.decode()
+            self.assertIn("Journeys not on any day", html)
+            self.assertEqual(html.count('id="leg-%d"' % stray.pk), 1)
+        self.assertContains(self.page(), "a leg shows on the day it departs")
+        self.assertNotContains(self.page(self.viewer), "a leg shows on the day it departs")
 
     def test_editors_see_edit_viewers_dont_and_adding_is_on_edit_trip(self):
         leg = self.leg(section=self.travel)

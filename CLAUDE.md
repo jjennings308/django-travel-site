@@ -315,6 +315,26 @@ that matter most:
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
+- **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
+  so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
+  Map · Budget · Photos links; a ⋯ menu, Alpine, with Share / the shared link / Stop sharing and
+  Delete, shown only when it has something for the reader), a sticky jump bar (Overview · Days ·
+  Reference), then:
+  - **Overview** (`#overview`): one row per day from `itinerary.overview` — where, sleeping (from
+    `attach_stays`; "✈ overnight" when a leg that day arrives a day later), travel (mode icons +
+    "A → B" or the travel total), up to two highlights (activity titles, else the theme), a ⚠ count
+    (not-booked items and open tasks on that day). Below: Needs attention (not booked, to do, legs
+    not on any day, tables to convert), "Journeys not on any day" (stray legs in full, for everyone),
+    "Stays outside the trip's days", travellers, cities, destination, goals, the bucket prompt and
+    trip notes.
+  - **Days** (`#days`): each a `<details class="day-fold" id="day-N">`, open on arrival only for
+    `itinerary.open_day` (today's during the trip, Day 1 before it, none after; `localdate()`); an
+    inline script opens the `<details>` holding any `#target` (on load, on hashchange and on a click
+    to the current hash) and drives Expand all / Collapse all (`data-days-toggle`). A stay's full
+    card (`partials/_stay_card.html`, `#stay-N`) sits on its check-in day.
+  - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
+    in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
+    yet and Contacts. Confirmation chips on items are links to their row.
 - **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
   the trip page's prefetch, used by both the web page and the booklet — `place_legs` (legs per day,
   placement, `travel_total`, stray legs) and `attach_stays` (`day.stay` = where you sleep that night,

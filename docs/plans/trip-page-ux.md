@@ -1,6 +1,6 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1 done (2026-10-16, branch `u1-booklet-guard`); U2–U7 planned (2026-10-16). Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U2 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`); U3–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -129,6 +129,15 @@ Goal: make the web free to change without touching the booklet.
 - No visible web change. Query count unchanged.
 
 ## U2 — Page shell: header, Overview, collapsible days, Reference index
+
+**Status: done** on branch `u2-page-shell` (no migrations; query count unchanged at 24; booklet
+snapshot unchanged; tests `test_page_shell.py`). As built: each stay's existing card moved onto its
+**check-in day** (`partials/_stay_card.html`) rather than disappearing until U3 (agreed with James).
+Found while building: legs whose date is no day of the trip had the old trip-wide list as their only
+home, so they're shown **in full to everyone** under "Journeys not on any day" in Overview (editors
+also get a check-the-date note), not only as editors' links. Stays whose check-in is no day are shown there too. "Decisions"
+in Needs attention waits for U6. The Overview helpers (`overview`, `open_day`, `MODE_ICONS`) live in
+`itinerary.py`; `attach_stays` now returns the stays outside the days.
 
 - **Header:** title, dates · nights · status badge; primary **Edit trip** and **Download PDF**; Map ·
   Budget · Photos as quiet links; a **⋯ menu** (Alpine) with Share / Stop sharing (and the public link
