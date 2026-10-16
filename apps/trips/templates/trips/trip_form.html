@@ -110,7 +110,7 @@ would mean two places to fix the next time a field is added.
                   {{ d.sections_count }} section{{ d.sections_count|pluralize }}
                 </td>
                 <td class="text-right whitespace-nowrap">
-                  <a class="link-quiet font-medium" href="{% url 'trips:day_edit' trip.pk d.pk %}">Edit</a>
+                  <a class="link-quiet font-medium" href="{% url 'trips:day_edit' trip.pk d.pk %}?next={% url 'trips:trip_edit' trip.pk %}%23day-{{ d.pk }}">Edit</a>
                   <a class="link-quiet ml-3 font-medium hover:text-red-700" href="{% url 'trips:day_delete' trip.pk d.pk %}">Delete</a>
                 </td>
               </tr>

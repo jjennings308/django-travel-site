@@ -1,7 +1,7 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1–U4 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
-`u4-contacts-info`); U5–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U5 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
+`u4-contacts-info`, `u5-edit-this-day`); U6–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -241,6 +241,13 @@ section and a day (all deliberate).
   never deletes; deleting an item removes its links; tel/mailto rendering; query count.
 
 ## U5 — Edit this day (and add from it)
+
+**Status: done** on branch `u5-edit-this-day` (no migrations; query count unchanged at 26; booklet
+unchanged; tests `test_edit_this_day.py`). As built: the day page's old separate Activities and
+Sections lists are folded into "On this day" (`views._day_workshop`, `partials/_workshop_row.html`);
+"Add to this day" holds the leg quick add (inline, Alpine), activity, meal (jumps to the meal form),
+contact or note for the whole day, and section-by-type buttons. A confirmation, or a contact for one
+item, is added from that item's row. Legs show their `order` (edited on the leg's page).
 
 - Each day (editors) gets **Edit this day** → `trips:day_edit`, which becomes the day's workshop, with
   an **Add** menu for that day: leg (the quick add), activity, meal (with reservation time), section (by

@@ -1,0 +1,17 @@
+{% comment %}
+One item on the day page's "On this day" list (U5). Pass trip, kind (leg / activity / meal / section — the URL kind for its confirmations and contacts & info), item, time, title, detail, edit_url and optionally delete_url. Every link comes back to this page.
+{% endcomment %}
+<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5">
+  <span class="w-20 shrink-0 text-xs font-medium tabular-nums text-zinc-500">{{ time }}</span>
+  <span class="badge badge-mode">{{ badge }}</span>
+  {% if edit_url|slice:":1" == "#" %}{% with link=edit_url %}<a class="font-medium text-zinc-900 hover:text-accent-700" href="{{ link }}">{{ title }}</a>{% endwith %}{% else %}<a class="font-medium text-zinc-900 hover:text-accent-700" href="{{ edit_url }}?next={{ request.path|urlencode }}">{{ title }}</a>{% endif %}
+  {% if detail %}<span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ detail }}</span>{% else %}<span class="flex-1"></span>{% endif %}
+  {% for c in item.confirmation_list %}<span class="chip">{{ c.confirmation_number }}</span>{% endfor %}
+  {% for ref in item.refs %}<span class="chip">{% if ref.title %}ⓘ {{ ref.title }}{% else %}☎ {{ ref.name }}{% endif %}</span>{% endfor %}
+  <span class="flex flex-wrap gap-3 text-sm">
+    <a class="link-quiet font-medium" href="{{ edit_url }}{% if edit_url|slice:":1" != "#" %}?next={{ request.path|urlencode }}{% endif %}">Edit</a>
+    <a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk kind item.pk %}?next={{ request.path|urlencode }}">Confirmations</a>
+    <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk kind item.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a>
+    {% if delete_url %}<a class="link-quiet font-medium hover:text-red-700" href="{{ delete_url }}">Delete</a>{% endif %}
+  </span>
+</li>
