@@ -295,6 +295,14 @@ that matter most:
   middleware/context processors; one is the trip's cities; four prefetch the confirmations' legs,
   stays, meals and travellers — fixed per page, not per item); `test_detail.QueryCountTests`
   pins it.
+- **PDF booklet:** "Download PDF" on the trip page → `trips:trip_pdf` (`/trips/<pk>/booklet.pdf`), anyone
+  who can see the trip, never public (it has confirmation numbers). Its own print template
+  `trips/pdf/booklet.html` (US Letter, running header with trip and day, page X of Y; cover, days at a
+  glance, one section per day with its stay, legs, sections and meals, then confirmations / stays /
+  contacts / still to book) rendered by WeasyPrint (`apps/trips/pdf.py`), from the same prefetch as the
+  trip page (`views._trip_page_queryset`). WeasyPrint needs `libpango-1.0-0 libpangoft2-1.0-0
+  libharfbuzz-subset0` on the server; without them the view says so and redirects (`PdfUnavailable`)
+  instead of a 500. Pictographic emoji are stripped (no emoji font on the servers).
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
   with role and trip-access inlines is registered from `apps/trips/admin.py`.
