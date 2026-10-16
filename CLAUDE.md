@@ -644,6 +644,13 @@ done on branch `phase-c-convert-tables`; Phase D (new itineraries start as legs)
 `phase-d-new-itineraries-as-legs`; Phase E (booking tasks point at what they're about) done on
 branch `phase-e-booking-tasks`; Phase F (`Booking` for everything else you reserve) next.
 
+### Trip page UX
+
+Plan: `docs/plans/trip-page-ux.md` (the web trip page redesigned for the web — Overview,
+collapsible days with a timeline, Reference — while the PDF booklet keeps its layout behind a
+snapshot test; contacts and info notes linked to items; decisions as tasks; a content clean-up
+review). Phases U1–U7, one branch each, in order. Decisions answered 2026-10-16. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
