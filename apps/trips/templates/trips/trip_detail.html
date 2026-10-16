@@ -287,6 +287,30 @@
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
       {% endfor %}
 
+      {% if day.ordered_activities %}
+        {# Tours, timed entries, tickets, tables, car hire (TripActivity); confirmations attach like any item. #}
+        <div class="section">
+          <h3 class="grid-label">Activities</h3>
+          <div class="card-grid">
+            {% for activity in day.ordered_activities %}
+              <div class="card" id="activity-{{ activity.pk }}">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+                  <p class="card-title">{% if activity.time_range %}<span class="text-zinc-500">{{ activity.time_range }}</span> · {% endif %}{{ activity.title }}</p>
+                  <span class="badge badge-mode">{{ activity.get_kind_display }}</span>
+                </div>
+                {% if activity.provider or activity.place_name %}<p class="mt-1 text-sm text-zinc-600">{{ activity.provider }}{% if activity.provider and activity.place_name %} · {% endif %}{% if activity.poi %}<a class="link-quiet" href="{% url 'locations:poi_detail' activity.poi.slug %}">{{ activity.poi.name }}</a>{% else %}{{ activity.place_text }}{% endif %}</p>{% endif %}
+                {% if activity.travelers.all %}<p class="mt-1 text-sm text-zinc-600">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+                {% if activity.est_cost is not None %}<p class="mt-1 text-sm text-zinc-600">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
+                {% if activity.notes %}<p class="mt-2 text-sm text-zinc-600">{{ activity.notes|linebreaksbr }}</p>{% endif %}
+                {% if activity.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in activity.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
+                {% if activity.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in activity.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+                {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:activity_edit' trip.pk day.pk activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a></p>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
       {% if day.ordered_meals %}
         <div class="section">
           <h3 class="grid-label">Food</h3>
@@ -416,14 +440,14 @@
                   {% endif %}
                 </div>
                 {% if task.item %}
-                  <p class="mt-1 text-sm text-zinc-600">For: <a class="link-quiet" href="#{% if task.leg_id %}leg-{{ task.leg_id }}{% else %}stay-{{ task.stay_id }}{% endif %}">{% if task.leg_id %}{{ task.item.origin }} → {{ task.item.destination }}{% else %}{{ task.item.name }}{% endif %}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</p>
+                  <p class="mt-1 text-sm text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}">{{ task.item_info.label }}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</p>
                 {% elif task.day %}<p class="mt-1 text-sm text-zinc-500">Day {{ task.day.day_number }}</p>{% endif %}
                 {% if task.suggestion %}
                   <div class="mt-2 flex flex-wrap items-center gap-2 text-xs print:hidden">
-                    <span class="text-zinc-500">Looks like: {% if task.suggestion.check_in %}{{ task.suggestion.name }} (stay){% else %}{{ task.suggestion.origin }} → {{ task.suggestion.destination }} (leg){% endif %}</span>
+                    <span class="text-zinc-500">Looks like: {{ task.suggestion_info.label }} ({{ task.suggestion_info.kind }})</span>
                     {% url 'trips:task_link' trip.pk task.pk as link_url %}
-                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{% if task.suggestion.check_in %}stay{% else %}leg{% endif %}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
-                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{% if task.suggestion.check_in %}{{ task.suggestion.name }}{% else %}{{ task.suggestion.origin }} → {{ task.suggestion.destination }}{% endif %}"><button type="submit" class="link-quiet">Not this one</button></form>
+                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{{ task.suggestion_info.kind }}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
+                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{{ task.suggestion_info.label }}"><button type="submit" class="link-quiet">Not this one</button></form>
                   </div>
                 {% endif %}
                 {% if task.due or task.due_note %}
@@ -451,11 +475,10 @@
         {# Derived, never stored (booking_tasks.not_booked): flights, rental cars, trains with an operator, and stays with no confirmation and no task. #}
         <h3 class="grid-label mt-6">Not booked yet</h3>
         <ul class="card divide-y divide-zinc-200 text-sm">
-          {% for item, kind in not_booked %}
+          {% for nb in not_booked %}
             <li class="flex flex-wrap items-center gap-3 py-2">
-              <span class="badge badge-mode">{{ kind }}</span>
-              {% if item.check_in %}<a class="link-quiet font-medium" href="#stay-{{ item.pk }}">{{ item.name }}</a> <span class="text-zinc-500">{{ item.check_in|date:"M j" }}</span>
-              {% else %}<a class="link-quiet font-medium" href="#leg-{{ item.pk }}">{{ item.origin }} → {{ item.destination }}</a> <span class="text-zinc-500">{{ item.date|date:"M j" }}</span>{% endif %}
+              <span class="badge badge-mode">{{ nb.what }}</span>
+              <a class="link-quiet font-medium" href="#{{ nb.anchor }}">{{ nb.label }}</a> <span class="text-zinc-500">{{ nb.when|date:"M j" }}</span>
             </li>
           {% endfor %}
         </ul>

@@ -266,8 +266,8 @@ that matter most:
 - **Confirmations attach like comments** (trips 0026–0028): a `Confirmation` holds the booking's own
   details (number, provider, optional `label`, `url` manage-booking link, `booked_on`, `cost` + `currency`
   for the whole booking, notes, `travelers` — blank = everyone); what it covers is `ConfirmationLink`
-  rows, each a generic link (content type + id) to one item of the same trip: a leg, a stay, a day's
-  section (a tour, a timed entry) or a meal (`models.CONFIRMABLE`; `link()` checks the trip, once per
+  rows, each a generic link (content type + id) to one item of the same trip: a leg, a stay, an activity, a day's
+  section or a meal (`models.CONFIRMABLE`; `link()` checks the trip, once per
   item; each item model's `confirmation_links` GenericRelation deletes its links with it). One record can
   be linked many times (GCH7JS on four legs). Adding happens **on the item**, on edit pages only:
   `trips:item_confirmations` (`/trips/<pk>/confirmations/<kind>/<id>/`, editors; the leg edit page shows
@@ -281,6 +281,17 @@ that matter most:
   (`confirmation_groups`: Flights / Trains / Stays / Activities (sections) / Meals / Other by
   `Confirmation.kind`, each ordered by `first_date`). `audit_public_leak` takes numbers from
   `trip.confirmations`; confirmations are never public.
+- **Activities on a day** (`TripActivity`, trips 0029; named so because the catalogue has `Activity`):
+  `kind` (tour / timed entry / ticket or pass / table reservation / car hire / other), `title`,
+  `provider`, local `start_time` / `end_time` (wall clock on the day, no zone), `poi` (a catalogue place
+  in one of the trip's cities — `TripActivityForm` limits it) or `place_text`, `travelers` (blank =
+  everyone), `est_cost` + `currency`, `notes`, `order`. Added and edited from the day page ("Activities",
+  `trips:activity_new` / `activity_edit` / `activity_delete`); a new one lands on its own page so its
+  confirmation can be added at once (it's a `CONFIRMABLE` kind, "activity"). Shown on its day (an
+  "Activities" block, `#activity-<pk>`), in the PDF and in Edit trip's bookings; never public. Booking
+  tasks may point at one (`BookingTask.activity`; `bookingtask_one_item` allows at most one of leg / stay
+  / activity), suggestions match an activity whose title the task names, and "Not booked yet" includes
+  bookable kinds (not "other") with no confirmation and no task.
 - **The view page is for reading; adding is on Edit trip.** The trip page has no add forms or "Add …"
   links (items keep their small Edit link). Edit trip has **Travel by day** (each day's legs with Edit,
   the add-a-leg form `partials/_leg_quick_add.html` with `next`, "Add a travel section", and the "Turn
@@ -300,9 +311,9 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (22 here, 4 of them from this site's
+- **The detail page** holds a fixed query count (24 here, 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
-  travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
+  travellers; two are the days' activities and their travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **PDF booklet:** "Download PDF" on the trip page → `trips:trip_pdf` (`/trips/<pk>/booklet.pdf`), anyone
   who can see the trip, never public (it has confirmation numbers). Its own print template

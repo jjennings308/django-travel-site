@@ -22,7 +22,7 @@ from django.forms.formsets import formset_factory
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone as django_timezone
 
-from apps.locations.models import City
+from apps.locations.models import POI, City
 
 from .models import (
     TripExpense,
@@ -37,6 +37,7 @@ from .models import (
     Section,
     Traveler,
     TransportLeg,
+    TripActivity,
     Trip,
     format_local_date,
     format_local_time,
@@ -905,18 +906,19 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             "day",
             "leg",
             "stay",
+            "activity",
             "confirmation",
             "done",
             "order",
             "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
-        labels = {"leg": "About leg", "stay": "About stay"}
+        labels = {"leg": "About leg", "stay": "About stay", "activity": "About activity"}
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("leg") and cleaned.get("stay"):
-            raise forms.ValidationError("A task is about one leg or one stay, not both.")
+        if sum(1 for name in ("leg", "stay", "activity") if cleaned.get(name)) > 1:
+            raise forms.ValidationError("A task is about one leg, stay or activity, not several.")
         return cleaned
 
     def __init__(self, *args, **kwargs):
@@ -965,7 +967,7 @@ class TripScopedFormSet(BaseInlineFormSet):
 class ScopedBookingTaskFormSet(TripScopedFormSet):
     """The one formset with cross-trip choices to narrow."""
 
-    trip_scoped_fields = ("day", "leg", "stay", "confirmation")
+    trip_scoped_fields = ("day", "leg", "stay", "activity", "confirmation")
 
 
 class LodgingAdminForm(LocatingStayMixin, forms.ModelForm):
@@ -1911,6 +1913,42 @@ class ConfirmationEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["travelers"].queryset = trip.travelers.all()
         self.fields["currency"].required = False
+
+
+class TripActivityForm(forms.ModelForm):
+    """An activity on a day (``trips:activity_new`` / ``activity_edit``): a tour, timed entry,
+    ticket, table or car hire. The place is a catalogue POI in one of the trip's cities (else
+    typed), the travellers are the trip's own."""
+
+    class Meta:
+        model = TripActivity
+        fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "place_text", "travelers",
+                  "est_cost", "currency", "notes", "order"]
+        widgets = {
+            "start_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "end_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "travelers": forms.CheckboxSelectMultiple,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+        labels = {"travelers": "Who's going", "est_cost": "Estimated cost"}
+        help_texts = {"travelers": "Leave empty when it's everyone on the day.",
+                      "order": "Sorts activities without a time; leave at 0 unless you care."}
+
+    def __init__(self, *args, trip, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.approval_system.models import ApprovalStatus
+        cities = list(trip.cities.values_list("pk", flat=True))
+        self.fields["poi"].queryset = (POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED)
+                                       .select_related("city").order_by("name")) if cities else POI.objects.none()
+        self.fields["poi"].label_from_instance = lambda poi: f"{poi.name} · {poi.city.name}" if poi.city_id else poi.name
+        self.fields["poi"].help_text = ("Places in this trip's cities." if cities
+                                        else "Add cities to the trip to pick a catalogue place; or type it below.")
+        self.fields["travelers"].queryset = trip.travelers.all()
+        self.fields["order"].required = False
+        self.fields["currency"].required = False
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
 
 
 class AddConfirmationForm(forms.Form):

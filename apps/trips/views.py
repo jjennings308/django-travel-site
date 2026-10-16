@@ -20,6 +20,7 @@ template.
 """
 
 from datetime import date
+from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -59,6 +60,7 @@ from .models import (
     TripGrant,
     TripRole,
     TransportLeg,
+    TripActivity,
     Confirmation,
     ConfirmationLink,
     can_create_trip,
@@ -291,6 +293,13 @@ def _trip_page_queryset(user):
                 queryset=Meal.objects.order_by("order", "id"),
                 to_attr="ordered_meals",
             ),
+            # A day's activities (tours, timed entries, tables…) with their place and who's
+            # going: two fixed queries.
+            Prefetch(
+                "days__activities",
+                queryset=TripActivity.objects.select_related("poi").prefetch_related("travelers"),
+                to_attr="ordered_activities",
+            ),
             # The template calls day.is_split and day.roster_summary per day, and
             # is_split only avoids a query when "travelers" is already in the
             # prefetch cache. Without this the page costs one extra query per
@@ -414,6 +423,9 @@ def _attach_confirmations(trip):
         for meal in getattr(day, "ordered_meals", []):
             meal.day = day
             items[("meal", meal.pk)] = meal
+        for activity in getattr(day, "ordered_activities", []):
+            activity.day = day
+            items[("tripactivity", activity.pk)] = activity
     for item in items.values():
         item.confirmation_list = []
     for confirmation in trip.confirmations.all():
@@ -670,6 +682,10 @@ def _edit_trip_travel_and_bookings(trip):
     for stay in stays:
         rows.append({"kind": "stay", "item": stay, "label": stay.name, "when": stay.check_in, "what": "Stay",
                      "confirmations": attached.get(("lodging", stay.pk), [])})
+    for activity in trip.activities.select_related("day"):
+        rows.append({"kind": "activity", "item": activity, "label": activity.title, "when": activity.day.date,
+                     "what": activity.get_kind_display(),
+                     "confirmations": attached.get(("tripactivity", activity.pk), [])})
     model_names = {"section": "section", "meal": "meal"}
     for kind, model_name in model_names.items():
         ids = [pk for (name, pk) in attached if name == model_name]
@@ -1731,6 +1747,44 @@ def day_add_travel(request, pk, day_pk):
     return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"))
 
 
+# ---- activities on a day (tours, timed entries, tickets, tables, car hire) ----------------
+@login_required
+def activity_edit(request, pk, day_pk, activity_pk=None):
+    """Add or edit an activity on a day (editors). Its confirmations are added on the same
+    page, like a leg's."""
+    from .forms import TripActivityForm
+    trip, day = _editable_day(request, pk, day_pk)
+    activity = None
+    if activity_pk is not None:
+        activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day), pk=activity_pk)
+    form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day), trip=trip)
+    back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#activities")
+    if request.method == "POST" and form.is_valid():
+        saved = form.save()
+        messages.success(request, f"Saved {saved.title}.")
+        if activity is None:  # stay on its page so a confirmation can be added straight away
+            return redirect(reverse("trips:activity_edit", args=[trip.pk, day.pk, saved.pk]) + "?next=" + quote(back))
+        return redirect(back)
+    context = {"trip": trip, "day": day, "activity": activity, "form": form, "next": back}
+    if activity is not None:
+        context.update(_item_confirmations_context(request, trip, "activity", activity))
+    return render(request, "trips/activity_form.html", context)
+
+
+@login_required
+def activity_delete(request, pk, day_pk, activity_pk):
+    trip, day = _editable_day(request, pk, day_pk)
+    activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day), pk=activity_pk)
+    back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#activities")
+    if request.method == "POST":
+        title = activity.title
+        activity.delete()
+        messages.success(request, f"Deleted {title}. Its confirmations are kept.")
+        return redirect(back)
+    return render(request, "trips/activity_confirm_delete.html",
+                  {"trip": trip, "day": day, "activity": activity, "next": back})
+
+
 # ---- confirmations: attached to items like comments (trips:item_confirmations) ------------
 @login_required
 def confirmation_edit(request, pk, confirmation_pk=None):
@@ -1866,7 +1920,7 @@ def task_offer(request, pk):
         return redirect(back)
     from . import booking_tasks
     for task in tasks:
-        item = task.leg or task.stay
+        item = task.leg or task.stay or task.activity
         task.item_label = booking_tasks.label(item) if item else ""
     return render(request, "trips/task_offer.html", {"trip": trip, "tasks": tasks, "next": back,
                                                       "ids": ",".join(str(t.pk) for t in tasks)})
@@ -1882,13 +1936,18 @@ def task_link(request, pk, task_pk):
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
     if request.POST.get("leg"):
-        task.leg, task.stay = get_object_or_404(trip.transport.all(), pk=request.POST["leg"]), None
-        task.save(update_fields=["leg", "stay"])
+        task.leg, task.stay, task.activity = get_object_or_404(trip.transport.all(), pk=request.POST["leg"]), None, None
+        task.save(update_fields=["leg", "stay", "activity"])
         messages.success(request, f"“{task.title}” is now about {booking_tasks.label(task.leg)}.")
     elif request.POST.get("stay"):
-        task.stay, task.leg = get_object_or_404(trip.lodging.all(), pk=request.POST["stay"]), None
-        task.save(update_fields=["leg", "stay"])
+        task.stay, task.leg, task.activity = get_object_or_404(trip.lodging.all(), pk=request.POST["stay"]), None, None
+        task.save(update_fields=["leg", "stay", "activity"])
         messages.success(request, f"“{task.title}” is now about {task.stay.name}.")
+    elif request.POST.get("activity"):
+        task.activity = get_object_or_404(trip.activities.all(), pk=request.POST["activity"])
+        task.leg = task.stay = None
+        task.save(update_fields=["leg", "stay", "activity"])
+        messages.success(request, f"“{task.title}” is now about {task.activity.title}.")
     elif request.POST.get("dismiss", "").strip():
         line = BookingTask.NOT_ABOUT + request.POST["dismiss"].strip()[:200]
         task.notes = "\n".join(n for n in (task.notes.rstrip(), line) if n)
