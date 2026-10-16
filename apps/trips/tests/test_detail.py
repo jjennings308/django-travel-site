@@ -29,6 +29,7 @@ from apps.trips.models import (
     Lodging,
     Meal,
     Section,
+    TaskOption,
     TransportLeg,
     Traveler,
     Trip,
@@ -469,7 +470,7 @@ class QueryCountTests(DetailFixture):
         # * 1 for the trip's catalogue cities (the chips under the title). Each
         #   day's city comes with the days query (select_related), so it is free.
         #
-        # 26 in all on this site, four of which are the site shell's, added to
+        # 27 in all on this site, four of which are the site shell's, added to
         # every page — UserTimezoneMiddleware (user_preferences),
         # UserThemeMiddleware (account_settings), and the travel_preferences and
         # rewards context processors. None of them depends on the trip.
@@ -484,12 +485,18 @@ class QueryCountTests(DetailFixture):
         # * 2 for contacts and info notes linked to items (U4): the trip's item links (with both
         #   content types) and its info notes. Resolved in Python (itinerary.attach_links), so
         #   fixed however many links. Raised deliberately from 24 to 26.
+        # * 1 for the booking tasks' options (decisions, U6), however many tasks and options.
+        #   Raised deliberately from 26 to 27.
         stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
                                       check_out=self.trip.start_date + timedelta(days=2))
         Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").link(stay)
         # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
         # Python from the rows above (apps/trips/booking_tasks.py): no query of their own.
         BookingTask.objects.create(trip=self.trip, title="Hotel deposit", stay=stay)
+        for n in range(3):
+            decision = BookingTask.objects.create(trip=self.trip, title=f"Pick hotel {n}", kind="decide")
+            for m in range(3):
+                TaskOption.objects.create(task=decision, title=f"Option {n}-{m}", chosen=(m == 0), order=m)
         desk = Contact.objects.create(trip=self.trip, name="Front desk", phone="+1 555 0100")
         rules = TripInfo.objects.create(trip=self.trip, title="Ticket rules", body="Regional only.")
         ItemLink.link(desk, stay)
@@ -502,7 +509,7 @@ class QueryCountTests(DetailFixture):
                                check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
         from django.contrib.contenttypes.models import ContentType
         ContentType.objects.get_for_models(Trip, Day, Section, BookingTask)  # the comments' kinds, as in a warm process
-        with self.assertNumQueries(26):
+        with self.assertNumQueries(27):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

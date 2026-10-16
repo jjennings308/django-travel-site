@@ -364,6 +364,8 @@ def _trip_page_queryset(user):
             "infos",
             Prefetch("item_links", queryset=ItemLink.objects.select_related("source_type", "target_type")),
             "booking_tasks",
+            # A decision's options (U6): one fixed query for every task's.
+            "booking_tasks__options",
             "travelers",
         )
         .annotate(
@@ -405,6 +407,7 @@ def trip_detail(request, pk):
     stray_stays = itinerary.attach_stays(days, list(trip.lodging.all()))
     not_booked = booking_tasks.not_booked(trip)
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
+    open_decisions = [task for task in open_tasks if task.kind == task.Kind.DECIDE]
     itinerary.overview(days, not_booked, open_tasks)
     itinerary.timeline(days)
     itinerary.attach_links(trip, days)
@@ -419,6 +422,7 @@ def trip_detail(request, pk):
             "stray_legs": stray_legs,
             "stray_stays": stray_stays,
             "open_tasks": open_tasks,
+            "open_decisions": open_decisions,
             "travel_tables_pending": travel_tables_pending,
             "not_booked": not_booked,
             "confirmation_groups": confirmation_groups(trip),
@@ -637,7 +641,7 @@ def trip_edit(request, pk):
     trip = _readable_trip(request, pk, "edit")
     form = TripForm(request.POST or None, instance=trip)
     traveler_form = AddTravelerForm(request.POST or None)
-    formsets = trip_subsection_formsets(trip, request.POST or None)
+    formsets = trip_subsection_formsets(trip, request.POST or None, initial=_stay_from_option(request, trip))
 
     if request.method == "POST":
         # Evaluate every one of these before deciding: `all()` short-circuits,
@@ -678,6 +682,21 @@ def trip_edit(request, pk):
             **_edit_trip_travel_and_bookings(trip),
         },
     )
+
+
+def _stay_from_option(request, trip):
+    """Edit trip's blank stay row pre-filled from a decision's chosen option
+    (``?stay_from_option=<pk>``, U6): name from its title, notes from its detail and link.
+    Nothing is saved until the editor saves the page."""
+    from .models import TaskOption
+    pk = request.GET.get("stay_from_option", "")
+    if request.method != "GET" or not pk.isdigit():
+        return None
+    option = TaskOption.objects.filter(task__trip=trip, pk=pk).first()
+    if option is None:
+        return None
+    notes = "\n".join(part for part in (option.detail, option.url) if part)
+    return {"lodging": [{"name": option.title[:200], "notes": notes, "currency": option.currency or "USD"}]}
 
 
 def _edit_trip_travel_and_bookings(trip):
@@ -1784,7 +1803,16 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     activity = None
     if activity_pk is not None:
         activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day), pk=activity_pk)
-    form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day), trip=trip)
+    initial = {}
+    if activity is None and request.GET.get("from_option", "").isdigit():
+        # Pre-filled from a decision's option (U6, trips:option_add); nothing saved until submit.
+        from .models import TaskOption
+        option = TaskOption.objects.filter(task__trip=trip, pk=request.GET["from_option"]).first()
+        if option is not None:
+            initial = {"title": option.title, "notes": "\n".join(p for p in (option.detail, option.url) if p),
+                       "est_cost": option.est_cost, "currency": option.currency}
+    form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day),
+                            initial=initial, trip=trip)
     back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#activities")
     if request.method == "POST" and form.is_valid():
         saved = form.save()
@@ -1811,6 +1839,60 @@ def activity_delete(request, pk, day_pk, activity_pk):
         return redirect(back)
     return render(request, "trips/activity_confirm_delete.html",
                   {"trip": trip, "day": day, "activity": activity, "next": back})
+
+
+# ---- decisions: tasks with options (trip-page UX plan, U6) ----------------------------------
+@login_required
+def task_options(request, pk, task_pk):
+    """A decision's options (editors): add, edit, reorder and delete them, and choose one (or
+    none). Choosing creates nothing; the trip page then offers to add it as a stay or activity."""
+    from .forms import TaskOptionFormSet
+    trip = _readable_trip(request, pk, "edit")
+    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
+    formset = TaskOptionFormSet(request.POST or None, instance=task, prefix="options")
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
+    if request.method == "POST" and formset.is_valid():
+        with transaction.atomic():
+            formset.save()
+            chosen = request.POST.get("chosen", "")
+            task.options.update(chosen=False)
+            if chosen.isdigit():
+                task.options.filter(pk=chosen).update(chosen=True)
+            elif chosen.startswith("new-"):
+                # A row added in this same submit: its index among the formset's forms.
+                index = chosen[4:]
+                form = formset.forms[int(index)] if index.isdigit() and int(index) < len(formset.forms) else None
+                if form is not None and form.instance.pk:
+                    task.options.filter(pk=form.instance.pk).update(chosen=True)
+            if task.kind != task.Kind.DECIDE and task.options.exists():
+                task.kind = task.Kind.DECIDE
+                task.save(update_fields=["kind"])
+        messages.success(request, f"Saved the options for “{task.title}”.")
+        return redirect(back)
+    chosen_pk = next((o.pk for o in task.options.all() if o.chosen), None)
+    return render(request, "trips/task_options.html", {"trip": trip, "task": task, "formset": formset,
+                                                       "chosen_pk": chosen_pk, "next": back,
+                                                       "days": list(trip.days.order_by("day_number"))})
+
+
+@login_required
+def option_add(request, pk, option_pk):
+    """Add a decision's option as a stay or an activity (U6): redirects to Edit trip with the
+    blank stay row pre-filled, or to the new-activity page of the task's day (or ``?day=``),
+    pre-filled. Saves nothing itself."""
+    from .models import TaskOption
+    trip = _readable_trip(request, pk, "edit")
+    option = get_object_or_404(TaskOption.objects.filter(task__trip=trip).select_related("task"), pk=option_pk)
+    if request.GET.get("as") == "stay":
+        return redirect(reverse("trips:trip_edit", args=[trip.pk]) + f"?stay_from_option={option.pk}#lodging")
+    day_pk = request.GET.get("day") or option.task.day_id
+    day = get_object_or_404(trip.days.all(), pk=day_pk) if day_pk else None
+    if day is None:
+        messages.info(request, "Pick the day it happens on.")
+        return redirect(reverse("trips:task_options", args=[trip.pk, option.task_id]))
+    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    return redirect(reverse("trips:activity_new", args=[trip.pk, day.pk])
+                    + f"?from_option={option.pk}&next={quote(back)}")
 
 
 # ---- contacts and info notes linked to items (trip-page UX plan, U4) -------------------------

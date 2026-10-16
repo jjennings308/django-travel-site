@@ -311,10 +311,10 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (26 here, 4 of them from this site's
+- **The detail page** holds a fixed query count (27 here, 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
-  travellers; two are the days' activities and their travellers; two are item links and info notes —
-  fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
+  travellers; two are the days' activities and their travellers; two are item links and info notes;
+  one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
   so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
@@ -353,6 +353,15 @@ that matter most:
   `next` when it's on this site (Edit trip's days table passes its own address), else to
   `trip_detail#day-N`, which opens that day (`views._day_back`). Saving a section returns to the day
   page's `#on-this-day`. Edit trip keeps its bulk views; both edit the same records.
+- **Decisions are tasks with options** (trip-page UX plan, U6; trips 0032): `BookingTask.kind` is
+  `book` (default) or `decide`; a decision's `TaskOption`s (title, detail, url, est_cost + currency,
+  order; at most one `chosen` per task — partial unique index `taskoption_one_chosen`) are edited on
+  `trips:task_options` (`/trips/<pk>/tasks/<id>/options/`, editors; saving options makes a task a
+  decision; the chosen radio is separate from the rows). Reference → Still to book shows "Decide: …"
+  with its options (chosen ✓) and Needs attention counts decisions; the booklet prints them too.
+  Choosing creates nothing: `trips:option_add` redirects to Edit trip with the blank stay row
+  pre-filled (`?stay_from_option=`) or to the day's new-activity page pre-filled (`?from_option=`);
+  nothing is saved until that page is. The trip page prefetches `booking_tasks__options` (one query).
 - **Contacts and info notes link to items** (trip-page UX plan, U4; trips 0031): `TripInfo` (trip-wide
   know-how: title, body paragraphs, url, order) and `Contact` (now with `address`, `url`) are the
   *sources*; `ItemLink` links one to a *target* of the same trip — a leg, stay, activity, meal, a

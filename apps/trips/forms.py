@@ -32,6 +32,7 @@ from .models import (
     Contact,
     ItemLink,
     TripInfo,
+    TaskOption,
     Day,
     Lodging,
     Meal,
@@ -977,6 +978,27 @@ class TripInfoForm(_LinksMixin, forms.ModelForm):
         return self.cleaned_data.get("order") or 0
 
 
+class TaskOptionForm(forms.ModelForm):
+    """One option of a decision (``trips:task_options``, U6). Which one is chosen is a separate
+    radio on the page, so a submit can't choose two."""
+
+    class Meta:
+        model = TaskOption
+        fields = ["title", "detail", "url", "est_cost", "currency", "order"]
+        widgets = {"detail": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+        self.fields["currency"].required = False
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
+
+
+TaskOptionFormSet = inlineformset_factory(BookingTask, TaskOption, form=TaskOptionForm, extra=2, can_delete=True)
+
+
 class QuickContactForm(forms.Form):
     """Create a contact from an item's Contacts & info block."""
     name = forms.CharField(max_length=200)
@@ -1003,6 +1025,7 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         model = BookingTask
         fields = [
             "title",
+            "kind",
             "priority",
             "due",
             "due_note",
@@ -1018,6 +1041,9 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
         labels = {"leg": "About leg", "stay": "About stay", "activity": "About activity"}
 
+    def clean_kind(self):
+        return self.cleaned_data.get("kind") or BookingTask.Kind.BOOK
+
     def clean(self):
         cleaned = super().clean()
         if sum(1 for name in ("leg", "stay", "activity") if cleaned.get(name)) > 1:
@@ -1026,6 +1052,8 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Kind defaults to "book" when a post leaves it out (older forms, the admin inline, scripts).
+        self.fields["kind"].required = False
         # `order` has a model default of 0 but is not blank, so a ModelForm
         # would make it a *required* field — asking somebody to type 0 into a
         # sort column to save a booking task. Left blank it falls back to the
@@ -1129,7 +1157,7 @@ TRIP_SUBSECTION_FORMSETS = (
 )
 
 
-def trip_subsection_formsets(trip, data=None):
+def trip_subsection_formsets(trip, data=None, initial=None):
     """Build the trip-level formsets in page order.
 
     Returns ``(key, label, formset)`` triples so the view and the template agree
@@ -1138,8 +1166,9 @@ def trip_subsection_formsets(trip, data=None):
     ``extra=1`` gives one blank row to fill in. An untouched blank row is skipped
     by Django rather than saved as a row of NULLs, so it costs the user nothing.
     """
+    initial = initial or {}
     return [
-        (key, label, formset_cls(data=data, instance=trip, prefix=key))
+        (key, label, formset_cls(data=data, instance=trip, prefix=key, initial=initial.get(key)))
         for key, label, formset_cls in TRIP_SUBSECTION_FORMSETS
     ]
 

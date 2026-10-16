@@ -19,7 +19,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips.models import (BookingTask, Confirmation, Contact, Day, ItemLink, Lodging, Meal, Section,
-                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripInfo, TripRole)
+                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -120,6 +120,11 @@ def build_trip():
     BookingTask.objects.create(trip=trip, title="Hotel Augusta deposit", priority=1, stay=augusta,
                                due=date(2027, 8, 1))
     BookingTask.objects.create(trip=trip, title="Already done", done=True)
+    decide = BookingTask.objects.create(trip=trip, title="Augsburg accommodation", kind="decide", priority=1)
+    TaskOption.objects.create(task=decide, title="Hotel Augusta", detail="Old town, 6 rooms", est_cost=Decimal("140"),
+                              currency="EUR", url="https://example.com/augusta", order=1, chosen=True)
+    TaskOption.objects.create(task=decide, title="Steigenberger Drei Mohren", est_cost=Decimal("210"), currency="EUR",
+                              order=2)
     return trip
 
 

@@ -1739,7 +1739,12 @@ class BookingTask(models.Model):
         MEDIUM = 3, "Medium"
         LOW = 4, "Low"
 
+    class Kind(models.TextChoices):
+        BOOK = "book", "Book"
+        DECIDE = "decide", "Decide"  # a choice between options (TaskOption), e.g. which hotel
+
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="booking_tasks")
+    kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.BOOK)
     day = models.ForeignKey(
         Day,
         on_delete=models.SET_NULL,
@@ -1813,6 +1818,32 @@ class BookingTask(models.Model):
         """Names of items this task was marked as not being about (lower case)."""
         return {line[len(self.NOT_ABOUT):].strip().lower() for line in self.notes.splitlines()
                 if line.startswith(self.NOT_ABOUT)}
+
+
+class TaskOption(models.Model):
+    """One option of a decision (``BookingTask.kind == "decide"``, trip-page UX plan U6): the
+    Augsburg hotels to choose between. At most one is ``chosen``; choosing creates nothing, it
+    offers to add the choice as a stay or an activity."""
+
+    task = models.ForeignKey(BookingTask, on_delete=models.CASCADE, related_name="options")
+    title = models.CharField(max_length=200)
+    detail = models.TextField(blank=True)
+    url = models.URLField(blank=True, verbose_name="link")
+    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    currency = models.CharField(max_length=3, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    chosen = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "trips_taskoption"
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["task"], condition=Q(chosen=True), name="taskoption_one_chosen"),
+        ]
+
+    def __str__(self):
+        return self.title
 
 
 # --------------------------------------------------------------------------

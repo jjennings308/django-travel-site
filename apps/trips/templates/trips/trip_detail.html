@@ -90,6 +90,7 @@
         <span class="card-kicker">Needs attention</span>
         {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
         {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
+        {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
         {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
         {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
       </p>
@@ -427,7 +428,7 @@
           <li class="px-4 py-2.5">
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {% if task.priority == 1 %}<span class="badge badge-critical">{{ task.get_priority_display }}</span>{% elif task.priority == 2 %}<span class="badge badge-high">{{ task.get_priority_display }}</span>{% elif task.priority == 3 %}<span class="badge badge-medium">{{ task.get_priority_display }}</span>{% else %}<span class="badge badge-low">{{ task.get_priority_display }}</span>{% endif %}
-              <span class="font-medium text-zinc-900">{{ task.title }}</span>
+              <span class="font-medium text-zinc-900">{% if task.kind == "decide" %}Decide: {% endif %}{{ task.title }}</span>
               {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}">{{ task.item_info.label }}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</span>
               {% elif task.day %}<a class="link-quiet text-zinc-500" href="#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
               {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
@@ -441,6 +442,19 @@
               </div>
             {% endif %}
             {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
+            {% if task.options.all %}
+              {# A decision's options (U6): the chosen one marked; editors can add it as a stay or activity. #}
+              <ul class="mt-1.5 space-y-1 border-l-2 border-zinc-200 pl-3">
+                {% for option in task.options.all %}
+                  <li class="{% if option.chosen %}font-medium text-zinc-900{% else %}text-zinc-600{% endif %}">
+                    {% if option.chosen %}✓ {% endif %}{{ option.title }}{% if option.est_cost is not None %} <span class="text-zinc-500">~{{ option.est_cost }} {{ option.currency }}</span>{% endif %}{% if option.url %} <a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">↗</a>{% endif %}
+                    {% if option.detail %}<span class="block text-xs text-zinc-500">{{ option.detail }}</span>{% endif %}
+                    {% if option.chosen and can_edit %}<span class="block text-xs"><a class="link-quiet font-medium" href="{% url 'trips:option_add' trip.pk option.pk %}?as=stay">Add as a stay</a> · <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}">Add as an activity…</a></span>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            {% if can_edit %}<p class="mt-1 text-xs"><a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23still-to-book">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a></p>{% endif %}
             {% with thread=comments_by_target.task|dictkey:task.pk %}
               {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}{% endif %}
             {% endwith %}
