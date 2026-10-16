@@ -1,7 +1,7 @@
 {% comment %}
 One transport leg as a compact row, used by the trip-wide "Getting around" list AND on its day
 (in its travel section or the day's automatic block), so the two views show the same record the
-same way. Pass leg=; show_day=True adds a "Day N" link (leg.on_day, set by views._place_legs);
+same way. Pass leg=; show_day=True adds a "Day N" link (leg.on_day, set by itinerary.place_legs);
 can_edit adds the Edit link. Times come from the leg's own *_local_* helpers, never |date after a
 zone filter.
 {% endcomment %}

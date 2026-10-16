@@ -1,6 +1,6 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: planning only (2026-10-16). Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1 done (2026-10-16, branch `u1-booklet-guard`); U2–U7 planned (2026-10-16). Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -105,6 +105,14 @@ REFERENCE
 ---
 
 ## U1 — Guard the booklet, share the day assembly
+
+**Status: done** on branch `u1-booklet-guard` (no migrations; query count unchanged at 24). As built:
+`apps/trips/itinerary.py` holds `place_legs` (moved unchanged from `views._place_legs`),
+`travel_total` (its wording, now reusable) and `attach_stays` (moved from `pdf.booklet_context`).
+The snapshot (`apps/trips/tests/snapshots/booklet.html`, 501 lines) was recorded *before* the move and
+still matches after it. It captures the HTML the `trip_pdf` view hands WeasyPrint (`render_pdf`
+mocked, "printed" date pinned) rather than a separate `booklet_html` helper, so the test goes through
+the same path as a download.
 
 Goal: make the web free to change without touching the booklet.
 

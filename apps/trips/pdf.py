@@ -2,8 +2,9 @@
 WeasyPrint, not a capture of the web page.
 
 ``booklet_context(trip)`` adds what a reader on paper needs to the trip page's prefetched
-rows (no extra queries beyond the page's): each day's stay ("Staying: …", check-in / check-out),
-its legs in order, and the at-a-glance rows for the cover. WeasyPrint needs the Pango and
+rows (no extra queries beyond the page's): each day's stay ("Staying: …", check-in / check-out,
+from ``itinerary.attach_stays``; the legs per day come from ``itinerary.place_legs``, which the
+view runs) and the open tasks for the reference pages. WeasyPrint needs the Pango and
 HarfBuzz system libraries; ``render_pdf`` raises ``PdfUnavailable`` when they're missing so the
 view can say so instead of failing with a 500.
 """
@@ -21,21 +22,10 @@ class PdfUnavailable(Exception):
 
 
 def booklet_context(trip):
+    from .itinerary import attach_stays
     stays = list(trip.lodging.all())
     days = list(trip.days.all())
-    for day in days:
-        day.stay = None
-        day.checking_in = []
-        day.checking_out = []
-        if not day.date:
-            continue
-        for stay in stays:
-            if stay.check_in <= day.date < stay.check_out:
-                day.stay = stay
-            if stay.check_in == day.date:
-                day.checking_in.append(stay)
-            if stay.check_out == day.date:
-                day.checking_out.append(stay)
+    attach_stays(days, stays)
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
     return {"days": days, "stays": stays, "open_tasks": open_tasks}
 

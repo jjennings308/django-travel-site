@@ -247,7 +247,7 @@ that matter most:
   section of the day whose date is the leg's `date`: checked in `clean()`, cleared by `save()` if
   the date or section type no longer fits, so the leg falls back instead of vanishing), else in the
   day's automatic "Getting around" block; legs on a date that is no day of the trip are flagged for
-  editors. `views._place_legs` does the grouping in Python from the existing `transport` /
+  editors. `itinerary.place_legs` does the grouping in Python from the existing `transport` /
   `days__sections` prefetch (`section.placed_legs`, `day.auto_legs`, `day.travel_total` "2 legs ·
   ~3 h 15 min") — no new queries. `stage` is derived ("planned" without times, "scheduled" with,
   "booked" once a confirmation covers it); `est_duration` holds the rough time (`logistics.rough_duration`
@@ -315,6 +315,15 @@ that matter most:
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
+- **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
+  the trip page's prefetch, used by both the web page and the booklet — `place_legs` (legs per day,
+  placement, `travel_total`, stray legs) and `attach_stays` (`day.stay` = where you sleep that night,
+  `checking_in` / `checking_out`). Put new per-day derivations there, not in a view or a template.
+- **The booklet is snapshot-guarded:** `tests/test_booklet_snapshot.py` renders the booklet HTML for a
+  fixture with every item kind and compares it to `tests/snapshots/booklet.html` (whitespace
+  collapsed; no database ids in it). Web changes must leave it alone; when a phase deliberately
+  changes the booklet, rerun with `UPDATE_SNAPSHOTS=1 python manage.py test
+  apps.trips.tests.test_booklet_snapshot`, review the diff and commit the snapshot.
 - **PDF booklet:** "Download PDF" on the trip page → `trips:trip_pdf` (`/trips/<pk>/booklet.pdf`), anyone
   who can see the trip, never public (it has confirmation numbers). Its own print template
   `trips/pdf/booklet.html` (US Letter, running header with trip and day, page X of Y; cover, days at a
