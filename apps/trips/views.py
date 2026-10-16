@@ -361,6 +361,7 @@ def trip_detail(request, pk):
     not_booked = booking_tasks.not_booked(trip)
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
     itinerary.overview(days, not_booked, open_tasks)
+    itinerary.timeline(days)
     opened = itinerary.open_day(days, django_timezone.localdate())
     return render(
         request,
@@ -455,8 +456,8 @@ def _attach_confirmations(trip):
 
 
 def _item_anchor(item):
-    """The trip page id of an item's card (legs, stays, activities), else of its day."""
-    for model, prefix in ((TransportLeg, "leg"), (Lodging, "stay"), (TripActivity, "activity")):
+    """The trip page id of an item's row or card (legs, stays, activities, meals), else of its day."""
+    for model, prefix in ((TransportLeg, "leg"), (Lodging, "stay"), (TripActivity, "activity"), (Meal, "meal")):
         if isinstance(item, model):
             return f"{prefix}-{item.pk}"
     day = getattr(item, "day", None)

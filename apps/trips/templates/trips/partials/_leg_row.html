@@ -1,10 +1,27 @@
 {% comment %}
 One transport leg as a compact row, used by the trip-wide "Getting around" list AND on its day
 (in its travel section or the day's automatic block), so the two views show the same record the
-same way. Pass leg=; show_day=True adds a "Day N" link (leg.on_day, set by itinerary.place_legs);
+same way. Pass leg=; compact=True time="…" gives the day timeline's one-line row (U3); show_day=True adds a "Day N" link (leg.on_day, set by itinerary.place_legs);
 can_edit adds the Edit link. Times come from the leg's own *_local_* helpers, never |date after a
 zone filter.
 {% endcomment %}
+{% if compact %}
+{# Compact: one timeline row on its day (U3); pass time=. Same record, same anchor. #}
+<div class="timeline-row{% if leg.is_planned %} opacity-80{% endif %}" id="leg-{{ leg.pk }}">
+  <div class="timeline-time">{{ time }}</div>
+  <div class="min-w-0">
+    <p><span aria-hidden="true">{{ leg.icon }}</span> <span class="font-medium text-zinc-900">{{ leg.origin }} → {{ leg.destination }}</span>
+      <span class="text-zinc-500">{% if leg.operator or leg.service_number %}{{ leg.operator }} {{ leg.service_number }} · {% endif %}{% if leg.is_planned %}planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}arrives {{ leg.arrival_local_str }}{% if leg.departs_on_a_different_day %} (+1 day){% endif %}{% if leg.duration_str %} · {{ leg.duration_str }}{% endif %}{% endif %}</span>
+      <span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
+      {% for c in leg.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}
+      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a>{% endif %}
+    </p>
+    {% if leg.cost is not None %}<p class="text-sm text-zinc-500">{{ leg.cost }} {{ leg.currency }}</p>{% endif %}
+    {% if leg.notes %}<p class="text-sm text-zinc-500">{{ leg.notes|linebreaksbr }}</p>{% endif %}
+    {% if leg.open_tasks %}<p class="text-sm text-amber-700">Still to book: {% for task in leg.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+  </div>
+</div>
+{% else %}
 <div class="card leg-row{% if leg.is_planned %} opacity-75{% endif %}" id="leg-{{ leg.pk }}">
   <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
     <p class="card-title">
@@ -44,3 +61,4 @@ zone filter.
   {% if leg.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in leg.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
   {% if can_edit %}<p class="mt-2 flex gap-3 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a></p>{% endif %}
 </div>
+{% endif %}

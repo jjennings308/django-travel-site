@@ -15,6 +15,9 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
   ``day.attention``. Run after ``place_legs`` and ``attach_stays``.
 - ``open_day(days, today)``: which day the page opens on — today's during the trip, Day 1 before
   it, none after it.
+- ``timeline(days)``: each day's ``day.timeline`` (legs, activities and reserved meals in local
+  time order), ``day.any_time`` (untimed legs in their order, then untimed activities) and
+  ``day.food_ideas`` (meals with no reservation time) (U3). Run after ``place_legs``.
 """
 from .models import Section
 
@@ -87,6 +90,7 @@ def attach_stays(days, stays):
 
 
 MODE_ICONS = {"plane": "✈", "train": "🚆", "pov": "🚗", "rental_car": "🚙", "walking": "🚶", "other": "•"}
+ACTIVITY_ICONS = {"tour": "🧭", "entry": "🎟", "ticket": "🎫", "table": "🍽", "car_hire": "🚙", "other": "•"}
 
 
 def overview(days, not_booked=(), tasks=()):
@@ -140,3 +144,38 @@ def open_day(days, today):
     if today > last:
         return None
     return next((day for day in dated if day.date == today), None)
+
+
+def _fmt(clock):
+    return clock.strftime("%I:%M %p").lstrip("0")
+
+
+def timeline(days):
+    """Each day's timeline, Any time and Food ideas (see the module docstring). A leg's time is
+    its local departure where it leaves (never converted to the reader's zone); activities and
+    meals are wall-clock times on the day."""
+    for day in days:
+        timed, any_time = [], []
+        for leg in getattr(day, "day_legs", []):
+            leg.icon = MODE_ICONS.get(leg.mode, "•")
+            local = leg.departure_local
+            if local is not None:
+                timed.append({"kind": "leg", "item": leg, "time": local.time(), "label": leg.departure_local_str})
+            else:
+                any_time.append({"kind": "leg", "item": leg, "time": None, "label": ""})
+        activities = getattr(day, "ordered_activities", [])
+        for activity in activities:
+            activity.icon = ACTIVITY_ICONS.get(activity.kind, "•")
+            entry = {"kind": "activity", "item": activity, "time": activity.start_time, "label": activity.time_range}
+            (timed if activity.start_time else any_time).append(entry)
+        day.food_ideas = []
+        for meal in getattr(day, "ordered_meals", []):
+            if meal.reserved_time:
+                timed.append({"kind": "meal", "item": meal, "time": meal.reserved_time,
+                              "label": _fmt(meal.reserved_time)})
+            else:
+                day.food_ideas.append(meal)
+        rank = {"leg": 0, "activity": 1, "meal": 2}
+        timed.sort(key=lambda e: (e["time"], rank[e["kind"]]))
+        day.timeline = timed
+        day.any_time = any_time  # legs first (Meta order), then activities

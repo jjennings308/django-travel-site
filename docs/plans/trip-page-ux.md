@@ -1,6 +1,7 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1–U2 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`); U3–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U3 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`);
+U4–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -171,6 +172,13 @@ in Needs attention waits for U6. The Overview helpers (`overview`, `open_day`, `
   see no editor links.
 
 ## U3 — The day: stay line, timeline, narrative
+
+**Status: done** on branch `u3-day-timeline` (migration `trips 0030_meal_reserved_time`, one nullable
+column; query count unchanged at 24; tests `test_day_timeline.py`). As built: `itinerary.timeline`
+sets `day.timeline`, `day.any_time` and `day.food_ideas`; the compact leg row is `_leg_row.html` with
+`compact=True`. A travel section with no intro or reference rows shows nothing in the narrative (its
+legs are in the timeline). Meal confirmations now link to `#meal-N`. The booklet's one change: the
+Food row shows the reservation time — the snapshot diff was exactly that line ("7:30 PM").
 
 - **Day header line:** "Sleeping: <stay> · check in" (full stay card here on the check-in day: address,
   nights, rate, chips, notes, open tasks), "Sleeping: <stay>" on middle nights (links to the check-in

@@ -1300,6 +1300,9 @@ class Meal(models.Model):
         blank=True,
         help_text="How to book, when to book, booking reference",
     )
+    # A booked table's time, wall clock on the day (like activities). Set: the meal is in the
+    # day's timeline; blank: it's a food idea. (Trip-page UX plan, U3.)
+    reserved_time = models.TimeField(null=True, blank=True, verbose_name="reservation time")
     order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:

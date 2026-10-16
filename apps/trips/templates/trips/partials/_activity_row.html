@@ -1,0 +1,17 @@
+{% comment %}
+An activity as a timeline row on its day (U3). Pass activity= and time=. Its chips link to Reference.
+{% endcomment %}
+<div class="timeline-row" id="activity-{{ activity.pk }}">
+  <div class="timeline-time">{{ time }}</div>
+  <div class="min-w-0">
+    <p><span aria-hidden="true">{{ activity.icon }}</span> <span class="font-medium text-zinc-900">{{ activity.title }}</span>
+      <span class="text-zinc-500">{{ activity.get_kind_display }}{% if activity.provider %} · {{ activity.provider }}{% endif %}{% if activity.place_name %} · {% if activity.poi %}<a class="link-quiet" href="{% url 'locations:poi_detail' activity.poi.slug %}">{{ activity.poi.name }}</a>{% else %}{{ activity.place_text }}{% endif %}{% endif %}</span>
+      {% for c in activity.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}
+      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a>{% endif %}
+    </p>
+    {% if activity.travelers.all %}<p class="text-sm text-zinc-500">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% if activity.est_cost is not None %}<p class="text-sm text-zinc-500">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
+    {% if activity.notes %}<p class="text-sm text-zinc-500">{{ activity.notes|linebreaksbr }}</p>{% endif %}
+    {% if activity.open_tasks %}<p class="text-sm text-amber-700">Still to book: {% for task in activity.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+  </div>
+</div>

@@ -1127,6 +1127,7 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
         fields = [
             "name",
             "meal_type",
+            "reserved_time",
             "cuisine",
             "price_range",
             "why_recommended",
@@ -1136,7 +1137,9 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
         widgets = {
             "why_recommended": forms.Textarea(attrs={"rows": 2}),
             "reservation_notes": forms.Textarea(attrs={"rows": 2}),
+            "reserved_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
         }
+        help_texts = {"reserved_time": "A booked table's time: the meal joins the day's timeline. Blank: a food idea."}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

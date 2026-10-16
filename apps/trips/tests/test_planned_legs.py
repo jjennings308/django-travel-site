@@ -79,9 +79,10 @@ class PlannedLegTests(Fixture):
                                           destination_city=self.city["Augsburg"], notes="~3.5 hrs")
         self.client.force_login(self.editor)
         page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
-        # Phase A: both views use trips/partials/_leg_row.html ("Planned" badge, "· planned").
+        # Its day's timeline row (U3: _leg_row.html, compact): the "Planned" badge and "planned" detail.
+        self.assertContains(page, 'id="leg-%d"' % leg.pk, count=1)
         self.assertContains(page, "Planned")
-        self.assertContains(page, "· planned")
+        self.assertContains(page, '<span class="text-zinc-500">planned')
         data = self.client.get(reverse("trips:trip_map_data", args=[self.trip.pk])).json()
         line = [f for f in data["features"] if f["geometry"]["type"] == "LineString"][0]
         self.assertTrue(line["properties"]["planned"])
