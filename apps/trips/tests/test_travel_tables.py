@@ -119,14 +119,13 @@ class TripWideReviewTests(Fixture):
         self.client.force_login(User.objects.create_user("st", "st@example.com", "pw-1234-abcd"))
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
-    def test_banner_for_editors_while_arrow_rows_remain(self):
-        detail = reverse("trips:trip_detail", args=[self.trip.pk])
-        self.client.force_login(self.viewer)
-        self.assertNotContains(self.client.get(detail), self.url)
+    def test_link_on_edit_trip_while_arrow_rows_remain(self):
+        edit = reverse("trips:trip_edit", args=[self.trip.pk])
         self.client.force_login(self.editor)
-        self.assertContains(self.client.get(detail), self.url)
+        self.assertNotContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), self.url)
+        self.assertContains(self.client.get(edit), self.url)
         Section.objects.filter(pk__in=[self.bayern.pk, self.muc.pk]).update(section_type="travel")
-        self.assertNotContains(self.client.get(detail), self.url)  # only "possible" rows left
+        self.assertNotContains(self.client.get(edit), self.url)  # only "possible" rows left
 
 
 class CommandTests(Fixture):

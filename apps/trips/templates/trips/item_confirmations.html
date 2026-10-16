@@ -1,0 +1,21 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+One item's confirmations (trips:item_confirmations): a leg, stay, day's section or meal. Reached from Edit trip, the day page and the section page.
+{% endcomment %}
+{% block title %}Confirmations — {{ item_label }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Confirmations</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ item_label }}</h1>
+      <p class="page-subtitle">{% if confirm_kind == "leg" %}Journey{% elif confirm_kind == "stay" %}Stay{% elif confirm_kind == "meal" %}Meal{% else %}Plan for the day{% endif %}{% if confirm_item.day %} · Day {{ confirm_item.day.day_number }}{% endif %}</p>
+    </div>
+    <a class="btn-quiet" href="{{ next }}">Done</a>
+  </div>
+  {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
+{% endblock %}

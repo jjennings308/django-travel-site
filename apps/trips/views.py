@@ -60,6 +60,7 @@ from .models import (
     TripRole,
     TransportLeg,
     Confirmation,
+    ConfirmationLink,
     can_create_trip,
     role_capabilities,
     comment_kind,
@@ -303,9 +304,7 @@ def _trip_page_queryset(user):
             # What each confirmation covers (trip-items plan, Phase B): four fixed queries,
             # however many confirmations or items. Legs and stays get their confirmations from
             # these lists in Python (_attach_confirmations) rather than a reverse prefetch each.
-            "confirmations__legs",
-            "confirmations__stays",
-            Prefetch("confirmations__meals", queryset=Meal.objects.select_related("day")),
+            Prefetch("confirmations__links", queryset=ConfirmationLink.objects.select_related("content_type")),
             "confirmations__travelers",
             "contacts",
             "booking_tasks",
@@ -396,24 +395,34 @@ def trip_pdf(request, pk):
     return response
 
 
-CONFIRMATION_GROUPS = (("flight", "Flights"), ("train", "Trains"), ("stay", "Stays"), ("meal", "Meals"),
-                       ("other", "Other"))
+CONFIRMATION_GROUPS = (("flight", "Flights"), ("train", "Trains"), ("stay", "Stays"), ("activity", "Activities"),
+                       ("meal", "Meals"), ("other", "Other"))
 
 
 def _attach_confirmations(trip):
-    """Give each prefetched leg and stay its ``confirmation_list`` from the prefetched
-    confirmations (no query): the chip in both views, and ``leg.stage`` "booked"."""
-    legs = {leg.pk: leg for leg in trip.transport.all()}
-    stays = {stay.pk: stay for stay in trip.lodging.all()}
-    for item in list(legs.values()) + list(stays.values()):
+    """Resolve each prefetched confirmation's links against the items the page already has
+    (legs, stays, the days' sections and meals; no query): every item gets its
+    ``confirmation_list`` (chips; ``leg.stage`` "booked") and every confirmation its
+    ``_items`` (Quick reference's description, kind and date)."""
+    days = list(trip.days.all())
+    items = {("transportleg", leg.pk): leg for leg in trip.transport.all()}
+    items.update({("lodging", stay.pk): stay for stay in trip.lodging.all()})
+    for day in days:
+        for section in getattr(day, "ordered_sections", []):
+            section.day = day
+            items[("section", section.pk)] = section
+        for meal in getattr(day, "ordered_meals", []):
+            meal.day = day
+            items[("meal", meal.pk)] = meal
+    for item in items.values():
         item.confirmation_list = []
     for confirmation in trip.confirmations.all():
-        for leg in confirmation.legs.all():
-            if leg.pk in legs:
-                legs[leg.pk].confirmation_list.append(confirmation)
-        for stay in confirmation.stays.all():
-            if stay.pk in stays:
-                stays[stay.pk].confirmation_list.append(confirmation)
+        confirmation._items = []
+        for link in confirmation.links.all():
+            item = items.get((link.content_type.model, link.object_id))
+            if item is not None:
+                confirmation._items.append(item)
+                item.confirmation_list.append(confirmation)
 
 
 def confirmation_groups(trip):
@@ -628,8 +637,52 @@ def trip_edit(request, pk):
             "trip": trip,
             "days": _days_with_counts(trip),
             "is_create": False,
+            **_edit_trip_travel_and_bookings(trip),
         },
     )
+
+
+def _edit_trip_travel_and_bookings(trip):
+    """Edit trip's "Travel by day" (each day's legs, the add-a-leg form, add a travel section)
+    and "Bookings & confirmations" (every leg, stay and activity, plus sections and meals that
+    have a confirmation, with what's attached; loose confirmations). The view page only shows
+    them: all adding happens here."""
+    from .models import CONFIRMABLE, item_label
+    from .travel_tables import logistics_sections
+    from apps.trips.logistics import proposed_legs
+    days = list(trip.days.prefetch_related("sections").order_by("date", "day_number"))
+    legs = list(trip.transport.all())
+    stays = list(trip.lodging.all())
+    attached = {}
+    loose = []
+    for confirmation in trip.confirmations.prefetch_related("links__content_type"):
+        if not confirmation.links.all():
+            loose.append(confirmation)
+        for link in confirmation.links.all():
+            attached.setdefault((link.content_type.model, link.object_id), []).append(confirmation)
+    for day in days:
+        day.edit_legs = [leg for leg in legs if leg.date == day.date]
+        day.has_travel = any(s.section_type == Section.Type.TRAVEL for s in day.sections.all())
+    rows = []
+    for leg in legs:
+        rows.append({"kind": "leg", "item": leg, "label": item_label(leg), "when": leg.date,
+                     "what": leg.get_mode_display(), "confirmations": attached.get(("transportleg", leg.pk), [])})
+    for stay in stays:
+        rows.append({"kind": "stay", "item": stay, "label": stay.name, "when": stay.check_in, "what": "Stay",
+                     "confirmations": attached.get(("lodging", stay.pk), [])})
+    model_names = {"section": "section", "meal": "meal"}
+    for kind, model_name in model_names.items():
+        ids = [pk for (name, pk) in attached if name == model_name]
+        for item in CONFIRMABLE[kind].objects.filter(pk__in=ids).select_related("day"):
+            rows.append({"kind": kind, "item": item, "label": item_label(item), "when": item.day.date,
+                         "what": "Meal" if kind == "meal" else "Plan",
+                         "confirmations": attached[(model_name, item.pk)]})
+    rows.sort(key=lambda r: (r["when"] is None, r["when"] or date.min))
+    pending = any(any(p["strength"] == "arrow" for p in proposed_legs((s.content or {}).get("columns"),
+                                                                        (s.content or {}).get("rows")))
+                  for s in logistics_sections(trip))
+    return {"travel_days": days, "booking_rows": rows, "loose_confirmations": loose,
+            "leg_modes": TransportLeg.Mode.choices, "travel_tables_pending": pending}
 
 
 @login_required
@@ -1606,12 +1659,10 @@ def leg_edit(request, pk, leg_pk):
             messages.info(request, f"Added the return: {form.return_leg.origin} → {form.return_leg.destination}.")
         return redirect(_back(request, _leg_back(trip, leg)))
     from .forms import COMMON_ZONE_SUGGESTIONS
-    attached = list(leg.confirmations.prefetch_related("legs", "stays"))
     return render(request, "trips/leg_form.html", {
         "trip": trip, "leg": leg, "form": form, "next": _back(request, _leg_back(trip, leg)),
         "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
-        "attached": attached,
-        "attachable": [c for c in trip.confirmations.prefetch_related("legs", "stays") if c not in attached],
+        **_item_confirmations_context(request, trip, "leg", leg),
         "open_tasks": list(leg.booking_tasks.filter(done=False)),
     })
 
@@ -1677,36 +1728,32 @@ def day_add_travel(request, pk, day_pk):
     Section.objects.create(day=day, section_type=Section.Type.TRAVEL, title="Getting around",
                            order=(last or 0) + 1, content={})
     messages.success(request, f"Added a travel section to day {day.day_number}.")
-    return redirect(reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"))
 
 
-# ---- confirmations: attached to the items they confirm (trip-items plan, Phase B) ----------
+# ---- confirmations: attached to items like comments (trips:item_confirmations) ------------
 @login_required
 def confirmation_edit(request, pk, confirmation_pk=None):
-    """Add or edit a booking reference and tick what it covers. ``?leg=`` / ``?stay=`` on a
-    new one pre-ticks the item it was added from."""
+    """A booking reference's own details. ``confirmation_new`` is for a loose one (insurance,
+    a rail pass); others are added from their item."""
     from .forms import ConfirmationEditForm
     trip = _readable_trip(request, pk, "edit")
     confirmation = None
     if confirmation_pk is not None:
         confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
-    initial = {}
-    if confirmation is None:
-        if request.GET.get("leg", "").isdigit():
-            initial["legs"] = list(trip.transport.filter(pk=request.GET["leg"]).values_list("pk", flat=True))
-        if request.GET.get("stay", "").isdigit():
-            initial["stays"] = list(trip.lodging.filter(pk=request.GET["stay"]).values_list("pk", flat=True))
-    form = ConfirmationEditForm(request.POST or None, instance=confirmation or Confirmation(trip=trip),
-                                initial=initial, trip=trip)
-    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#quick-reference")
+    form = ConfirmationEditForm(request.POST or None, instance=confirmation or Confirmation(trip=trip), trip=trip)
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#bookings")
     if request.method == "POST" and form.is_valid():
-        from . import booking_tasks
-        before = booking_tasks.confirmed_items(trip)
         saved = form.save()
         messages.success(request, f"Saved confirmation {saved.confirmation_number}.")
-        return redirect(_task_offer_or(trip, booking_tasks.offer_for(trip, before), back))
+        return redirect(back)
+    covers = []
+    if confirmation is not None:
+        from .models import confirmable_kind, item_label
+        for item in confirmation.covered_items():
+            covers.append({"label": item_label(item), "kind": confirmable_kind(item), "item": item})
     return render(request, "trips/confirmation_form.html", {
-        "trip": trip, "form": form, "confirmation": confirmation, "next": back,
+        "trip": trip, "form": form, "confirmation": confirmation, "next": back, "covers": covers,
     })
 
 
@@ -1724,27 +1771,68 @@ def confirmation_delete(request, pk, confirmation_pk):
                   {"trip": trip, "confirmation": confirmation, "next": back})
 
 
+def _item_confirmations_context(request, trip, kind, item):
+    """What the confirmations block needs (leg page and ``item_confirmations``): the item's
+    confirmations, the trip's others it could join, and the add form."""
+    from .forms import AddConfirmationForm
+    attached = list(Confirmation.for_item(item).prefetch_related("links__content_type"))
+    others = [c for c in trip.confirmations.prefetch_related("links__content_type") if c not in attached]
+    return {"confirm_kind": kind, "confirm_item": item, "attached": attached, "attachable": others,
+            "add_form": AddConfirmationForm()}
+
+
 @login_required
-@require_POST
-def leg_confirmation(request, pk, leg_pk):
-    """Attach an existing confirmation of this trip to a leg, or detach one (never deletes it)."""
-    trip = _readable_trip(request, pk, "edit")
-    leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
-    confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
+def item_confirmations(request, pk, kind, item_pk):
+    """The confirmations on one item of the trip — a leg, a stay, a day's section or a meal —
+    added and removed here, the way comments are on what they're about (editors only).
+    Adding a number the trip already has links the item to that confirmation."""
     from . import booking_tasks
-    offer = []
-    if request.POST.get("action") == "detach":
-        confirmation.legs.remove(leg)
-        messages.success(request, f"Detached {confirmation.confirmation_number} from this leg (it's kept).")
-    else:
+    from .forms import AddConfirmationForm
+    from .models import CONFIRMABLE, item_label, item_trip_id
+    model = CONFIRMABLE.get(kind)
+    if model is None:
+        raise Http404
+    trip = _readable_trip(request, pk, "edit")
+    item = get_object_or_404(model.objects.all(), pk=item_pk)
+    if item_trip_id(item) != trip.pk:
+        raise Http404
+    here = request.get_full_path()
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#bookings")
+    if request.method == "POST":
         before = booking_tasks.confirmed_items(trip)
-        confirmation.legs.add(leg)
-        offer = booking_tasks.offer_for(trip, before)
-        messages.success(request, f"Attached {confirmation.confirmation_number}.")
-    from urllib.parse import quote
-    back = _back(request, _leg_back(trip, leg))
-    leg_page = reverse("trips:leg_edit", args=[trip.pk, leg.pk]) + f"?next={quote(back, safe='/#')}"
-    return redirect(_task_offer_or(trip, offer, leg_page))
+        action = request.POST.get("action")
+        if action == "detach":
+            confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
+            confirmation.unlink(item)
+            messages.success(request, f"Removed {confirmation.confirmation_number} from {item_label(item)} (it's kept).")
+        elif action == "attach":
+            confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
+            confirmation.link(item)
+            messages.success(request, f"Added {confirmation.confirmation_number} to {item_label(item)}.")
+        else:
+            form = AddConfirmationForm(request.POST)
+            if not form.is_valid():
+                context = _item_confirmations_context(request, trip, kind, item)
+                context["add_form"] = form
+                return render(request, "trips/item_confirmations.html",
+                              {"trip": trip, "item_label": item_label(item), "next": back, **context})
+            data = form.cleaned_data
+            existed = Confirmation.find_number(trip, data["confirmation_number"]) is not None
+            confirmation = Confirmation.attach_number(trip, data["confirmation_number"], item,
+                                                      provider=data["provider"], label=data["label"])
+            messages.success(request, f"{'Linked' if existed else 'Added'} {confirmation.confirmation_number}"
+                                      f"{' (already on this trip)' if existed else ''} to {item_label(item)}.")
+        # Back to the page the block was on (the leg page posts its own address), else here.
+        from django.utils.http import url_has_allowed_host_and_scheme
+        return_to = request.POST.get("return_to") or ""
+        if not url_has_allowed_host_and_scheme(return_to, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+            return_to = here
+        return redirect(_task_offer_or(trip, booking_tasks.offer_for(trip, before), return_to))
+    return render(request, "trips/item_confirmations.html", {
+        "trip": trip, "item_label": item_label(item), "next": back,
+        **_item_confirmations_context(request, trip, kind, item),
+    })
 
 
 def _task_offer_or(trip, tasks, back):

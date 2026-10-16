@@ -12,6 +12,7 @@ from .models import (
     TripExpense,
     BookingTask,
     Confirmation,
+    ConfirmationLink,
     Contact,
     Day,
     TransportLeg,
@@ -527,14 +528,26 @@ class RewardsMembershipAdmin(admin.ModelAdmin):
     autocomplete_fields = ("traveler",)
 
 
+class ConfirmationLinkInline(admin.TabularInline):
+    model = ConfirmationLink
+    extra = 0
+    fields = ("content_type", "object_id", "item")
+    readonly_fields = ("content_type", "object_id", "item")
+    can_delete = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Confirmation)
 class ConfirmationAdmin(admin.ModelAdmin):
     list_display = ("label", "confirmation_number", "provider", "trip")
     list_filter = ("trip",)
     search_fields = ("label", "confirmation_number", "provider")
-    # What it covers (trip-items plan, Phase B). The choices aren't limited to the trip here;
-    # the site's confirmation page (trips:confirmation_edit) is, and is the place to edit them.
-    filter_horizontal = ("legs", "stays", "meals", "travelers")
+    filter_horizontal = ("travelers",)
+    # What it covers: generic links like comments, shown read-only here. They're attached
+    # from each item on the site (trips:item_confirmations), which checks the item's trip.
+    inlines = [ConfirmationLinkInline]
 
 
 @admin.register(Contact)

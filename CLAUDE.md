@@ -263,22 +263,31 @@ that matter most:
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
   mode/operator/currency copied, but not service number, confirmations, cost or notes. The fields are
   added in `__init__` (`LocalLegTimeMixin` rebuilds `declared_fields`). The admin stays one-way.
-- **Confirmations** (trips 0022–0024) live with what they confirm: `Confirmation.legs` / `stays` /
-  `meals` / `travelers` (M2M, `related_name="confirmations"`; travellers blank = everyone on the
-  items), plus `url` (manage booking), `booked_on`, `cost` + `currency` (the whole booking, never
-  split per leg); `label` is optional (`description()` says what it covers, "BWI→ATL, ATL→ABQ · Sat
-  Sep 12"). Legs and stays have no inline number any more; code that has a number for an item calls
-  `Confirmation.attach_number(trip, number, item, provider)` (links to the trip's confirmation with
-  that number, trimmed and case-insensitive, else creates one — what migration 0023 and
-  `import_itinerary` do). The trip page's Quick reference → Confirmations is generated
-  (`views.confirmation_groups`: Flights / Trains / Stays / Meals / Other by `Confirmation.kind`, each
-  ordered by `first_date`, loose ones under Other); `views._attach_confirmations` sets
-  `leg.confirmation_list` / `stay.confirmation_list` from the prefetch so chips and `stage` cost no
-  query. Editing: `trips:confirmation_new` (`?leg=` / `?stay=` pre-ticks; "Add confirmation" on leg
-  rows and stay cards), `confirmation_edit` (tick boxes limited to this trip), `confirmation_delete`
-  (items stay), and on the leg edit page attach-existing / detach (`trips:leg_confirmation`, detach
-  never deletes). The trip edit page's Confirmations formset stays the bulk view. `audit_public_leak`
-  takes numbers from `trip.confirmations`; confirmations are never public.
+- **Confirmations attach like comments** (trips 0026–0028): a `Confirmation` holds the booking's own
+  details (number, provider, optional `label`, `url` manage-booking link, `booked_on`, `cost` + `currency`
+  for the whole booking, notes, `travelers` — blank = everyone); what it covers is `ConfirmationLink`
+  rows, each a generic link (content type + id) to one item of the same trip: a leg, a stay, a day's
+  section (a tour, a timed entry) or a meal (`models.CONFIRMABLE`; `link()` checks the trip, once per
+  item; each item model's `confirmation_links` GenericRelation deletes its links with it). One record can
+  be linked many times (GCH7JS on four legs). Adding happens **on the item**, on edit pages only:
+  `trips:item_confirmations` (`/trips/<pk>/confirmations/<kind>/<id>/`, editors; the leg edit page shows
+  the same block, `partials/_item_confirmations.html`): type a number (`Confirmation.attach_number`: a
+  number the trip already has, trimmed and case-insensitive, links to that record; else creates it —
+  also what `import_itinerary` does), pick an existing one, or remove it from the item (never deletes
+  it). `confirmation_edit` edits a confirmation's own details and lists what it covers;
+  `confirmation_new` is for loose ones (insurance). The trip page prefetches the links (with content
+  type) and `views._attach_confirmations` resolves them against the legs, stays, sections and meals it
+  already has: chips on each item, `leg.stage` "booked", and Quick reference → Confirmations generated
+  (`confirmation_groups`: Flights / Trains / Stays / Activities (sections) / Meals / Other by
+  `Confirmation.kind`, each ordered by `first_date`). `audit_public_leak` takes numbers from
+  `trip.confirmations`; confirmations are never public.
+- **The view page is for reading; adding is on Edit trip.** The trip page has no add forms or "Add …"
+  links (items keep their small Edit link). Edit trip has **Travel by day** (each day's legs with Edit,
+  the add-a-leg form `partials/_leg_quick_add.html` with `next`, "Add a travel section", and the "Turn
+  “A → B” table rows into legs" link) and **Bookings & confirmations** (`#bookings`: every leg and stay,
+  plus sections and meals that have one, each with its chips and a Confirmations link; loose ones; "Add
+  a loose confirmation"). The day page links each section and meal to its confirmations; the section
+  page too.
 - **Booking tasks point at their item** (trips 0025, Phase E): `BookingTask.leg` / `stay` (optional,
   SET_NULL, at most one — `bookingtask_one_item`; Phase F adds `booking`). `apps/trips/booking_tasks.py`
   works from the trip page's prefetches (no query): `attach` gives legs/stays `open_tasks` ("Still to
@@ -288,13 +297,13 @@ that matter most:
   "Not about: <item>" line in the task's notes, hidden by `visible_notes`). `not_booked` is the derived
   "Not booked yet" list: flights, rental cars, trains with an operator or service number, and stays with
   no confirmation and no task. When a save gives a leg or stay its **first** confirmation
-  (`confirmation_edit`, `leg_confirmation`) and it has open tasks, the user lands on `trips:task_offer`
+  (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page is printed to PDF** and holds a fixed query count (24 here, 4 of them from this site's
-  middleware/context processors; one is the trip's cities; four prefetch the confirmations' legs,
-  stays, meals and travellers — fixed per page, not per item); `test_detail.QueryCountTests`
-  pins it.
+- **The detail page** holds a fixed query count (22 here, 4 of them from this site's
+  middleware/context processors; one is the trip's cities; two are the confirmations' links and
+  travellers — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
+  content-type cache first, so the count doesn't depend on test order).
 - **PDF booklet:** "Download PDF" on the trip page → `trips:trip_pdf` (`/trips/<pk>/booklet.pdf`), anyone
   who can see the trip, never public (it has confirmation numbers). Its own print template
   `trips/pdf/booklet.html` (US Letter, running header with trip and day, page X of Y; cover, days at a

@@ -122,5 +122,73 @@ would mean two places to fix the next time a field is added.
       <p class="empty-state py-8">No days yet.</p>
     {% endif %}
   </section>
+
+  {% url 'trips:trip_edit' trip.pk as edit_url %}
+  {% comment %}Travel by day: each day's legs and the add-a-leg form. The view page only shows legs; adding is here.{% endcomment %}
+  <section class="form-section mt-10" id="travel">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="form-section-title">Travel by day</h2>
+        <p class="form-section-lede">Add a leg to a day as you'd write a table row; it's planned until you give it times. Edit a leg for times, placement and its confirmations.</p>
+      </div>
+      {% if travel_tables_pending %}<a class="btn-quiet" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn “A → B” table rows into legs</a>{% endif %}
+    </div>
+    {% for d in travel_days %}
+      <div class="mt-5 border-t border-zinc-100 pt-4" id="travel-day-{{ d.pk }}">
+        <p class="font-medium text-zinc-900">Day {{ d.day_number }} <span class="font-normal text-zinc-500">· {{ d.date|date:"D, M j" }}{% if d.theme %} · {{ d.theme }}{% endif %}</span></p>
+        {% if d.edit_legs %}
+          <ul class="mt-2 divide-y divide-zinc-100 text-sm">
+            {% for leg in d.edit_legs %}
+              <li class="flex flex-wrap items-center gap-3 py-1.5">
+                <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
+                <span class="font-medium">{{ leg.origin }} → {{ leg.destination }}</span>
+                <span class="text-zinc-500">{% if leg.is_planned %}planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}{{ leg.departure_local_str }}{% endif %}</span>
+                <a class="link-quiet ml-auto font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ edit_url|urlencode }}%23travel-day-{{ d.pk }}">Edit</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% include "trips/partials/_leg_quick_add.html" with day=d section=None next=edit_url|add:"#travel" %}
+        {% if not d.has_travel %}<form method="post" action="{% url 'trips:day_add_travel' trip.pk d.pk %}" class="mt-1">{% csrf_token %}<input type="hidden" name="next" value="{{ edit_url }}#travel-day-{{ d.pk }}"><button type="submit" class="link-quiet text-xs">Add a travel section (to show this day's legs in its own order)</button></form>{% endif %}
+      </div>
+    {% empty %}
+      <p class="empty-state py-6">Add days first.</p>
+    {% endfor %}
+  </section>
+
+  {% comment %}Bookings and confirmations: what each leg, stay, plan and meal has attached. Stays have no page of their own, so their confirmations are reached here.{% endcomment %}
+  <section class="form-section mt-10" id="bookings">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="form-section-title">Bookings &amp; confirmations</h2>
+        <p class="form-section-lede">Confirmations are added on the thing they confirm. One number can cover several items (GCH7JS on four flights). A day's plan or a meal gets one from the day page.</p>
+      </div>
+      <a class="btn-quiet" href="{% url 'trips:confirmation_new' trip.pk %}?next={{ edit_url|urlencode }}%23bookings">Add a loose confirmation</a>
+    </div>
+    {% if booking_rows %}
+      <div class="scroll-x">
+        <table class="data-grid">
+          <thead><tr><th>When</th><th>What</th><th>Item</th><th>Confirmations</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            {% for row in booking_rows %}
+              <tr>
+                <td class="whitespace-nowrap">{{ row.when|date:"D, M j" }}</td>
+                <td class="text-zinc-500">{{ row.what }}</td>
+                <td class="font-medium text-zinc-900">{{ row.label }}</td>
+                <td>{% for c in row.confirmations %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% empty %}<span class="text-zinc-400">—</span>{% endfor %}</td>
+                <td class="text-right whitespace-nowrap"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Confirmations</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state py-6">No legs or stays yet.</p>
+    {% endif %}
+    {% if loose_confirmations %}
+      <p class="card-kicker mt-6 mb-2">Not attached to anything</p>
+      <ul class="text-sm">{% for c in loose_confirmations %}<li class="py-1"><span class="chip">{{ c.confirmation_number }}</span> {{ c.label|default:c.provider }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:confirmation_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23bookings">Edit</a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
 {% endif %}
 {% endblock %}

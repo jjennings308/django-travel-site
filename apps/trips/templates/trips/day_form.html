@@ -38,6 +38,10 @@
         are not adding a meal.
       </p>
       {% include "trips/_formset.html" with formset=meal_formset label="Meals" %}
+      {% if day.meals.exists %}
+        <p class="card-kicker mt-4 mb-1">Meal confirmations (a booked table)</p>
+        <ul class="text-sm">{% for meal in day.meals.all %}<li class="py-0.5">{{ meal.name }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_confirmations' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Confirmations</a></li>{% endfor %}</ul>
+      {% endif %}
     {% endif %}
 
     <div class="form-actions">
@@ -70,6 +74,7 @@
                 {{ s.title|default:s.section_type }}
               </a>
               <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ s.content_summary }}</span>
+              <a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' s.pk %}?next={{ request.path|urlencode }}">Confirmations</a>
               <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk s.pk %}">Delete</a>
             </li>
           {% endfor %}

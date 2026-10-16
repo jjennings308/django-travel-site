@@ -10,7 +10,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
-from apps.trips.models import Confirmation, Day, Lodging, Meal, TransportLeg, Traveler, Trip, TripGrant, TripRole
+from apps.trips.models import Confirmation, Day, Lodging, Meal, Section, TransportLeg, Traveler, Trip, TripGrant, TripRole
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -90,10 +90,17 @@ class Fixture(TestCase):
         self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Chimayo", check_in=date(2026, 9, 12),
                                            check_out=date(2026, 9, 13))
         self.meal = Meal.objects.create(day=self.day, name="Rancho de Chimayó", meal_type=Meal.MealType.DINNER)
+        self.tour = Section.objects.create(day=self.day, section_type="phase", title="Georgia O'Keeffe Landscape Tour",
+                                           content={"heading": "Georgia O'Keeffe Landscape Tour"})
         self.sara = Traveler.objects.create(name="Sara Test")
         self.trip.travelers.add(self.sara)
         self.other = Trip.objects.create(name="Other", start_date=date(2026, 1, 1), end_date=date(2026, 1, 2))
         self.other_leg = TransportLeg.objects.create(trip=self.other, origin="X", destination="Y", date=date(2026, 1, 1))
+
+
+def linked(confirmation, model):
+    """The items of one model a confirmation is linked to, in pk order."""
+    return sorted((item for item in confirmation.covered_items() if isinstance(item, model)), key=lambda i: i.pk)
 
 
 class AttachTests(Fixture):
@@ -101,53 +108,95 @@ class AttachTests(Fixture):
         existing = Confirmation.objects.create(trip=self.trip, label="Flights", confirmation_number="GCH7JS")
         self.assertEqual(Confirmation.attach_number(self.trip, " gch7js ", self.bwi), existing)
         self.assertEqual(Confirmation.attach_number(self.trip, "GCH7JS", self.atl), existing)
-        self.assertEqual(list(existing.legs.order_by("pk")), [self.bwi, self.atl])
+        self.assertEqual(linked(existing, TransportLeg), [self.bwi, self.atl])
         made = Confirmation.attach_number(self.trip, "5305434791", self.stay, "Booking.com")
-        self.assertEqual((made.provider, list(made.stays.all())), ("Booking.com", [self.stay]))
+        self.assertEqual((made.provider, linked(made, Lodging)), ("Booking.com", [self.stay]))
         self.assertIsNone(Confirmation.attach_number(self.trip, "  ", self.stay))
+
+    def test_links_only_within_the_trip_and_once_per_item(self):
+        conf = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS")
+        conf.link(self.bwi)
+        conf.link(self.bwi)
+        self.assertEqual(conf.links.count(), 1)
+        with self.assertRaises(ValueError):
+            conf.link(self.other_leg)
+
+    def test_deleting_an_item_deletes_its_links_not_the_confirmation(self):
+        conf = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS")
+        conf.link(self.bwi)
+        conf.link(self.meal)
+        self.bwi.delete()
+        self.assertEqual([link.item for link in conf.links.all()], [self.meal])
 
     def test_stage_becomes_booked(self):
         self.assertEqual(self.bwi.stage, "scheduled")
-        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").legs.add(self.bwi)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.bwi)
         self.assertEqual(TransportLeg.objects.get(pk=self.bwi.pk).stage, "booked")
 
-    def test_attach_and_detach_from_the_leg_page(self):
-        conf = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS")
-        url = reverse("trips:leg_confirmation", args=[self.trip.pk, self.bwi.pk])
+
+class ItemConfirmationsTests(Fixture):
+    def url(self, kind, item):
+        return reverse("trips:item_confirmations", args=[self.trip.pk, kind, item.pk])
+
+    def test_add_by_number_links_an_existing_one_like_a_comment(self):
         self.client.force_login(self.editor)
-        self.client.post(url, {"confirmation": conf.pk})
-        self.assertIn(self.bwi, conf.legs.all())
-        self.client.post(url, {"confirmation": conf.pk, "action": "detach"})
-        self.assertNotIn(self.bwi, conf.legs.all())
-        self.assertTrue(Confirmation.objects.filter(pk=conf.pk).exists())  # detach never deletes
-        other_conf = Confirmation.objects.create(trip=self.other, confirmation_number="ZZZ")
-        self.assertEqual(self.client.post(url, {"confirmation": other_conf.pk}).status_code, 404)
+        self.client.post(self.url("leg", self.bwi), {"action": "add", "confirmation_number": "GCH7JS",
+                                                     "provider": "Delta"})
+        self.client.post(self.url("leg", self.atl), {"action": "add", "confirmation_number": "gch7js"})
+        conf = Confirmation.objects.get()
+        self.assertEqual((conf.provider, linked(conf, TransportLeg)), ("Delta", [self.bwi, self.atl]))
+        self.client.post(self.url("meal", self.meal), {"action": "attach", "confirmation": conf.pk})
+        self.client.post(self.url("section", self.tour), {"action": "add", "confirmation_number": "378234488",
+                                                           "provider": "Ghost Ranch"})
+        self.assertEqual(Confirmation.objects.get(confirmation_number="378234488").kind, "activity")
+        self.assertEqual(conf.description(), "BWI→ATL, ATL→ABQ, Rancho de Chimayó · Sat Sep 12")
+        self.client.post(self.url("leg", self.bwi), {"action": "detach", "confirmation": conf.pk})
+        self.assertEqual(linked(conf, TransportLeg), [self.atl])
+        self.assertTrue(Confirmation.objects.filter(pk=conf.pk).exists())  # removing never deletes
+
+    def test_stay_page_and_return_to(self):
+        self.client.force_login(self.editor)
+        page = self.client.get(self.url("stay", self.stay))
+        self.assertContains(page, "Hotel Chimayo")
+        back = reverse("trips:trip_edit", args=[self.trip.pk])
+        response = self.client.post(self.url("stay", self.stay), {"action": "add", "confirmation_number": "5305434791",
+                                                                   "return_to": back})
+        self.assertRedirects(response, back, fetch_redirect_response=False)
+
+    def test_another_trips_item_or_confirmation_is_refused(self):
+        self.client.force_login(self.editor)
+        self.assertEqual(self.client.get(reverse("trips:item_confirmations",
+                                                 args=[self.trip.pk, "leg", self.other_leg.pk])).status_code, 404)
+        theirs = Confirmation.objects.create(trip=self.other, confirmation_number="ZZZ")
+        self.assertEqual(self.client.post(self.url("leg", self.bwi), {"action": "attach",
+                                                                      "confirmation": theirs.pk}).status_code, 404)
+        self.assertEqual(self.client.get(reverse("trips:item_confirmations",
+                                                 args=[self.trip.pk, "trip", self.trip.pk])).status_code, 404)
+
+    def test_permissions(self):
+        self.client.force_login(self.stranger)
+        self.assertEqual(self.client.get(self.url("leg", self.bwi)).status_code, 404)
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(url, {"confirmation": conf.pk}).status_code, 403)
+        self.assertEqual(self.client.get(self.url("leg", self.bwi)).status_code, 403)
+
+    def test_leg_page_has_the_block(self):
+        self.client.force_login(self.editor)
+        page = self.client.get(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]))
+        self.assertContains(page, self.url("leg", self.bwi))
 
 
 class ConfirmationPageTests(Fixture):
-    def test_new_from_a_leg_pretickes_it_and_saves_links(self):
+    def test_loose_confirmation_and_covers_list(self):
         self.client.force_login(self.editor)
-        url = reverse("trips:confirmation_new", args=[self.trip.pk])
-        page = self.client.get(url + f"?leg={self.bwi.pk}")
-        self.assertEqual(page.context["form"].initial["legs"], [self.bwi.pk])
-        self.client.post(url, {"confirmation_number": "GCH7JS", "provider": "Delta", "label": "", "url": "",
-                               "booked_on": "", "cost": "", "currency": "", "notes": "",
-                               "legs": [self.bwi.pk, self.atl.pk], "stays": [], "meals": [self.meal.pk],
-                               "travelers": [self.sara.pk]})
-        conf = Confirmation.objects.get(confirmation_number="GCH7JS")
-        self.assertEqual(list(conf.legs.order_by("pk")), [self.bwi, self.atl])
-        self.assertEqual((list(conf.meals.all()), list(conf.travelers.all())), ([self.meal], [self.sara]))
-        self.assertEqual(conf.description(), "BWI→ATL, ATL→ABQ, Rancho de Chimayó · Sat Sep 12")
-
-    def test_only_this_trips_items(self):
-        self.client.force_login(self.editor)
-        response = self.client.post(reverse("trips:confirmation_new", args=[self.trip.pk]), {
-            "confirmation_number": "X", "legs": [self.other_leg.pk]})
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("legs", response.context["form"].errors)
-        self.assertFalse(Confirmation.objects.exists())
+        self.client.post(reverse("trips:confirmation_new", args=[self.trip.pk]), {
+            "confirmation_number": "EUSP2592862107", "provider": "Allianz", "label": "Travel Insurance",
+            "travelers": [self.sara.pk]})
+        loose = Confirmation.objects.get()
+        self.assertEqual((loose.kind, list(loose.travelers.all())), ("other", [self.sara]))
+        loose.link(self.bwi)
+        page = self.client.get(reverse("trips:confirmation_edit", args=[self.trip.pk, loose.pk]))
+        self.assertContains(page, "BWI→ATL")
+        self.assertContains(page, reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.bwi.pk]))
 
     def test_permissions(self):
         url = reverse("trips:confirmation_new", args=[self.trip.pk])
@@ -158,7 +207,7 @@ class ConfirmationPageTests(Fixture):
 
     def test_delete_keeps_the_items(self):
         conf = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS")
-        conf.legs.add(self.bwi)
+        conf.link(self.bwi)
         self.client.force_login(self.editor)
         self.client.post(reverse("trips:confirmation_delete", args=[self.trip.pk, conf.pk]))
         self.assertFalse(Confirmation.objects.exists())
@@ -166,31 +215,56 @@ class ConfirmationPageTests(Fixture):
 
 
 class QuickReferenceTests(Fixture):
-    def test_grouped_and_ordered_loose_last_and_chips_in_both_views(self):
+    def test_grouped_and_ordered_loose_last_and_chips_on_every_item(self):
         flights = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", provider="Delta",
                                               label="Flights (Delta, all 4 legs)")
-        flights.legs.add(self.bwi, self.atl)
+        flights.link(self.bwi)
+        flights.link(self.atl)
         flights.travelers.add(self.sara)
-        Confirmation.objects.create(trip=self.trip, confirmation_number="5305434791").stays.add(self.stay)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="5305434791").link(self.stay)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="378234488", provider="Ghost Ranch").link(self.tour)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="TABLE1").link(self.meal)
         Confirmation.objects.create(trip=self.trip, confirmation_number="EUSP2592862107", provider="Allianz",
                                     label="Travel Insurance")
         self.client.force_login(self.viewer)
         page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         titles = [title for title, _items in page.context["confirmation_groups"]]
-        self.assertEqual(titles, ["Flights", "Stays", "Other"])
+        self.assertEqual(titles, ["Flights", "Stays", "Activities", "Meals", "Other"])
         html = page.content.decode()
         quick = html[html.index('id="quick-reference"'):]
         self.assertEqual(quick.count("GCH7JS"), 1)  # once in Quick reference
         self.assertIn("BWI→ATL, ATL→ABQ · Sat Sep 12", quick)
         self.assertIn("For Sara Test", quick)
-        # The chip appears on both legs in Getting around and again on the day: 4 more.
-        self.assertEqual(html.count("GCH7JS · Delta"), 4)
+        body = html[:html.index('id="quick-reference"')]
+        self.assertEqual(body.count("GCH7JS · Delta"), 4)  # both legs, in Getting around and on the day
+        self.assertIn("378234488 · Ghost Ranch", body)  # the day's plan section
+        self.assertIn("TABLE1", body)  # the meal
         self.assertIn("Booked", html)
+
+
+class ViewPageIsForReadingTests(Fixture):
+    def test_no_add_forms_or_links_on_the_view_page(self):
+        self.client.force_login(self.editor)
+        html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
+        for marker in (reverse("trips:confirmation_new", args=[self.trip.pk]),
+                       reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]),
+                       reverse("trips:day_add_travel", args=[self.trip.pk, self.day.pk]),
+                       "Add confirmation"):
+            self.assertNotIn(marker, html)
+        self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)  # Edit links stay
+
+    def test_edit_trip_has_travel_by_day_and_bookings(self):
+        self.client.force_login(self.editor)
+        html = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])).content.decode()
+        self.assertIn(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), html)
+        self.assertIn(reverse("trips:item_confirmations", args=[self.trip.pk, "stay", self.stay.pk]), html)
+        self.assertIn(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.bwi.pk]), html)
+        self.assertIn(reverse("trips:confirmation_new", args=[self.trip.pk]), html)
 
 
 class AuditTests(Fixture):
     def test_audit_catches_a_planted_number_and_passes_clean(self):
-        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").legs.add(self.bwi)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.bwi)
         self.trip.enable_public()
         with self.assertRaises(SystemExit) as caught:
             call_command("audit_public_leak", stdout=StringIO(), stderr=StringIO())

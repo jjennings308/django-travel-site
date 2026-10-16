@@ -42,5 +42,5 @@ zone filter.
   </dl>
   {% if leg.notes %}<p class="mt-2 text-sm text-zinc-600">{{ leg.notes|linebreaksbr }}</p>{% endif %}
   {% if leg.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in leg.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
-  {% if can_edit %}<p class="mt-2 flex gap-3 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a>{% if not leg.confirmation_list %}<a class="link-quiet font-medium" href="{% url 'trips:confirmation_new' trip.pk %}?leg={{ leg.pk }}&amp;next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Add confirmation</a>{% endif %}</p>{% endif %}
+  {% if can_edit %}<p class="mt-2 flex gap-3 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}">Edit</a></p>{% endif %}
 </div>

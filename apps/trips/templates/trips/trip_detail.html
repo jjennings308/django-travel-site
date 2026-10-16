@@ -76,7 +76,6 @@
     {% if trip.notes %}<p class="note mt-5 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
   </header>
 
-  {% if travel_tables_pending %}<div class="callout callout-info mb-6 print:hidden"><p>Some days' tables still list journeys as “A → B” rows. <a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn them into legs</a> in one review: rows already on a day link to their leg instead of making a second.</p></div>{% endif %}
 
   {% comment %}Screen-only jump list. Reads the same prefetched days the page renders, so it costs no query.{% endcomment %}
   {% if trip.days.all %}
@@ -133,7 +132,6 @@
               </dl>
               {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
               {% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
-              {% if can_edit and not stay.confirmation_list %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:confirmation_new' trip.pk %}?stay={{ stay.pk }}&amp;next={{ request.path|urlencode }}">Add confirmation</a></p>{% endif %}
             </div>
           {% endfor %}
         </div>
@@ -171,23 +169,12 @@
         </div>
       </header>
 
-      {# This day's legs with no travel section: an automatic "Getting around" block. #}
-      {% if day.auto_legs or can_edit %}
-        {% if day.auto_legs %}
-          <div class="section">
-            <h3 class="grid-label">Getting around{% if day.travel_total %} <span class="ml-2 font-normal normal-case text-zinc-500">{{ day.travel_total }}</span>{% endif %}</h3>
-            <div class="card-grid">{% for leg in day.auto_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
-            {% if can_edit %}{% include "trips/partials/_leg_quick_add.html" with section=None %}{% endif %}
-          </div>
-        {% elif can_edit and not day.has_travel %}
-          <div class="section print:hidden">
-            <details>
-              <summary class="link-quiet text-sm font-medium">Add travel to this day</summary>
-              {% include "trips/partials/_leg_quick_add.html" with section=None %}
-              <form method="post" action="{% url 'trips:day_add_travel' trip.pk day.pk %}" class="mt-2">{% csrf_token %}<button type="submit" class="btn-quiet text-xs">Or add a travel section (for legs in the day's own order)</button></form>
-            </details>
-          </div>
-        {% endif %}
+      {# This day's legs with no travel section: an automatic "Getting around" block. Legs are added on Edit trip. #}
+      {% if day.auto_legs %}
+        <div class="section">
+          <h3 class="grid-label">Getting around{% if day.travel_total %} <span class="ml-2 font-normal normal-case text-zinc-500">{{ day.travel_total }}</span>{% endif %}</h3>
+          <div class="card-grid">{% for leg in day.auto_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
+        </div>
       {% endif %}
 
       {% for section in day.ordered_sections %}
@@ -224,12 +211,11 @@
                 {% endfor %}
               </div>
             {% endif %}
-            {% if can_edit %}{% include "trips/partials/_leg_quick_add.html" %}{% endif %}
           </div>
 
         {% elif section.section_type == "logistics_table" %}
           <div class="section">
-            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title }}{% if can_edit and "→" in section.content.rows|stringformat:"s" %} <a class="link-quiet ml-2 text-xs font-medium normal-case print:hidden" href="{% url 'trips:section_to_legs' trip.pk day.pk section.pk %}">Turn into legs</a>{% endif %}</h3>
+            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title }}</h3>
             {% comment %}
               One card per row, each cell labelled with its column name. The
               columns vary per table (2-4 wide, different names), so a label
@@ -298,6 +284,7 @@
             <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
           </div>
         {% endif %}
+        {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
       {% endfor %}
 
       {% if day.ordered_meals %}
@@ -316,6 +303,7 @@
                 {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
                 {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
                 {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
+                {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
               </div>
             {% endfor %}
           </div>
@@ -362,7 +350,7 @@
 
       {% if trip.confirmations.all or can_edit %}
         {# Generated from the confirmations and what they cover (views.confirmation_groups): each once, grouped and dated by its items. #}
-        <h3 class="grid-label">Confirmations{% if can_edit %} <a class="link-quiet ml-2 text-xs font-medium normal-case print:hidden" href="{% url 'trips:confirmation_new' trip.pk %}">Add</a>{% endif %}</h3>
+        <h3 class="grid-label">Confirmations</h3>
         {% for title, items in confirmation_groups %}
           <p class="card-kicker mb-2 mt-4">{{ title }}</p>
           <div class="card-grid mb-4">
@@ -468,7 +456,6 @@
               <span class="badge badge-mode">{{ kind }}</span>
               {% if item.check_in %}<a class="link-quiet font-medium" href="#stay-{{ item.pk }}">{{ item.name }}</a> <span class="text-zinc-500">{{ item.check_in|date:"M j" }}</span>
               {% else %}<a class="link-quiet font-medium" href="#leg-{{ item.pk }}">{{ item.origin }} → {{ item.destination }}</a> <span class="text-zinc-500">{{ item.date|date:"M j" }}</span>{% endif %}
-              {% if can_edit %}<a class="link-quiet ml-auto text-xs font-medium print:hidden" href="{% url 'trips:confirmation_new' trip.pk %}?{% if item.check_in %}stay{% else %}leg{% endif %}={{ item.pk }}&amp;next={{ request.path|urlencode }}%23quick-reference">Add confirmation</a>{% endif %}
             </li>
           {% endfor %}
         </ul>

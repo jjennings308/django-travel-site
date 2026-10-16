@@ -1,7 +1,10 @@
 # Plan: one record per trip item, shown in two places; confirmations live with what they confirm
 
 Status: Phases A–E done (2026-10-15, branches `phase-a-legs-in-place`, `phase-b-confirmations`,
-`phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`, `phase-e-booking-tasks`); Phase F planned. Hand to Claude
+`phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`, `phase-e-booking-tasks`). Then, at
+James's request (2026-10-16), confirmations were reworked to attach like comments and the view page
+became read-only (branch `confirmations-generic`, see "Reworked after Phase E"); Phase F is replaced
+by a `TripActivity` item (next branch). Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -280,7 +283,21 @@ suggest exactly the three hotels and the ICE leg. Query pin unchanged at 24.
   nothing needs a hand-typed task just to be remembered. **Ask James** whether he wants this or
   prefers tasks only.
 
+## Reworked after Phase E — confirmations attach like comments; the view page is for reading
+
+**Done** on branch `confirmations-generic` (2026-10-16; migrations `trips 0026`–`0028`, schema / copy /
+drop). James: "a confirmation entity that can be linked to a transportation leg, lodging or an
+activity on a trip the same way reviews and comments work", and "remove the add a leg from the view
+trip and put it in the edit trip". Decisions: one `Confirmation` record linked many times (generic
+`ConfirmationLink` rows, like `Comment`), to legs, stays, a day's sections and meals (and the
+`TripActivity` item next); remove *all* adding from the view page. Phase B's legs/stays/meals tables
+were copied into links and dropped. Confirmations are added on each item (`trips:item_confirmations`)
+from edit pages; Edit trip gained "Travel by day" and "Bookings & confirmations". Query pin 24 → 22.
+
 ## Phase F — `Booking` for everything else you reserve
+
+**Replaced** (2026-10-16) by a `TripActivity` item on a day (kind, title, provider, optional times,
+place, travellers, cost; confirmations link to it like any item; booking tasks may point at it).
 
 Tours, timed entries, tickets, passes, car hire, an Oktoberfest tent table: today they're prose in
 sections plus a booking task, with nowhere to put the confirmation.
