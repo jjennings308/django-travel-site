@@ -48,6 +48,7 @@ from .forms import (
     section_payload_form,
     trip_subsection_formsets,
 )
+from . import itinerary
 from .models import (
     TripExpense,
     BookingTask,
@@ -346,7 +347,7 @@ def trip_detail(request, pk):
     # One capabilities lookup for every action the page offers: each trip.can()
     # is a query, and this page pins its query count (QueryCountTests).
     capabilities = trip.capabilities_for(request.user)
-    stray_legs = _place_legs(trip)
+    stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     from . import booking_tasks
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
@@ -384,7 +385,7 @@ def trip_pdf(request, pk):
     from .pdf import PdfUnavailable, booklet_context, render_pdf
 
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
-    stray_legs = _place_legs(trip)
+    stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     booking_tasks.attach(trip)
     html = render_to_string("trips/pdf/booklet.html", {
@@ -451,50 +452,6 @@ def confirmation_groups(trip):
         if items:
             groups.append((title, items))
     return groups
-
-
-def _place_legs(trip):
-    """Put each leg on its day, from the rows the detail page already prefetched (no
-    queries): ``section.placed_legs`` for a travel section it's placed in, ``day.auto_legs``
-    for the rest of that date, ``day.travel_total`` ("2 legs · ~3 h 15 min") when every
-    leg there has a time or an estimate. Returns the legs whose date matches no day."""
-    legs = list(trip.transport.all())  # Meta order: date, time, order
-    days = list(trip.days.all())
-    days_by_date = {day.date: day for day in days if day.date}
-    sections_by_id = {}
-    for day in days:
-        day.auto_legs, day.day_legs = [], []
-        day.has_travel = False
-        for section in getattr(day, "ordered_sections", []):
-            section.placed_legs = []
-            sections_by_id[section.pk] = section
-            if section.section_type == Section.Type.TRAVEL:
-                day.has_travel = True
-    stray = []
-    for leg in legs:
-        day = leg.day_for(days_by_date)
-        if day is None:
-            leg.on_day = None
-            stray.append(leg)
-            continue
-        day.day_legs.append(leg)
-        leg.on_day = day
-        section = sections_by_id.get(leg.section_id)
-        if section is not None and section.day_id == day.pk:
-            section.placed_legs.append(leg)
-        else:
-            day.auto_legs.append(leg)
-    for day in days:
-        times = [leg.travel_time for leg in day.day_legs]
-        day.travel_total = ""
-        if day.day_legs and all(times):
-            minutes = int(sum(t.total_seconds() for t in times) // 60)
-            hours, minutes = divmod(minutes, 60)
-            span = f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min"
-            approx = "~" if any(leg.is_planned for leg in day.day_legs) else ""
-            count = len(day.day_legs)
-            day.travel_total = f"{count} leg{'' if count == 1 else 's'} · {approx}{span}"
-    return stray
 
 
 # ---------------------------------------------------------------------------
