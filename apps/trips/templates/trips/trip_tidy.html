@@ -1,0 +1,58 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Content clean-up review (trips:trip_tidy, U7; apps/trips/tidy.py detects, tidying.py applies). Suggestions only: nothing changes until ticked suggestions are applied, in one transaction. "Not this" dismisses a suggestion for good (TidyDismissal). "Day N" slips are flagged only.
+{% endcomment %}
+{% block title %}Tidy — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-5xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Tidy</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Tidy suggestions</h1>
+      <p class="page-subtitle">Text that repeats something recorded elsewhere on the trip. Tick what you agree with and apply; nothing changes otherwise. {{ count }} suggestion{{ count|pluralize }}.</p>
+    </div>
+    <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a>
+  </div>
+
+  {% if groups %}
+    <form method="post" id="tidy-form">
+      {% csrf_token %}
+      {% for day, items in groups %}
+        <h2 class="section-title mt-6 mb-2">{% if day %}Day {{ day }}{% else %}Trip notes{% endif %}</h2>
+        <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+          {% for s in items %}
+            <li class="px-4 py-3">
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                {% if s.flag_only %}<span class="badge badge-medium">Check by hand</span>
+                {% else %}<label class="flex items-center gap-2 font-medium"><input type="checkbox" name="pick-{{ s.key }}"> Apply</label>{% endif %}
+                <span class="text-zinc-500">{{ s.where }}</span>
+                {% if s.confidence == "high" %}<span class="badge badge-mode">Exact match</span>{% endif %}
+                <button type="submit" form="dismiss-{{ s.key }}" class="link-quiet ml-auto text-xs">Not this</button>
+              </div>
+              <p class="mt-1 whitespace-pre-line text-zinc-500 line-through decoration-zinc-300">{{ s.before }}</p>
+              <p class="mt-0.5 text-zinc-800">→ {{ s.after }}</p>
+              {% if s.actions|length > 1 %}
+                <div class="mt-1 flex flex-wrap gap-4">{% for value, label in s.actions %}<label class="flex items-center gap-1.5"><input type="radio" name="act-{{ s.key }}" value="{{ value }}"{% if forloop.first %} checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+              {% elif s.actions %}
+                <input type="hidden" name="act-{{ s.key }}" value="{{ s.actions.0.0 }}"><p class="mt-0.5 text-xs text-zinc-500">{{ s.actions.0.1 }}</p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+      <div class="mt-4 flex gap-3">
+        <button type="submit" class="btn">Apply the ticked suggestions</button>
+        <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Cancel</a>
+      </div>
+    </form>
+    {% for day, items in groups %}{% for s in items %}
+      <form method="post" id="dismiss-{{ s.key }}" class="hidden">{% csrf_token %}<input type="hidden" name="dismiss" value="{{ s.key }}"></form>
+    {% endfor %}{% endfor %}
+  {% else %}
+    <div class="card p-8 text-center text-zinc-500">Nothing to tidy: no text repeats a leg, stay, booking or contact recorded elsewhere.</div>
+  {% endif %}
+{% endblock %}

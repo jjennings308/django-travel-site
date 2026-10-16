@@ -1841,6 +1841,36 @@ def activity_delete(request, pk, day_pk, activity_pk):
                   {"trip": trip, "day": day, "activity": activity, "next": back})
 
 
+# ---- content clean-up review (trip-page UX plan, U7) -----------------------------------------
+@login_required
+def trip_tidy(request, pk):
+    """Suggestions for text that repeats something with a home elsewhere (editors). Nothing
+    changes until an editor ticks suggestions and applies them; "Not this" dismisses one for good."""
+    from . import tidying
+    trip = _readable_trip(request, pk, "edit")
+    found = tidying.suggestions(trip)
+    if request.method == "POST":
+        if request.POST.get("dismiss"):
+            tidying.dismiss(trip, request.POST["dismiss"])
+            messages.info(request, "That suggestion won't come back.")
+            return redirect(reverse("trips:trip_tidy", args=[trip.pk]))
+        chosen = {key[len("pick-"):]: request.POST.get(f"act-{key[len('pick-'):]}", "")
+                  for key in request.POST if key.startswith("pick-")}
+        applied, skipped = tidying.apply(trip, found, chosen)
+        if applied:
+            messages.success(request, f"Applied {len(applied)} suggestion{'s' if len(applied) != 1 else ''}.")
+        for suggestion, why in skipped:
+            messages.warning(request, f"Skipped “{suggestion.before[:60]}”: {why}.")
+        if not applied and not skipped:
+            messages.info(request, "Nothing was ticked.")
+        return redirect(reverse("trips:trip_tidy", args=[trip.pk]))
+    groups = {}
+    for suggestion in found:
+        groups.setdefault(suggestion.day, []).append(suggestion)
+    ordered = sorted(groups.items(), key=lambda item: (item[0] is None, item[0] or 0))
+    return render(request, "trips/trip_tidy.html", {"trip": trip, "groups": ordered, "count": len(found)})
+
+
 # ---- decisions: tasks with options (trip-page UX plan, U6) ----------------------------------
 @login_required
 def task_options(request, pk, task_pk):
