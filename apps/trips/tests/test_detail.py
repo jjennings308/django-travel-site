@@ -31,6 +31,7 @@ from apps.trips.models import (
     TransportLeg,
     Traveler,
     Trip,
+    TripActivity,
     TripGrant,
 )
 
@@ -432,6 +433,13 @@ class QueryCountTests(DetailFixture):
                          *day.sections.all()]:
                 confirmation.link(item)
             confirmation.travelers.add(ada)
+            # Activities (TripActivity): two per day, with their place, travellers and a
+            # confirmation each — still two fixed queries for the lot.
+            for n in range(2):
+                activity = TripActivity.objects.create(trip=self.trip, day=day, title=f"Tour {offset}-{n}",
+                                                       place_text="Ghost Ranch", order=n)
+                activity.travelers.add(ada)
+                confirmation.link(activity)
             # Phase E: a booking task about the day's leg, and a not-yet-booked flight.
             BookingTask.objects.create(trip=self.trip, title=f"Seats A to B {offset}",
                                        leg=TransportLeg.objects.filter(trip=self.trip, date=day.date).first())
@@ -459,7 +467,7 @@ class QueryCountTests(DetailFixture):
         # * 1 for the trip's catalogue cities (the chips under the title). Each
         #   day's city comes with the days query (select_related), so it is free.
         #
-        # 22 in all on this site, four of which are the site shell's, added to
+        # 24 in all on this site, four of which are the site shell's, added to
         # every page — UserTimezoneMiddleware (user_preferences),
         # UserThemeMiddleware (account_settings), and the travel_preferences and
         # rewards context processors. None of them depends on the trip.
@@ -469,6 +477,8 @@ class QueryCountTests(DetailFixture):
         #   Python. Phase B's three per-kind tables cost one query each; generic links are one,
         #   so the pin went down deliberately from 24 to 22 (with the content-type cache warmed
         #   below: run alone, a cold cache added one query and the count depended on test order).
+        # * 2 for the days' activities (TripActivity, with their place) and their travellers.
+        #   Raised deliberately from 22 to 24.
         stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
                                       check_out=self.trip.start_date + timedelta(days=2))
         Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").link(stay)
@@ -480,7 +490,7 @@ class QueryCountTests(DetailFixture):
                                check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
         from django.contrib.contenttypes.models import ContentType
         ContentType.objects.get_for_models(Trip, Day, Section, BookingTask)  # the comments' kinds, as in a warm process
-        with self.assertNumQueries(22):
+        with self.assertNumQueries(24):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

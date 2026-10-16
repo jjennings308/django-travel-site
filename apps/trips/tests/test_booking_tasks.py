@@ -110,7 +110,7 @@ class TripPageTests(Fixture):
         Confirmation.objects.create(trip=self.trip, confirmation_number="CHR1").link(booked)
         BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=self.hof)
         items = self.page().context["not_booked"]
-        self.assertEqual([item for item, _kind in items], [self.ice, flight])  # U-Bahn, booked stay, tasked stay out
+        self.assertEqual([nb["item"] for nb in items], [self.ice, flight])  # U-Bahn, booked stay, tasked stay out
 
 
 class OfferTests(Fixture):

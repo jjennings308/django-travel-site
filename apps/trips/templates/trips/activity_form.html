@@ -1,0 +1,38 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, ticket or pass, table reservation or car hire. Once saved, its confirmations are added on this page, like a leg's.
+{% endcomment %}
+{% block title %}{% if activity %}{{ activity.title }}{% else %}New activity{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
+    <span>{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</h1>
+    <p class="mb-4 text-zinc-500">Day {{ day.day_number }} · {{ day.date|date:"l, F j" }}. Times are local to the day.</p>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% include "trips/_form_fields.html" with form=form %}
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">{% if activity %}Save{% else %}Add activity{% endif %}</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      {% if activity %}<a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:activity_delete' trip.pk day.pk activity.pk %}?next={{ next|urlencode }}">Delete</a>{% endif %}
+    </div>
+  </form>
+  {% if activity %}
+    {% if activity.booking_tasks.all %}
+      <section class="card mt-6 p-5">
+        <h2 class="form-section-title mb-2">Booking tasks</h2>
+        <ul class="list-disc pl-5 text-sm">{% for task in activity.booking_tasks.all %}<li>{% if task.done %}<s>{{ task.title }}</s>{% else %}{{ task.title }}{% endif %}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+    {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
+  {% else %}
+    <p class="note mt-4">Save it first, then add its confirmation number here.</p>
+  {% endif %}
+{% endblock %}

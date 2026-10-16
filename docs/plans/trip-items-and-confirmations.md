@@ -4,7 +4,7 @@ Status: Phases A–E done (2026-10-15, branches `phase-a-legs-in-place`, `phase-
 `phase-c-convert-tables`, `phase-d-new-itineraries-as-legs`, `phase-e-booking-tasks`). Then, at
 James's request (2026-10-16), confirmations were reworked to attach like comments and the view page
 became read-only (branch `confirmations-generic`, see "Reworked after Phase E"); Phase F is replaced
-by a `TripActivity` item (next branch). Hand to Claude
+by a `TripActivity` item (done, branch `trip-activities`, migration `trips 0029`). Hand to Claude
 Code one phase per branch/PR, in order.
 Read with `CLAUDE.md` → "Trips". Every decision marked **Ask James** must be answered before
 the phase that depends on it.
@@ -298,6 +298,10 @@ from edit pages; Edit trip gained "Travel by day" and "Bookings & confirmations"
 
 **Replaced** (2026-10-16) by a `TripActivity` item on a day (kind, title, provider, optional times,
 place, travellers, cost; confirmations link to it like any item; booking tasks may point at it).
+**Done** on branch `trip-activities` (migration `trips 0029`; tests `test_activities.py`). Not built
+from the original Phase F: `Meal.reserved_at` (a booked dinner can be an activity of kind "table", or
+a meal with a confirmation) and placing activities inside a section (they show in their own block on
+the day). Query pin 22 → 24 (activities and their travellers).
 
 Tours, timed entries, tickets, passes, car hire, an Oktoberfest tent table: today they're prose in
 sections plus a booking task, with nowhere to put the confirmation.

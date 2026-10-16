@@ -92,12 +92,12 @@ being discussed.
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apps.accounts.models import Role
-from apps.locations.models import City
+from apps.locations.models import POI, City
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -1309,6 +1309,73 @@ class Meal(models.Model):
         return f"{self.name} ({self.get_meal_type_display()})"
 
 
+class TripActivity(models.Model):
+    """Something reserved or planned on a day that isn't travel, a stay or a meal: a tour, a
+    timed entry, a ticket or pass, a table reservation, car hire. Confirmations attach to it
+    like any item (``ConfirmationLink``); booking tasks may point at it. Shown on its day, in
+    the PDF, never in the public view. (Named TripActivity: the catalogue has ``Activity``.)"""
+
+    class Kind(models.TextChoices):
+        TOUR = "tour", "Tour"
+        ENTRY = "entry", "Timed entry"
+        TICKET = "ticket", "Ticket or pass"
+        TABLE = "table", "Table reservation"
+        CAR_HIRE = "car_hire", "Car hire"
+        OTHER = "other", "Other"
+
+    #: Kinds that usually need booking ("Not booked yet" when nothing confirms them).
+    BOOKABLE = (Kind.TOUR, Kind.ENTRY, Kind.TICKET, Kind.TABLE, Kind.CAR_HIRE)
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="activities")
+    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="activities")
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.TOUR)
+    title = models.CharField(max_length=200)
+    provider = models.CharField(max_length=120, blank=True)
+    # Wall-clock times on the day, where it happens (no zone to convert: the day is local).
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_activities",
+                            verbose_name="place")
+    place_text = models.CharField(max_length=200, blank=True, verbose_name="place (typed)",
+                                  help_text="When the place isn't in the catalogue.")
+    # Who's going; blank = everyone on the day.
+    travelers = models.ManyToManyField(Traveler, blank=True, related_name="trip_activities")
+    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    currency = models.CharField(max_length=3, blank=True)
+    notes = models.TextField(blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
+
+    class Meta:
+        ordering = ["day", models.F("start_time").asc(nulls_last=True), "order", "id"]
+        verbose_name = "activity"
+        verbose_name_plural = "activities"
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def place_name(self):
+        return self.poi.name if self.poi_id else self.place_text
+
+    @property
+    def time_range(self):
+        """ "2:00 PM – 3:15 PM", "2:00 PM", or "" (local to the day)."""
+        def fmt(t):
+            return t.strftime("%I:%M %p").lstrip("0") if t else ""
+        if self.start_time and self.end_time:
+            return f"{fmt(self.start_time)} – {fmt(self.end_time)}"
+        return fmt(self.start_time)
+
+    def clean(self):
+        super().clean()
+        if self.day_id and self.trip_id and self.day.trip_id != self.trip_id:
+            raise ValidationError({"day": "Choose a day of this trip."})
+        if self.start_time and self.end_time and self.end_time < self.start_time:
+            raise ValidationError({"end_time": "Ends before it starts."})
+
+
 class Confirmation(models.Model):
     """A booking reference, collected so it is all in one place.
 
@@ -1355,8 +1422,13 @@ class Confirmation(models.Model):
         items = getattr(self, "_items", None)
         if items is None:
             items = [link.item for link in self.links.all() if link.item is not None]
-        return sorted(items, key=lambda item: (item_date(item) is None, item_date(item) or date.min,
-                                               CONFIRMABLE_ORDER.get(type(item).__name__, 9)))
+        def key(item):
+            when = item_date(item)
+            departs = getattr(item, "departure_at", None)
+            return (when is None, when or date.min, CONFIRMABLE_ORDER.get(type(item).__name__, 9),
+                    departs is None, departs or datetime.min.replace(tzinfo=dt_timezone.utc),
+                    getattr(item, "order", 0), item.pk)
+        return sorted(items, key=key)
 
     @property
     def kind(self):
@@ -1371,7 +1443,7 @@ class Confirmation(models.Model):
             if modes == {TransportLeg.Mode.TRAIN}:
                 return "train"
             return "other"
-        for model, name in ((Lodging, "stay"), (Section, "activity"), (Meal, "meal")):
+        for model, name in ((Lodging, "stay"), (TripActivity, "activity"), (Section, "activity"), (Meal, "meal")):
             if any(isinstance(item, model) for item in items):
                 return name
         return "other"
@@ -1458,7 +1530,7 @@ class ConfirmationLink(models.Model):
         super().clean()
         item = self.item
         if item is None or type(item) not in CONFIRMABLE.values():
-            raise ValidationError("A confirmation is linked to a leg, a stay, a day's section or a meal.")
+            raise ValidationError("A confirmation is linked to a leg, a stay, an activity, a day's section or a meal.")
         if item_trip_id(item) != self.confirmation.trip_id:
             raise ValidationError("That item belongs to another trip.")
 
@@ -1467,10 +1539,11 @@ class ConfirmationLink(models.Model):
 CONFIRMABLE = {
     "leg": TransportLeg,
     "stay": Lodging,
+    "activity": TripActivity,
     "section": Section,
     "meal": Meal,
 }
-CONFIRMABLE_ORDER = {"TransportLeg": 0, "Lodging": 1, "Section": 2, "Meal": 3}
+CONFIRMABLE_ORDER = {"TransportLeg": 0, "Lodging": 1, "TripActivity": 2, "Section": 3, "Meal": 4}
 
 
 def confirmable_kind(item):
@@ -1495,6 +1568,8 @@ def item_label(item):
         return f"{item.origin}→{item.destination}"
     if isinstance(item, Section):
         return item.title or item.content_summary() or item.get_section_type_display()
+    if isinstance(item, TripActivity):
+        return item.title
     return item.name
 
 
@@ -1559,13 +1634,16 @@ class BookingTask(models.Model):
         null=True,
         blank=True,
     )
-    # What the task is about (trip-items plan, Phase E): a leg or a stay, at most one. Shown on
-    # the item; SET_NULL so deleting the item keeps the task. Phase F adds ``booking``.
+    # What the task is about (trip-items plan, Phase E): a leg, a stay or an activity, at most
+    # one. Shown on the item; SET_NULL so deleting the item keeps the task.
     leg = models.ForeignKey(
         "TransportLeg", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
     )
     stay = models.ForeignKey(
         "Lodging", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
+    )
+    activity = models.ForeignKey(
+        "TripActivity", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
     )
     title = models.CharField(max_length=200)
     priority = models.IntegerField(choices=Priority.choices, default=Priority.MEDIUM)
@@ -1592,8 +1670,11 @@ class BookingTask(models.Model):
         verbose_name_plural = "booking tasks"
         indexes = [models.Index(fields=["trip", "done"])]
         constraints = [
+            # At most one of leg / stay / activity.
             models.CheckConstraint(
-                condition=Q(leg__isnull=True) | Q(stay__isnull=True), name="bookingtask_one_item"
+                condition=(Q(leg__isnull=True) & Q(stay__isnull=True)) | (Q(leg__isnull=True) & Q(activity__isnull=True))
+                | (Q(stay__isnull=True) & Q(activity__isnull=True)),
+                name="bookingtask_one_item",
             ),
         ]
 

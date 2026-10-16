@@ -58,6 +58,31 @@
       a logistics table's rows are not a callout's text — so one table cannot
       hold all five without showing every possible field on every row.
     {% endcomment %}
+    {% comment %}Activities: tours, timed entries, tickets, tables, car hire. Each has its own page, where its confirmations are added.{% endcomment %}
+    <section class="form-section mt-10" id="activities">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="form-section-title">Activities</h2>
+          <p class="form-section-lede">Things booked or planned on this day: a tour, a timed entry, tickets, a table, car hire.</p>
+        </div>
+        <a class="btn-quiet" href="{% url 'trips:activity_new' trip.pk day.pk %}">Add an activity</a>
+      </div>
+      {% if day.activities.exists %}
+        <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
+          {% for a in day.activities.all %}
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+              <span class="badge badge-mode">{{ a.get_kind_display }}</span>
+              <a class="font-medium text-zinc-900 hover:text-accent-700" href="{% url 'trips:activity_edit' trip.pk day.pk a.pk %}">{{ a.title }}</a>
+              <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ a.time_range }}{% if a.time_range and a.place_name %} · {% endif %}{{ a.place_name }}</span>
+              <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:activity_delete' trip.pk day.pk a.pk %}">Delete</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state py-6">No activities yet.</p>
+      {% endif %}
+    </section>
+
     <section class="form-section mt-10">
       <h2 class="form-section-title">Sections</h2>
       <p class="form-section-lede">

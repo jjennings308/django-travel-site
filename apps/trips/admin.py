@@ -16,6 +16,7 @@ from .models import (
     Contact,
     Day,
     TransportLeg,
+    TripActivity,
     Lodging,
     Meal,
     RewardsMembership,
@@ -539,6 +540,18 @@ class ConfirmationLinkInline(admin.TabularInline):
         return False
 
 
+@admin.register(TripActivity)
+class TripActivityAdmin(admin.ModelAdmin):
+    """Tours, timed entries, tickets, tables, car hire on a day. The site's day page is the
+    usual place to edit them; confirmations attach from the activity's page."""
+
+    list_display = ("title", "kind", "day", "start_time", "provider", "trip")
+    list_filter = ("kind", "trip")
+    search_fields = ("title", "provider", "place_text", "notes")
+    raw_id_fields = ("trip", "day", "poi")
+    filter_horizontal = ("travelers",)
+
+
 @admin.register(Confirmation)
 class ConfirmationAdmin(admin.ModelAdmin):
     list_display = ("label", "confirmation_number", "provider", "trip")
@@ -570,7 +583,7 @@ class BookingTaskAdmin(admin.ModelAdmin):
     autocomplete_fields = ("trip", "day", "confirmation")
     # What the task is about (trip-items plan, Phase E); raw ids so any trip's legs and stays
     # aren't loaded into one dropdown. The trip edit page offers this trip's only.
-    raw_id_fields = ("leg", "stay")
+    raw_id_fields = ("leg", "stay", "activity")
 
 
 @admin.register(TransportLeg)
