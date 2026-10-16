@@ -266,22 +266,11 @@ def _trip_comments(trip, user):
     return by_target, grouped
 
 
-@login_required
-def trip_detail(request, pk):
-    """One trip, in full, for printing.
-
-    The whole page exists to be printed, so it is assembled for a reader rather
-    than an editor: sections in order, meals in order, and the quick-reference
-    cards that make confirmation numbers findable without scrolling.
-
-    Everything hangs off one ``visible_to`` lookup so an ungranted trip 404s at
-    the first query. The related rows are then prefetched in a fixed number of
-    queries — a trip has ~17 days, and without this the page would run a query
-    per section, per meal and per day, which is the difference between one
-    screen and a hundred.
-    """
-    trip = get_object_or_404(
-        Trip.objects.visible_to(request.user)
+def _trip_page_queryset(user):
+    """The trip page's one big prefetch, shared with the PDF booklet (``trip_pdf``) so
+    both render from the same rows. See ``trip_detail`` for why each relation is here."""
+    return (
+        Trip.objects.visible_to(user)
         .prefetch_related(
             # Only the *leaf* relations carry to_attr. Putting one on "days" as
             # well silently breaks the chain: the sections get fetched, but
@@ -326,9 +315,25 @@ def trip_detail(request, pk):
             outstanding_task_count=Count(
                 "booking_tasks", filter=Q(booking_tasks__done=False), distinct=True
             )
-        ),
-        pk=pk,
+        )
     )
+
+
+@login_required
+def trip_detail(request, pk):
+    """One trip, in full, for printing.
+
+    The whole page exists to be printed, so it is assembled for a reader rather
+    than an editor: sections in order, meals in order, and the quick-reference
+    cards that make confirmation numbers findable without scrolling.
+
+    Everything hangs off one ``visible_to`` lookup so an ungranted trip 404s at
+    the first query. The related rows are then prefetched in a fixed number of
+    queries — a trip has ~17 days, and without this the page would run a query
+    per section, per meal and per day, which is the difference between one
+    screen and a hundred.
+    """
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
     comments, comments_by_target = _trip_comments(trip, request.user)
     # One capabilities lookup for every action the page offers: each trip.can()
     # is a query, and this page pins its query count (QueryCountTests).
@@ -356,6 +361,39 @@ def trip_detail(request, pk):
             "can_delete": "delete" in capabilities,
         },
     )
+
+
+@login_required
+def trip_pdf(request, pk):
+    """The trip as a downloadable booklet (apps/trips/pdf.py): cover and days at a glance,
+    one section per day, then confirmations, stays, contacts and what's still to book. Anyone
+    who can see the trip; never part of the public view (it carries confirmation numbers)."""
+    import logging
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from django.utils.text import slugify
+    from . import booking_tasks
+    from .pdf import PdfUnavailable, booklet_context, render_pdf
+
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    stray_legs = _place_legs(trip)
+    _attach_confirmations(trip)
+    booking_tasks.attach(trip)
+    html = render_to_string("trips/pdf/booklet.html", {
+        "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
+        "printed": django_timezone.localdate(), **booklet_context(trip),
+    }, request=request)
+    try:
+        pdf = render_pdf(html, base_url=request.build_absolute_uri("/"))
+    except PdfUnavailable as exc:
+        logging.getLogger(__name__).error("Trip PDF unavailable: %s", exc)
+        messages.error(request, "The PDF booklet can't be made on this server yet (its PDF libraries are "
+                                "missing). Use your browser's Print → Save as PDF for now.")
+        return redirect("trips:trip_detail", pk=trip.pk)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    filename = f"{slugify(trip.public_title or trip.name) or 'trip'}-itinerary.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 CONFIRMATION_GROUPS = (("flight", "Flights"), ("train", "Trains"), ("stay", "Stays"), ("meal", "Meals"),

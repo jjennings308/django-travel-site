@@ -61,6 +61,7 @@ urlpatterns = [
         name="section_edit",
     ),
     path("<int:pk>/travel-tables/", views.trip_travel_review, name="trip_travel_review"),
+    path("<int:pk>/booklet.pdf", views.trip_pdf, name="trip_pdf"),
     path("<int:pk>/tasks/done/", views.task_offer, name="task_offer"),
     path("<int:pk>/tasks/<int:task_pk>/link/", views.task_link, name="task_link"),
     path(

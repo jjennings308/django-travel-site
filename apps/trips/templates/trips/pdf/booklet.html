@@ -1,0 +1,247 @@
+<!doctype html>
+{% comment %}
+The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. Designed for paper, not a copy of the web page: US Letter, running header (trip and current day) and footer (page X of Y), a cover with the days at a glance, one section per day, then the reference pages. Self-contained: no site CSS, no web fonts. Leg times use the leg's own *_local_* helpers, never |date after a zone filter. It carries confirmation numbers, so it is never public.
+{% endcomment %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ trip.name }} — itinerary</title>
+<style>
+  @page {
+    size: letter;
+    margin: 0.8in 0.75in 0.75in;
+    @top-left { content: string(tripname); font-size: 8pt; color: #78716c; }
+    @top-right { content: string(dayname); font-size: 8pt; color: #78716c; }
+    @bottom-center { content: "Page " counter(page) " of " counter(pages); font-size: 8pt; color: #78716c; }
+  }
+  @page cover { @top-left { content: none; } @top-right { content: none; } @bottom-center { content: none; } }
+
+  html { font-family: "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif; font-size: 9.5pt; color: #1c1917; line-height: 1.4; }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  p { margin: 0 0 4pt; }
+  .muted { color: #78716c; }
+  .accent { color: #9a4a2a; }
+  .small { font-size: 8pt; }
+
+  /* Cover */
+  .cover { page: cover; break-after: page; padding-top: 2.2in; }
+  .cover .kicker { text-transform: uppercase; letter-spacing: 0.12em; font-size: 9pt; color: #9a4a2a; margin-bottom: 8pt; }
+  .cover h1 { font-size: 26pt; margin-bottom: 10pt; string-set: tripname content(); }
+  .cover .dates { font-size: 13pt; margin-bottom: 4pt; }
+  .cover .who { margin-top: 14pt; }
+  .cover .rule { border-top: 2pt solid #9a4a2a; width: 1.2in; margin: 14pt 0 8pt; }
+  .glance h2 { font-size: 16pt; string-set: dayname "At a glance"; border-bottom: 1.5pt solid #9a4a2a; padding-bottom: 5pt; margin-bottom: 8pt; }
+  .nowrap { white-space: nowrap; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 4pt 0 10pt; }
+  th { text-align: left; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #78716c; font-weight: 600; border-bottom: 1pt solid #d6d3d1; padding: 3pt 6pt 3pt 0; }
+  td { vertical-align: top; border-bottom: 0.5pt solid #e7e5e4; padding: 4pt 6pt 4pt 0; }
+  tr { break-inside: avoid; }
+
+  /* Days */
+  .day { break-before: page; }
+  .day-head { border-bottom: 1.5pt solid #9a4a2a; padding-bottom: 5pt; margin-bottom: 8pt; }
+  .day-head h2 { font-size: 16pt; string-set: dayname content(); }
+  .day-head .meta { margin-top: 3pt; color: #57534e; }
+  .block { margin: 10pt 0 0; break-inside: avoid-page; }
+  .block h3 { font-size: 10.5pt; margin-bottom: 4pt; color: #44403c; }
+  .stay-line { background: #f5f5f4; border-left: 3pt solid #9a4a2a; padding: 5pt 8pt; margin-bottom: 8pt; }
+  .callout { border-left: 3pt solid #a8a29e; background: #fafaf9; padding: 5pt 8pt; margin: 8pt 0; }
+  .callout.warning { border-color: #d97706; background: #fffbeb; }
+  .callout.critical { border-color: #b91c1c; background: #fef2f2; }
+  .option { margin: 0 0 5pt; padding-left: 8pt; border-left: 1pt solid #d6d3d1; }
+  .tag { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; }
+  .code { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-weight: 600; }
+
+  /* Reference */
+  .reference { break-before: page; }
+  .reference h2 { font-size: 16pt; string-set: dayname "Reference"; border-bottom: 1.5pt solid #9a4a2a; padding-bottom: 5pt; margin-bottom: 8pt; }
+  .reference h3 { font-size: 11pt; margin: 12pt 0 4pt; }
+</style>
+</head>
+<body>
+
+{# ------------------------------------------------------------------ cover #}
+<section class="cover">
+  <p class="kicker">Itinerary</p>
+  <h1>{{ trip.name }}</h1>
+  {% if trip.start_date %}<p class="dates">{{ trip.start_date|date:"l, F j" }} – {{ trip.end_date|date:"l, F j, Y" }}{% if trip.nights %} · {{ trip.nights }} night{{ trip.nights|pluralize }}{% endif %}</p>{% endif %}
+  {% if trip.destination %}<p class="muted">{{ trip.destination }}</p>{% endif %}
+  {% if trip.travelers.all %}<p class="who"><span class="tag">Travellers</span><br>{% for t in trip.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <div class="rule"></div>
+  <p class="small muted">Printed {{ printed|date:"F j, Y" }}. Times are local to where each journey starts and ends.</p>
+</section>
+
+{% if days %}
+  <section class="glance">
+    <h2>Days at a glance</h2>
+    <table>
+      <thead><tr><th>Day</th><th>Date</th><th>Where</th><th>Staying</th></tr></thead>
+      <tbody>
+        {% for day in days %}
+          <tr><td>{{ day.day_number }}</td><td class="nowrap">{{ day.date|date:"D M j" }}</td><td>{% if day.city %}{{ day.city.name }}{% endif %}{% if day.theme %}{% if day.city %} — {% endif %}<span class="muted">{{ day.theme|truncatechars:48 }}</span>{% endif %}</td><td>{% if day.stay %}{{ day.stay.name }}{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endif %}
+
+{# ------------------------------------------------------------------- days #}
+{% for day in days %}
+  <section class="day">
+    <div class="day-head">
+      <h2>Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"l, F j" }}{% endif %}</h2>
+      <p class="meta">{% if day.city %}{{ day.city.name }}{% endif %}{% if day.city and day.theme %} — {% endif %}{{ day.theme }}{% if day.meals_included %} · Meals included{% endif %}{% if day.is_split %} · Split group ({{ day.roster_summary }}){% endif %}</p>
+    </div>
+
+    {% if day.stay or day.checking_out %}
+      <div class="stay-line">
+        {% for stay in day.checking_out %}<p><span class="tag">Check out</span> {{ stay.name }}</p>{% endfor %}
+        {% if day.stay %}<p><span class="tag">{% if day.stay in day.checking_in %}Check in{% else %}Staying{% endif %}</span> <strong>{{ day.stay.name }}</strong>{% if day.stay.address %} · {{ day.stay.address }}{% endif %}{% for c in day.stay.confirmation_list %} · <span class="code">{{ c.confirmation_number }}</span>{% endfor %}</p>{% endif %}
+      </div>
+    {% endif %}
+
+    {% if day.day_legs %}
+      <div class="block">
+        <h3>Getting around{% if day.travel_total %} <span class="muted small">{{ day.travel_total }}</span>{% endif %}</h3>
+        <table>
+          <thead><tr><th>Journey</th><th>When</th><th>With</th><th>Confirmation</th></tr></thead>
+          <tbody>
+            {% for leg in day.day_legs %}
+              <tr>
+                <td><strong>{{ leg.origin }} → {{ leg.destination }}</strong><br><span class="muted small">{{ leg.get_mode_display }}</span></td>
+                <td>{% if leg.is_planned %}Planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}{{ leg.departure_local_str }} → {{ leg.arrival_local_str }}{% if leg.departs_on_a_different_day %} (+1 day){% endif %}{% if leg.duration_str %}<br><span class="muted small">{{ leg.duration_str }}</span>{% endif %}{% endif %}</td>
+                <td>{{ leg.operator }} {{ leg.service_number }}</td>
+                <td>{% for c in leg.confirmation_list %}<span class="code">{{ c.confirmation_number }}</span>{% if not forloop.last %}, {% endif %}{% empty %}{% if leg.open_tasks %}<span class="accent small">To book</span>{% endif %}{% endfor %}</td>
+              </tr>
+              {% if leg.notes %}<tr><td colspan="4" class="small muted">{{ leg.notes|linebreaksbr }}</td></tr>{% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    {% for section in day.ordered_sections %}
+      {% if section.section_type == "phase" %}
+        <div class="block">
+          <h3>{{ section.content.heading|default:section.title }}</h3>
+          {% if section.content.summary %}<p>{{ section.content.summary }}</p>{% endif %}
+          {% if section.content.highlights %}<ul>{% for item in section.content.highlights %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+      {% elif section.section_type == "logistics_table" or section.section_type == "travel" %}
+        {% if section.content.rows or section.content.intro %}
+          <div class="block">
+            {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}
+            {% if section.content.intro %}<p>{{ section.content.intro }}</p>{% endif %}
+            {% if section.content.rows %}
+              <table>
+                {% if section.content.columns %}<thead><tr>{% for column in section.content.columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>{% endif %}
+                <tbody>{% for row in section.content.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+              </table>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% elif section.section_type == "callout" %}
+        <div class="callout {{ section.content.tone|default:'info' }}">{% if section.title %}<strong>{{ section.title }}:</strong> {% endif %}{{ section.content.text }}</div>
+      {% elif section.section_type == "choose_your_adventure" %}
+        <div class="block">
+          <h3>{{ section.content.prompt|default:section.title }}</h3>
+          {% if section.content.summary %}<p>{{ section.content.summary }}</p>{% endif %}
+          {% for option in section.content.options %}
+            <div class="option"><strong>{% if option.letter %}{{ option.letter }}. {% endif %}{{ option.title }}</strong>{% if option.duration or option.cost %} <span class="muted small">{{ option.duration }}{% if option.duration and option.cost %} · {% endif %}{{ option.cost }}</span>{% endif %}{% if option.description %}<br>{{ option.description }}{% endif %}</div>
+          {% endfor %}
+        </div>
+      {% elif section.section_type == "free_text" %}
+        <div class="block">
+          {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}
+          {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    {% if day.ordered_meals %}
+      <div class="block">
+        <h3>Food</h3>
+        <table>
+          <tbody>
+            {% for meal in day.ordered_meals %}
+              <tr>
+                <td style="width: 18%"><span class="tag">{{ meal.get_meal_type_display }}</span></td>
+                <td><strong>{{ meal.name }}</strong>{% if meal.price_range %} <span class="muted">{{ meal.price_range }}</span>{% endif %}{% if meal.cuisine %} · {{ meal.cuisine }}{% endif %}{% if meal.why_recommended %}<br>{{ meal.why_recommended }}{% endif %}{% if meal.reservation_notes %}<br><span class="muted small">{{ meal.reservation_notes }}</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+{% endfor %}
+
+{# -------------------------------------------------------------- reference #}
+{% if confirmation_groups or stays or trip.contacts.all or open_tasks %}
+  <section class="reference">
+    <h2>Reference</h2>
+
+    {% if confirmation_groups %}
+      <h3>Confirmations</h3>
+      <table>
+        <thead><tr><th>Number</th><th>What</th><th>Provider</th><th>For</th></tr></thead>
+        <tbody>
+          {% for title, items in confirmation_groups %}
+            {% for c in items %}
+              <tr>
+                <td class="code">{{ c.confirmation_number }}</td>
+                <td>{% if c.label %}{{ c.label }}<br>{% endif %}<span class="muted small">{{ title }}{% if c.description and c.description != c.label %} · {{ c.description }}{% endif %}</span></td>
+                <td>{{ c.provider }}{% if c.url %}<br><span class="small muted">{{ c.url }}</span>{% endif %}</td>
+                <td class="small">{% for t in c.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">Everyone</span>{% endfor %}</td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% if stays %}
+      <h3>Where we're staying</h3>
+      <table>
+        <thead><tr><th>Stay</th><th>Dates</th><th>Address</th></tr></thead>
+        <tbody>
+          {% for stay in stays %}
+            <tr>
+              <td><strong>{{ stay.name }}</strong>{% for c in stay.confirmation_list %}<br><span class="code small">{{ c.confirmation_number }}</span>{% endfor %}</td>
+              <td>{{ stay.check_in|date:"M j" }} – {{ stay.check_out|date:"M j" }}<br><span class="muted small">{{ stay.nights }} night{{ stay.nights|pluralize }}</span></td>
+              <td>{{ stay.address|linebreaksbr }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% if trip.contacts.all %}
+      <h3>Contacts</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th></tr></thead>
+        <tbody>
+          {% for contact in trip.contacts.all %}
+            <tr><td><strong>{{ contact.name }}</strong>{% if contact.notes %}<br><span class="muted small">{{ contact.notes }}</span>{% endif %}</td><td>{{ contact.role }}</td><td>{{ contact.phone }}</td><td>{{ contact.email }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% if open_tasks %}
+      <h3>Still to book</h3>
+      <table>
+        <tbody>
+          {% for task in open_tasks %}
+            <tr><td style="width: 4%">☐</td><td><strong>{{ task.title }}</strong>{% if task.item %} <span class="muted small">· {% if task.leg_id %}{{ task.item.origin }} → {{ task.item.destination }}{% else %}{{ task.item.name }}{% endif %}</span>{% endif %}{% if task.due or task.due_note %}<br><span class="small muted">{% if task.due %}Due {{ task.due|date:"M j" }}{% endif %}{% if task.due and task.due_note %} — {% endif %}{{ task.due_note }}</span>{% endif %}</td><td class="small">{{ task.get_priority_display }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+{% endif %}
+
+</body>
+</html>
