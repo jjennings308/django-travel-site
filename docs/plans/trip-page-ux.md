@@ -1,7 +1,7 @@
 # Plan: the trip page as a web page — one home per fact, the booklet stays as it is
 
-Status: U1–U5 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
-`u4-contacts-info`, `u5-edit-this-day`); U6–U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
+Status: U1–U6 done (2026-10-16, branches `u1-booklet-guard`, `u2-page-shell`, `u3-day-timeline`,
+`u4-contacts-info`, `u5-edit-this-day`, `u6-decisions`); U7 planned. Decisions below were answered by James on 2026-10-16. Hand to
 Claude Code **one phase per branch/PR, in order** (U1 → U7). Read with `CLAUDE.md` → "Trips" and
 `docs/plans/trip-items-and-confirmations.md` (whose phases A–E and `TripActivity` are done and are
 the foundation here).
@@ -261,6 +261,13 @@ item, is added from that item's row. Legs show their `order` (edited on the leg'
   commentors get 403 on the day page; `next` is checked with `url_has_allowed_host_and_scheme`.
 
 ## U6 — Decisions as tasks with options
+
+**Status: done** on branch `u6-decisions` (migration `trips 0032_decisions`: adds only; query count
+26 → 27 as planned; tests `test_decisions.py`). As built: options are edited on `trips:task_options`
+(saving options there turns a task into a decision; the task row on Edit trip also has a Kind
+field); "Add as a stay / activity" go through `trips:option_add`, which pre-fills Edit trip's blank
+stay row or the day's new-activity page and saves nothing. The booklet's Still to book prints
+"Decide: …" with ✓ / ○ options — the snapshot diff was exactly the new decision row.
 
 - `BookingTask.kind` (`book` default, `decide`) and **`TaskOption`** (new): `task`, `title`, `detail`,
   `url`, `est_cost` + `currency`, `order`, `chosen` (at most one per task). Migration adds both.
