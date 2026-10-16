@@ -8,7 +8,13 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
   day of the trip.
 - ``travel_total(legs)``: "2 legs · ~3 h 15 min" when every leg has a time or an estimate.
 - ``attach_stays(days, stays)``: where you sleep each night — ``day.stay`` (check-in ≤ date <
-  check-out), ``day.checking_in`` / ``day.checking_out`` (stays starting / ending that day).
+  check-out), ``day.checking_in`` / ``day.checking_out`` (stays starting / ending that day); returns
+  the stays whose check-in is no day of the trip.
+- ``overview(days, not_booked, tasks)``: the web page's Overview row and day summary (U2) —
+  ``day.overnight``, ``day.travel_icons``, ``day.travel_summary``, ``day.highlights``,
+  ``day.attention``. Run after ``place_legs`` and ``attach_stays``.
+- ``open_day(days, today)``: which day the page opens on — today's during the trip, Day 1 before
+  it, none after it.
 """
 from .models import Section
 
@@ -61,7 +67,8 @@ def place_legs(trip):
 
 
 def attach_stays(days, stays):
-    """Where you sleep each night (see the module docstring)."""
+    """Where you sleep each night (see the module docstring). Returns the stays whose check-in
+    isn't one of the days' dates (they have no day to be shown on)."""
     for day in days:
         day.stay = None
         day.checking_in = []
@@ -75,3 +82,61 @@ def attach_stays(days, stays):
                 day.checking_in.append(stay)
             if stay.check_out == day.date:
                 day.checking_out.append(stay)
+    dates = {day.date for day in days if day.date}
+    return [stay for stay in stays if stay.check_in not in dates]
+
+
+MODE_ICONS = {"plane": "✈", "train": "🚆", "pov": "🚗", "rental_car": "🚙", "walking": "🚶", "other": "•"}
+
+
+def overview(days, not_booked=(), tasks=()):
+    """The Overview row for each day (see the module docstring). ``not_booked`` is
+    ``booking_tasks.not_booked``'s list and ``tasks`` the trip's tasks after
+    ``booking_tasks.attach`` (``task.item_day``)."""
+    attention = {}
+    for entry in not_booked:
+        item = entry["item"]
+        day = getattr(item, "on_day", None) if entry["kind"] == "leg" else None
+        if entry["kind"] == "activity":
+            day = item.day
+        if entry["kind"] == "stay":
+            day = next((d for d in days if d.date == item.check_in), None)
+        if day is not None:
+            attention[day.pk] = attention.get(day.pk, 0) + 1
+    for task in tasks:
+        if task.done:
+            continue
+        day = getattr(task, "item_day", None) or (task.day if task.day_id else None)
+        if day is not None:
+            attention[day.pk] = attention.get(day.pk, 0) + 1
+    for day in days:
+        legs = getattr(day, "day_legs", [])
+        day.overnight = any(leg.departs_on_a_different_day for leg in legs)
+        icons = []
+        for leg in legs:
+            icon = MODE_ICONS.get(leg.mode, "•")
+            if icon not in icons:
+                icons.append(icon)
+        day.travel_icons = "".join(icons)
+        if len(legs) == 1:
+            day.travel_summary = f"{legs[0].origin} → {legs[0].destination}"
+        elif legs:
+            day.travel_summary = getattr(day, "travel_total", "") or f"{len(legs)} legs"
+        else:
+            day.travel_summary = ""
+        titles = [activity.title for activity in getattr(day, "ordered_activities", [])][:2]
+        day.highlights = titles or ([day.theme] if day.theme else [])
+        day.attention = attention.get(day.pk, 0)
+
+
+def open_day(days, today):
+    """The day to open on arrival: today's while the trip is on, Day 1 before it, else None."""
+    dated = [day for day in days if day.date]
+    if not dated:
+        return days[0] if days else None
+    first, last = min(d.date for d in dated), max(d.date for d in dated)
+    if today < first:
+        return min(days, key=lambda d: d.day_number)
+    if today > last:
+        return None
+    return next((day for day in dated if day.date == today), None)

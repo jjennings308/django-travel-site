@@ -7,167 +7,157 @@
 
 {% block content %}
   {% comment %}
-    Built for printing: no dark panels, no shadows, nothing hover-only. Cards
-    carry the fields the old compact tables had no column for — cost, notes,
-    rates, duration — and the print rules in tailwind.css stack them single
-    column and keep each one off a page boundary.
+    The trip as a web page, for a desk and a phone (docs/plans/trip-page-ux.md). The booklet
+    (trips:trip_pdf) does the printing, so nothing here is laid out for paper. One home per fact:
+    things that happen on a day live on that day; confirmations, contacts and tasks live in
+    Reference, and anything else is a one-line link to them.
   {% endcomment %}
 
-  <header class="hero">
+  <header class="mb-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <h1 class="hero-title">{{ trip.name }}</h1>
-      <div class="mt-2 flex flex-wrap items-center gap-3">
-        {% include "trips/partials/_status_badge.html" %}
-        {% if can_edit %}<a class="btn print:hidden" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
-        <a class="btn-quiet print:hidden" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
-        <a class="btn-quiet print:hidden" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>
-        <a class="btn-quiet print:hidden" href="{% url 'trips:trip_map' trip.pk %}">Map</a>
-        <a class="btn-quiet print:hidden" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>
-        {% if can_delete %}<a class="link-quiet font-medium hover:text-red-700 print:hidden" href="{% url 'trips:trip_delete' trip.pk %}">Delete</a>{% endif %}
-        {% if can_edit and not trip.public_token %}<form method="post" action="{% url 'trips:trip_share' trip.pk %}" class="print:hidden">{% csrf_token %}<button type="submit" class="btn-quiet" title="Make a read-only link with the trip's name, dates and outline">Share</button></form>{% endif %}
+      <div class="min-w-0">
+        <h1 class="hero-title">{{ trip.name }}</h1>
+        <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+          {% if trip.start_date and trip.end_date %}<span>{{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }} · {{ trip.nights }} night{{ trip.nights|pluralize }}</span>{% endif %}
+          {% include "trips/partials/_status_badge.html" %}
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        {% if can_edit %}<a class="btn" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
+        <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>
+        {% if trip.public_token or can_edit or can_delete %}
+          {# ⋯ menu: sharing and delete, kept out of the way (Alpine). #}
+          <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
+            <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
+            <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
+              {% if trip.public_token %}
+                {% url 'public_trip' trip.public_token as public_path %}
+                <div x-data="{ copied: false, url: window.location.origin + '{{ public_path }}' }">
+                  <p class="card-kicker">Shared link</p>
+                  <a class="link-quiet block break-all font-medium" href="{{ public_path }}" x-text="url">{{ public_path }}</a>
+                  <button type="button" class="btn-quiet mt-1" @click="navigator.clipboard.writeText(url); copied = true; setTimeout(() => copied = false, 2000)" x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+                </div>
+                {% if can_edit %}<form method="post" action="{% url 'trips:trip_unshare' trip.pk %}" class="mt-2">{% csrf_token %}<button type="submit" class="link-quiet hover:text-red-700">Stop sharing</button></form>{% endif %}
+              {% elif can_edit %}
+                <form method="post" action="{% url 'trips:trip_share' trip.pk %}">{% csrf_token %}<button type="submit" class="link-quiet font-medium" title="Make a read-only link with the trip's name, dates and outline">Share a read-only link</button></form>
+              {% endif %}
+              {% if can_delete %}<a class="link-quiet mt-2 block font-medium hover:text-red-700" href="{% url 'trips:trip_delete' trip.pk %}">Delete trip</a>{% endif %}
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
-    {% if trip.public_token %}
-      {# Shared: the public link (name, dates, outline only; see trips/public.py), copyable by anyone who can see the trip; editors can stop sharing. #}
-      {% url 'public_trip' trip.public_token as public_path %}
-      <div class="mt-3 flex flex-wrap items-center gap-2 text-sm print:hidden" x-data="{ copied: false, url: window.location.origin + '{{ public_path }}' }">
-        <span class="card-kicker">Shared link</span>
-        <a class="link-quiet font-medium break-all" href="{{ public_path }}" x-text="url">{{ public_path }}</a>
-        <button type="button" class="btn-quiet" @click="navigator.clipboard.writeText(url); copied = true; setTimeout(() => copied = false, 2000)" x-text="copied ? 'Copied' : 'Copy'">Copy</button>
-        {% if can_edit %}<form method="post" action="{% url 'trips:trip_unshare' trip.pk %}">{% csrf_token %}<button type="submit" class="link-quiet hover:text-red-700">Stop sharing</button></form>{% endif %}
-      </div>
-    {% endif %}
-    {% include "partials/_trip_bucket_prompt.html" %}
-    {% if trip.cities.all %}
-      <div class="mt-3 flex flex-wrap items-center gap-1.5">
-        <span class="card-kicker mr-1">Cities</span>
-        {% for city in trip.cities.all %}<a class="chip hover:border-zinc-400" href="{% url 'locations:city_detail' city.slug %}">{{ city.name }}</a>{% endfor %}
-      </div>
-    {% endif %}
-    {% include "partials/_trip_goals_link.html" %}
-    {% if trip.travelers.all %}
-      <div class="mt-4 flex flex-wrap items-center gap-1.5">
-        <span class="card-kicker mr-1">Travelling</span>
-        {% for traveler in trip.travelers.all %}<span class="chip">{{ traveler.name }}</span>{% endfor %}
-      </div>
-    {% endif %}
-    <dl class="hero-meta">
-      {% if trip.start_date and trip.end_date %}
-        <div>
-          <dt class="card-kicker">Dates</dt>
-          <dd>{{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }}</dd>
-        </div>
-        <div>
-          <dt class="card-kicker">Nights</dt>
-          <dd>{{ trip.nights }}</dd>
-        </div>
-      {% endif %}
-      {% if trip.destination %}
-        <div>
-          <dt class="card-kicker">Destination</dt>
-          <dd>{{ trip.destination }}</dd>
-        </div>
-      {% endif %}
-      <div>
-        <dt class="card-kicker">Days planned</dt>
-        <dd>{{ trip.days.all|length }}</dd>
-      </div>
-    </dl>
-    {% if trip.notes %}<p class="note mt-5 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
+    <p class="mt-2 flex flex-wrap gap-4 text-sm">
+      <a class="link-quiet font-medium" href="{% url 'trips:trip_map' trip.pk %}">Map</a>
+      <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
+      <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>
+    </p>
   </header>
 
-
-  {% comment %}Screen-only jump list. Reads the same prefetched days the page renders, so it costs no query.{% endcomment %}
-  {% if trip.days.all %}
-    <nav class="day-nav no-print" aria-label="Days">
-      {% for day in trip.days.all %}<a href="#day-{{ day.day_number }}">Day {{ day.day_number }}{% if day.date %} &middot; {{ day.date|date:"M j" }}{% endif %}</a>{% endfor %}
-      {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all or not_booked %}<a href="#quick-reference">Quick reference</a>{% endif %}
-    </nav>
-  {% endif %}
+  <nav class="day-nav" aria-label="Sections of this page">
+    <a href="#overview">Overview</a>
+    <a href="#days">Days</a>
+    <a href="#reference">Reference</a>
+  </nav>
 
   {# ---------------------------------------------------------------- overview #}
-  {% if trip.transport.all or trip.lodging.all %}
-    <section class="mb-10">
-      {% if trip.transport.all %}
-        {# Every leg of the trip, in order: the same records each day shows (partials/_leg_row.html). #}
-        <h3 class="grid-label" id="getting-around">Getting around</h3>
-        {% if stray_legs and can_edit %}<p class="note mb-2 print:hidden">{{ stray_legs|length }} leg{{ stray_legs|length|pluralize }} on a date that isn't one of this trip's days — check the date: {% for leg in stray_legs %}{{ leg.origin }} → {{ leg.destination }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
-        <div class="card-grid">
-          {% for leg in trip.transport.all %}{% include "trips/partials/_leg_row.html" with show_day=True %}{% endfor %}
-        </div>
-      {% endif %}
+  <section class="mb-10 scroll-mt-32" id="overview">
+    <h2 class="day-heading mb-3">Overview</h2>
+    {% if days %}
+      <div class="scroll-x">
+        <table class="data-grid trip-overview">
+          <thead><tr><th>Day</th><th>Where</th><th>Sleeping</th><th>Travel</th><th>Highlights</th><th><span class="sr-only">Needs attention</span></th></tr></thead>
+          <tbody>
+            {% for day in days %}
+              <tr>
+                <td class="whitespace-nowrap"><a class="link-quiet font-medium" href="#day-{{ day.day_number }}">{{ day.day_number }}</a> <span class="text-zinc-500">{{ day.date|date:"D M j" }}</span></td>
+                <td>{% if day.city %}{{ day.city.name }}{% else %}<span class="text-zinc-400">—</span>{% endif %}</td>
+                <td>{% if day.stay %}<a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay in day.checking_in %} <span class="text-zinc-500">(in)</span>{% endif %}{% elif day.overnight %}✈ overnight{% endif %}</td>
+                <td class="whitespace-nowrap">{% if day.travel_summary %}{{ day.travel_icons }} {{ day.travel_summary }}{% endif %}</td>
+                <td>{{ day.highlights|join:" · " }}</td>
+                <td>{% if day.attention %}<span class="text-amber-700" title="Not booked or still to do">⚠{{ day.attention }}</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state">No days have been planned yet.</p>
+    {% endif %}
 
-      {% if trip.lodging.all %}
-        <h3 class="grid-label mt-6">Where we're staying</h3>
-        <div class="card-grid">
-          {% for stay in trip.lodging.all %}
-            <div class="card" id="stay-{{ stay.pk }}">
-              <p class="card-title">{{ stay.name }}</p>
-              {% if stay.address %}<p class="mt-1 text-sm text-zinc-600">{{ stay.address }}</p>{% endif %}
-              <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <div>
-                  <dt class="card-kicker">Check in</dt>
-                  <dd>{{ stay.check_in|date:"D M j" }}</dd>
-                </div>
-                <div>
-                  <dt class="card-kicker">Check out</dt>
-                  <dd>{{ stay.check_out|date:"D M j" }}</dd>
-                </div>
-                <div>
-                  <dt class="card-kicker">Nights</dt>
-                  <dd>{{ stay.nights }}</dd>
-                </div>
-                {% if stay.nightly_rate is not None %}
-                  <div>
-                    <dt class="card-kicker">Nightly rate</dt>
-                    <dd>{{ stay.nightly_rate }} {{ stay.currency }}</dd>
-                  </div>
-                {% endif %}
-                {% if stay.confirmation_list %}
-                  <div>
-                    <dt class="card-kicker">Confirmation</dt>
-                    <dd>{% for c in stay.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider and c.provider != stay.name %} · {{ c.provider }}{% endif %}</span> {% endfor %}</dd>
-                  </div>
-                {% endif %}
-              </dl>
-              {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
-              {% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
+    {% if not_booked or open_tasks or stray_legs or travel_tables_pending %}
+      <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" id="needs-attention">
+        <span class="card-kicker">Needs attention</span>
+        {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
+        {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
+        {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
+        {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
+      </p>
+    {% endif %}
+
+    {% if stray_legs %}
+      {# Legs whose date is no day of this trip: shown in full here (they have no day to live on). #}
+      <p class="card-kicker mt-5 mb-2" id="stray-legs">Journeys not on any day</p>
+      {% if can_edit %}<p class="note mb-2">Check {{ stray_legs|length|pluralize:"its,their" }} date{{ stray_legs|length|pluralize }}: a leg shows on the day it departs.</p>{% endif %}
+      <div class="card-grid">{% for leg in stray_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
+    {% endif %}
+
+    {% if stray_stays %}
+      {# Stays whose check-in is no day of this trip: shown here so their details aren't lost. #}
+      <p class="card-kicker mt-5 mb-2">Stays outside the trip's days</p>
+      <div class="card-grid">{% for stay in stray_stays %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
+    {% endif %}
+
+    <div class="mt-5 space-y-2 text-sm">
+      {% if trip.travelers.all %}
+        <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Travelling</span>{% for traveler in trip.travelers.all %}<span class="chip">{{ traveler.name }}</span>{% endfor %}</p>
       {% endif %}
-    </section>
-  {% endif %}
+      {% if trip.cities.all %}
+        <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Cities</span>{% for city in trip.cities.all %}<a class="chip hover:border-zinc-400" href="{% url 'locations:city_detail' city.slug %}">{{ city.name }}</a>{% endfor %}</p>
+      {% endif %}
+      {% if trip.destination %}<p><span class="card-kicker mr-1">Destination</span> {{ trip.destination }}</p>{% endif %}
+      {% include "partials/_trip_goals_link.html" %}
+      {% include "partials/_trip_bucket_prompt.html" %}
+    </div>
+    {% if trip.notes %}<p class="note mt-4 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
+  </section>
 
   {# ------------------------------------------------------------------- days #}
-  {% for day in trip.days.all %}
-    <section class="day" id="day-{{ day.day_number }}">
-      <header class="day-header">
-        <div class="date-tile">
-          {% if day.date %}
-            <span class="date-tile-month">{{ day.date|date:"M" }}</span>
-            <span class="date-tile-day">{{ day.date|date:"j" }}</span>
-          {% else %}
-            <span class="date-tile-month">Day</span>
-            <span class="date-tile-day">{{ day.day_number }}</span>
-          {% endif %}
-        </div>
-        <div class="min-w-0">
-          <h2 class="day-heading">
-            Day {{ day.day_number }}
-            {% if day.theme %}<span class="font-normal text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
-          </h2>
-          <p class="day-meta">
-            {% if day.date %}<span>{{ day.date|date:"l, F j" }}</span>{% endif %}
-            {% if day.city %}<span><a class="link-quiet" href="{% url 'locations:city_detail' day.city.slug %}">{{ day.city.name }}</a></span>{% endif %}
-            {% if day.meals_included %}<span class="chip">Meals included</span>{% endif %}
-            {% if day.is_split %}
-              <span class="chip border-amber-200 bg-amber-50 text-amber-800">Split group</span>
-              <span>({{ day.roster_summary }})</span>
-            {% endif %}
-          </p>
-        </div>
-      </header>
+  {% comment %}
+    Collapsible days (U2): a plain <details> works without JavaScript. The day that opens on arrival
+    is today's during the trip, Day 1 before it, none after (itinerary.open_day). The script below
+    opens whichever day holds the target of a #link (Overview rows, chips, "For:" links) and drives
+    Expand all / Collapse all.
+  {% endcomment %}
+  <section id="days" class="scroll-mt-32">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="day-heading">Days</h2>
+      {% if days %}<p class="flex gap-3 text-sm"><button type="button" class="link-quiet font-medium" data-days-toggle="open">Expand all</button><button type="button" class="link-quiet font-medium" data-days-toggle="close">Collapse all</button></p>{% endif %}
+    </div>
+  {% for day in days %}
+    <details class="day day-fold" id="day-{{ day.day_number }}"{% if day.pk == open_day_pk %} open{% endif %}>
+      <summary class="day-summary">
+        <span class="font-semibold text-zinc-900">Day {{ day.day_number }}</span>
+        {% if day.date %}<span class="text-zinc-500">{{ day.date|date:"D M j" }}</span>{% endif %}
+        {% if day.city %}<span class="text-zinc-700">{{ day.city.name }}</span>{% endif %}
+        {% if day.theme %}<span class="min-w-0 truncate text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
+        {% if day.attention %}<span class="ml-auto shrink-0 text-amber-700" title="Not booked or still to do">⚠{{ day.attention }}</span>{% endif %}
+      </summary>
+      <div class="day-body">
+      <p class="day-meta mb-4">
+        {% if day.date %}<span>{{ day.date|date:"l, F j" }}</span>{% endif %}
+        {% if day.city %}<span><a class="link-quiet" href="{% url 'locations:city_detail' day.city.slug %}">{{ day.city.name }}</a></span>{% endif %}
+        {% if day.meals_included %}<span class="chip">Meals included</span>{% endif %}
+        {% if day.is_split %}
+          <span class="chip border-amber-200 bg-amber-50 text-amber-800">Split group</span>
+          <span>({{ day.roster_summary }})</span>
+        {% endif %}
+      </p>
+
+      {% if day.checking_in %}
+        {# A stay in full on its check-in day; other nights link here (U3 adds their lines). #}
+        <div class="section card-grid">{% for stay in day.checking_in %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
+      {% endif %}
 
       {# This day's legs with no travel section: an automatic "Getting around" block. Legs are added on Edit trip. #}
       {% if day.auto_legs %}
@@ -284,7 +274,7 @@
             <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
           </div>
         {% endif %}
-        {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
+        {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
 
       {% if day.ordered_activities %}
@@ -302,7 +292,7 @@
                 {% if activity.travelers.all %}<p class="mt-1 text-sm text-zinc-600">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
                 {% if activity.est_cost is not None %}<p class="mt-1 text-sm text-zinc-600">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
                 {% if activity.notes %}<p class="mt-2 text-sm text-zinc-600">{{ activity.notes|linebreaksbr }}</p>{% endif %}
-                {% if activity.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in activity.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
+                {% if activity.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in activity.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
                 {% if activity.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in activity.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
                 {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:activity_edit' trip.pk day.pk activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a></p>{% endif %}
               </div>
@@ -327,7 +317,7 @@
                 {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
                 {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
                 {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
-                {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% endfor %}</p>{% endif %}
+                {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
               </div>
             {% endfor %}
           </div>
@@ -360,131 +350,129 @@
           {% endwith %}
         {% endfor %}
       {% endwith %}
-    </section>
+      </div>
+    </details>
   {% empty %}
     <p class="empty-state">No days have been planned yet.</p>
   {% endfor %}
+  </section>
+  <script>
+    (function () {
+      function openFor(hash) {
+        if (!hash || hash.length < 2) return;
+        var target = document.getElementById(decodeURIComponent(hash.slice(1)));
+        for (var node = target; node; node = node.parentElement) {
+          if (node.tagName === "DETAILS") node.open = true;
+        }
+        if (target) target.scrollIntoView();
+      }
+      window.addEventListener("hashchange", function () { openFor(location.hash); });
+      document.addEventListener("DOMContentLoaded", function () { openFor(location.hash); });
+      document.addEventListener("click", function (event) {
+        var toggle = event.target.closest("[data-days-toggle]");
+        if (toggle) {
+          document.querySelectorAll("details.day-fold").forEach(function (d) { d.open = toggle.dataset.daysToggle === "open"; });
+          return;
+        }
+        var link = event.target.closest("a[href^='#']");
+        if (link && link.getAttribute("href") === location.hash) openFor(location.hash);  // same hash: no hashchange
+      });
+    })();
+  </script>
 
-  {# -------------------------------------------------------- quick reference #}
-  {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all or not_booked %}
-    <section class="day" id="quick-reference">
-      <header class="day-header">
-        <h2 class="day-heading">Quick reference</h2>
-      </header>
+  {# -------------------------------------------------------------- reference #}
+  {% comment %}
+    Reference (U2): the home of each confirmation, contact and task. Items on the days carry only a
+    chip linking here (#confirmation-N); rows here link back to their item, which opens its day.
+  {% endcomment %}
+  <section class="mt-12 scroll-mt-32" id="reference">
+    <h2 class="day-heading mb-4">Reference</h2>
 
-      {% if trip.confirmations.all or can_edit %}
-        {# Generated from the confirmations and what they cover (views.confirmation_groups): each once, grouped and dated by its items. #}
-        <h3 class="grid-label">Confirmations</h3>
-        {% for title, items in confirmation_groups %}
-          <p class="card-kicker mb-2 mt-4">{{ title }}</p>
-          <div class="card-grid mb-4">
-            {% for item in items %}
-              <div class="card">
-                <p class="card-kicker">{{ item.label|default:item.description|default:"Booking" }}</p>
-                <p class="card-title mt-1">{{ item.confirmation_number|default:"&mdash;" }}</p>
-                {% if item.provider %}<p class="mt-1 text-sm text-zinc-600">{{ item.provider }}</p>{% endif %}
-                {% if item.label and item.description %}<p class="mt-1 text-sm text-zinc-600">{{ item.description }}</p>{% endif %}
-                {% if item.travelers.all %}<p class="mt-1 text-sm text-zinc-600">For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-                {% if item.url %}<p class="mt-1 text-sm"><a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking</a></p>{% endif %}
-                {% if item.notes %}<p class="mt-2 text-sm text-zinc-600">{{ item.notes|linebreaksbr }}</p>{% endif %}
-                {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23quick-reference">Edit</a></p>{% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        {% endfor %}
-      {% endif %}
-
-      {% if trip.contacts.all %}
-        <h3 class="grid-label">Contacts</h3>
-        <div class="card-grid mb-8">
-          {% for person in trip.contacts.all %}
-            <div class="card">
-              <p class="card-title">{{ person.name }}</p>
-              {% if person.role %}<p class="mt-1 text-sm text-zinc-600">{{ person.role }}</p>{% endif %}
-              <dl class="mt-2 space-y-1 text-sm">
-                {% if person.phone %}
-                  <div class="flex gap-2">
-                    <dt class="card-kicker w-16 shrink-0">Phone</dt>
-                    <dd>{{ person.phone }}</dd>
-                  </div>
-                {% endif %}
-                {% if person.email %}
-                  <div class="flex gap-2">
-                    <dt class="card-kicker w-16 shrink-0">Email</dt>
-                    <dd>{{ person.email }}</dd>
-                  </div>
-                {% endif %}
-              </dl>
-              {% if person.notes %}<p class="mt-2 text-sm text-zinc-600">{{ person.notes|linebreaksbr }}</p>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if trip.booking_tasks.all %}
-        <h3 class="grid-label" id="still-to-book">Still to book</h3>
-        <div class="card-grid">
-          {% for task in trip.booking_tasks.all %}
-            {% if not task.done %}
-              <div class="card">
-                <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <p class="card-title">{{ task.title }}</p>
-                  {% if task.priority == 1 %}
-                    <span class="badge badge-critical">{{ task.get_priority_display }}</span>
-                  {% elif task.priority == 2 %}
-                    <span class="badge badge-high">{{ task.get_priority_display }}</span>
-                  {% elif task.priority == 3 %}
-                    <span class="badge badge-medium">{{ task.get_priority_display }}</span>
-                  {% else %}
-                    <span class="badge badge-low">{{ task.get_priority_display }}</span>
-                  {% endif %}
-                </div>
-                {% if task.item %}
-                  <p class="mt-1 text-sm text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}">{{ task.item_info.label }}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</p>
-                {% elif task.day %}<p class="mt-1 text-sm text-zinc-500">Day {{ task.day.day_number }}</p>{% endif %}
-                {% if task.suggestion %}
-                  <div class="mt-2 flex flex-wrap items-center gap-2 text-xs print:hidden">
-                    <span class="text-zinc-500">Looks like: {{ task.suggestion_info.label }} ({{ task.suggestion_info.kind }})</span>
-                    {% url 'trips:task_link' trip.pk task.pk as link_url %}
-                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{{ task.suggestion_info.kind }}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
-                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{{ task.suggestion_info.label }}"><button type="submit" class="link-quiet">Not this one</button></form>
-                  </div>
-                {% endif %}
-                {% if task.due or task.due_note %}
-                  <p class="mt-1 text-sm text-zinc-600">
-                    {% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}
-                    {% if task.due and task.due_note %} &mdash; {% endif %}
-                    {% if task.due_note %}{{ task.due_note }}{% endif %}
-                  </p>
-                {% endif %}
-                {% if task.visible_notes %}<p class="mt-1 text-sm text-zinc-600">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
-              </div>
-              {% with thread=comments_by_target.task|dictkey:task.pk %}
-                {% if thread %}
-                  <div class="no-print">
-                    {% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}
-                  </div>
-                {% endif %}
-              {% endwith %}
-            {% endif %}
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if not_booked %}
-        {# Derived, never stored (booking_tasks.not_booked): flights, rental cars, trains with an operator, and stays with no confirmation and no task. #}
-        <h3 class="grid-label mt-6">Not booked yet</h3>
-        <ul class="card divide-y divide-zinc-200 text-sm">
-          {% for nb in not_booked %}
-            <li class="flex flex-wrap items-center gap-3 py-2">
-              <span class="badge badge-mode">{{ nb.what }}</span>
-              <a class="link-quiet font-medium" href="#{{ nb.anchor }}">{{ nb.label }}</a> <span class="text-zinc-500">{{ nb.when|date:"M j" }}</span>
+    {% if confirmation_groups %}
+      {# Generated from the confirmations and what they cover (views.confirmation_groups), each once. #}
+      <h3 class="grid-label">Confirmations</h3>
+      {% for title, items in confirmation_groups %}
+        <p class="card-kicker mb-1 mt-3">{{ title }}</p>
+        <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+          {% for item in items %}
+            <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5 scroll-mt-32" id="confirmation-{{ item.pk }}">
+              <span class="font-mono text-base font-semibold tracking-wide text-zinc-900">{{ item.confirmation_number|default:"&mdash;" }}</span>
+              {% if item.provider %}<span class="text-zinc-700">{{ item.provider }}</span>{% endif %}
+              <span class="min-w-0 flex-1 text-zinc-600">
+                {% if item.label %}{{ item.label }}{% if item.description %} · {% endif %}{% endif %}
+                {% if item.anchor %}<a class="link-quiet" href="#{{ item.anchor }}">{{ item.description }}</a>{% endif %}
+                {% if item.travelers.all %}<span class="text-zinc-500"> · For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+              </span>
+              {% if item.url %}<a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking ↗</a>{% endif %}
+              {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23confirmation-{{ item.pk }}">Edit</a>{% endif %}
+              {% if item.notes %}<p class="w-full text-zinc-500">{{ item.notes|linebreaksbr }}</p>{% endif %}
             </li>
           {% endfor %}
         </ul>
-      {% endif %}
-    </section>
-  {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if open_tasks %}
+      <h3 class="grid-label mt-8" id="still-to-book">Still to book</h3>
+      <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+        {% for task in open_tasks %}
+          <li class="px-4 py-2.5">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              {% if task.priority == 1 %}<span class="badge badge-critical">{{ task.get_priority_display }}</span>{% elif task.priority == 2 %}<span class="badge badge-high">{{ task.get_priority_display }}</span>{% elif task.priority == 3 %}<span class="badge badge-medium">{{ task.get_priority_display }}</span>{% else %}<span class="badge badge-low">{{ task.get_priority_display }}</span>{% endif %}
+              <span class="font-medium text-zinc-900">{{ task.title }}</span>
+              {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}">{{ task.item_info.label }}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</span>
+              {% elif task.day %}<a class="link-quiet text-zinc-500" href="#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
+              {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
+            </div>
+            {% if task.suggestion %}
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span class="text-zinc-500">Looks like: {{ task.suggestion_info.label }} ({{ task.suggestion_info.kind }})</span>
+                {% url 'trips:task_link' trip.pk task.pk as link_url %}
+                <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{{ task.suggestion_info.kind }}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
+                <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{{ task.suggestion_info.label }}"><button type="submit" class="link-quiet">Not this one</button></form>
+              </div>
+            {% endif %}
+            {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
+            {% with thread=comments_by_target.task|dictkey:task.pk %}
+              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}{% endif %}
+            {% endwith %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if not_booked %}
+      {# Derived, never stored (booking_tasks.not_booked): bookable items with no confirmation and no task. #}
+      <h3 class="grid-label mt-8" id="not-booked">Not booked yet</h3>
+      <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+        {% for nb in not_booked %}
+          <li class="flex flex-wrap items-center gap-3 px-4 py-2">
+            <span class="badge badge-mode">{{ nb.what }}</span>
+            <a class="link-quiet font-medium" href="#{{ nb.anchor }}">{{ nb.label }}</a> <span class="text-zinc-500">{{ nb.when|date:"M j" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if trip.contacts.all %}
+      <h3 class="grid-label mt-8" id="contacts">Contacts</h3>
+      <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+        {% for person in trip.contacts.all %}
+          <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5">
+            <span class="font-medium text-zinc-900">{{ person.name }}</span>
+            {% if person.role %}<span class="text-zinc-500">{{ person.role }}</span>{% endif %}
+            {% if person.phone %}<a class="link-quiet" href="tel:{{ person.phone|cut:' ' }}">{{ person.phone }}</a>{% endif %}
+            {% if person.email %}<a class="link-quiet" href="mailto:{{ person.email }}">{{ person.email }}</a>{% endif %}
+            {% if person.notes %}<p class="w-full text-zinc-500">{{ person.notes|linebreaksbr }}</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all %}
+      <p class="empty-state">Nothing here yet: confirmations, contacts and things to book appear here.</p>
+    {% endif %}
+  </section>
 
   {% comment %}
     The comment threads are the one part of this page that is *not* part of the

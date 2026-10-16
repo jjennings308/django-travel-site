@@ -356,6 +356,29 @@
   .trips-ui .day-nav a {
     @apply shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium whitespace-nowrap text-zinc-600 transition hover:border-accent-200 hover:bg-accent-50 hover:text-accent-700;
   }
+  /* Collapsible days on the web trip page (trip-page UX plan, U2): a <details> per day. */
+  .trips-ui details.day-fold {
+    @apply mb-3 rounded-lg border border-zinc-200 bg-white;
+  }
+  .trips-ui details.day-fold[open] {
+    @apply mb-8;
+  }
+  .trips-ui .day-summary {
+    @apply flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 select-none;
+  }
+  .trips-ui .day-summary::-webkit-details-marker {
+    display: none;
+  }
+  .trips-ui .day-summary::before {
+    content: "▸";
+    @apply text-zinc-400;
+  }
+  .trips-ui details[open] > .day-summary::before {
+    content: "▾";
+  }
+  .trips-ui .day-body {
+    @apply border-t border-zinc-100 px-4 pt-4 pb-2;
+  }
   .trips-ui .section {
     @apply mb-5;
   }
