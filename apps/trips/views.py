@@ -134,6 +134,47 @@ def _days_with_counts(trip):
     )
 
 
+def _day_back(request, trip, day):
+    """Where the day page returns: ``next`` when it's on this site (Edit trip passes its own
+    address), else the day on the trip page, which opens it (trip-page UX plan, U5)."""
+    return _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
+
+
+def _day_workshop(trip, day):
+    """The day page's "On this day" list (U5): the same timeline as the trip page for this one
+    day, then its sections and food ideas, each item with its confirmation numbers and linked
+    contacts/notes. An edit page, so a handful of plain queries is fine here."""
+    from django.contrib.contenttypes.models import ContentType
+    from .models import Contact, ItemLink, TripInfo
+    day.day_legs = list(trip.transport.filter(date=day.date)) if day.date else []
+    for leg in day.day_legs:
+        leg.order_label = f"order {leg.order}"  # untimed legs run in this order
+    day.ordered_activities = list(day.activities.select_related("poi"))
+    day.ordered_meals = list(day.meals.order_by("order", "id"))
+    sections = list(_day_sections(day))
+    itinerary.timeline([day])
+    items = {}
+    for model, objs in ((TransportLeg, day.day_legs), (TripActivity, day.ordered_activities),
+                        (Meal, day.ordered_meals), (Section, sections)):
+        type_id = ContentType.objects.get_for_model(model).pk
+        for obj in objs:
+            obj.confirmation_list, obj.refs = [], []
+            items[(type_id, obj.pk)] = obj
+    for link in ConfirmationLink.objects.filter(confirmation__trip=trip).select_related("confirmation"):
+        item = items.get((link.content_type_id, link.object_id))
+        if item is not None:
+            item.confirmation_list.append(link.confirmation)
+    sources = {(ContentType.objects.get_for_model(Contact).pk, c.pk): c for c in trip.contacts.all()}
+    sources.update({(ContentType.objects.get_for_model(TripInfo).pk, i.pk): i for i in trip.infos.all()})
+    for link in ItemLink.objects.filter(trip=trip):
+        item = items.get((link.target_type_id, link.target_id))
+        source = sources.get((link.source_type_id, link.source_id))
+        if item is not None and source is not None:
+            item.refs.append(source)
+    return {"sections": sections, "timeline": day.timeline, "any_time": day.any_time,
+            "food_ideas": day.food_ideas}
+
+
 def _day_sections(day):
     """The day's sections in display order.
 
@@ -838,9 +879,7 @@ def day_edit(request, trip_pk, pk):
                 form.save()
                 meal_formset.save()
             messages.success(request, f"Saved day {day.day_number}.")
-            return redirect(
-                reverse("trips:trip_edit", args=[trip.pk]) + f"#day-{day.pk}"
-            )
+            return redirect(_day_back(request, trip, day))
 
     return render(
         request,
@@ -850,7 +889,9 @@ def day_edit(request, trip_pk, pk):
             "meal_formset": meal_formset,
             "trip": trip,
             "day": day,
-            "sections": _day_sections(day),
+            "back": _day_back(request, trip, day),
+            "leg_modes": TransportLeg.Mode.choices,
+            **_day_workshop(trip, day),
             # dicts, not the raw (value, label) tuples from `choices`, so the
             # template can say `st.value` rather than `st.0` — and so an empty
             # value can never reach `{% url %}` and fail to reverse.
@@ -1057,7 +1098,7 @@ def _save_section(request, trip, day, section, section_type):
 
 def _after_section_save(trip, day, section):
     return redirect(
-        reverse("trips:day_edit", args=[trip.pk, day.pk]) + f"#section-{section.pk}"
+        reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day"
     )
 
 

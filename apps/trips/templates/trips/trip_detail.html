@@ -144,6 +144,7 @@
         {% if day.attention %}<span class="ml-auto shrink-0 text-amber-700" title="Not booked or still to do">⚠{{ day.attention }}</span>{% endif %}
       </summary>
       <div class="day-body">
+      {% if can_edit %}<p class="mb-2 text-right text-sm"><a class="btn-quiet px-3 py-1" href="{% url 'trips:day_edit' trip.pk day.pk %}?next={{ request.path|urlencode }}%23day-{{ day.day_number }}">Edit this day</a></p>{% endif %}
       <p class="day-meta mb-4">
         {% if day.date %}<span>{{ day.date|date:"l, F j" }}</span>{% endif %}
         {% if day.city %}<span><a class="link-quiet" href="{% url 'locations:city_detail' day.city.slug %}">{{ day.city.name }}</a></span>{% endif %}

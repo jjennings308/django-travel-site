@@ -343,6 +343,16 @@ that matter most:
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.
+- **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
+  editors to `trips:day_edit`, the day's workshop: **Add to this day** (a leg via the inline quick add,
+  an activity, a meal via the meal formset `#meals`, a section by type, a contact or note for the whole
+  day), **On this day** (`views._day_workshop`: the day's items in the trip page's order —
+  `itinerary.timeline`, then sections, then food ideas — each with its confirmation numbers and linked
+  contacts/notes and Edit / Confirmations / Contacts & info, via `partials/_workshop_row.html`; every
+  link comes back to the day page), then the day details and meals form. Saving the day returns to
+  `next` when it's on this site (Edit trip's days table passes its own address), else to
+  `trip_detail#day-N`, which opens that day (`views._day_back`). Saving a section returns to the day
+  page's `#on-this-day`. Edit trip keeps its bulk views; both edit the same records.
 - **Contacts and info notes link to items** (trip-page UX plan, U4; trips 0031): `TripInfo` (trip-wide
   know-how: title, body paragraphs, url, order) and `Contact` (now with `address`, `url`) are the
   *sources*; `ItemLink` links one to a *target* of the same trip — a leg, stay, activity, meal, a

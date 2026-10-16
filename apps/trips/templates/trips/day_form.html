@@ -10,10 +10,60 @@
   </nav>
 
   <div class="page-header">
-    <h1 class="page-title">
-      {% if is_create %}Add a day to {{ trip.name }}{% else %}Day {{ day.day_number }} — {{ day.theme|default:"no theme" }}{% endif %}
-    </h1>
+    <div>
+      <h1 class="page-title">
+        {% if is_create %}Add a day to {{ trip.name }}{% else %}Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"D, M j" }}{% endif %}{% if day.city %} · {{ day.city.name }}{% endif %}{% if day.theme %} — {{ day.theme }}{% endif %}{% endif %}
+      </h1>
+      {% if not is_create %}<p class="page-subtitle">Everything on this day, and where you add to it.</p>{% endif %}
+    </div>
+    {% if not is_create %}<a class="btn-quiet" href="{{ back }}">Back to the trip</a>{% endif %}
   </div>
+
+  {% if not is_create %}
+    {% comment %}
+      The day's workshop (trip-page UX plan, U5): add anything to this day, and see what's on it in
+      the trip page's order, each item with Edit / Confirmations / Contacts & info. Every link comes
+      back here; saving the day details below returns to the day on the trip page.
+    {% endcomment %}
+    <section class="form-section" id="add">
+      <h2 class="form-section-title">Add to this day</h2>
+      <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ leg: false }">
+        <button type="button" class="btn-quiet px-3 py-1.5" @click="leg = !leg" :aria-expanded="leg">+ Leg</button>
+        <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:activity_new' trip.pk day.pk %}?next={{ request.path|urlencode }}">+ Activity</a>
+        <a class="btn-quiet px-3 py-1.5" href="#meals">+ Meal</a>
+        <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:item_links' trip.pk 'day' day.pk %}?next={{ request.path|urlencode }}">+ Contact or note</a>
+        {% for st in section_types %}<a class="btn-quiet px-3 py-1.5" href="{% url 'trips:section_create' trip.pk day.pk st.value %}">+ {{ st.label }}</a>{% endfor %}
+        <div class="w-full" x-show="leg" x-cloak>{% include "trips/partials/_leg_quick_add.html" with section=None next=request.path %}</div>
+      </div>
+      <p class="note mt-2">A confirmation, or a contact for one item, is added from that item's row below. A contact or note for the whole day shows in its Good to know.</p>
+    </section>
+
+    <section class="form-section mt-8" id="on-this-day">
+      <h2 class="form-section-title">On this day</h2>
+      {% if timeline or any_time or sections or food_ideas %}
+        <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
+          {% for entry in timeline %}{% with item=entry.item %}
+            {% if entry.kind == "leg" %}{% url 'trips:leg_edit' trip.pk item.pk as edit_url %}{% include "trips/partials/_workshop_row.html" with kind="leg" time=entry.label badge=item.get_mode_display title=item.origin|add:" → "|add:item.destination detail=item.operator %}
+            {% elif entry.kind == "activity" %}{% url 'trips:activity_edit' trip.pk day.pk item.pk as edit_url %}{% url 'trips:activity_delete' trip.pk day.pk item.pk as delete_url %}{% include "trips/partials/_workshop_row.html" with kind="activity" time=entry.label badge=item.get_kind_display title=item.title detail=item.place_name %}
+            {% else %}{% include "trips/partials/_workshop_row.html" with kind="meal" time=entry.label badge=item.get_meal_type_display title=item.name detail=item.cuisine edit_url="#meals" delete_url="" %}{% endif %}
+          {% endwith %}{% endfor %}
+          {% for entry in any_time %}{% with item=entry.item %}
+            {% if entry.kind == "leg" %}{% url 'trips:leg_edit' trip.pk item.pk as edit_url %}{% include "trips/partials/_workshop_row.html" with kind="leg" time="Any time" badge=item.get_mode_display title=item.origin|add:" → "|add:item.destination detail=item.order_label delete_url="" %}
+            {% else %}{% url 'trips:activity_edit' trip.pk day.pk item.pk as edit_url %}{% url 'trips:activity_delete' trip.pk day.pk item.pk as delete_url %}{% include "trips/partials/_workshop_row.html" with kind="activity" time="Any time" badge=item.get_kind_display title=item.title detail=item.place_name %}{% endif %}
+          {% endwith %}{% endfor %}
+          {% for s in sections %}
+            {% url 'trips:section_edit' trip.pk day.pk s.pk as edit_url %}{% url 'trips:section_delete' trip.pk day.pk s.pk as delete_url %}
+            {% include "trips/partials/_workshop_row.html" with kind="section" item=s time="" badge=s.get_section_type_display title=s.title|default:s.get_section_type_display detail=s.content_summary %}
+          {% endfor %}
+          {% for meal in food_ideas %}
+            {% include "trips/partials/_workshop_row.html" with kind="meal" item=meal time="Food idea" badge=meal.get_meal_type_display title=meal.name detail=meal.cuisine edit_url="#meals" delete_url="" %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state py-6">Nothing on this day yet. Add something above.</p>
+      {% endif %}
+    </section>
+  {% endif %}
 
   {% if form.non_field_errors %}
     <div class="alert-error">{{ form.non_field_errors }}</div>
@@ -37,88 +87,16 @@
         Meals save together with the day above. Leave the blank row alone if you
         are not adding a meal.
       </p>
-      {% include "trips/_formset.html" with formset=meal_formset label="Meals" %}
-      {% if day.meals.exists %}
-        <p class="card-kicker mt-4 mb-1">Meal confirmations (a booked table)</p>
-        <ul class="text-sm">{% for meal in day.meals.all %}<li class="py-0.5">{{ meal.name }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_confirmations' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Confirmations</a> <a class="link-quiet ml-2 font-medium" href="{% url 'trips:item_links' trip.pk 'meal' meal.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a></li>{% endfor %}</ul>
-      {% endif %}
+      <div id="meals" class="scroll-mt-32">{% include "trips/_formset.html" with formset=meal_formset label="Meals" %}</div>
     {% endif %}
 
     <div class="form-actions">
       <button type="submit" class="btn">
         {% if is_create %}Add day{% else %}Save day{% endif %}
       </button>
-      <a class="btn-quiet" href="{% url 'trips:trip_edit' trip.pk %}">Cancel</a>
+      <a class="btn-quiet" href="{% if is_create %}{% url 'trips:trip_edit' trip.pk %}{% else %}{{ back }}{% endif %}">Cancel</a>
     </div>
+    {% if not is_create %}<input type="hidden" name="next" value="{{ back }}">{% endif %}
   </form>
 
-  {% if not is_create %}
-    {% comment %}
-      Sections are linked, not embedded. Their payload shape varies per type —
-      a logistics table's rows are not a callout's text — so one table cannot
-      hold all five without showing every possible field on every row.
-    {% endcomment %}
-    <p class="mt-6 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'day' day.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info for the whole day</a> <span class="text-zinc-500">— when nothing on the day fits (they show in its Good to know).</span></p>
-
-    {% comment %}Activities: tours, timed entries, tickets, tables, car hire. Each has its own page, where its confirmations are added.{% endcomment %}
-    <section class="form-section mt-10" id="activities">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 class="form-section-title">Activities</h2>
-          <p class="form-section-lede">Things booked or planned on this day: a tour, a timed entry, tickets, a table, car hire.</p>
-        </div>
-        <a class="btn-quiet" href="{% url 'trips:activity_new' trip.pk day.pk %}">Add an activity</a>
-      </div>
-      {% if day.activities.exists %}
-        <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
-          {% for a in day.activities.all %}
-            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-              <span class="badge badge-mode">{{ a.get_kind_display }}</span>
-              <a class="font-medium text-zinc-900 hover:text-accent-700" href="{% url 'trips:activity_edit' trip.pk day.pk a.pk %}">{{ a.title }}</a>
-              <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ a.time_range }}{% if a.time_range and a.place_name %} · {% endif %}{{ a.place_name }}</span>
-              <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:activity_delete' trip.pk day.pk a.pk %}">Delete</a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="empty-state py-6">No activities yet.</p>
-      {% endif %}
-    </section>
-
-    <section class="form-section mt-10">
-      <h2 class="form-section-title">Sections</h2>
-      <p class="form-section-lede">
-        The day's content blocks. Each type is saved on its own page, because the
-        fields differ per type.
-      </p>
-
-      {% if sections %}
-        <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
-          {% for s in sections %}
-            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-              <span class="badge badge-mode">{{ s.section_type }}</span>
-              <a class="font-medium text-zinc-900 hover:text-accent-700" href="{% url 'trips:section_edit' trip.pk day.pk s.pk %}">
-                {{ s.title|default:s.section_type }}
-              </a>
-              <span class="min-w-0 flex-1 truncate text-sm text-zinc-500">{{ s.content_summary }}</span>
-              <a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' s.pk %}?next={{ request.path|urlencode }}">Confirmations</a>
-              <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'section' s.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a>
-              <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk s.pk %}">Delete</a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="empty-state py-8">No sections yet.</p>
-      {% endif %}
-
-      <p class="card-kicker mt-6 mb-2">Add a section</p>
-      <div class="flex flex-wrap gap-2">
-        {% for st in section_types %}
-          <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:section_create' trip.pk day.pk st.value %}">
-            + {{ st.label }}
-          </a>
-        {% endfor %}
-      </div>
-    </section>
-  {% endif %}
 {% endblock %}
