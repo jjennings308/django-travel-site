@@ -335,6 +335,8 @@ def trip_detail(request, pk):
     capabilities = trip.capabilities_for(request.user)
     stray_legs = _place_legs(trip)
     _attach_confirmations(trip)
+    from . import booking_tasks
+    booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
     return render(
@@ -344,6 +346,7 @@ def trip_detail(request, pk):
             "trip": trip,
             "stray_legs": stray_legs,
             "travel_tables_pending": travel_tables_pending,
+            "not_booked": booking_tasks.not_booked(trip),
             "confirmation_groups": confirmation_groups(trip),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
@@ -1571,6 +1574,7 @@ def leg_edit(request, pk, leg_pk):
         "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
         "attached": attached,
         "attachable": [c for c in trip.confirmations.prefetch_related("legs", "stays") if c not in attached],
+        "open_tasks": list(leg.booking_tasks.filter(done=False)),
     })
 
 
@@ -1658,9 +1662,11 @@ def confirmation_edit(request, pk, confirmation_pk=None):
                                 initial=initial, trip=trip)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#quick-reference")
     if request.method == "POST" and form.is_valid():
+        from . import booking_tasks
+        before = booking_tasks.confirmed_items(trip)
         saved = form.save()
         messages.success(request, f"Saved confirmation {saved.confirmation_number}.")
-        return redirect(back)
+        return redirect(_task_offer_or(trip, booking_tasks.offer_for(trip, before), back))
     return render(request, "trips/confirmation_form.html", {
         "trip": trip, "form": form, "confirmation": confirmation, "next": back,
     })
@@ -1687,12 +1693,78 @@ def leg_confirmation(request, pk, leg_pk):
     trip = _readable_trip(request, pk, "edit")
     leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
     confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
+    from . import booking_tasks
+    offer = []
     if request.POST.get("action") == "detach":
         confirmation.legs.remove(leg)
         messages.success(request, f"Detached {confirmation.confirmation_number} from this leg (it's kept).")
     else:
+        before = booking_tasks.confirmed_items(trip)
         confirmation.legs.add(leg)
+        offer = booking_tasks.offer_for(trip, before)
         messages.success(request, f"Attached {confirmation.confirmation_number}.")
     from urllib.parse import quote
     back = _back(request, _leg_back(trip, leg))
-    return redirect(reverse("trips:leg_edit", args=[trip.pk, leg.pk]) + f"?next={quote(back, safe='/#')}")
+    leg_page = reverse("trips:leg_edit", args=[trip.pk, leg.pk]) + f"?next={quote(back, safe='/#')}"
+    return redirect(_task_offer_or(trip, offer, leg_page))
+
+
+def _task_offer_or(trip, tasks, back):
+    """The "mark these tasks done?" page when an item just got its first confirmation and
+    has open tasks (Phase E: offered, never ticked automatically); else ``back``."""
+    if not tasks:
+        return back
+    from urllib.parse import urlencode
+    return reverse("trips:task_offer", args=[trip.pk]) + "?" + urlencode(
+        {"tasks": ",".join(str(t.pk) for t in tasks), "next": back})
+
+
+@login_required
+def task_offer(request, pk):
+    """Offer to tick off the open tasks of items that were just confirmed (editors)."""
+    trip = _readable_trip(request, pk, "edit")
+    source = request.POST if request.method == "POST" else request.GET
+    ids = [int(i) for i in source.get("tasks", "").split(",") if i.strip().isdigit()]
+    tasks = list(trip.booking_tasks.filter(pk__in=ids, done=False))
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#quick-reference")
+    if request.method == "POST":
+        ticked = {int(i) for i in request.POST.getlist("done") if i.isdigit()}
+        finished = [task for task in tasks if task.pk in ticked]
+        for task in finished:
+            task.done = True
+            task.save(update_fields=["done"])
+        if finished:
+            messages.success(request, f"Marked {len(finished)} task{'s' if len(finished) != 1 else ''} done.")
+        return redirect(back)
+    if not tasks:
+        return redirect(back)
+    from . import booking_tasks
+    for task in tasks:
+        item = task.leg or task.stay
+        task.item_label = booking_tasks.label(item) if item else ""
+    return render(request, "trips/task_offer.html", {"trip": trip, "tasks": tasks, "next": back,
+                                                      "ids": ",".join(str(t.pk) for t in tasks)})
+
+
+@login_required
+@require_POST
+def task_link(request, pk, task_pk):
+    """Link a task to the leg or stay it's about (``leg`` / ``stay``), or dismiss the
+    suggestion (``dismiss`` = the suggested item's name, remembered in the task's notes)."""
+    from . import booking_tasks
+    trip = _readable_trip(request, pk, "edit")
+    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
+    if request.POST.get("leg"):
+        task.leg, task.stay = get_object_or_404(trip.transport.all(), pk=request.POST["leg"]), None
+        task.save(update_fields=["leg", "stay"])
+        messages.success(request, f"“{task.title}” is now about {booking_tasks.label(task.leg)}.")
+    elif request.POST.get("stay"):
+        task.stay, task.leg = get_object_or_404(trip.lodging.all(), pk=request.POST["stay"]), None
+        task.save(update_fields=["leg", "stay"])
+        messages.success(request, f"“{task.title}” is now about {task.stay.name}.")
+    elif request.POST.get("dismiss", "").strip():
+        line = BookingTask.NOT_ABOUT + request.POST["dismiss"].strip()[:200]
+        task.notes = "\n".join(n for n in (task.notes.rstrip(), line) if n)
+        task.save(update_fields=["notes"])
+    return redirect(back)

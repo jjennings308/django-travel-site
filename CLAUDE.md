@@ -279,6 +279,18 @@ that matter most:
   (items stay), and on the leg edit page attach-existing / detach (`trips:leg_confirmation`, detach
   never deletes). The trip edit page's Confirmations formset stays the bulk view. `audit_public_leak`
   takes numbers from `trip.confirmations`; confirmations are never public.
+- **Booking tasks point at their item** (trips 0025, Phase E): `BookingTask.leg` / `stay` (optional,
+  SET_NULL, at most one — `bookingtask_one_item`; Phase F adds `booking`). `apps/trips/booking_tasks.py`
+  works from the trip page's prefetches (no query): `attach` gives legs/stays `open_tasks` ("Still to
+  book: …" on the leg row and stay card) and each task `item` / `item_day` ("For: … · Day 4"), and for
+  editors a `suggestion` when an unlinked task's title names exactly one stay (by name) or one leg
+  (first word of each end): "Looks like: … — Link / Not this one" (`trips:task_link`; a dismissal is a
+  "Not about: <item>" line in the task's notes, hidden by `visible_notes`). `not_booked` is the derived
+  "Not booked yet" list: flights, rental cars, trains with an operator or service number, and stays with
+  no confirmation and no task. When a save gives a leg or stay its **first** confirmation
+  (`confirmation_edit`, `leg_confirmation`) and it has open tasks, the user lands on `trips:task_offer`
+  to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
+  the trip.
 - **The detail page is printed to PDF** and holds a fixed query count (24 here, 4 of them from this site's
   middleware/context processors; one is the trip's cities; four prefetch the confirmations' legs,
   stays, meals and travellers — fixed per page, not per item); `test_detail.QueryCountTests`
@@ -601,7 +613,8 @@ needs them. Status: Phase A (legs evolve in place, shown once in each view) done
 `phase-a-legs-in-place`; Phase B (confirmations attached to items, Quick reference generated) done
 on branch `phase-b-confirmations`; Phase C (convert logistics tables into linked legs, trip-wide)
 done on branch `phase-c-convert-tables`; Phase D (new itineraries start as legs) done on branch
-`phase-d-new-itineraries-as-legs`; Phase E (booking tasks point at what they're about) next.
+`phase-d-new-itineraries-as-legs`; Phase E (booking tasks point at what they're about) done on
+branch `phase-e-booking-tasks`; Phase F (`Booking` for everything else you reserve) next.
 
 ### Rules carried over from the itinerary project
 

@@ -81,7 +81,7 @@
   {% if trip.days.all %}
     <nav class="day-nav no-print" aria-label="Days">
       {% for day in trip.days.all %}<a href="#day-{{ day.day_number }}">Day {{ day.day_number }}{% if day.date %} &middot; {{ day.date|date:"M j" }}{% endif %}</a>{% endfor %}
-      {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all %}<a href="#quick-reference">Quick reference</a>{% endif %}
+      {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all or not_booked %}<a href="#quick-reference">Quick reference</a>{% endif %}
     </nav>
   {% endif %}
 
@@ -101,7 +101,7 @@
         <h3 class="grid-label mt-6">Where we're staying</h3>
         <div class="card-grid">
           {% for stay in trip.lodging.all %}
-            <div class="card">
+            <div class="card" id="stay-{{ stay.pk }}">
               <p class="card-title">{{ stay.name }}</p>
               {% if stay.address %}<p class="mt-1 text-sm text-zinc-600">{{ stay.address }}</p>{% endif %}
               <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -131,6 +131,7 @@
                 {% endif %}
               </dl>
               {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
+              {% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
               {% if can_edit and not stay.confirmation_list %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:confirmation_new' trip.pk %}?stay={{ stay.pk }}&amp;next={{ request.path|urlencode }}">Add confirmation</a></p>{% endif %}
             </div>
           {% endfor %}
@@ -352,7 +353,7 @@
   {% endfor %}
 
   {# -------------------------------------------------------- quick reference #}
-  {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all %}
+  {% if trip.confirmations.all or trip.contacts.all or trip.booking_tasks.all or not_booked %}
     <section class="day" id="quick-reference">
       <header class="day-header">
         <h2 class="day-heading">Quick reference</h2>
@@ -408,7 +409,7 @@
       {% endif %}
 
       {% if trip.booking_tasks.all %}
-        <h3 class="grid-label">Still to book</h3>
+        <h3 class="grid-label" id="still-to-book">Still to book</h3>
         <div class="card-grid">
           {% for task in trip.booking_tasks.all %}
             {% if not task.done %}
@@ -425,7 +426,17 @@
                     <span class="badge badge-low">{{ task.get_priority_display }}</span>
                   {% endif %}
                 </div>
-                {% if task.day %}<p class="mt-1 text-sm text-zinc-500">Day {{ task.day.day_number }}</p>{% endif %}
+                {% if task.item %}
+                  <p class="mt-1 text-sm text-zinc-600">For: <a class="link-quiet" href="#{% if task.leg_id %}leg-{{ task.leg_id }}{% else %}stay-{{ task.stay_id }}{% endif %}">{% if task.leg_id %}{{ task.item.origin }} → {{ task.item.destination }}{% else %}{{ task.item.name }}{% endif %}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</p>
+                {% elif task.day %}<p class="mt-1 text-sm text-zinc-500">Day {{ task.day.day_number }}</p>{% endif %}
+                {% if task.suggestion %}
+                  <div class="mt-2 flex flex-wrap items-center gap-2 text-xs print:hidden">
+                    <span class="text-zinc-500">Looks like: {% if task.suggestion.check_in %}{{ task.suggestion.name }} (stay){% else %}{{ task.suggestion.origin }} → {{ task.suggestion.destination }} (leg){% endif %}</span>
+                    {% url 'trips:task_link' trip.pk task.pk as link_url %}
+                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{% if task.suggestion.check_in %}stay{% else %}leg{% endif %}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
+                    <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{% if task.suggestion.check_in %}{{ task.suggestion.name }}{% else %}{{ task.suggestion.origin }} → {{ task.suggestion.destination }}{% endif %}"><button type="submit" class="link-quiet">Not this one</button></form>
+                  </div>
+                {% endif %}
                 {% if task.due or task.due_note %}
                   <p class="mt-1 text-sm text-zinc-600">
                     {% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}
@@ -433,7 +444,7 @@
                     {% if task.due_note %}{{ task.due_note }}{% endif %}
                   </p>
                 {% endif %}
-                {% if task.notes %}<p class="mt-1 text-sm text-zinc-600">{{ task.notes|linebreaksbr }}</p>{% endif %}
+                {% if task.visible_notes %}<p class="mt-1 text-sm text-zinc-600">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
               </div>
               {% with thread=comments_by_target.task|dictkey:task.pk %}
                 {% if thread %}
@@ -445,6 +456,21 @@
             {% endif %}
           {% endfor %}
         </div>
+      {% endif %}
+
+      {% if not_booked %}
+        {# Derived, never stored (booking_tasks.not_booked): flights, rental cars, trains with an operator, and stays with no confirmation and no task. #}
+        <h3 class="grid-label mt-6">Not booked yet</h3>
+        <ul class="card divide-y divide-zinc-200 text-sm">
+          {% for item, kind in not_booked %}
+            <li class="flex flex-wrap items-center gap-3 py-2">
+              <span class="badge badge-mode">{{ kind }}</span>
+              {% if item.check_in %}<a class="link-quiet font-medium" href="#stay-{{ item.pk }}">{{ item.name }}</a> <span class="text-zinc-500">{{ item.check_in|date:"M j" }}</span>
+              {% else %}<a class="link-quiet font-medium" href="#leg-{{ item.pk }}">{{ item.origin }} → {{ item.destination }}</a> <span class="text-zinc-500">{{ item.date|date:"M j" }}</span>{% endif %}
+              {% if can_edit %}<a class="link-quiet ml-auto text-xs font-medium print:hidden" href="{% url 'trips:confirmation_new' trip.pk %}?{% if item.check_in %}stay{% else %}leg{% endif %}={{ item.pk }}&amp;next={{ request.path|urlencode }}%23quick-reference">Add confirmation</a>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
       {% endif %}
     </section>
   {% endif %}

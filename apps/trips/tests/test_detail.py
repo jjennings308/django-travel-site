@@ -431,6 +431,11 @@ class QueryCountTests(DetailFixture):
             confirmation.legs.set(TransportLeg.objects.filter(trip=self.trip, date=day.date))
             confirmation.meals.set(day.meals.all())
             confirmation.travelers.add(ada)
+            # Phase E: a booking task about the day's leg, and a not-yet-booked flight.
+            BookingTask.objects.create(trip=self.trip, title=f"Seats A to B {offset}",
+                                       leg=TransportLeg.objects.filter(trip=self.trip, date=day.date).first())
+            TransportLeg.objects.create(trip=self.trip, date=day.date, origin="X", destination="Y", mode="plane",
+                                        order=3)
 
         # The comment threads add a few fixed queries:
         #
@@ -465,6 +470,12 @@ class QueryCountTests(DetailFixture):
         stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
                                       check_out=self.trip.start_date + timedelta(days=2))
         Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").stays.add(stay)
+        # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
+        # Python from the rows above (apps/trips/booking_tasks.py): still 24.
+        BookingTask.objects.create(trip=self.trip, title="Hotel deposit", stay=stay)
+        BookingTask.objects.create(trip=self.trip, title="Pay the Hotel balance")  # suggests the stay
+        Lodging.objects.create(trip=self.trip, name="Inn", check_in=self.trip.start_date,
+                               check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
         with self.assertNumQueries(24):
             response = self.get()
         self.assertEqual(response.status_code, 200)

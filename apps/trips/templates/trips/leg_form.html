@@ -43,6 +43,14 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
     </div>
   </form>
 
+  {% if open_tasks %}
+    {# Open booking tasks about this leg (Phase E); edited with the trip's other tasks. #}
+    <section class="card mt-6 p-5">
+      <h2 class="form-section-title mb-2">Still to book</h2>
+      <ul class="list-disc pl-5 text-sm">{% for task in open_tasks %}<li>{{ task.title }}{% if task.due_note %} <span class="text-zinc-500">· {{ task.due_note }}</span>{% endif %}</li>{% endfor %}</ul>
+      <p class="note mt-2">Adding a confirmation offers to tick these off.</p>
+    </section>
+  {% endif %}
   {# Confirmations covering this leg (Phase B): attach an existing one, detach, or add a new one. #}
   <section class="card mt-6 p-6">
     <h2 class="form-section-title mb-3">Confirmations</h2>
