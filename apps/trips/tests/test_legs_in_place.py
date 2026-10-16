@@ -100,12 +100,12 @@ class PageTests(Fixture):
         self.assertEqual(html.count('id="leg-%d"' % placed.pk), 1)
         self.assertEqual(html.count('id="leg-%d"' % auto.pk), 1)
         day2 = html[html.index('id="day-2"'):html.index('id="day-3"')]
-        self.assertIn("Morning — train south", day2)
-        self.assertIn("PlacedFrom", day2)
+        self.assertIn("PlacedFrom", day2)  # a placed leg is in its day's timeline (U3)
         self.assertIn("~45 min", day2)
+        self.assertNotIn("Morning — train south", day2)  # its travel section has no intro or rows to show
         day3 = html[html.index('id="day-3"'):]
         self.assertIn("AutoFrom", day3)
-        self.assertIn("Getting around", day3)
+        self.assertIn("Any time", day3)
 
     def test_day_total(self):
         self.leg(est_duration=timedelta(minutes=45), section=self.travel)

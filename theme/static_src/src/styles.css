@@ -376,6 +376,16 @@
   .trips-ui details[open] > .day-summary::before {
     content: "▾";
   }
+  /* A day's timeline (U3): time column, then the item on one line, details below. */
+  .trips-ui .timeline-row {
+    @apply grid grid-cols-[4.5rem_1fr] gap-x-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 sm:grid-cols-[6.5rem_1fr];
+  }
+  .trips-ui .timeline-time {
+    @apply pt-0.5 text-xs font-medium whitespace-nowrap text-zinc-500 tabular-nums;
+  }
+  .trips-ui .stay-line {
+    @apply mb-3 rounded-md border-l-2 border-accent-300 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700;
+  }
   .trips-ui .day-body {
     @apply border-t border-zinc-100 px-4 pt-4 pb-2;
   }

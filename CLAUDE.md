@@ -330,14 +330,22 @@ that matter most:
   - **Days** (`#days`): each a `<details class="day-fold" id="day-N">`, open on arrival only for
     `itinerary.open_day` (today's during the trip, Day 1 before it, none after; `localdate()`); an
     inline script opens the `<details>` holding any `#target` (on load, on hashchange and on a click
-    to the current hash) and drives Expand all / Collapse all (`data-days-toggle`). A stay's full
-    card (`partials/_stay_card.html`, `#stay-N`) sits on its check-in day.
+    to the current hash) and drives Expand all / Collapse all (`data-days-toggle`). Inside a day (U3):
+    the **stay line** (check-out first, then the stay's full card `partials/_stay_card.html`
+    `#stay-N` on its check-in day, or "Sleeping: <stay>" linking to it on other nights), then the
+    **timeline** (`itinerary.timeline`: legs by local departure — never the reader's zone —
+    activities by `start_time`, meals by `Meal.reserved_time` (trips 0030), then **Any time**:
+    untimed legs in `order`, then untimed activities), rows `_leg_row.html` with `compact=True`,
+    `_activity_row.html`, `_meal_row.html` (`#leg-N`, `#activity-N`, `#meal-N`); then the
+    **narrative** in section order (travel sections show only their intro and reference rows —
+    their placed legs are in the timeline); then **Food ideas** (meals with no reservation time).
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.
 - **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
   the trip page's prefetch, used by both the web page and the booklet — `place_legs` (legs per day,
-  placement, `travel_total`, stray legs) and `attach_stays` (`day.stay` = where you sleep that night,
+  placement, `travel_total`, stray legs), `timeline` (U3: a day's timed items, Any time, Food
+  ideas), `overview` / `open_day` (U2) and `attach_stays` (`day.stay` = where you sleep that night,
   `checking_in` / `checking_out`). Put new per-day derivations there, not in a view or a template.
 - **The booklet is snapshot-guarded:** `tests/test_booklet_snapshot.py` renders the booklet HTML for a
   fixture with every item kind and compares it to `tests/snapshots/booklet.html` (whitespace

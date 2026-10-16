@@ -84,7 +84,7 @@ def build_trip():
                            content={"paragraphs": ["First paragraph.", "Second paragraph."]})
     dinner = Meal.objects.create(day=d2, name="Ristorante Da Franco", meal_type="dinner", cuisine="Italian",
                                  price_range="$$", why_recommended="Wood-fired pizza",
-                                 reservation_notes="Call ahead")
+                                 reservation_notes="Call ahead", reserved_time=time(19, 30))
     Meal.objects.create(day=d3, name="Café Vetter", meal_type="lunch", order=1)
 
     guide = TripActivity.objects.create(trip=trip, day=d3, kind="tour", title="Student guide", provider="Uni Marburg",

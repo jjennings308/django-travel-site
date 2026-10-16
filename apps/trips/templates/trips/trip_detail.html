@@ -154,16 +154,36 @@
         {% endif %}
       </p>
 
+      {% comment %}
+        Where you sleep (U3, itinerary.attach_stays): check-out first, then the stay in full on its
+        check-in day, or a one-line "Sleeping" on its other nights linking to that card.
+      {% endcomment %}
+      {% for stay in day.checking_out %}<p class="stay-line">Check out: <a class="link-quiet font-medium" href="#stay-{{ stay.pk }}">{{ stay.name }}</a></p>{% endfor %}
       {% if day.checking_in %}
-        {# A stay in full on its check-in day; other nights link here (U3 adds their lines). #}
         <div class="section card-grid">{% for stay in day.checking_in %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
+      {% elif day.stay %}
+        <p class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a></p>
       {% endif %}
 
-      {# This day's legs with no travel section: an automatic "Getting around" block. Legs are added on Edit trip. #}
-      {% if day.auto_legs %}
-        <div class="section">
-          <h3 class="grid-label">Getting around{% if day.travel_total %} <span class="ml-2 font-normal normal-case text-zinc-500">{{ day.travel_total }}</span>{% endif %}</h3>
-          <div class="card-grid">{% for leg in day.auto_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
+      {% comment %}
+        The day's timeline (U3, itinerary.timeline): legs, activities and reserved meals in local
+        time order, then Any time. Each item's one home on the page; legs keep their local times.
+      {% endcomment %}
+      {% if day.timeline or day.any_time %}
+        <div class="section timeline">
+          {% if day.travel_total %}<p class="card-kicker mb-1">Travel: {{ day.travel_total }}</p>{% endif %}
+          {% for entry in day.timeline %}
+            {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time=entry.label %}
+            {% elif entry.kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=entry.item time=entry.label %}
+            {% else %}{% include "trips/partials/_meal_row.html" with meal=entry.item time=entry.label %}{% endif %}
+          {% endfor %}
+          {% if day.any_time %}
+            <p class="card-kicker mt-3 mb-1">Any time</p>
+            {% for entry in day.any_time %}
+              {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time="" %}
+              {% else %}{% include "trips/partials/_activity_row.html" with activity=entry.item time="" %}{% endif %}
+            {% endfor %}
+          {% endif %}
         </div>
       {% endif %}
 
@@ -185,11 +205,11 @@
           </div>
 
         {% elif section.section_type == "travel" %}
-          {# This day's legs placed here (TransportLeg.section), then any reference rows. #}
+          {# Its placed legs are in the timeline now (U3); here only its intro and reference rows. #}
+          {% if section.content.intro or section.content.rows %}
           <div class="section">
-            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title|default:"Getting around" }}{% if day.travel_total and not day.auto_legs %} <span class="ml-2 font-normal normal-case text-zinc-500">{{ day.travel_total }}</span>{% endif %}</h3>
+            <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title|default:"Getting around" }}</h3>
             {% if section.content.intro %}<p class="mb-2 text-zinc-700">{{ section.content.intro }}</p>{% endif %}
-            {% if section.placed_legs %}<div class="card-grid">{% for leg in section.placed_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>{% endif %}
             {% if section.content.rows %}
               <div class="card-grid mt-3">
                 {% for row in section.content.rows %}
@@ -202,6 +222,7 @@
               </div>
             {% endif %}
           </div>
+          {% endif %}
 
         {% elif section.section_type == "logistics_table" %}
           <div class="section">
@@ -277,36 +298,13 @@
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
 
-      {% if day.ordered_activities %}
-        {# Tours, timed entries, tickets, tables, car hire (TripActivity); confirmations attach like any item. #}
+      {% if day.food_ideas %}
+        {# Meals with no reservation time; a booked table is in the timeline (U3). #}
         <div class="section">
-          <h3 class="grid-label">Activities</h3>
+          <h3 class="grid-label">Food ideas</h3>
           <div class="card-grid">
-            {% for activity in day.ordered_activities %}
-              <div class="card" id="activity-{{ activity.pk }}">
-                <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <p class="card-title">{% if activity.time_range %}<span class="text-zinc-500">{{ activity.time_range }}</span> · {% endif %}{{ activity.title }}</p>
-                  <span class="badge badge-mode">{{ activity.get_kind_display }}</span>
-                </div>
-                {% if activity.provider or activity.place_name %}<p class="mt-1 text-sm text-zinc-600">{{ activity.provider }}{% if activity.provider and activity.place_name %} · {% endif %}{% if activity.poi %}<a class="link-quiet" href="{% url 'locations:poi_detail' activity.poi.slug %}">{{ activity.poi.name }}</a>{% else %}{{ activity.place_text }}{% endif %}</p>{% endif %}
-                {% if activity.travelers.all %}<p class="mt-1 text-sm text-zinc-600">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-                {% if activity.est_cost is not None %}<p class="mt-1 text-sm text-zinc-600">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
-                {% if activity.notes %}<p class="mt-2 text-sm text-zinc-600">{{ activity.notes|linebreaksbr }}</p>{% endif %}
-                {% if activity.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in activity.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
-                {% if activity.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in activity.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
-                {% if can_edit %}<p class="mt-2 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:activity_edit' trip.pk day.pk activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a></p>{% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-      {% endif %}
-
-      {% if day.ordered_meals %}
-        <div class="section">
-          <h3 class="grid-label">Food</h3>
-          <div class="card-grid">
-            {% for meal in day.ordered_meals %}
-              <div class="card">
+            {% for meal in day.food_ideas %}
+              <div class="card" id="meal-{{ meal.pk }}">
                 <div class="flex flex-wrap items-baseline justify-between gap-x-3">
                   <p class="card-title">
                     {{ meal.name }}
