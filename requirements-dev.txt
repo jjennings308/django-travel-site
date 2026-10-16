@@ -3,3 +3,5 @@
 django-tailwind==4.4.2
 pytailwindcss==0.3.0
 django-browser-reload==1.21.0
+# Lets the parallel test runner report a failing test's traceback (manage.py test --parallel).
+tblib==3.2.2

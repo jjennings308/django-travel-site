@@ -86,6 +86,11 @@ python manage.py migrate
   `.venv/bin/python manage.py test --keepdb --parallel --noinput`
 - If a test fails only under `--parallel`, report it as a test-isolation
   bug rather than dropping the flag.
+- After adding a migration, drop the parallel test copies (`test_travel_site_1` … `_N`) or run once
+  without `--keepdb`: `--keepdb` migrates the main test database but reuses existing copies as they
+  are, so the parallel run fails on missing columns (seen with trips 0032).
+- `tblib` (in `requirements-dev.txt`) lets the parallel runner report a failing test's traceback;
+  without it the run dies with "cannot pickle 'traceback' object" and hides which test failed.
 
 ## Deploying (staging / production)
 
