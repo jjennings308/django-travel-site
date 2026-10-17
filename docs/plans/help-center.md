@@ -1,6 +1,6 @@
 # Plan: a Help center on the site, written as markdown guides
 
-Status: planning only (2026-10-17). Hand to Claude Code **one phase per branch/PR, in order**
+Status: H1 done (2026-10-17, branch `h1-help-machinery`); H2–H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
 (H1 → H4). Read with `CLAUDE.md` (Templates and styling, Dependency layers, Testing).
 
 ## Why
@@ -58,6 +58,16 @@ updated: 2026-10-16
   trip id.
 
 ## H1 — The machinery, and move the existing guide
+
+**Status: done** on branch `h1-help-machinery` (no migrations; tests `apps/pages/tests/test_help.py`).
+As built, three differences from the text below, agreed with James: the guide page extends
+`base.html` like the existing `help.html` (which never extended `base_marketing.html`); the Tailwind
+typography plugin was installed but **not loaded**, so H1 adds `@plugin "@tailwindcss/typography"`
+(forms stays unloaded — it would restyle every input) and uses `prose-stone` (there is no
+`prose-warm`); and the header is parsed by `helpdocs.parse` itself rather than the `meta`
+extension, because `meta` silently accepts unknown keys. A malformed guide is skipped and logged on
+the site and fails the test suite. The moved guide lost its "Last checked …" line (the `updated`
+date replaces it).
 
 - **Dependency:** add `Markdown` (Python-Markdown, pinned) to `requirements.txt`. Extensions:
   `meta`, `tables`, `fenced_code`, `toc` (heading ids so a guide section can be linked:

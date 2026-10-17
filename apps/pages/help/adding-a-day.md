@@ -1,6 +1,13 @@
+title: How to add a day to your trip
+summary: Add a day, fill in its details, then add legs, activities and meals to it.
+audience: editors
+section: Trips
+order: 20
+updated: 2026-10-16
+
 # How to add a day to your trip
 
-A guide for trip editors. Last checked against the site on Oct 16, 2026.
+A guide for trip editors.
 
 ## Before you start
 

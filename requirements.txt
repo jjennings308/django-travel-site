@@ -20,6 +20,8 @@ urllib3==2.6.3
 wheel==0.45.1
 lxml==6.1.3
 python-docx==1.2.0
+# Help center guides (apps/pages/help/*.md, pages.helpdocs).
+Markdown==3.11.1
 gunicorn==26.2.0
 # Trip booklet PDF (trips:trip_pdf). Needs the Pango/HarfBuzz system libraries on the server:
 #   sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core

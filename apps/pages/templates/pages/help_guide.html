@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% comment %}
+One Help guide (pages:help_guide; apps/pages/help/<slug>.md rendered by pages.helpdocs). Trusted, committed markdown, so its HTML is shown as is. "On this page" appears when the guide has 3+ ## headings.
+{% endcomment %}
+{% block title %}{{ guide.title }} · Help · {{ SITE_NAME }}{% endblock %}
+
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-3xl space-y-6">
+  <header>
+    <h1 class="sbl-page-title">{{ guide.title }}</h1>
+    <p class="sbl-page-subtitle">{{ guide.summary }}</p>
+    <p class="mt-1 text-sm text-warm-500">{% if guide.tag %}{{ guide.tag }} · {% endif %}Updated {{ guide.updated|date:"F j, Y" }}</p>
+  </header>
+
+  {% if show_toc %}
+    <nav class="sbl-card p-4" aria-label="On this page">
+      <p class="mb-2 text-sm font-semibold text-warm-900">On this page</p>
+      <ul class="space-y-1 text-sm">{% for anchor, name in guide.toc %}<li><a class="sbl-link" href="#{{ anchor }}">{{ name }}</a></li>{% endfor %}</ul>
+    </nav>
+  {% endif %}
+
+  <div class="sbl-card help-guide prose prose-stone max-w-none p-6">
+    {{ guide.html|safe }}
+  </div>
+
+  {% if related %}
+    <section class="sbl-card p-6">
+      <h2 class="mb-2 text-lg font-semibold text-warm-900">Related guides</h2>
+      <ul class="space-y-2">{% for g in related %}<li><a class="sbl-link font-medium" href="{% url 'pages:help_guide' g.slug %}">{{ g.title }}</a><span class="block text-sm text-warm-600">{{ g.summary }}</span></li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  <p class="text-warm-600"><a class="sbl-link" href="{% url 'pages:help' %}">All help</a> · Still stuck? <a class="sbl-link" href="{% url 'pages:contact' %}">Contact us</a>.</p>
+</article>
+{% endblock %}
