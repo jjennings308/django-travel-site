@@ -783,7 +783,8 @@ Plan: `docs/plans/help-center.md` (user guides as markdown files in `apps/pages/
 `/help/` and shown at `/help/<slug>/`; staff guides gated; "?" links from the trip and edit pages).
 Phases H1–H4, one branch each, in order. Status: H1 (the machinery; `adding-a-day` moved in) done on
 branch `h1-help-machinery`; H2 (`reading-your-trip`, `sharing-and-access`, `bookings-and-confirmations`)
-done on branch `h2-help-machinery`; H3 (the remaining guides) next.
+done on branch `h2-help-machinery`; H3 (eight more guides, `adding-a-day` re-checked) done on branch
+`h3-help-guides`; H4 (help links on the trip and edit pages) next.
 
 ### Rules carried over from the itinerary project
 

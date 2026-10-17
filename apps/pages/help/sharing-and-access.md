@@ -16,7 +16,7 @@ Each person on a trip is a **viewer**, a **commentor** or an **editor**. Each ro
 | Role | Can |
 | --- | --- |
 | Viewer | Read the whole trip, its map, budget and photos, and download the PDF booklet. |
-| Commentor | Also add notes on the trip, a day, a plan section or a task, and add photos to the trip's album. |
+| Commentor | Also add notes ([comments and notes](/help/comments-and-notes/)) and add photos to the trip's album. |
 | Editor | Also change everything: the trip's details, days, journeys, stays, activities, meals, confirmations, contacts and tasks, and share the trip. |
 
 Deleting a trip needs editor access **and** being the person who created it.

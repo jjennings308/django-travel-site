@@ -172,3 +172,21 @@ class LinkedAnchorTests(SimpleTestCase):
     def test_sharing_and_access_keeps_its_sections(self):
         guide = helpdocs.guide("sharing-and-access")
         self.assertLessEqual({"who-can-do-what", "the-public-share-link"}, guide.anchors)
+
+
+class StaffGuideTests(TestCase):
+    """The real staff guide stays staff-only (H3)."""
+
+    def test_running_the_site_is_staff_only(self):
+        guide = helpdocs.guide("running-the-site")
+        self.assertEqual(guide.audience, "staff")
+        url = reverse("pages:help_guide", args=["running-the-site"])
+        self.assertNotContains(self.client.get(reverse("pages:help")), url)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        user = User.objects.create_user("u", "u@example.com", "pw-1234-abcd")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        user.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard",
+                                                         content_type__app_label="accounts"))
+        self.client.force_login(User.objects.get(pk=user.pk))
+        self.assertEqual(self.client.get(url).status_code, 200)
