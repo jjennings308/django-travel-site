@@ -757,6 +757,12 @@ collapsible days with a timeline, Reference — while the PDF booklet keeps its 
 snapshot test; contacts and info notes linked to items; decisions as tasks; a content clean-up
 review). Phases U1–U7, one branch each, in order. Decisions answered 2026-10-16. Status: not started.
 
+### Help center
+
+Plan: `docs/plans/help-center.md` (user guides as markdown files in `apps/pages/help/`, listed on
+`/help/` and shown at `/help/<slug>/`; staff guides gated; "?" links from the trip and edit pages).
+Phases H1–H4, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
