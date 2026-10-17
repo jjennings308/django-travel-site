@@ -1,0 +1,4 @@
+{% comment %}
+A link to a Help guide (help-center plan H4). Pass slug, and optionally anchor (a heading id in that guide), label (what it's about, for screen readers) and text (shown; default "?"). Uses "url … as", so a page renders without the pages app. Never printed.
+{% endcomment %}
+{% url 'pages:help_guide' slug as help_url %}{% if help_url %}<a class="help-link print:hidden{% if not text %} help-link-icon{% endif %}" href="{{ help_url }}{% if anchor %}#{{ anchor }}{% endif %}" aria-label="Help: {{ label|default:slug }}" title="Help: {{ label|default:slug }}">{{ text|default:"?" }}</a>{% endif %}

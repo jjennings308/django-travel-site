@@ -16,6 +16,7 @@ would mean two places to fix the next time a field is added.
 {% endif %}
 <div class="page-header">
   <h1 class="page-title">{% if is_create %}New trip{% else %}Edit trip{% endif %}</h1>
+  {% include "partials/_help_link.html" with slug="starting-a-trip" label="starting and editing a trip" text="How this works" %}
 </div>
 
 <form method="post">

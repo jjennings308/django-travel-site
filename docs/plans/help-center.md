@@ -1,7 +1,7 @@
 # Plan: a Help center on the site, written as markdown guides
 
-Status: H1–H3 done (2026-10-17, branches `h1-help-machinery`, `h2-help-machinery`, `h3-help-guides`);
-H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
+Status: H1–H4 done (2026-10-17, branches `h1-help-machinery`, `h2-help-machinery`, `h3-help-guides`,
+`h4-help-links`). The plan is complete. Hand to Claude Code **one phase per branch/PR, in order**
 (H1 → H4). Read with `CLAUDE.md` (Templates and styling, Dependency layers, Testing).
 
 ## Why
@@ -148,6 +148,15 @@ Same format and checks; one PR, or split if it grows.
 | `running-the-site` (approval queue, granting trip access and the creator role, CSV import/export, recount commands; **no** server names, credentials or deploy steps) | staff | Staff |
 
 ## H4 — Help where people need it
+
+**Status: done** on branch `h4-help-links` (built on `add-a-note`, which lets notes be started on a day,
+a plan section or a task — the gap H3 found). As built: one shell partial,
+`templates/partials/_help_link.html` (slug, optional anchor, label, text; "url … as"; `print:hidden`),
+gives the trip page's **?** links (Overview, Days, Reference, Download PDF) and the edit pages'
+**How this works** (Edit trip, the day page, the leg page, the Confirmations and Contacts & info
+boxes — so the activity page has both — and the tidy page). The account menu has **Help**.
+`apps/pages/tests/test_help_links.py` renders each page and checks every `/help/` link and anchor
+with `test_help.link_ok`. Booklet snapshot and the query count (27) unchanged.
 
 - **Trip page:** a small "?" link (`aria-label="Help: …"`) beside the Overview, Days and Reference
   headings → `reading-your-trip#overview` / `#days` / `#reference`; beside "Download PDF" →

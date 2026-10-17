@@ -16,7 +16,7 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     <h1 class="page-title mb-1">{{ leg.origin }} &rarr; {{ leg.destination }}</h1>
-    <p class="page-subtitle mb-4">{% if leg.is_planned %}Planned — add the times once it's booked.{% else %}Scheduled.{% endif %}</p>
+    <p class="page-subtitle mb-4">{% if leg.is_planned %}Planned — add the times once it's booked.{% else %}Scheduled.{% endif %} {% include "partials/_help_link.html" with slug="travel-legs" label="travel legs" text="How this works" %}</p>
     {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
     {% for heading, fields in form.grouped %}
       {% if fields %}

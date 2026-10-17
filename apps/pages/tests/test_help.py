@@ -23,30 +23,29 @@ def write(folder, slug, body="Some text.", title="A guide", audience="everyone",
     Path(folder, f"{slug}.md").write_text(text, encoding="utf-8")
 
 
-def broken_links(guide, guides):
-    """Every link in ``guide`` that doesn't resolve: /help/<slug>/[#anchor] to an existing guide
-    (and heading), other site paths through Django's URL resolver. External links are skipped."""
+def link_ok(href, guides, guide=None):
+    """Does ``href`` resolve? /help/<slug>/[#anchor] to an existing guide (and heading), "#anchor" to
+    a heading of ``guide``, other site paths through Django's URL resolver. External links pass."""
+    if re.match(r"^(https?:|mailto:|tel:)", href):
+        return True
     by_slug = {g.slug: g for g in guides}
-    broken = []
-    for href in guide.links:
-        if re.match(r"^(https?:|mailto:|tel:)", href):
-            continue
-        path, _, anchor = href.partition("#")
-        if not path:  # a link within this guide
-            if anchor not in guide.anchors:
-                broken.append(href)
-            continue
-        match = re.fullmatch(r"/help/([\w-]+)/", path)
-        if match:
-            target = by_slug.get(match.group(1))
-            if target is None or (anchor and anchor not in target.anchors):
-                broken.append(href)
-            continue
-        try:
-            resolve(path)
-        except Resolver404:
-            broken.append(href)
-    return broken
+    path, _, anchor = href.partition("#")
+    if not path:  # a link within this guide
+        return guide is not None and anchor in guide.anchors
+    match = re.fullmatch(r"/help/([\w-]+)/", path)
+    if match:
+        target = by_slug.get(match.group(1))
+        return target is not None and (not anchor or anchor in target.anchors)
+    try:
+        resolve(path)
+    except Resolver404:
+        return False
+    return True
+
+
+def broken_links(guide, guides):
+    """Every link in ``guide`` that doesn't resolve (see ``link_ok``)."""
+    return [href for href in guide.links if not link_ok(href, guides, guide)]
 
 
 class EveryGuideTests(SimpleTestCase):

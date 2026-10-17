@@ -3,7 +3,7 @@ The confirmations on one item (a leg, stay, section or meal), added and removed 
 {% endcomment %}
 {% url 'trips:item_confirmations' trip.pk confirm_kind confirm_item.pk as confirm_url %}
 <section class="card mt-6 p-6" id="confirmations">
-  <h2 class="form-section-title mb-3">Confirmations</h2>
+  <h2 class="form-section-title mb-3 flex items-baseline gap-3">Confirmations {% include "partials/_help_link.html" with slug="bookings-and-confirmations" label="adding confirmations" text="How this works" %}</h2>
   {% if attached %}
     <ul class="mb-4 space-y-2 text-sm">
       {% for c in attached %}

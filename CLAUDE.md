@@ -195,8 +195,13 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   server names or deploy steps. Adding a guide is adding a file; `apps/pages/tests/test_help.py` parses
   every guide strictly and checks every link in it (other guides and their `#anchor`s, site paths via
   `resolve`). Lower apps link to a guide only with `{% url 'pages:help_guide' 'slug' as help_url %}{% if
-  help_url %}…{% endif %}`. **A change to a user-facing feature updates its guide in the same PR and bumps
-  its `updated` date.**
+  help_url %}…{% endif %}` — in practice through the shell partial `partials/_help_link.html` (`with
+  slug=… anchor=… label=…` gives a round "?"; add `text="How this works"` for a text link; never printed).
+  The trip page has "?" by Overview, Days, Reference and Download PDF (`reading-your-trip#…`); Edit trip,
+  the day page, the leg page, the Confirmations and Contacts & info boxes and the tidy page have "How this
+  works"; the account menu has Help. `apps/pages/tests/test_help_links.py` renders those pages and checks
+  every `/help/` link and anchor. **A change to a user-facing feature updates its guide in the same PR and
+  bumps its `updated` date.**
 - **Public pages stay honest:** the home page's stats are real published-catalogue counts (`pages.views._catalogue_counts`, cached an hour); no invented numbers, testimonials or features. Every footer link must resolve (`test_site_pages` walks them). `pages:contact` emails `LEGAL_CONTACT_EMAIL` with Reply-To the sender (honeypot field, 3 per session per hour, disabled while the address is a placeholder); `pages:help` explains the lifecycle.
 - **Notifications:** `apps.notifications.services.notify(user, kind, title, message, url, obj)` creates a `Notification` and emails it unless `user.settings.email_notifications` is off or the address is a placeholder (mail errors are logged, never raised); `notify_staff(...)` reaches everyone with `can_access_staff`. Kinds (seeded by notifications 0002): `submission_reviewed` (from `Approvable.approve/reject/request_changes` → `_send_approval_notification`, to the submitter/creator, gated by `ApprovalSettings.notify_on_approval/notify_on_rejection`), `submission_received` (staff, from `Approvable.submit_for_review`, gated by `notify_on_submission`; the activity forms now call `submit_for_review` instead of setting PENDING by hand), `role_request_decided` (accounts sends the `accounts.signals.role_request_decided` signal; `notifications/receivers.py` reacts, because accounts may not import notifications), `trip_access_granted` (`trips/signals.py`, on a new `TripGrant` not granted to oneself). The header bell loads `notifications:unread_count` (JSON) after the page, so pages pay no query; `/notifications/` lists them, opening one marks it read. Cross-app notification tests live in `apps/pages/tests/test_notifications_flow.py` (pages may import everything).
 - **Visitor counts:** `visitor_count` on POI, City, Region (locations 0011) and Country = distinct members who ticked off a goal there or travelled (with an account) on a finished trip naming the city (`Trip.cities` / `Day.city`); regions/countries roll up their cities. `apps/bucketlists/visitors.recount()` recomputes everything (bucketlists may read trips; locations may not); `bucketlists/signals.py` queues one recount per transaction (on commit) when a completed goal or a finished trip changes, and `manage.py recount_visitors` runs nightly on production (James's crontab) because trips finish by date. Pages show "Members who've been" only when non-zero; top attractions / a city's places sort by it.
@@ -789,7 +794,7 @@ Plan: `docs/plans/help-center.md` (user guides as markdown files in `apps/pages/
 Phases H1–H4, one branch each, in order. Status: H1 (the machinery; `adding-a-day` moved in) done on
 branch `h1-help-machinery`; H2 (`reading-your-trip`, `sharing-and-access`, `bookings-and-confirmations`)
 done on branch `h2-help-machinery`; H3 (eight more guides, `adding-a-day` re-checked) done on branch
-`h3-help-guides`; H4 (help links on the trip and edit pages) next.
+`h3-help-guides`; H4 (help links on the trip and edit pages) done on branch `h4-help-links`. Complete.
 
 ### Rules carried over from the itinerary project
 
