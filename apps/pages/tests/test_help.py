@@ -159,3 +159,16 @@ class PageTests(TestCase):
                 if guide.audience != "staff":
                     with self.subTest(guide=guide.slug):
                         self.assertEqual(self.client.get(self.guide_url(guide.slug)).status_code, 200)
+
+
+class LinkedAnchorTests(SimpleTestCase):
+    """Anchors other pages link to (help-center plan H4): renaming a heading must fail here."""
+
+    def test_reading_your_trip_keeps_its_sections(self):
+        guide = helpdocs.guide("reading-your-trip")
+        self.assertIsNotNone(guide)
+        self.assertLessEqual({"overview", "days", "reference", "booklet"}, guide.anchors)
+
+    def test_sharing_and_access_keeps_its_sections(self):
+        guide = helpdocs.guide("sharing-and-access")
+        self.assertLessEqual({"who-can-do-what", "the-public-share-link"}, guide.anchors)
