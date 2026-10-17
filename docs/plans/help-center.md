@@ -1,6 +1,7 @@
 # Plan: a Help center on the site, written as markdown guides
 
-Status: H1–H2 done (2026-10-17, branches `h1-help-machinery`, `h2-help-machinery`); H3–H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
+Status: H1–H3 done (2026-10-17, branches `h1-help-machinery`, `h2-help-machinery`, `h3-help-guides`);
+H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
 (H1 → H4). Read with `CLAUDE.md` (Templates and styling, Dependency layers, Testing).
 
 ## Why
@@ -122,6 +123,15 @@ table, a "Problems" table at the end. James reviews them in the PR.
 | `bookings-and-confirmations` | editors | Bookings & contacts | Adding a confirmation number on an item; one number covering several legs; a leg's stages (planned → scheduled → booked); Still to book, Not booked yet, decisions with options and "Add as a stay / activity"; loose confirmations (insurance). |
 
 ## H3 — The rest of the guides
+
+**Status: done** on branch `h3-help-guides` (eight new guides plus `adding-a-day` re-checked; every
+UI word checked against its template). Found while writing: on the trip page a note can only be
+*started* on the trip itself (**Trip notes** → **Add a comment**); a day, plan section or task gets
+**Add a comment** only once it already has a note, so there is no way in the UI to start one there.
+`comments-and-notes` describes that as it is, and H2's `sharing-and-access` line was corrected to
+match; adding a per-day/section/task "Add a note" is a product decision for James.
+`adding-a-day` fixes: the meal field is **Reservation time**, and Overview rows link from the day's
+number. A test keeps `running-the-site` staff-only.
 
 Same format and checks; one PR, or split if it grows.
 

@@ -3,7 +3,7 @@ summary: Add a day, fill in its details, then add legs, activities and meals to 
 audience: editors
 section: Trips
 order: 20
-updated: 2026-10-16
+updated: 2026-10-17
 
 # How to add a day to your trip
 
@@ -58,19 +58,19 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 | --- | --- | --- |
 | + Leg | A train, flight, drive or walk | From, To, Mode, a rough time ("45 min") and a note. Add exact times later, once booked. |
 | + Activity | A tour, timed entry, ticket, table booking or car hire | Kind, title, provider, start and end time, place, cost, notes. |
-| + Meal | A restaurant or food stop | Name, meal type, cuisine, price range, why it's recommended. Give it a **reserved time** only if a table is booked. |
+| + Meal | A restaurant or food stop | Name, meal type, cuisine, price range, why it's recommended. Give it a **Reservation time** only if a table is booked. |
 | + Contact or note | A phone number or tip for the whole day | A contact (name, phone, email) or an info note (title and text). |
 | Section buttons | The day's write-up | **Phase** (a part of the day, e.g. "Morning — check out"), **Free text**, **Callout** (a tip or warning), **Choose your adventure** (options to pick from), **Logistics table**, **Travel** (a group for the day's legs). |
 
 Everything you add appears under **On this day**, in the same order as on the trip page. Each item has its own **Confirmations** and **Contacts & info** links for booking numbers and phone numbers.
 
-Items with a time (legs, activities, booked meals) go on the day's timeline in time order. Meals without a reserved time appear under **Food ideas**.
+Items with a time (legs, activities, booked meals) go on the day's timeline in time order. Meals without a reservation time appear under **Food ideas**.
 
 ## Check it on the trip page and in the booklet
 
 Open the trip page. Your day appears in three places:
 
-- **Overview:** a row with its date, city, where you sleep, travel and highlights. Click the row to jump to the day.
+- **Overview:** a row with its date, city, where you sleep, travel and highlights. Click the day's number to jump to it.
 - **Days:** the day itself, folded. Click its title to open it and check the timeline, write-up and food ideas.
 - **Download PDF:** the printed booklet gives the day its own section, with its stay, legs, activities and meals.
 

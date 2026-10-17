@@ -1,0 +1,61 @@
+title: Running the site
+summary: The staff dashboard, approving submissions, giving people access to trips, and importing the catalogue from spreadsheets.
+audience: staff
+section: Staff
+order: 10
+updated: 2026-10-17
+
+# Running the site
+
+For staff. Open **Staff dashboard** from your account menu (top right).
+
+## The staff dashboard
+
+The dashboard shows the site's numbers and a **needs attention** list, most urgent first. Each entry links to where you fix it:
+
+| Entry | What to do |
+| --- | --- |
+| **Submissions waiting for review** | Approve or reject them in the approval queue. Overdue ones (past the review target) are marked. |
+| **Role requests** | People asking to become a vendor or content provider. Approving adds them to the group. |
+| **Reported reviews** | Keep or hide each review, then mark its reports resolved. A review with 3 open reports is already hidden. |
+| **Events with a city that isn't in the catalogue** | Link each to a city, or create the city. |
+| **Cities without a region**, **Cities whose region is in a different country** | Fix them in the admin. |
+| **Yearly activities with no upcoming dates** | Add next year's event ("Add <year> dates" on the last one). |
+| **Activities whose place isn't linked** | Pick the country and city on the activity. |
+| **HEIC images most browsers can't show**, **Accounts with a placeholder email**, **Legal pages still have placeholders** | Re-upload, set a real email, or fill in the legal details. |
+
+## Approving submissions
+
+New activities, events and places from members wait in the approval queue (linked from **Submissions waiting for review**). Approve, reject, or ask for changes; the member is notified. Approved items are public at once.
+
+## Access to trips
+
+Trip access is per person and per trip, set in the admin:
+
+- **Give someone access to a trip**: on the trip in the admin, add a trip grant for the person, with their role (viewer, commentor or editor). They're notified.
+- **Let someone create trips**: on the person in the admin, give them the **creator** role. Anyone can still start a trip from a bucket-list goal.
+- **Remove access**: delete the grant.
+
+Staff see every trip, with no grant needed. See [sharing and access](/help/sharing-and-access/) for what each role can do.
+
+## Importing and exporting the catalogue
+
+**Import CSV** on the staff dashboard opens **Import from CSV**, which adds or updates countries, regions, cities, places, activities or events from a spreadsheet.
+
+1. Pick **What are you importing?** and upload the **CSV file**. Import in this order, since each looks up the ones before it: countries, regions, cities, places, activities, events.
+2. Click **Preview import**. Each row shows **New**, **Update** or **Error**; "Nothing has been saved yet."
+3. Click **Import N rows** (rows with errors are skipped), or **Cancel**. When nothing can be imported, the page offers **Upload a corrected file** instead.
+
+A **blank template** shows the columns; **export what's loaded now** downloads the published items in the same columns, ready to edit and import again. Imported items are published straight away.
+
+## Nightly counts
+
+"Members who've been" counts and badges are recounted automatically. If a count looks wrong after fixing data, ask whoever runs the server to run the recount.
+
+## Problems
+
+| Problem | What to do |
+| --- | --- |
+| A member can't see a trip | Check they have a grant on it. |
+| A member has no **New trip** button | Give them the creator role, or point them to **Plan a trip** on a goal. |
+| An import row says **Error** | Fix that row (the details say why) and upload the corrected file. |
