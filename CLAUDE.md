@@ -372,6 +372,11 @@ that matter most:
     `_activity_row.html`, `_meal_row.html` (`#leg-N`, `#activity-N`, `#meal-N`); then the
     **narrative** in section order (travel sections show only their intro and reference rows —
     their placed legs are in the timeline); then **Food ideas** (meals with no reservation time).
+  - **Notes:** anyone with the `comment` capability can start a note on a day (**Add a note to this
+    day**, at the end of the open day), on a section or on a task in Reference (**Add a note**), each
+    shown only while it has none; once it has notes, its thread's **Add a comment** takes over.
+    Posting or editing a comment returns to `trip_detail#comment-N` (one anchor — the comment sits
+    inside its day, so the page opens it).
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.

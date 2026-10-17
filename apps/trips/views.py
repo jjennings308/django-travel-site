@@ -1234,7 +1234,9 @@ def comment_create(request, kind, pk):
         if form.is_valid():
             comment = form.save(author=request.user, target=target)
             messages.success(request, "Comment added.")
-            return redirect(return_url + f"#comment-{comment.pk}")
+            # One anchor, the comment itself: return_url already ends in the thread's "#…", and a
+            # second "#" would point at nothing, so the trip page couldn't open the day it's in.
+            return redirect(return_url.split("#")[0] + f"#comment-{comment.pk}")
     else:
         form = CommentForm()
 
@@ -1284,7 +1286,9 @@ def comment_edit(request, pk):
                 saved.edited_at = django_timezone.now()
                 saved.save(update_fields=["edited_at"])
             messages.success(request, "Comment updated.")
-            return redirect(return_url + f"#comment-{saved.pk}")
+            # One anchor, the comment itself: return_url already ends in the thread's "#…", and a
+            # second "#" would point at nothing, so the trip page couldn't open the day it's in.
+            return redirect(return_url.split("#")[0] + f"#comment-{saved.pk}")
     else:
         form = CommentForm(instance=comment)
 

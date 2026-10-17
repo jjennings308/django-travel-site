@@ -407,7 +407,10 @@ class CommentRenderingTests(CommentFixture):
         self.assertIn(
             reverse("trips:trip_detail", args=[self.trip.pk]), response["Location"]
         )
-        self.assertIn("#comments-day-%s" % self.day.pk, response["Location"])
+        # One anchor: the new comment itself (inside its day's thread, so the page opens that day).
+        comment = Comment.objects.latest("pk")
+        self.assertTrue(response["Location"].endswith("#comment-%s" % comment.pk))
+        self.assertEqual(response["Location"].count("#"), 1)
         landed = self.client.get(response["Location"])
         self.assertEqual(landed.status_code, 200)
         self.assertContains(landed, "where does this land?")
@@ -434,7 +437,10 @@ class CommentRenderingTests(CommentFixture):
                     response["Location"].split("#")[0],
                     reverse("trips:trip_detail", args=[self.trip.pk]),
                 )
-                self.assertIn("#comments-%s-%s" % (kind, pk), response["Location"])
+                # One anchor, the new comment (it sits inside its thread); a second "#" pointed at nothing.
+                comment = Comment.objects.latest("pk")
+                self.assertTrue(response["Location"].endswith("#comment-%s" % comment.pk))
+                self.assertEqual(response["Location"].count("#"), 1)
 
     def test_a_section_comment_shows_on_the_detail_page(self):
         self.login(self.ada)

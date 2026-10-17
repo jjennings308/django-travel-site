@@ -1,5 +1,5 @@
 title: Comments and notes
-summary: Leave a note on a trip for everyone on it, reply to notes on a day or task, and edit or delete your own.
+summary: Leave a note for everyone on a trip, on the trip itself or on a day, a plan or a task, and edit or delete your own.
 audience: everyone
 section: Trips
 order: 60
@@ -19,7 +19,13 @@ At the bottom of the trip page, under **Trip notes**, click **Add a comment**, w
 
 ## Notes on a day, a plan or a task
 
-Notes on a day (**Notes on this day**), on one of its plans (headed with the plan's title and "notes") or on a task in Reference (**Notes on this task**) show right where they belong. When a day, plan or task already has notes, **Add a comment** under them adds yours to the conversation.
+- **A day:** open the day and click **Add a note to this day**, at the end of the day.
+- **One of the day's plans:** click **Add a note** under it.
+- **A task:** in Reference, under **Still to book**, click **Add a note** under the task.
+
+Write your note and click **Save**. You land back on the trip page at your note, with its day open.
+
+Once a day, plan or task has notes, they show where they belong (**Notes on this day**, the plan's title with "notes", **Notes on this task**), and **Add a comment** under them adds yours to the conversation.
 
 ## Editing or deleting your notes
 

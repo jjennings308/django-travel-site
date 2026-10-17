@@ -298,6 +298,7 @@
             <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
           </div>
         {% endif %}
+        {% if can_comment and not comments_by_target.section|dictkey:section.pk %}<p class="no-print -mt-3 mb-4 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'section' section.pk %}#body">Add a note</a></p>{% endif %}
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
 
@@ -346,6 +347,9 @@
           <div class="no-print">
             {% include "trips/_comments.html" with comment_kind="day" comment_pk=day.pk comments=day_threads can_comment=can_comment heading="Notes on this day" %}
           </div>
+        {% elif can_comment %}
+          {# Start the day's first note; once it has one, its thread above takes over. #}
+          <p class="no-print mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:comment_create' 'day' day.pk %}#body">Add a note to this day</a></p>
         {% endif %}
       {% endwith %}
 
@@ -457,7 +461,8 @@
             {% endif %}
             {% if can_edit %}<p class="mt-1 text-xs"><a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23still-to-book">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a></p>{% endif %}
             {% with thread=comments_by_target.task|dictkey:task.pk %}
-              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}{% endif %}
+              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}
+              {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a note</a></p>{% endif %}
             {% endwith %}
           </li>
         {% endfor %}
