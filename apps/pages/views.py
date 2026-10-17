@@ -240,5 +240,22 @@ def features(request):
 
 
 def help_page(request):
-    """Short how-it-works / FAQ page."""
-    return render(request, "pages/help.html")
+    """How it works, the FAQ, and the guides the reader may see, grouped by section (helpdocs)."""
+    from . import helpdocs
+    return render(request, "pages/help.html", {"guide_sections": helpdocs.grouped(request.user)})
+
+
+def help_guide(request, slug):
+    """One guide (apps/pages/help/<slug>.md). An unknown slug, or a staff guide for anyone but
+    staff, is a 404."""
+    from django.http import Http404
+    from apps.core.utils.breadcrumbs import build_breadcrumbs
+    from . import helpdocs
+    guide = helpdocs.guide(slug)
+    if guide is None or not helpdocs.is_visible(guide, request.user):
+        raise Http404
+    related = [g for g in helpdocs.visible_to(request.user) if g.section == guide.section and g.slug != guide.slug]
+    return render(request, "pages/help_guide.html", {
+        "guide": guide, "related": related, "show_toc": len(guide.toc) >= 3,
+        "breadcrumb_list": build_breadcrumbs([("Help", "pages:help"), (guide.title, None)]),
+    })

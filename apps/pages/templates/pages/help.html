@@ -32,6 +32,26 @@
     </dl>
   </section>
 
+  {% if guide_sections %}
+    {# The guides (apps/pages/help/*.md, helpdocs.grouped): staff ones only for staff. #}
+    <section class="sbl-card p-6" id="guides">
+      <h2 class="mb-1 text-xl font-semibold text-warm-900">Guides</h2>
+      <p class="mb-4 text-warm-600">Step-by-step help for each part of the site.</p>
+      {% for section, guides in guide_sections %}
+        <h3 class="mt-5 mb-2 text-sm font-semibold tracking-wide text-warm-500 uppercase">{{ section }}</h3>
+        <ul class="divide-y divide-warm-100">
+          {% for g in guides %}
+            <li class="py-2.5">
+              <a class="sbl-link font-medium" href="{% url 'pages:help_guide' g.slug %}">{{ g.title }}</a>
+              {% if g.tag %}<span class="ml-2 rounded-full bg-warm-100 px-2 py-0.5 text-xs text-warm-700">{{ g.tag }}</span>{% endif %}
+              <p class="text-sm text-warm-600">{{ g.summary }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+    </section>
+  {% endif %}
+
   <p class="text-warm-600">Still stuck? <a class="sbl-link" href="{% url 'pages:contact' %}">Contact us</a>.</p>
 </article>
 {% endblock %}
