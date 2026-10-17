@@ -24,7 +24,7 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         {% if can_edit %}<a class="btn" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
-        <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>
+        <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
         {% if trip.public_token or can_edit or can_delete %}
           {# ⋯ menu: sharing and delete, kept out of the way (Alpine). #}
           <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
@@ -62,7 +62,7 @@
 
   {# ---------------------------------------------------------------- overview #}
   <section class="mb-10 scroll-mt-32" id="overview">
-    <h2 class="day-heading mb-3">Overview</h2>
+    <h2 class="day-heading mb-3">Overview {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="overview" label="the Overview" %}</h2>
     {% if days %}
       <div class="scroll-x">
         <table class="data-grid trip-overview">
@@ -133,7 +133,7 @@
   {% endcomment %}
   <section id="days" class="scroll-mt-32">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <h2 class="day-heading">Days</h2>
+      <h2 class="day-heading">Days {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="days" label="reading a day" %}</h2>
       {% if days %}<p class="flex gap-3 text-sm"><button type="button" class="link-quiet font-medium" data-days-toggle="open">Expand all</button><button type="button" class="link-quiet font-medium" data-days-toggle="close">Collapse all</button></p>{% endif %}
     </div>
   {% for day in days %}
@@ -400,7 +400,7 @@
     chip linking here (#confirmation-N); rows here link back to their item, which opens its day.
   {% endcomment %}
   <section class="mt-12 scroll-mt-32" id="reference">
-    <h2 class="day-heading mb-4">Reference</h2>
+    <h2 class="day-heading mb-4">Reference {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="reference" label="Reference" %}</h2>
 
     {% if confirmation_groups %}
       {# Generated from the confirmations and what they cover (views.confirmation_groups), each once. #}

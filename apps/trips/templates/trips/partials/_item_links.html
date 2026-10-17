@@ -3,7 +3,7 @@ An item's contacts and info notes (U4), managed like its confirmations: attach o
 {% endcomment %}
 {% url 'trips:item_links' trip.pk link_kind link_item.pk as links_url %}
 <section class="card mt-6 p-6" id="contacts-info">
-  <h2 class="form-section-title mb-3">Contacts &amp; info</h2>
+  <h2 class="form-section-title mb-3 flex items-baseline gap-3">Contacts &amp; info {% include "partials/_help_link.html" with slug="contacts-and-info" label="contacts and info notes" text="How this works" %}</h2>
   {% if linked_refs %}
     <ul class="mb-4 space-y-2 text-sm">
       {% for ref in linked_refs %}
