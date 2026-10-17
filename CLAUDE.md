@@ -782,7 +782,8 @@ review). Phases U1–U7, one branch each, in order. Decisions answered 2026-10-1
 Plan: `docs/plans/help-center.md` (user guides as markdown files in `apps/pages/help/`, listed on
 `/help/` and shown at `/help/<slug>/`; staff guides gated; "?" links from the trip and edit pages).
 Phases H1–H4, one branch each, in order. Status: H1 (the machinery; `adding-a-day` moved in) done on
-branch `h1-help-machinery`; H2 (the first three guides) next.
+branch `h1-help-machinery`; H2 (`reading-your-trip`, `sharing-and-access`, `bookings-and-confirmations`)
+done on branch `h2-help-machinery`; H3 (the remaining guides) next.
 
 ### Rules carried over from the itinerary project
 

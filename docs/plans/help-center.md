@@ -1,6 +1,6 @@
 # Plan: a Help center on the site, written as markdown guides
 
-Status: H1 done (2026-10-17, branch `h1-help-machinery`); H2–H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
+Status: H1–H2 done (2026-10-17, branches `h1-help-machinery`, `h2-help-machinery`); H3–H4 planned. Hand to Claude Code **one phase per branch/PR, in order**
 (H1 → H4). Read with `CLAUDE.md` (Templates and styling, Dependency layers, Testing).
 
 ## Why
@@ -103,6 +103,14 @@ date replaces it).
   - `test_site_pages` still passes (the footer Help link).
 
 ## H2 — The three guides people need first
+
+**Status: done** on branch `h2-help-machinery` (guides `reading-your-trip`, `sharing-and-access`,
+`bookings-and-confirmations`; every UI word checked against its template, `role_capabilities()` and
+`public.py`). Also fixed: the `/help/` FAQ answer on sharing, which still said editors press *Share* on
+the trip page (it's **Share a read-only link** in the ⋯ menu since U2) and that the shared page
+shows the trip's "name" (it shows the destination-and-dates title, never the name, plus the budget
+level and each day's plan count and restaurants). A test pins the anchors H4 will link to
+(`#overview`, `#days`, `#reference`, `#booklet`; `#who-can-do-what`, `#the-public-share-link`).
 
 Write, check against the templates, commit. Each is short: a one-line lead, numbered steps or a
 table, a "Problems" table at the end. James reviews them in the PR.
