@@ -89,6 +89,10 @@ python manage.py migrate
 - After adding a migration, drop the parallel test copies (`test_travel_site_1` … `_N`) or run once
   without `--keepdb`: `--keepdb` migrates the main test database but reuses existing copies as they
   are, so the parallel run fails on missing columns (seen with trips 0032).
+- A test that needs real transactions (stepping migrations back and forth) subclasses
+  `apps.core.testing.RestoringTransactionTestCase`, never plain `TransactionTestCase`: a plain one
+  empties every table when it ends, including rows data migrations seeded (place types, notification
+  kinds), and with `--keepdb` the emptied parallel copies break the next run.
 - `tblib` (in `requirements-dev.txt`) lets the parallel runner report a failing test's traceback;
   without it the run dies with "cannot pickle 'traceback' object" and hides which test failed.
 

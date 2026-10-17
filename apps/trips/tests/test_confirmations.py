@@ -1,5 +1,6 @@
 """Phase B of docs/plans/trip-items-and-confirmations.md: confirmations attached to the items
 they confirm, the Quick reference generated from them, and the move of the old inline numbers."""
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 from datetime import date, datetime, timezone as dt_timezone
 from io import StringIO
 
@@ -7,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips.models import Confirmation, Day, Lodging, Meal, Section, TransportLeg, Traveler, Trip, TripGrant, TripRole
@@ -16,7 +17,7 @@ User = get_user_model()
 UTC = dt_timezone.utc
 
 
-class MoveNumbersMigrationTests(TransactionTestCase):
+class MoveNumbersMigrationTests(RestoringTransactionTestCase):
     """trips 0023 on old-style data: numbers typed on legs and stays link to the trip's existing
     confirmation with that number, else become one confirmation per number."""
 

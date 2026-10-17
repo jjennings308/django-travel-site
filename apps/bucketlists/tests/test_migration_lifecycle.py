@@ -1,17 +1,17 @@
 """bucketlists.0003–0005 on old-style data: each item's single POI moves into
 `pois`, and an event-only item whose event is a date of an activity becomes an
 activity item carrying that event."""
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 from datetime import date
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
 
 BEFORE = [("bucketlists", "0002_poi_categories_private_default")]
 AFTER = [("bucketlists", "0005_lifecycle_drop_poi")]
 
 
-class LifecycleMigrationTests(TransactionTestCase):
+class LifecycleMigrationTests(RestoringTransactionTestCase):
     def migrate(self, targets):
         """Migrate bucketlists to ``targets``; every other app stays at its latest migration."""
         executor = MigrationExecutor(connection)

@@ -1,13 +1,13 @@
 """activities.0010 links free-text suggested_location to catalogue places."""
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
 
 BEFORE = [("activities", "0009_activity_location_recurrence")]
 AFTER = [("activities", "0010_link_suggested_locations")]
 
 
-class LinkLocationsMigrationTests(TransactionTestCase):
+class LinkLocationsMigrationTests(RestoringTransactionTestCase):
     def migrate(self, targets):
         """Migrate activities to ``targets``; every other app stays at its latest migration."""
         executor = MigrationExecutor(connection)
