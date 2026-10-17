@@ -1,17 +1,17 @@
 """activities.0008 + events.0005/0006 on real-looking data: event categories are
 carried across to the shared activity categories by name, and "Concert" activities
 are re-filed (Oktoberfest -> Festival, others -> Music) before Concert is removed."""
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 from datetime import date
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
 
 BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level")]
 AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories")]
 
 
-class SharedCategoryMigrationTests(TransactionTestCase):
+class SharedCategoryMigrationTests(RestoringTransactionTestCase):
     def migrate(self, targets):
         """Migrate events/activities to ``targets``; every other app stays at its latest
         migration, so the historical models (e.g. accounts.User -> "users") match the DB."""
