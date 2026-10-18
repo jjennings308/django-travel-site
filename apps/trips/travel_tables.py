@@ -117,8 +117,9 @@ def apply(trip, plans, chosen):
     each ticked row (``date``, ``mode``, ``origin``, ``destination``, ``origin_city``,
     ``destination_city``, ``operator``, ``notes``, ``duration``); rows not in it are left as
     they are. Returns ``{"created": [...], "linked": [...], "sections": n}``."""
+    from .changes import batch
     created, linked, converted = [], [], 0
-    with transaction.atomic():
+    with transaction.atomic(), batch("Turned travel tables into journeys", trip=trip):
         for section_plan in plans:
             section = section_plan.section
             ticked = [r for r in section_plan.rows if (section.pk, r["row"]) in chosen]

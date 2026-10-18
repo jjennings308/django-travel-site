@@ -15,3 +15,4 @@ class TripsConfig(AppConfig):
         # Importing registers the post_save receivers that keep Traveler and
         # auth.User linked; see trips/signals.py.
         from . import signals  # noqa: F401
+        from . import changes  # noqa: F401  (change records for the digest, site roadmap R7)

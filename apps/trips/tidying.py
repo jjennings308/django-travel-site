@@ -206,8 +206,9 @@ def apply(trip, found, chosen):
     transaction. Returns (applied, skipped) as lists of (suggestion, note). Any error other than
     a stale suggestion rolls the whole batch back."""
     by_key = {s.key: s for s in found}
+    from .changes import batch
     applied, skipped = [], []
-    with transaction.atomic():
+    with transaction.atomic(), batch("Applied tidy suggestions", trip=trip):
         for key, action in chosen.items():
             s = by_key.get(key)
             if s is None or s.flag_only or action not in dict(s.actions):

@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R6 done (2026-10-18); R7 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R7 done (2026-10-18); R8 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -194,6 +194,11 @@ Chromium (runserver on the test database): every item of the check list below pa
 - **Help:** `reading-your-trip` gets an "Offline" section.
 
 ## R7 — Change digest
+
+**Status: done** (2026-10-18, branch `r7-change-digest`). Decision: daily digest plus an immediate
+email for a leg's time/date change within 7 days of departure. The mute flag lives on `TripGrant`
+(`notify_changes`). James: add `send_trip_digests` to the production crontab (e.g. 07:00) and approve
+the privacy page's "Changes to a trip" paragraph.
 
 **Ask James:** daily digest only, or also an immediate email for urgent changes (a leg's time
 changed within 7 days of travel)? (Recommended: daily, plus immediate for that one case.)

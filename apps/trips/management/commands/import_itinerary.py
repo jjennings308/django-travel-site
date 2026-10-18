@@ -138,7 +138,8 @@ class Command(BaseCommand):
         # printed, so they are tracked separately and shown afterwards rather
         # than being silently swallowed.
         write_warnings = []
-        with transaction.atomic():
+        from apps.trips.changes import batch
+        with transaction.atomic(), batch("Imported the itinerary"):
             replaced_pk = None
             # Resolve the status *before* anything is deleted: inheriting it
             # from the trip being replaced is only possible while that row

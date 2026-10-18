@@ -708,12 +708,19 @@ class Trip(models.Model):
         if user is None or not user.is_authenticated or not user.is_active:
             return set()
         if user.is_staff or user.is_superuser:
-            return {"view", "comment", "edit", "invite", "delete", "restore", "manage"}
+            return {"view", "comment", "edit", "invite", "delete", "restore", "manage"}  # no query
+        return self.capabilities_and_grant(user)[0]
 
-        role = (
-            self.grants.filter(user=user).values_list("role", flat=True).first()
-        )
-        return role_capabilities(role, owns=self.created_by_id == user.pk)
+    def capabilities_and_grant(self, user):
+        """``(capabilities, grant values or None)`` in the one query ``capabilities_for`` makes;
+        the grant values are ``{"role", "notify_changes"}`` (the trip page's mute switch, R7)."""
+        if user is None or not user.is_authenticated or not user.is_active:
+            return set(), None
+        grant = self.grants.filter(user=user).values("role", "notify_changes").first()
+        if user.is_staff or user.is_superuser:
+            return {"view", "comment", "edit", "invite", "delete", "restore", "manage"}, grant
+        role = grant["role"] if grant else None
+        return role_capabilities(role, owns=self.created_by_id == user.pk), grant
 
     def can(self, user, action):
         """Whether ``user`` may perform ``action`` on this trip."""
@@ -2178,6 +2185,9 @@ class TripGrant(models.Model):
         help_text="What this person may do on this trip.",
     )
     granted_at = models.DateTimeField(auto_now_add=True)
+    # Emails about changes to this trip (site roadmap R7): the daily digest and urgent time
+    # changes. Turned off from the trip page's ⋯ menu.
+    notify_changes = models.BooleanField(default=True)
     granted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -2309,3 +2319,37 @@ class TripCalendarToken(models.Model):
         self.revoked_at = django_timezone.now()
         self.save(update_fields=["revoked_at"])
         return TripCalendarToken.objects.create(trip=self.trip, user=self.user)
+
+
+
+class TripChange(models.Model):
+    """One change to a trip's plan, for the change digest (site roadmap R7) and history (R8).
+
+    Written by ``apps/trips/changes.py`` (signals on legs, stays, activities, meals, sections, days,
+    confirmations, their links and files) with a readable ``summary``; ``actor`` is whoever was
+    signed in (None for scripts). ``digest_sent_at`` marks it as included in a daily digest, so
+    a late or repeated run never sends it twice.
+    """
+
+    class Kind(models.TextChoices):
+        ADDED = "added", "Added"
+        CHANGED = "changed", "Changed"
+        REMOVED = "removed", "Removed"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="changes")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="+")
+    when = models.DateTimeField(default=django_timezone.now, db_index=True)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    item_type = models.CharField(max_length=32, blank=True)
+    item_id = models.PositiveBigIntegerField(null=True, blank=True)
+    summary = models.CharField(max_length=500)
+    digest_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "trips_tripchange"
+        ordering = ["when", "id"]
+        indexes = [models.Index(fields=["digest_sent_at", "trip"], name="tripchange_pending")]
+
+    def __str__(self):
+        return f"{self.trip}: {self.summary}"
