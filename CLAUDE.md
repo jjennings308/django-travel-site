@@ -796,6 +796,14 @@ branch `h1-help-machinery`; H2 (`reading-your-trip`, `sharing-and-access`, `book
 done on branch `h2-help-machinery`; H3 (eight more guides, `adding-a-day` re-checked) done on branch
 `h3-help-guides`; H4 (help links on the trip and edit pages) done on branch `h4-help-links`. Complete.
 
+### Site roadmap
+
+Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, error alerts and a
+health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
+checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
+checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
+Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
