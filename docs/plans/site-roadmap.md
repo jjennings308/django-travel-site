@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R5 done (2026-10-18); R6 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R6 done (2026-10-18); R7 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -162,6 +162,21 @@ privacy page has a draft "Tickets and travel documents" paragraph for James to a
 - **Privacy:** `privacy.html` paragraph on uploaded travel documents (James approves).
 
 ## R6 — The trip page offline on a phone
+
+**Status: done** (2026-10-18, branch `r6-offline-trip`). Change from the plan: the worker is
+served at `/sw.js` by a core view (a worker at `/static/core/sw.js` could only control
+`/static/core/`), registered with scope `/trips/`; tickets (R5) are saved too. Checked in headless
+Chromium (runserver on the test database): every item of the check list below passed.
+
+**Manual check list** (phone or desktop browser, signed in):
+1. Open a trip page with a signal; DevTools → Application shows one `sbl-offline-…` cache.
+2. ⋯ → **Save for offline** → "Saved…"; the cache holds the page, `booklet.pdf` and each ticket.
+3. Go offline (airplane mode / DevTools Offline); reopen the trip page → the page with the yellow
+   "Offline — this is the copy saved …" banner; a ticket link opens.
+4. Offline: Edit trip, the trip list and other pages fail as usual (never saved).
+5. Back online: the trip page loads fresh, no banner.
+6. Sign out → the `sbl-offline-…` caches and the worker are gone.
+7. Sign in as someone else → none of the first person's saved trips.
 
 - A small **service worker** (`core/static/core/sw.js`, registered from `base.html` only on trip
   pages) that caches the trip page HTML, the CSS/JS it uses and the booklet PDF **when the user opens

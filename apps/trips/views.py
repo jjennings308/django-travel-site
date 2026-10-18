@@ -22,6 +22,7 @@ template.
 from datetime import date
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -72,6 +73,8 @@ from .models import (
     comment_trip,
     COMMENT_TARGET_KINDS,
 )
+from apps.core.pwa import offline_cache_key
+
 from .dashboard import build_dashboard
 from .public import public_trip
 
@@ -434,6 +437,10 @@ def trip_detail(request, pk):
             "can_comment": "comment" in capabilities,
             "can_edit": "edit" in capabilities,
             "can_delete": "delete" in capabilities,
+            # The offline copy (site roadmap R6): this person's cache name, and fresh static
+            # files in dev, where their names aren't hashed.
+            "offline_key": offline_cache_key(request.user),
+            "offline_debug": settings.DEBUG,
         },
     )
 

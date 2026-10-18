@@ -1,0 +1,49 @@
+{% comment %}
+The trip page offline (site roadmap R6): register the worker (core/sw.js, served at /sw.js, scope /trips/) with this person's cache key, and "Save for offline" in the ⋯ menu, which stores the page, its booklet, its ticket files (the /files/ links on the page) and the page's own CSS/JS in the same cache. Nothing here is hard-coded to hashed static names.
+{% endcomment %}
+{% url 'service_worker' as sw_url %}{% url 'trips:trip_pdf' trip.pk as booklet_url %}
+<script>
+(function () {
+  var CACHE = "sbl-offline-{{ offline_key }}";
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("{{ sw_url }}?u={{ offline_key }}{% if offline_debug %}&debug=1{% endif %}", { scope: "/trips/" }).catch(function () {});
+  }
+  document.addEventListener("alpine:init", function () {
+    Alpine.data("offlineSave", function () {
+      return {
+        supported: "caches" in window && "serviceWorker" in navigator,
+        busy: false,
+        message: "",
+        urls: function () {
+          var urls = [location.pathname, "{{ booklet_url }}"];
+          document.querySelectorAll('a[href]').forEach(function (a) {
+            var u = new URL(a.href, location.href);
+            if (u.origin === location.origin && /^\/trips\/\d+\/files\/\d+\/$/.test(u.pathname)) urls.push(u.pathname);
+          });
+          document.querySelectorAll('link[rel="stylesheet"][href], script[src]').forEach(function (el) {
+            urls.push(el.href || el.src);
+          });
+          return Array.from(new Set(urls));
+        },
+        save: async function () {
+          this.busy = true;
+          this.message = "Saving…";
+          var cache = await caches.open(CACHE), failed = [];
+          for (var url of this.urls()) {
+            try {
+              var sameSite = new URL(url, location.href).origin === location.origin;
+              var response = await fetch(url, sameSite ? { credentials: "same-origin" } : { mode: "no-cors" });
+              if ((response.ok && !response.redirected) || response.type === "opaque") await cache.put(url, response);
+              else if (sameSite) failed.push(url);
+            } catch (e) { if (new URL(url, location.href).origin === location.origin) failed.push(url); }
+          }
+          this.busy = false;
+          if (!failed.length) this.message = "Saved. This page, the PDF booklet and the tickets open without a signal on this device.";
+          else if (failed.length === 1 && failed[0] === "{{ booklet_url }}") this.message = "Saved, except the PDF booklet (it can't be made right now).";
+          else this.message = "Saved, but " + failed.length + " item(s) couldn't be saved. Try again with a signal.";
+        },
+      };
+    });
+  });
+})();
+</script>

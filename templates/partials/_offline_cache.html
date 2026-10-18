@@ -1,0 +1,28 @@
+{% comment %}
+Home-screen manifest, and the offline trip cache's safety net (site roadmap R6; the worker is apps/core/static/core/sw.js). Signed out: delete every saved trip and unregister the worker, so a shared device keeps nothing. Signed in: the logout form deletes them before it submits. Included in base.html and base_marketing.html.
+{% endcomment %}
+<link rel="manifest" href="{% url 'manifest' %}">
+<meta name="theme-color" content="#9a4a2a">
+<script>
+(function () {
+  if (!("caches" in window)) return;
+  function clearSaved() {
+    var unregister = navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+    }) : Promise.resolve();
+    var wipe = caches.keys().then(function (keys) {
+      return Promise.all(keys.filter(function (k) { return k.indexOf("sbl-offline-") === 0; }).map(function (k) { return caches.delete(k); }));
+    });
+    return Promise.all([unregister, wipe]).catch(function () {});
+  }
+  {% if request and not request.user.is_authenticated %}clearSaved();{% endif %}
+  var logoutPath = "{% url 'logout' %}";
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form.action || new URL(form.action, location.href).pathname !== logoutPath || form.dataset.cleared) return;
+    event.preventDefault();
+    form.dataset.cleared = "1";
+    clearSaved().then(function () { form.submit(); });
+  }, true);
+})();
+</script>
