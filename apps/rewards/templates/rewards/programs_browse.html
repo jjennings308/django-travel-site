@@ -15,9 +15,7 @@
         </div>
         {% if user.is_authenticated %}
         <div class="col-span-12 md:col-span-4 text-right">
-            <a href="{% url 'rewards:dashboard' %}" class="sbl-btn sbl-btn-primary">
-                My Rewards Dashboard
-            </a>
+            {% url 'trips:traveler_profile' as profile_url %}{% if profile_url %}<a href="{{ profile_url }}#memberships" class="sbl-btn sbl-btn-primary">My memberships</a>{% endif %}
         </div>
         {% endif %}
     </div>
@@ -75,9 +73,7 @@
                                 </p>
                                 {% endif %}
                                 <div class="flex justify-between items-center">
-                                    <small class="text-warm-500">
-                                        <i class="bi bi-people"></i> {{ program.member_count }} member{{ program.member_count|pluralize }}
-                                    </small>
+                                    <small class="text-warm-500">{{ program.get_program_type_display }}</small>
                                     <a href="{% url 'rewards:program_detail' program.id %}" class="sbl-btn sbl-btn-sm sbl-btn-outline">
                                         View Details
                                     </a>

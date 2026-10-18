@@ -77,18 +77,12 @@
                     </div>
 
                     {% if user.is_authenticated %}
-                        {% if user_membership %}
-                        <div class="sbl-alert sbl-alert-success">
-                            <i class="bi bi-check-circle"></i> You're already a member of this program!
-                            <a href="{% url 'rewards:membership_detail' user_membership.id %}" class="sbl-alert-link">
-                                View your membership
-                            </a>
-                        </div>
-                        {% else %}
+                        {# Memberships live on the travel profile (one model, keyed to the traveller: site roadmap R11). #}
+                        {% url 'trips:traveler_profile' as profile_url %}
+                        {% if profile_url %}
                         <div class="text-center">
-                            <a href="{% url 'rewards:add_membership' %}?program={{ program.id }}" 
-                               class="sbl-btn sbl-btn-primary sbl-btn-lg">
-                                <i class="bi bi-plus-circle"></i> Add This Membership
+                            <a href="{{ profile_url }}?program={{ program.id }}#memberships" class="sbl-btn sbl-btn-primary sbl-btn-lg">
+                                <i class="bi bi-plus-circle"></i> Add to my travel profile
                             </a>
                         </div>
                         {% endif %}
@@ -96,7 +90,7 @@
                     <div class="sbl-alert sbl-alert-info text-center">
                         <a href="{% url 'login' %}?next={% url 'rewards:program_detail' program.id %}" class="sbl-alert-link">
                             Log in
-                        </a> to add this program to your rewards dashboard
+                        </a> to add this program to your travel profile
                     </div>
                     {% endif %}
 

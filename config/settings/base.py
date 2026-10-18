@@ -105,7 +105,6 @@ TEMPLATES = [
                 "apps.core.context_processors.site_branding",   
                 "apps.core.context_processors.user_settings",
                 "apps.core.context_processors.user_preferences",                             
-                "apps.rewards.context_processors.rewards_context",
             ],
         },
     },

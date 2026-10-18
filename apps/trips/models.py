@@ -394,6 +394,11 @@ class RewardsMembership(models.Model):
         Traveler, on_delete=models.CASCADE, related_name="memberships"
     )
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.AIRLINE)
+    # The program in the site's catalogue, when it's there (site roadmap R11: the one membership
+    # model). ``program`` keeps the name either way, so a typed-in program still works.
+    catalogue_program = models.ForeignKey("rewards.RewardsProgram", on_delete=models.SET_NULL, null=True,
+                                          blank=True, related_name="trip_memberships",
+                                          verbose_name="from the catalogue")
     program = models.CharField(max_length=120, help_text="e.g. Delta SkyMiles")
     member_number = models.CharField(max_length=40)
     tier = models.CharField(max_length=60, blank=True, help_text="e.g. Gold")

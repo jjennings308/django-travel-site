@@ -51,7 +51,7 @@
     </section>
 
     <p class="mt-8 mb-3 text-sm text-zinc-500">Rewards programs save together with the profile above. Leave the blank row alone if you are not adding one.</p>
-    {% include "trips/_formset.html" with formset=memberships label="Rewards programs" %}
+    <div id="memberships" class="scroll-mt-24">{% include "trips/_formset.html" with formset=memberships label="Rewards programs" %}</div>
 
     <div class="form-actions">
       <button type="submit" class="btn">Save profile</button>
