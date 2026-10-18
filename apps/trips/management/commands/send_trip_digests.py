@@ -6,7 +6,11 @@ and isn't inactive gets one ``trip_changed`` notification listing the changes *o
 made — through ``notify()``, so the "Email notifications" setting and placeholder addresses are
 respected. Then the changes are marked sent, so a late or repeated run never sends them twice.
 Nothing changed, nothing sent. ``--dry-run`` prints what would go out and marks nothing.
+
+It also prunes the history (site roadmap R8): changes older than ``KEEP_DAYS`` that have been
+sent are deleted, so one cron line does both.
 """
+from datetime import timedelta
 from itertools import groupby
 
 from django.core.management.base import BaseCommand
@@ -19,6 +23,7 @@ from apps.trips.changes import recipients
 from apps.trips.models import TripChange
 
 MAX_LINES = 30
+KEEP_DAYS = 180
 
 
 def lines_for(changes, user):
@@ -41,6 +46,11 @@ class Command(BaseCommand):
     def handle(self, *args, dry_run=False, **options):
         pending = list(TripChange.objects.filter(digest_sent_at=None).select_related("trip", "actor")
                        .order_by("trip_id", "when", "id"))
+        if not dry_run:
+            cutoff = timezone.now() - timedelta(days=KEEP_DAYS)
+            pruned, _ = TripChange.objects.filter(when__lt=cutoff).exclude(digest_sent_at=None).delete()
+            if pruned:
+                self.stdout.write(f"Pruned {pruned} change(s) older than {KEEP_DAYS} days.")
         if not pending:
             self.stdout.write("No changes to send.")
             return

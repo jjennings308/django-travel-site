@@ -104,6 +104,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import BooleanField, Case, Q, Value, When
@@ -2345,6 +2346,11 @@ class TripChange(models.Model):
     item_id = models.PositiveBigIntegerField(null=True, blank=True)
     summary = models.CharField(max_length=500)
     digest_sent_at = models.DateTimeField(null=True, blank=True)
+    # History and undo (R8). The day it's about, for the history's day filter; and what undo
+    # needs: {"before": {...}, "after": {...}} for a change, a snapshot for a removal
+    # (``changes.snapshot``).
+    day = models.ForeignKey("Day", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    before = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
 
     class Meta:
         db_table = "trips_tripchange"

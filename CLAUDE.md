@@ -290,6 +290,17 @@ that matter most:
   notification per trip, without their own changes, then marks the changes sent. ⋯ → Stop emails / Email
   me about changes (`trips:trip_notify`); the trip page gets the flag from the same query as its
   capabilities (`Trip.capabilities_and_grant`), so the pin holds at 28.
+- **History and undo** (site roadmap R8, trips 0038): `TripChange.day` (for the day filter; `changes.day_id_of`)
+  and `TripChange.before` (JSON): `{"before", "after"}` field values for a change, or for a removal a
+  `changes.snapshot` taken in `pre_delete` (serialized row + M2M, confirmation links, contact/info links,
+  booking tasks). `trips:trip_history` (`history_views.py`, anyone who can see the trip; Day / Person /
+  Kind filters, 50 a page, lines link to `trip_detail#<anchor>`, linked beside People) and
+  `trips:change_undo` (editors): `changes.undo` only for the item's newest change (`latest_change_ids`) and
+  only if its fields still hold the "after" values, saved normally so it is recorded; `changes.restore`
+  brings back a removed leg, stay, activity, meal or section (`RESTORABLE`) with its original pk and links
+  under `changes.quiet()`, refuses when its day or trip has gone, and records "Restored …". Days,
+  confirmations (files are deleted) and trips aren't restorable. `send_trip_digests` also prunes sent
+  changes older than 180 days.
 - **Offline trip page** (site roadmap R6): a service worker `apps/core/static/core/sw.js`, served at
   `/sw.js` by `apps.core.pwa.service_worker` (no-cache) and registered only by the trip page
   (`trips/partials/_offline.html`) with **scope `/trips/`** and `?u=<apps.core.pwa.offline_cache_key(user)>`
@@ -878,7 +889,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`.
 
 ### Rules carried over from the itinerary project
 

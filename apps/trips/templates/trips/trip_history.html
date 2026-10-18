@@ -1,0 +1,59 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+A trip's change history (trips:trip_history, site roadmap R8): newest first, filters, each line linking to its item; editors get Undo / Restore where trips.changes.can_undo allows (the POST re-checks).
+{% endcomment %}
+{% block title %}History — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-4xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>History</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">History {% include "partials/_help_link.html" with slug="trip-history" label="history and undo" %}</h1>
+      <p class="page-subtitle">What changed on this trip, newest first. Kept for 180 days.</p>
+    </div>
+  </div>
+
+  <form method="get" class="card mb-6 flex flex-wrap items-end gap-3 p-4 text-sm">
+    <label class="flex flex-col"><span class="card-kicker">Day</span>
+      <select name="day"><option value="">All days</option>{% for d in days %}<option value="{{ d.pk }}"{% if day == d.pk|stringformat:"s" %} selected{% endif %}>Day {{ d.day_number }} · {{ d.date|date:"D M j" }}</option>{% endfor %}</select>
+    </label>
+    <label class="flex flex-col"><span class="card-kicker">Person</span>
+      <select name="person"><option value="">Everyone</option>{% for pk, name in people %}<option value="{{ pk }}"{% if person == pk|stringformat:"s" %} selected{% endif %}>{{ name }}</option>{% endfor %}<option value="none"{% if person == "none" %} selected{% endif %}>Imports and scripts</option></select>
+    </label>
+    <label class="flex flex-col"><span class="card-kicker">Kind</span>
+      <select name="kind"><option value="">All</option>{% for value, label in kinds %}<option value="{{ value }}"{% if kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit" class="btn-quiet">Show</button>
+    {% if day or person or kind %}<a class="link-quiet" href="{% url 'trips:trip_history' trip.pk %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page_obj %}
+    <ul class="card divide-y divide-zinc-100 p-0 text-sm" id="history">
+      {% for change in page_obj %}
+        <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5" id="change-{{ change.pk }}">
+          <span class="w-32 shrink-0 text-zinc-500" title="{{ change.when|date:'D M j, Y g:i A' }}">{{ change.when|date:"M j, g:i A" }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="font-medium">{% if change.actor %}{{ change.actor.get_full_name|default:change.actor.username }}{% else %}Import{% endif %}</span>
+            {% if change.anchor %}<a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}#{{ change.anchor }}">{{ change.summary }}</a>{% else %}{{ change.summary }}{% endif %}
+            {% if change.day %}<span class="text-zinc-500"> · Day {{ change.day.day_number }}</span>{% endif %}
+          </span>
+          {% if change.undoable %}
+            <form method="post" action="{% url 'trips:change_undo' trip.pk change.pk %}">{% csrf_token %}
+              <button type="submit" class="link-quiet font-medium" data-undo>{% if change.kind == "removed" %}Restore{% else %}Undo{% endif %}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% include "partials/_pagination.html" %}
+  {% else %}
+    <p class="empty-state">{% if day or person or kind %}No changes match.{% else %}No changes recorded yet. Edits made from now on show here.{% endif %}</p>
+  {% endif %}
+
+  <p class="mt-6"><a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}">← Back to the trip</a></p>
+{% endblock %}

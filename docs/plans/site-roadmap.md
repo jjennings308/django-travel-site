@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R7 done (2026-10-18); R8 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R8 done (2026-10-18); R9 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -216,6 +216,10 @@ changed within 7 days of travel)? (Recommended: daily, plus immediate for that o
   trip; no email when nothing changed.
 
 ## R8 — Change history
+
+**Status: done** (2026-10-18, branch `r8-change-history`). Additions: stays and day sections are
+restorable too; restoring also relinks contact/info notes and booking tasks; pruning runs inside
+`send_trip_digests` (one cron line).
 
 Builds on R7's `TripChange`.
 
