@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1 done (2026-10-18, branch `r1-trip-invites`); R2 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1, R2 done (2026-10-18); R3 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -73,6 +73,12 @@ every editor, but only up to their own role, and nobody can demote or remove the
 - **Help:** update `sharing-and-access`; add an FAQ line "How do I add someone to my trip?".
 
 ## R2 — Production backups, off the server
+
+**Status: done** (2026-10-18, branch `r2-prod-backups`), tested here against a stand-in production.
+Decisions: backups on popsicletoes.us at `~/backups/sharebucketlist/`; no off-site copy for now.
+James: run the set-up in `scripts/README.md` there (`backup_prod.sh --check` first), then the first
+restore drill. Weekly = newest backup in each of the 8 most recent weeks that have one; monthly
+likewise per month.
 
 Code in the repo; the timer runs on a homelab machine (James installs it, like the dev sync).
 

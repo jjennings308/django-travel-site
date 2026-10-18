@@ -1,0 +1,13 @@
+# Daily at 02:30; a run missed while the machine was off happens at the next start.
+#   systemctl --user enable --now sbl-backup.timer
+#   loginctl enable-linger $USER      # once, so it also runs while logged out
+[Unit]
+Description=Daily ShareBucketList production backup
+
+[Timer]
+OnCalendar=*-*-* 02:30
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
