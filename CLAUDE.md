@@ -22,7 +22,7 @@ apps/              # every project Django app; apps/__init__.py makes it a packa
   bucketlists/ trips/ reviews/ recommendations/
   pages/ admin_tools/
 templates/         # site shell only: base.html, base_marketing.html, partials/, components/
-scripts/           # check_layers.py, reset_db.sh
+scripts/           # check_layers.py, reset_db.sh, sync_dev_from_prod.sh, backup_prod.sh, restore_check.sh, lib/
 docs/              # architecture diagrams
 staticfiles/       # collectstatic output (git-ignored; built on each machine)
 private_uploads/   # private uploads (role-request documents), outside MEDIA_ROOT; git-ignored
@@ -75,6 +75,8 @@ python manage.py migrate
 ```
 
 **Dev data is a nightly copy of production.** `scripts/sync_dev_from_prod.sh` dumps production over SSH (read-only there), checks the dump, backs up dev, restores into the dev container, runs `migrate` (re-applies migrations not yet on production), copies new `uploads/` (add-only), compares row counts and prunes its own dumps after 14 days (`~/db_backups/travel_site_{prod,dev_pre_sync}_*.dump`); one line per run in `~/db_backups/sync.log`. It skips while a `manage.py test` run is going. Scheduled by the systemd user timer in `deploy/dev/` (03:30, `Persistent=true`): install with `cp deploy/dev/sbl-dev-sync.* ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now sbl-dev-sync.timer`; run now with `systemctl --user start sbl-dev-sync`; history in `journalctl --user -u sbl-dev-sync`. `loginctl enable-linger james` lets it run while logged out. So anything done only in the dev database is gone the next morning; this is a dev convenience, not a production backup.
+
+**Production backups** (site roadmap R2) live on the homelab machine popsicletoes.us, not here: `scripts/backup_prod.sh` (daily 02:30, user timer `deploy/backup/sbl-backup.*`) dumps production over SSH (read-only), checks the dump, and keeps `~/backups/sharebucketlist/db/YYYY-MM-DD.dump` plus `files/YYYY-MM-DD/{uploads,private_uploads}` rsync snapshots hard-linked to the day before; retention 14 daily / 8 weekly / 12 monthly (`sbl_keep` in `scripts/lib/sbl_common.sh`, tested by `apps.core.tests.test_backup_scripts`); `--check` verifies the machine's prerequisites. Shared helpers (`log`, `fail`, `envval`, `sbl_ssh`, `sbl_dump_prod`) are in `scripts/lib/sbl_common.sh`, used by both scripts. **Restore drill** monthly on the dev machine: `scripts/restore_check.sh <dump>` (throwaway `postgres:17` container, `migrate --check`, row counts; POSTGRES_* in the environment win over `.env`, so dev is never touched). Set-up and restore steps: `scripts/README.md`. No off-site copy yet (decided 2026-10-18).
 
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
@@ -816,7 +818,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`.
 
 ### Rules carried over from the itinerary project
 

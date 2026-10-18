@@ -23,15 +23,11 @@ LOG="$BACKUPS/sync.log"
 TS="$(date +%Y%m%d-%H%M%S)"
 PROD_DUMP="$BACKUPS/travel_site_prod_$TS.dump"
 DEV_DUMP="$BACKUPS/travel_site_dev_pre_sync_$TS.dump"
-SSH=(ssh -o BatchMode=yes -o ConnectTimeout=20 "$PROD_HOST")
+# log, fail, envval, sbl_ssh, sbl_dump_prod, sbl_dump_tables
+. "$APP/scripts/lib/sbl_common.sh"
 
 mkdir -p "$BACKUPS"
 cd "$APP" || exit 1
-
-log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG"; }
-fail() { log "FAILED: $*"; exit 1; }
-# Read one value from dev's .env without sourcing it (values contain spaces).
-envval() { grep -m1 "^$1=" "$APP/.env" | cut -d= -f2- | sed -E 's/^["'"'"'](.*)["'"'"']$/\1/'; }
 
 exec 9>"$BACKUPS/.sync.lock"
 flock -n 9 || { log "skipped: another sync is running"; exit 0; }
@@ -40,17 +36,9 @@ if pgrep -f "manage.py test" >/dev/null; then
 fi
 
 # 1. Dump production. Nothing in dev changes until this dump is known good.
-# The remote commands go over stdin as a quoted heredoc, so nothing is expanded
-# here; the password is read from the server's .env there and never printed.
-"${SSH[@]}" bash -s > "$PROD_DUMP" 2>>"$LOG" <<'REMOTE' || { rm -f "$PROD_DUMP"; fail "could not dump production (SSH to $PROD_HOST or pg_dump)"; }
-set -euo pipefail
-cd /var/www/travel_site
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- | sed -E 's/^["'"'"'](.*)["'"'"']$/\1/'; }
-PGPASSWORD="$(envval POSTGRES_PASSWORD)" pg_dump -h "$(envval POSTGRES_HOST)" -p "$(envval POSTGRES_PORT)" \
-  -U "$(envval POSTGRES_USER)" -Fc "$(envval POSTGRES_DB)"
-REMOTE
+sbl_dump_prod > "$PROD_DUMP" 2>>"$LOG" || { rm -f "$PROD_DUMP"; fail "could not dump production (SSH to $PROD_HOST or pg_dump)"; }
 chmod 600 "$PROD_DUMP"
-TABLES=$(pg_restore -l "$PROD_DUMP" 2>/dev/null | grep -c "TABLE DATA")
+TABLES=$(sbl_dump_tables "$PROD_DUMP")
 [ "${TABLES:-0}" -gt 50 ] || { rm -f "$PROD_DUMP"; fail "production dump looks wrong ($TABLES tables); dev left unchanged"; }
 
 # 2. Back up dev.
@@ -83,7 +71,7 @@ from apps.bucketlists.models import BucketListItem
 print("users", get_user_model().objects.count(), "trips", Trip.objects.count(), "events", Event.objects.count(),
       "activities", Activity.objects.count(), "cities", City.objects.count(), "bucket", BucketListItem.objects.count())'
 DEV_COUNTS=$("$PY" manage.py shell -c "$COUNTS" 2>/dev/null | grep '^users')
-PROD_COUNTS=$("${SSH[@]}" "cd $PROD_APP && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py shell -c '$COUNTS'" 2>/dev/null | grep '^users')
+PROD_COUNTS=$(sbl_ssh "cd $PROD_APP && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py shell -c '$COUNTS'" 2>/dev/null | grep '^users')
 [ -n "$DEV_COUNTS" ] && [ "$DEV_COUNTS" = "$PROD_COUNTS" ] \
   || fail "counts differ after restore: dev [$DEV_COUNTS] prod [$PROD_COUNTS]"
 

@@ -1,0 +1,13 @@
+# Back up ShareBucketList production (database + uploads) onto the backup machine.
+# User unit for popsicletoes.us; see scripts/backup_prod.sh and scripts/README.md.
+#   cp deploy/backup/sbl-backup.* ~/.config/systemd/user/ && systemctl --user daemon-reload
+[Unit]
+Description=Back up ShareBucketList production
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/projects/travel_site/scripts/backup_prod.sh
+Nice=10
+IOSchedulingClass=idle
