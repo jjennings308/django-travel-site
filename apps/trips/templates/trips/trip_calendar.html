@@ -1,0 +1,53 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Add to calendar (trips:trip_calendar, site roadmap R4): the viewer's own private feed link, how to subscribe in Google / Apple / Outlook, and Reset. The feed itself is trips:trip_calendar_feed (trips/calendar.py).
+{% endcomment %}
+{% block title %}Add to calendar — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Calendar</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Add to calendar {% include "partials/_help_link.html" with slug="calendar-feed" label="the calendar feed" %}</h1>
+      <p class="page-subtitle">Subscribe once; your calendar app picks up changes to the trip by itself, every few hours.</p>
+    </div>
+  </div>
+
+  <section class="card mb-6 p-6" x-data="{ mine: false, copied: false, all: '{{ feed_url|escapejs }}', just: '{{ mine_url|escapejs }}' }">
+    <h2 class="card-title mb-2 text-lg">Your calendar link</h2>
+    <label class="mb-3 flex items-center gap-2 text-sm"><input type="checkbox" x-model="mine"> Only the things I'm on <span class="text-zinc-500">(leave unticked for the whole group's plans)</span></label>
+    <div class="flex flex-wrap items-center gap-2">
+      <input type="text" readonly class="min-w-0 flex-1 font-mono text-sm" :value="mine ? just : all" value="{{ feed_url }}" aria-label="Calendar link" data-calendar-url>
+      <button type="button" class="btn" @click="navigator.clipboard.writeText(mine ? just : all); copied = true; setTimeout(() => copied = false, 2000)" x-text="copied ? 'Copied' : 'Copy link'">Copy link</button>
+    </div>
+    <div class="callout-warning mt-4 text-sm">
+      This link is yours alone. It shows the trip's journeys, stays, activities and booked meals <strong>with their confirmation numbers</strong>, to anyone who has it, without logging in. Don't share it; to let someone else see the trip, invite them on <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>.
+    </div>
+  </section>
+
+  <section class="card mb-6 p-6">
+    <h2 class="card-title mb-3 text-lg">How to subscribe</h2>
+    <dl class="space-y-3 text-sm">
+      <div><dt class="font-semibold">Google Calendar (on a computer)</dt><dd>Next to <em>Other calendars</em>, click <strong>+</strong> → <strong>From URL</strong>, paste the link, then <strong>Add calendar</strong>. It then shows on your phone too.</dd></div>
+      <div><dt class="font-semibold">iPhone or iPad</dt><dd><a class="link-quiet font-medium" href="{{ webcal_url }}">Open in Calendar</a>, or <strong>Settings</strong> → <strong>Calendar</strong> → <strong>Accounts</strong> → <strong>Add Account</strong> → <strong>Other</strong> → <strong>Add Subscribed Calendar</strong> and paste the link.</dd></div>
+      <div><dt class="font-semibold">Mac</dt><dd>In Calendar, <strong>File</strong> → <strong>New Calendar Subscription</strong>, paste the link.</dd></div>
+      <div><dt class="font-semibold">Outlook</dt><dd><strong>Add calendar</strong> → <strong>Subscribe from web</strong>, paste the link.</dd></div>
+    </dl>
+    <p class="mt-3 text-sm text-zinc-500">Flights and trains show at their real times wherever you are; activities and dinners show at the local time on the day.</p>
+  </section>
+
+  <section class="card mb-6 p-6">
+    <h2 class="card-title mb-1 text-lg">Reset the link</h2>
+    <p class="mb-3 text-sm text-zinc-500">If the link got out, reset it. The old link stops working at once; subscribe again with the new one.</p>
+    <form method="post" action="{% url 'trips:trip_calendar_reset' trip.pk %}">{% csrf_token %}
+      <button type="submit" class="btn-quiet" onclick="return confirm('Reset your calendar link? Calendars using the old one stop updating.')">Reset link</button>
+    </form>
+  </section>
+
+  <p><a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}">← Back to the trip</a></p>
+{% endblock %}

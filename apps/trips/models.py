@@ -2231,3 +2231,40 @@ class TripInvite(models.Model):
         self.token = new_invite_token()
         self.sent_at = django_timezone.now()
         self.expires_at = self.sent_at + timedelta(days=INVITE_DAYS)
+
+
+class TripCalendarToken(models.Model):
+    """One person's private calendar-feed link for one trip (site roadmap R4).
+
+    Calendar apps can't log in, so the token in ``/trips/calendar/<token>.ics`` is the key. The feed
+    re-checks the owner's access on every fetch: a reset token (``revoked_at``), an inactive account
+    or a lost grant is a 404. One live token per trip + person (``tripcalendartoken_one_live``).
+    """
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="calendar_tokens")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trip_calendar_tokens")
+    token = models.CharField(max_length=64, unique=True, default=new_invite_token, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "trips_tripcalendartoken"
+        constraints = [
+            models.UniqueConstraint(fields=["trip", "user"], name="tripcalendartoken_one_live",
+                                    condition=Q(revoked_at__isnull=True)),
+        ]
+
+    def __str__(self):
+        return f"Calendar: {self.user} → {self.trip}{' (reset)' if self.revoked_at else ''}"
+
+    @classmethod
+    def for_user(cls, trip, user):
+        """The live token, made on first use."""
+        token = cls.objects.filter(trip=trip, user=user, revoked_at=None).first()
+        return token or cls.objects.create(trip=trip, user=user)
+
+    def reset(self):
+        """Stop this link and return a new one."""
+        self.revoked_at = django_timezone.now()
+        self.save(update_fields=["revoked_at"])
+        return TripCalendarToken.objects.create(trip=self.trip, user=self.user)
