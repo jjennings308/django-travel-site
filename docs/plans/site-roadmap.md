@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1, R2 done (2026-10-18); R3 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R3 done (2026-10-18); R4 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -97,6 +97,11 @@ Code in the repo; the timer runs on a homelab machine (James installs it, like t
 - CLAUDE.md: replace "this is a dev convenience, not a production backup" with where backups live.
 
 ## R3 — Error alerts and a health check
+
+**Status: done** (2026-10-18, branch `r3-alerts-health`). Our own handler rather than Django's
+`AdminEmailHandler` (that one mails POST data and frame locals); the flood guard's counts are in a
+file cache so both workers share them. James: set `DJANGO_ADMINS` in production's `.env` and point
+the uptime monitor at `https://sharebucketlist.com/healthz/`.
 
 - `ADMINS` from env (`DJANGO_ADMINS="James <james@…>"`, parsed in `base.py`; empty = off). Add
   Django's `AdminEmailHandler` to `prod.py` `LOGGING` for `django.request` (ERROR) next to the console

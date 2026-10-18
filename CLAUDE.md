@@ -108,6 +108,18 @@ HSTS to a year (`SECURE_HSTS_SECONDS`, default 31536000; use 3600 on a brand-new
 the real domain. `django-browser-reload` is dev-only (`dev.py`; not in `requirements.txt`), and its
 `/__reload__/` URLs exist only when it is installed.
 
+**Error emails and health** (site roadmap R3): `DJANGO_ADMINS` in `.env` (`James <j@…>, …`; parsed by
+`apps.core.settings_helpers.parse_admins` into `ADMINS`; empty = off; sender `SERVER_EMAIL`) receives
+`django.request` errors through `apps.core.alerts.AlertEmailHandler` (prod.py `LOGGING`), never Django's
+`AdminEmailHandler`: subject = exception type + innermost file:line, body = method, path (no query
+string), user id, time and the traceback **without** locals — no POST data, cookies, headers or settings
+(forms hold passport and loyalty numbers). One email per distinct error per hour; repeats go only to the
+journal and the next email says "+N more" (counts in the `alerts` FileBasedCache in `/tmp`, shared by the
+gunicorn workers). `/healthz/` (`apps.core.health`, name `healthz`): 200 `ok` when `SELECT 1` works and
+the static manifest resolves `css/dist/styles.css`, else 503 `unavailable` (reason logged as a warning,
+never mailed); plain text, no login, `no-store`. `deploy.sh`'s live check requires it; James's uptime
+monitor watches it.
+
 **Live:** https://sharebucketlist.com on `james@tazcomputer.com` (shared Debian 13 box that also hosts
 soho, score, tazcomputer, umami, excalidraw). Repo at `/var/www/travel_site` (owner www-data,
 group-writable; `james` is in group www-data), gunicorn 2 workers as `travel_site.service` on
@@ -818,7 +830,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`.
 
 ### Rules carried over from the itinerary project
 

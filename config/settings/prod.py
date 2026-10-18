@@ -60,6 +60,16 @@ SECURE_HSTS_PRELOAD = False
 # Enable them (and remove these silences) when moving from staging to production.
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
+# The error-email flood guard's counts, shared by the gunicorn workers (the default cache is
+# per process, so each worker would email on its own).
+CACHES = {
+    **CACHES,  # noqa: F405
+    "alerts": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+               "LOCATION": os.environ.get("ALERT_CACHE_DIR", "/tmp/sharebucketlist-alerts")},
+}
+
+EMAIL_SUBJECT_PREFIX = "[ShareBucketList error] "  # error emails to ADMINS
+
 # --- Logging ---------------------------------------------------------------------
 # To stderr: under systemd that lands in the journal
 # (journalctl -u travel_site). Errors include tracebacks.
@@ -67,10 +77,15 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+        # Error emails to ADMINS (DJANGO_ADMINS): no POST data or local variables, one per
+        # distinct error an hour (apps/core/alerts.py). Off while ADMINS is empty.
+        "alert_email": {"class": "apps.core.alerts.AlertEmailHandler", "level": "ERROR"},
+    },
     "root": {"handlers": ["console"], "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO")},
     "loggers": {
-        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.request": {"handlers": ["console", "alert_email"], "level": "ERROR", "propagate": False},
         "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }
