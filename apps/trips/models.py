@@ -2359,3 +2359,65 @@ class TripChange(models.Model):
 
     def __str__(self):
         return f"{self.trip}: {self.summary}"
+
+
+class Checklist(models.Model):
+    """A list to tick off before or on a trip: packing, documents, before you go (site roadmap R9).
+
+    Items are ``ChecklistItem``; a per-person item is ticked once per traveller on the trip
+    (``ChecklistTick``). Shown in Reference on the trip page and in the booklet; edited from Edit
+    trip; anyone with ``comment`` ticks. Never public. ``apps/trips/checklists.py`` holds the
+    starter templates (markdown files in ``apps/trips/checklists/``).
+    """
+
+    class Kind(models.TextChoices):
+        PACKING = "packing", "Packing"
+        DOCUMENTS = "documents", "Documents"
+        BEFORE = "before", "Before you go"
+        OTHER = "other", "Other"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="checklists")
+    title = models.CharField(max_length=200)
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.OTHER)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = "trips_checklist"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.title} ({self.trip})"
+
+
+class ChecklistItem(models.Model):
+    """One line of a checklist. ``per_person``: ticked per traveller ("Passport — James ✓ Regan ☐");
+    otherwise once for everyone (``done_at`` / ``done_by``)."""
+
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="items")
+    text = models.CharField(max_length=300)
+    per_person = models.BooleanField(default=False, verbose_name="each person")
+    order = models.PositiveSmallIntegerField(default=0)
+    done_at = models.DateTimeField(null=True, blank=True)
+    done_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="+")
+
+    class Meta:
+        db_table = "trips_checklistitem"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.text
+
+
+class ChecklistTick(models.Model):
+    """One traveller has done a per-person item."""
+
+    item = models.ForeignKey(ChecklistItem, on_delete=models.CASCADE, related_name="ticks")
+    traveler = models.ForeignKey(Traveler, on_delete=models.CASCADE, related_name="checklist_ticks")
+    ticked_at = models.DateTimeField(default=django_timezone.now)
+    ticked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name="+")
+
+    class Meta:
+        db_table = "trips_checklisttick"
+        constraints = [models.UniqueConstraint(fields=["item", "traveler"], name="checklisttick_once")]

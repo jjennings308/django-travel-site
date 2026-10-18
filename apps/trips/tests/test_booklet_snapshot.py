@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (BookingTask, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Section,
+from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Section,
                                TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
 
 User = get_user_model()
@@ -97,6 +97,11 @@ def build_trip():
     pnr.travelers.add(ada, bo)
     pnr.url = "https://example.com/manage"
     pnr.save()
+    # A documents checklist (R9): a per-person item half ticked, a shared one done.
+    docs = Checklist.objects.create(trip=trip, title="Documents", kind="documents")
+    passport = ChecklistItem.objects.create(checklist=docs, text="Passport", per_person=True, order=0)
+    ChecklistTick.objects.create(item=passport, traveler=ada)
+    ChecklistItem.objects.create(checklist=docs, text="Insurance", order=1, done_at=datetime(2027, 8, 1, tzinfo=dt_timezone.utc))
     db_ticket = Confirmation.attach_number(trip, "DB-1234", timed, provider="Deutsche Bahn")
     # A ticket on it (R5): the booklet names files, never embeds them. No real file is needed.
     ConfirmationFile.objects.create(confirmation=db_ticket, file="trips/snapshot/ticket.pdf",

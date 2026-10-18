@@ -1,0 +1,34 @@
+{% comment %}
+One checklist on the trip page (Reference, site roadmap R9). Pass trip, c (from checklists.attach: item.boxes, item.is_done, c.done / c.total), can_comment, can_edit. A tick is a form POST to trips:checklist_tick (works without JavaScript); with Alpine it flips at once and posts in the background (204).
+{% endcomment %}
+<div class="card scroll-mt-32 text-sm" id="checklist-{{ c.pk }}" data-checklist>
+  <div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+    <p class="card-title">{{ c.title }} <span class="text-xs font-normal text-zinc-500">{% if c.get_kind_display != c.title %}{{ c.get_kind_display }} · {% endif %}{{ c.done }}/{{ c.total }} done</span></p>
+    {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:checklist_edit' trip.pk c.pk %}">Edit</a>{% endif %}
+  </div>
+  <ul class="space-y-1.5">
+    {% for item in c.items.all %}
+      <li class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="{% if item.is_done %}text-zinc-400 line-through{% endif %}">{{ item.text }}</span>
+        {% for traveler, ticked in item.boxes %}
+          {% if can_comment %}
+            <form method="post" action="{% url 'trips:checklist_tick' trip.pk item.pk %}" class="inline"
+                  x-data="{ on: {{ ticked|yesno:'true,false' }} }"
+                  @submit.prevent="const data = new FormData($el); on = !on; fetch($el.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'fetch' } }).then(r => { if (!r.ok) on = !on }).catch(() => { on = !on })">
+              {% csrf_token %}
+              {% if traveler %}<input type="hidden" name="traveler" value="{{ traveler.pk }}">{% endif %}
+              <input type="hidden" name="done" value="{{ ticked|yesno:'0,1' }}" :value="on ? '0' : '1'">
+              <button type="submit" class="chip" :aria-pressed="on.toString()" aria-pressed="{{ ticked|yesno:'true,false' }}" data-tick>
+                <span x-text="on ? '☑' : '☐'">{{ ticked|yesno:"☑,☐" }}</span>{% if traveler %} {{ traveler.name }}{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <span class="chip">{{ ticked|yesno:"☑,☐" }}{% if traveler %} {{ traveler.name }}{% endif %}</span>
+          {% endif %}
+        {% endfor %}
+      </li>
+    {% empty %}
+      <li class="text-zinc-500">No items yet.</li>
+    {% endfor %}
+  </ul>
+</div>

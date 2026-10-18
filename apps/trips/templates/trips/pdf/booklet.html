@@ -205,7 +205,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
 {% endfor %}
 
 {# -------------------------------------------------------------- reference #}
-{% if confirmation_groups or stays or trip.contacts.all or trip.infos.all or open_tasks %}
+{% if confirmation_groups or stays or trip.contacts.all or trip.infos.all or open_tasks or checklists %}
   <section class="reference">
     <h2>Reference</h2>
 
@@ -276,6 +276,21 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
           {% endfor %}
         </tbody>
       </table>
+    {% endif %}
+
+    {% if checklists %}
+      {# Checklists (R9): printed as tick boxes; a per-person item lists each traveller. #}
+      <h3>Checklists</h3>
+      {% for c in checklists %}
+        <p><strong>{{ c.title }}</strong>{% if c.get_kind_display != c.title %} <span class="muted small">{{ c.get_kind_display }}</span>{% endif %}</p>
+        <table>
+          <tbody>
+            {% for item in c.items.all %}
+              <tr><td style="width: 4%">{% if item.is_done %}☑{% else %}☐{% endif %}</td><td>{{ item.text }}{% if item.boxes.0.0 %}<br><span class="small">{% for traveler, ticked in item.boxes %}{% if ticked %}☑{% else %}☐{% endif %} {{ traveler.name }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
     {% endif %}
   </section>
 {% endif %}

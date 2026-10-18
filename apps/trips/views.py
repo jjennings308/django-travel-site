@@ -49,7 +49,7 @@ from .forms import (
     section_payload_form,
     trip_subsection_formsets,
 )
-from . import itinerary
+from . import checklists, itinerary
 from .models import (
     TripExpense,
     BookingTask,
@@ -371,6 +371,8 @@ def _trip_page_queryset(user):
             "booking_tasks",
             # A decision's options (U6): one fixed query for every task's.
             "booking_tasks__options",
+            # Checklists (site roadmap R9): three fixed queries — lists, items, per-person ticks.
+            "checklists__items__ticks",
             "travelers",
         )
         .annotate(
@@ -418,6 +420,7 @@ def trip_detail(request, pk):
     itinerary.timeline(days)
     itinerary.attach_links(trip, days)
     opened = itinerary.open_day(days, django_timezone.localdate())
+    checklist_lists = checklists.attach(trip)
     return render(
         request,
         "trips/trip_detail.html",
@@ -432,6 +435,8 @@ def trip_detail(request, pk):
             "travel_tables_pending": travel_tables_pending,
             "not_booked": not_booked,
             "confirmation_groups": confirmation_groups(trip),
+            "checklists": checklist_lists,
+            "checklist_attention": checklists.attention(trip, checklist_lists),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
             "comments_by_target": comments_by_target,
@@ -466,7 +471,7 @@ def trip_pdf(request, pk):
     itinerary.attach_links(trip, list(trip.days.all()))
     html = render_to_string("trips/pdf/booklet.html", {
         "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
-        "printed": django_timezone.localdate(), **booklet_context(trip),
+        "printed": django_timezone.localdate(), "checklists": checklists.attach(trip), **booklet_context(trip),
     }, request=request)
     try:
         pdf = render_pdf(html, base_url=request.build_absolute_uri("/"))
@@ -690,6 +695,7 @@ def trip_edit(request, pk):
             "trip": trip,
             "days": _days_with_counts(trip),
             "is_create": False,
+            "checklist_templates": checklists.templates(),
             **_edit_trip_travel_and_bookings(trip),
         },
     )

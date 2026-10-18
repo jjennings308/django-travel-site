@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R8 done (2026-10-18); R9 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R9 done (2026-10-18); R10 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -27,6 +27,8 @@ guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center r
 - **Placeholder emails:** the staff dashboard lists accounts with `@noemail.invalid`; set each real
   address in the admin (Debbie, Henry, John, Regan, Sara as applicable). Until then they can't reset
   passwords or receive invites/notifications.
+- **Done 2026-10-18:** privacy paragraphs for R1 (invites), R5 (documents) and R7 (change emails)
+  reviewed; `send_trip_digests` in production's crontab.
 - **Legal details:** fill the `LEGAL_*` values in production `.env` (the draft banner goes away), and
   have Terms / Privacy read over before inviting anyone outside the family. R1, R5 and R7 add new
   kinds of data (invite emails, uploaded documents, digest emails) — `privacy.html` must mention
@@ -233,6 +235,10 @@ Builds on R7's `TripChange`.
   permissions.
 
 ## R9 — Checklists
+
+**Status: done** (2026-10-18, branch `r9-checklists`). Templates live in
+`apps/trips/checklist_templates/` (not `checklists/`, which would sit beside the `checklists.py`
+module). Trip page query pin 28 → 31. Booklet snapshot gained the Checklists block.
 
 - `Checklist` (trip, title, kind: packing / documents / before you go / other, order) and
   `ChecklistItem` (text, `per_person` bool, done-by: M2M travellers with timestamps, order).
