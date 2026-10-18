@@ -49,7 +49,7 @@ from .forms import (
     section_payload_form,
     trip_subsection_formsets,
 )
-from . import checklists, itinerary
+from . import budget, checklists, itinerary
 from .models import (
     TripExpense,
     BookingTask,
@@ -436,6 +436,7 @@ def trip_detail(request, pk):
             "not_booked": not_booked,
             "confirmation_groups": confirmation_groups(trip),
             "checklists": checklist_lists,
+            "cost_estimate": budget.estimate(trip, _reader_currency(request)),
             "checklist_attention": checklists.attention(trip, checklist_lists),
             "leg_modes": TransportLeg.Mode.choices,
             "trip_comments": comments.get(("trip", trip.pk), []),
@@ -1407,6 +1408,12 @@ def traveler_profile(request):
     )
 
 
+def _reader_currency(request):
+    """The reader's preferred currency (Settings), already loaded by the theme middleware."""
+    settings_obj = getattr(request.user, "settings", None)
+    return (getattr(settings_obj, "preferred_currency", "") or "USD").upper()
+
+
 def _default_currency(trip):
     """The trip's most-used expense currency, else its lodging's, else USD."""
     from django.db.models import Count as _Count
@@ -1443,12 +1450,23 @@ def trip_budget(request, pk):
     expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with")
                     .order_by("spent_on", "created_at"))
     everyone = list(trip.travelers.all())
+    # Totals in one currency (site roadmap R10): ?in=USD (default: the reader's currency), and
+    # ?settle=1 to settle up in it too. Each cost converts at its own date's rate.
+    from .budget import in_one_currency, rates_for
+    target = (request.GET.get("in") or _reader_currency(request)).upper()[:3]
+    currencies = sorted({e.currency.upper() for e in expenses} | {target})
+    one = None
+    settle_in_one = request.GET.get("settle") == "1"
+    if expenses and currencies != [target]:
+        one = in_one_currency(expenses, target, rates_for(trip, currencies, [e.spent_on for e in expenses]))
     lodging_estimate = {}
     for stay in trip.lodging.all():
         if stay.nightly_rate:
             lodging_estimate[stay.currency] = lodging_estimate.get(stay.currency, 0) + stay.nightly_rate * stay.nights
+    summary = summarize(one["rows"], everyone) if (one and settle_in_one) else summarize(expenses, everyone)
     return render(request, "trips/trip_budget.html", {
-        "trip": trip, "expenses": expenses, "summary": summarize(expenses, everyone), "form": form,
+        "trip": trip, "expenses": expenses, "summary": summary, "form": form,
+        "target": target, "currencies": currencies, "one": one, "settle_in_one": settle_in_one and one,
         "can_edit": can_edit, "everyone": everyone, "lodging_estimate": sorted(lodging_estimate.items()),
     })
 

@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R9 done (2026-10-18); R10 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R10 done (2026-10-18); R11 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -252,6 +252,12 @@ module). Trip page query pin 28 → 31. Booklet snapshot gained the Checklists b
 - **Tests:** per-person ticks; permissions; template import; booklet snapshot.
 
 ## R10 — Budget in one currency
+
+**Status: done** (2026-10-18, branch `r10-budget-currency`). Decision: ECB daily rates in the
+database with a per-trip override. "Show totals in" defaults to the reader's Settings currency, and
+the estimate uses it too. Trip page pin 31 → 33 (only when a cost is in another currency). James:
+on production run `fetch_rates --history all` once, then add `fetch_rates` to the crontab daily
+(e.g. 17:30 Europe/Berlin, after the ECB publishes).
 
 **Ask James:** source of rates — manual rates per trip (simplest, offline), or a daily fetch from a
 free API (ECB reference rates)? (Recommended: ECB daily rates cached in the database, with a manual

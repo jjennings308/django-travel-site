@@ -26,6 +26,7 @@ from apps.locations.models import POI, City
 
 from .models import (
     TripExpense,
+    TripRate,
     BookingTask,
     Comment,
     Confirmation,
@@ -1148,12 +1149,37 @@ BookingTaskFormSet = inlineformset_factory(
 #: Formset prefixes, in the order the edit page renders them. The key is the
 #: ``prefix`` the formset is bound under, so it is also the POST key prefix —
 #: ``lodging-0-name`` and friends.
+class TripRateForm(forms.ModelForm):
+    """An editor's own exchange rate for this trip (site roadmap R10): 1 <from> = <rate> <to>.
+    It wins over the ECB rate on the budget page and the estimate, in both directions."""
+
+    class Meta:
+        model = TripRate
+        fields = ["from_currency", "to_currency", "rate"]
+        labels = {"from_currency": "1 of (currency)", "to_currency": "Is worth (currency)", "rate": "Rate"}
+        help_texts = {"rate": "e.g. 1 EUR = 1.09 USD. Leave the ECB's daily rates alone by adding none."}
+
+    def clean(self):
+        data = super().clean()
+        for name in ("from_currency", "to_currency"):
+            value = (data.get(name) or "").strip().upper()
+            if value and (len(value) != 3 or not value.isalpha()):
+                self.add_error(name, "A three-letter currency code, such as EUR.")
+            data[name] = value
+        if data.get("from_currency") and data.get("from_currency") == data.get("to_currency"):
+            self.add_error("to_currency", "Pick a different currency.")
+        return data
+
+
+TripRateFormSet = inlineformset_factory(Trip, TripRate, form=TripRateForm, extra=1, can_delete=True)
+
 TRIP_SUBSECTION_FORMSETS = (
     ("lodging", "Lodging", LodgingFormSet),
     ("transport", "Transport", TransportLegFormSet),
     ("confirmations", "Confirmations", ConfirmationFormSet),
     ("contacts", "Contacts", ContactFormSet),
     ("booking_tasks", "Booking tasks", BookingTaskFormSet),
+    ("rates", "Exchange rates", TripRateFormSet),
 )
 
 

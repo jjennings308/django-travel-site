@@ -56,7 +56,7 @@ would mean two places to fix the next time a field is added.
       mistake, nothing is written.
     </p>
     {% for key, label, formset in formsets %}
-      {% include "trips/_formset.html" with formset=formset label=label %}
+      <div id="{{ key }}" class="scroll-mt-24">{% include "trips/_formset.html" with formset=formset label=label %}</div>
     {% endfor %}
   {% endif %}
 
