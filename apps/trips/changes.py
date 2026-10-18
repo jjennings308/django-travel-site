@@ -17,7 +17,7 @@ from contextvars import ContextVar
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 from django.urls import reverse
 from django.utils import dateformat, timezone
@@ -25,8 +25,8 @@ from django.utils import dateformat, timezone
 from apps.core.current import get_user
 
 from .models import (
-    Confirmation, ConfirmationFile, ConfirmationLink, Day, Lodging, Meal, Section, TransportLeg, Trip, TripActivity,
-    TripChange, TripGrant, item_label,
+    BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, Section, TransportLeg,
+    Trip, TripActivity, TripChange, TripGrant, item_label,
 )
 
 URGENT_DAYS = 7
@@ -119,7 +119,7 @@ def _fields(model):
     return [spec for spec in TRACKED[model][3] if spec[0] in names]
 
 
-def record(trip_id, kind, summary, item=None, actor=None):
+def record(trip_id, kind, summary, item=None, actor=None, day_id=None, before=None):
     """Write one change, or count it towards the enclosing ``batch``."""
     if not trip_id:
         return None
@@ -130,7 +130,7 @@ def record(trip_id, kind, summary, item=None, actor=None):
     return TripChange.objects.create(
         trip_id=trip_id, actor=actor if actor is not None else get_user(), kind=kind,
         item_type=type(item).__name__.lower() if item is not None else "", item_id=getattr(item, "pk", None),
-        summary=summary[:500])
+        summary=summary[:500], day_id=day_id, before=before)
 
 
 @contextmanager
@@ -147,6 +147,28 @@ def batch(summary, trip=None, actor=None):
         if Trip.objects.filter(pk=trip_id).exists():
             noun = "change" if count == 1 else "changes"
             record(trip_id, TripChange.Kind.CHANGED, f"{summary} ({count} {noun})", actor=actor)
+
+
+@contextmanager
+def quiet():
+    """Record nothing inside (restoring an item records its own one line)."""
+    token = _batch.set({"trip_id": None, "counts": {}})
+    try:
+        yield
+    finally:
+        _batch.reset(token)
+
+
+def day_id_of(instance):
+    """The trip day a change is about, for the history's day filter (R8)."""
+    if isinstance(instance, Day):
+        return instance.pk
+    if isinstance(instance, (TransportLeg, Lodging)):
+        when = instance.date if isinstance(instance, TransportLeg) else instance.check_in
+        if not when:
+            return None
+        return Day.objects.filter(trip_id=instance.trip_id, date=when).values_list("pk", flat=True).first()
+    return getattr(instance, "day_id", None)
 
 
 def _deleted_on_purpose(instance, origin):
@@ -172,18 +194,21 @@ def _after(sender, instance, created, raw=False, **kwargs):
     item_type, label, trip_of, _ = TRACKED[sender]
     old = getattr(instance, "_change_old", None)
     if created or old is None:
-        record(trip_of(instance), TripChange.Kind.ADDED, f"Added {label(instance)}", instance)
+        record(trip_of(instance), TripChange.Kind.ADDED, f"Added {label(instance)}", instance,
+               day_id=day_id_of(instance))
         return
-    parts, changed = [], set()
+    parts, changed, values = [], set(), {"before": {}, "after": {}}
     for attname, name, fmt in _fields(sender):
         before, after = getattr(old, attname), getattr(instance, attname)
         if before == after:
             continue
         changed.add(attname)
+        values["before"][attname], values["after"][attname] = before, after
         parts.append(f"{name} changed" if fmt is None else f"{name} {fmt(old)} → {fmt(instance)}")
     if not parts:
         return
-    record(trip_of(instance), TripChange.Kind.CHANGED, f"Changed {label(old)}: {'; '.join(parts)}", instance)
+    record(trip_of(instance), TripChange.Kind.CHANGED, f"Changed {label(old)}: {'; '.join(parts)}", instance,
+           day_id=day_id_of(instance), before=values)
     if sender is TransportLeg and changed & {"departure_at", "arrival_at", "date"}:
         _maybe_urgent(old, instance)
 
@@ -194,13 +219,23 @@ def _gone(sender, instance, origin=None, **kwargs):
     _, label, trip_of, _ = TRACKED[sender]
     trip_id = trip_of(instance)  # a meal's or section's day still exists: it wasn't deleted with it
     if trip_id and Trip.objects.filter(pk=trip_id).exists():
-        record(trip_id, TripChange.Kind.REMOVED, f"Removed {label(instance)}", instance)
+        record(trip_id, TripChange.Kind.REMOVED, f"Removed {label(instance)}", instance,
+               day_id=None if sender is Day else day_id_of(instance),
+               before=getattr(instance, "_change_snapshot", None))
+
+
+def _snap(sender, instance, origin=None, **kwargs):
+    """Before a restorable item is deleted on purpose, keep what restoring it needs (its links
+    are deleted before ``post_delete`` runs)."""
+    if sender in RESTORABLE and _deleted_on_purpose(instance, origin):
+        instance._change_snapshot = snapshot(instance)
 
 
 for _model in TRACKED:
     pre_save.connect(_before, sender=_model, dispatch_uid=f"trip_change_before_{_model.__name__}")
     post_save.connect(_after, sender=_model, dispatch_uid=f"trip_change_after_{_model.__name__}")
     post_delete.connect(_gone, sender=_model, dispatch_uid=f"trip_change_gone_{_model.__name__}")
+    pre_delete.connect(_snap, sender=_model, dispatch_uid=f"trip_change_snap_{_model.__name__}")
 
 
 # --------------------------------------------------------- signals: links and ticket files
@@ -287,3 +322,117 @@ def _maybe_urgent(old, leg):
             notify(user, "trip_changed", f"Time change: {what}", message, url, obj=trip)
 
     transaction.on_commit(send)
+
+
+# ------------------------------------------------------------------- undo and restore (R8)
+
+# Removed items that can be brought back (days, confirmations and trips can't: admin only).
+RESTORABLE = {TransportLeg: "leg", Lodging: "stay", TripActivity: "activity", Meal: None, Section: None}
+MODELS = {model.__name__.lower(): model for model in TRACKED}
+
+
+class CannotUndo(Exception):
+    """Why a change can't be undone or an item restored (shown to the editor)."""
+
+
+def snapshot(instance):
+    """Everything restoring ``instance`` needs: its row and many-to-many (Django's serializer),
+    the confirmations and contacts/notes linked to it, and the booking tasks pointing at it."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.core import serializers
+    content_type = ContentType.objects.get_for_model(instance)
+    task_field = RESTORABLE.get(type(instance))
+    return {
+        "object": serializers.serialize("python", [instance])[0],
+        "links": list(ConfirmationLink.objects.filter(content_type=content_type, object_id=instance.pk)
+                      .values_list("confirmation_id", flat=True)),
+        "refs": list(ItemLink.objects.filter(target_type=content_type, target_id=instance.pk)
+                     .values("source_type_id", "source_id")),
+        "tasks": list(BookingTask.objects.filter(**{task_field: instance}).values_list("pk", flat=True))
+                 if task_field else [],
+    }
+
+
+def latest_change_ids(trip):
+    """{(item_type, item_id): id of its newest change} — only the newest can be undone."""
+    from django.db.models import Max
+    rows = trip.changes.exclude(item_id=None).values("item_type", "item_id").annotate(last=Max("id"))
+    return {(row["item_type"], row["item_id"]): row["last"] for row in rows}
+
+
+def can_undo(change, latest):
+    """Offer Undo / Restore for this change? (The POST re-checks against the current data.)"""
+    if latest.get((change.item_type, change.item_id)) != change.pk or not change.before:
+        return False
+    if change.kind == TripChange.Kind.CHANGED:
+        return "after" in change.before and change.item_type in MODELS
+    if change.kind == TripChange.Kind.REMOVED:
+        return "object" in change.before and MODELS.get(change.item_type) in RESTORABLE
+    return False
+
+
+def undo(change):
+    """Put a changed item's fields back. Saved normally, so it is recorded (and can be undone)."""
+    model = MODELS.get(change.item_type)
+    item = model.objects.filter(pk=change.item_id).first() if model else None
+    if item is None:
+        raise CannotUndo("That item no longer exists.")
+    if latest_change_ids(change.trip).get((change.item_type, change.item_id)) != change.pk:
+        raise CannotUndo("It has been changed again since; undo the newest change first.")
+    fields = {f.attname: f for f in model._meta.concrete_fields}
+    for attname, value in change.before["after"].items():
+        if fields[attname].to_python(value) != getattr(item, attname):
+            raise CannotUndo("It has been edited since, so undoing could lose that edit.")
+    for attname, value in change.before["before"].items():
+        setattr(item, attname, fields[attname].to_python(value))
+    item.save()
+    return item
+
+
+def restore(change, actor=None):
+    """Bring a removed leg, stay, activity, meal or section back with its links."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.core import serializers
+    snap = change.before or {}
+    data = snap.get("object")
+    model = MODELS.get(change.item_type)
+    if not data or model not in RESTORABLE:
+        raise CannotUndo("That can't be restored.")
+    if model.objects.filter(pk=data["pk"]).exists():
+        raise CannotUndo("It's already back.")
+    if not Trip.objects.filter(pk=change.trip_id, deleted_at=None).exists():
+        raise CannotUndo("The trip is gone.")
+    fields = dict(data["fields"])
+    for field in model._meta.concrete_fields:
+        if not field.is_relation or field.name not in fields or fields[field.name] is None:
+            continue
+        if field.related_model.objects.filter(pk=fields[field.name]).exists():
+            continue
+        if field.name in ("day", "trip"):
+            raise CannotUndo(f"Its {field.name} was removed, so there's nowhere to put it back.")
+        fields[field.name] = None  # e.g. a leg's travel section or a place that has gone
+    with transaction.atomic(), quiet():
+        loaded = next(serializers.deserialize("python", [{**data, "fields": fields}]))
+        for name, ids in list(loaded.m2m_data.items()):
+            related = model._meta.get_field(name).related_model
+            loaded.m2m_data[name] = list(related.objects.filter(pk__in=ids).values_list("pk", flat=True))
+        loaded.save()
+        item = loaded.object
+        content_type = ContentType.objects.get_for_model(model)
+        for confirmation in Confirmation.objects.filter(pk__in=snap.get("links", []), trip_id=change.trip_id):
+            ConfirmationLink.objects.get_or_create(confirmation=confirmation, content_type=content_type,
+                                                   object_id=item.pk)
+        for ref in snap.get("refs", []):
+            source = ContentType.objects.get_for_id(ref["source_type_id"]).model_class()
+            if source.objects.filter(pk=ref["source_id"], trip_id=change.trip_id).exists():
+                ItemLink.objects.get_or_create(trip_id=change.trip_id, source_type_id=ref["source_type_id"],
+                                               source_id=ref["source_id"], target_type=content_type,
+                                               target_id=item.pk)
+        task_field = RESTORABLE.get(model)
+        if task_field and snap.get("tasks"):
+            BookingTask.objects.filter(pk__in=snap["tasks"], trip_id=change.trip_id,
+                                       **{f"{task_field}__isnull": True}).update(**{task_field: item})
+    _, label, trip_of, _ = TRACKED[model]
+    record(change.trip_id, TripChange.Kind.ADDED, f"Restored {label(item)}", item, actor=actor,
+           day_id=day_id_of(item))
+    return item
