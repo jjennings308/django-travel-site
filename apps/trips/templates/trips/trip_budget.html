@@ -18,10 +18,29 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
     </div>
   </div>
 
+  {% if expenses %}
+    {# One currency (R10): every cost converted at its own date's rate; settle-up only on request. #}
+    <form method="get" class="card mb-6 flex flex-wrap items-end gap-3 p-4 text-sm" id="one-currency">
+      <label class="flex flex-col"><span class="card-kicker">Show totals in</span>
+        <select name="in" onchange="this.form.submit()">{% for c in currencies %}<option value="{{ c }}"{% if c == target %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </label>
+      {% if one %}<label class="flex items-center gap-2"><input type="checkbox" name="settle" value="1"{% if settle_in_one %} checked{% endif %} onchange="this.form.submit()"> Settle in {{ target }}</label>{% endif %}
+      <noscript><button type="submit" class="btn-quiet">Show</button></noscript>
+      {% if one %}
+        <div class="w-full">
+          <p class="text-lg font-semibold">≈ {{ target }} {{ one.total }} <span class="text-sm font-normal text-zinc-500">all costs</span></p>
+          {% if one.used %}<p class="text-xs text-zinc-500">Rates used: {{ one.used|join:" · " }}</p>{% endif %}
+          {% if one.missing %}<p class="text-xs text-amber-700">Not converted (no rate): {% for e in one.missing %}{{ e.description }} ({{ e.currency }} {{ e.amount }}){% if not forloop.last %}, {% endif %}{% endfor %}. They're left out of this total.</p>{% endif %}
+          {% if can_edit %}<p class="text-xs text-zinc-500">To use your own rate, add it under Exchange rates on <a class="link-quiet" href="{% url 'trips:trip_edit' trip.pk %}#rates">Edit trip</a>.</p>{% endif %}
+        </div>
+      {% endif %}
+    </form>
+  {% endif %}
+
   {% for currency, s in summary.items %}
     <section class="card mb-6 p-6">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 class="card-title text-lg">{{ currency }} {{ s.total }}</h2>
+        <h2 class="card-title text-lg">{% if settle_in_one %}≈ {% endif %}{{ currency }} {{ s.total }}{% if settle_in_one %} <span class="text-sm font-normal text-zinc-500">settled in {{ currency }} at the rates above</span>{% endif %}</h2>
         <p class="text-sm text-zinc-500">{% for name, amount in s.by_category %}{{ name }} {{ amount }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
       </div>
       <div class="mt-4 grid gap-6 md:grid-cols-2">
@@ -64,7 +83,7 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
               <td class="px-4 py-2">{{ e.description }} <span class="text-xs text-zinc-500">· {{ e.get_category_display }}{% if e.day %} · Day {{ e.day.day_number }}{% endif %}</span>{% if e.notes %}<span class="block text-xs text-zinc-500">{{ e.notes }}</span>{% endif %}</td>
               <td class="px-4 py-2">{{ e.paid_by.name }}</td>
               <td class="px-4 py-2 text-zinc-600">{% with people=e.shared_with.all %}{% if people %}{% for p in people %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}Everyone{% endif %}{% endwith %}</td>
-              <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{{ e.currency }} {{ e.amount }}</td>
+              <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{{ e.currency }} {{ e.amount }}{% if one and e.converted and e.converted.source != "same" %}<span class="block text-xs text-zinc-500" title="{{ e.converted.rate }}">≈ {{ target }} {{ e.converted.amount }}</span>{% endif %}</td>
               {% if can_edit %}<td class="px-4 py-2 text-right"><a class="link-quiet" href="{% url 'trips:expense_edit' trip.pk e.pk %}">Edit</a></td>{% endif %}
             </tr>
           {% endfor %}

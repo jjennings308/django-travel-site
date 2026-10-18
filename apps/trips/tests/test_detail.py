@@ -525,8 +525,13 @@ class QueryCountTests(DetailFixture):
                 item = ChecklistItem.objects.create(checklist=checklist, text=f"Item {m}", per_person=bool(m % 2))
                 if m % 2:
                     ChecklistTick.objects.create(item=item, traveler=ada)
-        # 31 = 27 + the confirmations' files (R5) + checklists, their items and ticks (R9).
-        with self.assertNumQueries(31):
+        # Costs in other currencies (R10): the Overview's estimate converts them — two queries
+        # (the ECB rates and the trip's own rates), however many costs there are.
+        for n, currency in enumerate(["EUR", "GBP", "EUR"]):
+            Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n,
+                                        currency=currency)
+        # 33 = 27 + confirmation files (R5) + checklists, items, ticks (R9) + rates, trip rates (R10).
+        with self.assertNumQueries(33):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

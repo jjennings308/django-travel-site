@@ -73,3 +73,20 @@ class FeaturedContentMixin(models.Model):
     
     class Meta:
         abstract = True
+
+class ExchangeRate(models.Model):
+    """The European Central Bank's reference rate for one currency on one day (site roadmap R10):
+    how many units of ``currency`` one euro buys. Any pair is a cross rate through the euro.
+    Filled by ``manage.py fetch_rates`` (``apps.core.rates``)."""
+
+    date = models.DateField(db_index=True)
+    currency = models.CharField(max_length=3)
+    per_euro = models.DecimalField(max_digits=18, decimal_places=8)
+
+    class Meta:
+        db_table = "core_exchangerate"
+        ordering = ["-date", "currency"]
+        constraints = [models.UniqueConstraint(fields=["date", "currency"], name="exchangerate_once_a_day")]
+
+    def __str__(self):
+        return f"{self.date}: 1 EUR = {self.per_euro} {self.currency}"

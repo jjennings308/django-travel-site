@@ -275,6 +275,18 @@ that matter most:
   on a certain leak).
 - **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
 - **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city` (limited in the day form to the trip's cities). "Plan a trip" / adding a goal fills `trip.cities` from `BucketListItem.catalogue_cities()` — only when the user may edit the trip. Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
+- **Budget in one currency** (site roadmap R10; core 0001, trips 0040): `core.ExchangeRate` (date, currency,
+  `per_euro`) holds the ECB's daily reference rates, fetched by `manage.py fetch_rates [--history 90d|all]`
+  (production cron after ~16:00 CET; outbound HTTPS to www.ecb.europa.eu). `apps.core.rates.Rates(currencies,
+  dates, overrides)` loads what a page needs in one query and `convert()` returns a `Conversion` (amount,
+  rate, source ECB / trip / same, rate date, `latest` when a dated rate wasn't there) or None for an unknown
+  currency (listed, never guessed). `trips.TripRate` (1 from = rate to) is the editor's override, both ways,
+  edited in Edit trip's Exchange rates formset. Budget page: `?in=XXX` (default the reader's
+  `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
+  "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. Overview:
+  `budget.estimate` = confirmation `cost` + activity `est_cost` in the reader's currency (two queries only when
+  something is foreign). The older `apps/core/utils/currency.py` (exchangerate-api.com, the catalogue's
+  conversion filters) is separate; a candidate to move onto `ExchangeRate`.
 - **Budget:** `TripExpense` (who paid, `shared_with` travellers; empty = everyone on the trip). `trips:trip_budget` (`/trips/<pk>/budget/`, linked from the trip header) shows totals per currency (no conversion), each traveller's paid/share/balance and a settle-up (`apps/trips/budget.py`: cents, payer absorbs odd cents, largest debtor pays largest creditor). Anyone who can see the trip sees it; editors add/edit/remove costs. Never in the public view; a separate page so the detail page's query count is unaffected.
 - **Change digest** (site roadmap R7, trips 0037, notifications 0003): `apps/trips/changes.py` records a
   `TripChange` (trip, actor, kind added/changed/removed, item, `summary`, `digest_sent_at`) from
@@ -446,7 +458,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (31 here — R5 added the confirmations' files, R9 checklists, their items and ticks — 4 of them from this site's
+- **The detail page** holds a fixed query count (33 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency — 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -900,7 +912,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`; R9 (checklists) done on branch `r9-checklists`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`; R9 (checklists) done on branch `r9-checklists`; R10 (budget in one currency) done on branch `r10-budget-currency`.
 
 ### Rules carried over from the itinerary project
 

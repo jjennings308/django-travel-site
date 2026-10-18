@@ -39,6 +39,7 @@ Below the table:
 
 - **Needs attention** counts what's **not booked**, what's still **to do**, open **decisions**, and journeys **not on any day**. Each one links to the list in Reference.
 - **Journeys not on any day** and **Stays outside the trip's days** show bookings whose dates fall outside the trip's days, so nothing is hidden.
+- **Estimated trip cost**, when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)).
 - **Travelling**, **Cities** and **Destination**, then the trip's notes.
 - Editors also see **Tidy suggestions**: places where the text repeats a booking or contact recorded elsewhere.
 

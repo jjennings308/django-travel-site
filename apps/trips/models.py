@@ -2421,3 +2421,26 @@ class ChecklistTick(models.Model):
     class Meta:
         db_table = "trips_checklisttick"
         constraints = [models.UniqueConstraint(fields=["item", "traveler"], name="checklisttick_once")]
+
+
+class TripRate(models.Model):
+    """An exchange rate an editor set for one trip (site roadmap R10): 1 ``from_currency`` =
+    ``rate`` ``to_currency``. Wins over the ECB rate on that trip's budget and estimates, in both
+    directions (``apps.core.rates.convert``)."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="rates")
+    from_currency = models.CharField(max_length=3)
+    to_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=18, decimal_places=8, validators=[MinValueValidator(Decimal("0.00000001"))])
+
+    class Meta:
+        db_table = "trips_triprate"
+        constraints = [models.UniqueConstraint(fields=["trip", "from_currency", "to_currency"],
+                                               name="triprate_once_per_pair")]
+
+    def __str__(self):
+        return f"1 {self.from_currency} = {self.rate} {self.to_currency}"
+
+    def save(self, *args, **kwargs):
+        self.from_currency, self.to_currency = self.from_currency.upper(), self.to_currency.upper()
+        super().save(*args, **kwargs)
