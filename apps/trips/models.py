@@ -91,12 +91,14 @@ Access is not stored on the comment. A comment inherits its parent's trip, and
 being discussed.
 """
 
+import os
 import uuid
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apps.accounts.models import Role
+from apps.core.storage import private_storage
 from apps.locations.models import POI, City
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -1555,6 +1557,45 @@ class ConfirmationLink(models.Model):
             raise ValidationError("A confirmation is linked to a leg, a stay, an activity, a day's section or a meal.")
         if item_trip_id(item) != self.confirmation.trip_id:
             raise ValidationError("That item belongs to another trip.")
+
+
+def confirmation_file_path(instance, filename):
+    """``trips/<trip>/<uuid>.<ext>`` in private storage: no names a stranger could guess or that
+    say what's inside; the original name is kept on the row for downloads."""
+    ext = os.path.splitext(filename)[1].lower()[:8] or ".bin"
+    return f"trips/{instance.confirmation.trip_id}/{uuid.uuid4().hex}{ext}"
+
+
+class ConfirmationFile(models.Model):
+    """A ticket, boarding pass or booking document on a confirmation (site roadmap R5).
+
+    Stored in ``private_storage`` (``PRIVATE_MEDIA_ROOT``, outside ``MEDIA_ROOT``, never served by
+    nginx) and downloaded through ``trips:confirmation_file``, which checks the trip's ``view``.
+    PDF, PNG or JPEG (HEIC arrives as JPEG; ``apps/trips/files.py`` checks the contents). Deleting
+    the row, or its confirmation, deletes the stored file (``signals.delete_confirmation_file``).
+    """
+
+    confirmation = models.ForeignKey(Confirmation, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to=confirmation_file_path, storage=private_storage, max_length=200)
+    original_name = models.CharField(max_length=200)
+    content_type = models.CharField(max_length=60)
+    size = models.PositiveIntegerField()
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="+")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "trips_confirmationfile"
+        ordering = ["uploaded_at", "id"]
+
+    def __str__(self):
+        return f"{self.original_name} ({self.confirmation.confirmation_number})"
+
+    @property
+    def size_display(self):
+        if self.size < 1024 * 1024:
+            return f"{max(1, round(self.size / 1024))} KB"
+        return f"{self.size / (1024 * 1024):.1f} MB"
 
 
 # kind (URL part) -> model, for the item a confirmation can be linked to.

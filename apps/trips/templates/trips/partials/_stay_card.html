@@ -26,7 +26,7 @@ A stay in full, on its check-in day (trips:trip_detail; U2 of docs/plans/trip-pa
     {% if stay.confirmation_list %}
       <div>
         <dt class="card-kicker">Confirmation</dt>
-        <dd>{% for c in stay.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider and c.provider != stay.name %} · {{ c.provider }}{% endif %}</a> {% endfor %}</dd>
+        <dd>{% for c in stay.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider and c.provider != stay.name %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</dd>
       </div>
     {% endif %}
   </dl>

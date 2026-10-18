@@ -359,6 +359,8 @@ def _trip_page_queryset(user):
             # these lists in Python (_attach_confirmations) rather than a reverse prefetch each.
             Prefetch("confirmations__links", queryset=ConfirmationLink.objects.select_related("content_type")),
             "confirmations__travelers",
+            # Tickets and documents on them (site roadmap R5): one fixed query.
+            "confirmations__files",
             "contacts",
             # Contacts and info notes linked to items (trip-page UX plan, U4): two fixed queries.
             "infos",
@@ -2107,7 +2109,7 @@ def _item_confirmations_context(request, trip, kind, item):
     """What the confirmations block needs (leg page and ``item_confirmations``): the item's
     confirmations, the trip's others it could join, and the add form."""
     from .forms import AddConfirmationForm
-    attached = list(Confirmation.for_item(item).prefetch_related("links__content_type"))
+    attached = list(Confirmation.for_item(item).prefetch_related("links__content_type", "files__uploaded_by"))
     others = [c for c in trip.confirmations.prefetch_related("links__content_type") if c not in attached]
     return {"confirm_kind": kind, "confirm_item": item, "attached": attached, "attachable": others,
             "add_form": AddConfirmationForm()}

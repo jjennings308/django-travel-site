@@ -15,6 +15,7 @@ The confirmations on one item (a leg, stay, section or meal), added and removed 
             <input type="hidden" name="action" value="detach"><input type="hidden" name="confirmation" value="{{ c.pk }}"><input type="hidden" name="return_to" value="{{ return_to }}">
             <button type="submit" class="link-quiet hover:text-red-700">Remove from this</button>
           </form>
+          <div class="w-full pl-2">{% include "trips/partials/_confirmation_files.html" with c=c return_to=return_to %}</div>
         </li>
       {% endfor %}
     </ul>

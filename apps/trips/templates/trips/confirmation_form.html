@@ -50,4 +50,5 @@ A booking reference's own details (trips:confirmation_edit / confirmation_new). 
       {% if confirmation %}<a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:confirmation_delete' trip.pk confirmation.pk %}?next={{ next|urlencode }}">Delete</a>{% endif %}
     </div>
   </form>
+  {% if confirmation %}{% include "trips/partials/_confirmation_files.html" with c=confirmation return_to=request.get_full_path heading=True %}{% endif %}
 {% endblock %}

@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (BookingTask, Confirmation, Contact, Day, ItemLink, Lodging, Meal, Section,
+from apps.trips.models import (BookingTask, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Section,
                                TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
 
 User = get_user_model()
@@ -97,7 +97,10 @@ def build_trip():
     pnr.travelers.add(ada, bo)
     pnr.url = "https://example.com/manage"
     pnr.save()
-    Confirmation.attach_number(trip, "DB-1234", timed, provider="Deutsche Bahn")
+    db_ticket = Confirmation.attach_number(trip, "DB-1234", timed, provider="Deutsche Bahn")
+    # A ticket on it (R5): the booklet names files, never embeds them. No real file is needed.
+    ConfirmationFile.objects.create(confirmation=db_ticket, file="trips/snapshot/ticket.pdf",
+                                    original_name="DB ticket.pdf", content_type="application/pdf", size=1000)
     Confirmation.attach_number(trip, "5305434791", hof, provider="Booking.com")
     Confirmation.attach_number(trip, "UNI-77", guide, provider="Uni Marburg")
     Confirmation.attach_number(trip, "NIGHT1", tour, provider="Nightwatchman")

@@ -218,7 +218,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
             {% for c in items %}
               <tr>
                 <td class="code">{{ c.confirmation_number }}</td>
-                <td>{% if c.label %}{{ c.label }}<br>{% endif %}<span class="muted small">{{ title }}{% if c.description and c.description != c.label %} · {{ c.description }}{% endif %}</span></td>
+                <td>{% if c.label %}{{ c.label }}<br>{% endif %}<span class="muted small">{{ title }}{% if c.description and c.description != c.label %} · {{ c.description }}{% endif %}</span>{% if c.files.all %}<br><span class="small">Files: {% for f in c.files.all %}{{ f.original_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</td>
                 <td>{{ c.provider }}{% if c.url %}<br><span class="small muted">{{ c.url }}</span>{% endif %}</td>
                 <td class="small">{% for t in c.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">Everyone</span>{% endfor %}</td>
               </tr>

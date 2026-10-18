@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R4 done (2026-10-18); R5 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R5 done (2026-10-18); R6 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -141,6 +141,10 @@ is behind a private token per person; say so on the page.)
 - **Help:** new guide `calendar-feed`.
 
 ## R5 — Tickets and documents on bookings
+
+**Status: done** (2026-10-18, branch `r5-booking-files`). Decision: 10 MB a file, 200 MB a trip.
+Trip page query pin 27 → 28 (the files' prefetch). Booklet snapshot gained one "Files:" line. The
+privacy page has a draft "Tickets and travel documents" paragraph for James to approve.
 
 **Ask James:** size limit per file and per trip? (Recommended: 10 MB per file, 200 MB per trip.)
 

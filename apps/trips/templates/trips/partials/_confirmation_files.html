@@ -1,0 +1,22 @@
+{% comment %}
+A confirmation's tickets and documents (site roadmap R5): download links, Remove, and an upload box (editors; the pages including this are editors-only). Pass c (the confirmation), return_to, and heading=True for the full card on the confirmation page.
+{% endcomment %}
+{% if heading %}<section class="card mt-6 p-6" id="files"><h2 class="form-section-title mb-1">Tickets &amp; documents</h2><p class="mb-3 text-sm text-zinc-500">Boarding passes, e-tickets, booking PDFs: PDF, PNG, JPEG or iPhone photos, up to 10 MB each. Everyone on the trip can open them.</p>{% endif %}
+{% if c.files.all %}
+  <ul class="mb-2 space-y-1 text-sm">
+    {% for f in c.files.all %}
+      <li class="flex flex-wrap items-center gap-3">
+        <a class="link-quiet font-medium" href="{% url 'trips:confirmation_file' trip.pk f.pk %}" target="_blank" rel="noopener">📎 {{ f.original_name }}</a>
+        <span class="text-zinc-500">{{ f.size_display }}{% if f.uploaded_by %} · {{ f.uploaded_by.get_full_name|default:f.uploaded_by.username }}{% endif %}</span>
+        <form method="post" action="{% url 'trips:confirmation_file_delete' trip.pk f.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ return_to }}"><button type="submit" class="link-quiet hover:text-red-700">Remove</button></form>
+      </li>
+    {% endfor %}
+  </ul>
+{% elif heading %}<p class="mb-3 text-sm text-zinc-500">None yet.</p>{% endif %}
+<form method="post" action="{% url 'trips:confirmation_file_add' trip.pk c.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2 text-sm">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ return_to }}">
+  <label class="sr-only" for="files-{{ c.pk }}">Add a ticket or document to {{ c.confirmation_number }}</label>
+  <input id="files-{{ c.pk }}" type="file" name="files" multiple accept="application/pdf,image/png,image/jpeg,image/heic,image/heif,.heic,.heif">
+  <button type="submit" class="btn-quiet">{% if heading %}Upload{% else %}Add a file{% endif %}</button>
+</form>
+{% if heading %}</section>{% endif %}
