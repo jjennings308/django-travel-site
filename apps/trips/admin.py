@@ -25,6 +25,7 @@ from .models import (
     Trip,
     TripGrant,
     TripInvite,
+    TripCalendarToken,
 )
 
 from apps.accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
@@ -673,6 +674,15 @@ class TripInviteAdmin(admin.ModelAdmin):
     search_fields = ("email", "trip__name")
     readonly_fields = ("token", "created_at", "sent_at", "accepted_at", "accepted_by")
     autocomplete_fields = ("trip", "invited_by")
+
+
+@admin.register(TripCalendarToken)
+class TripCalendarTokenAdmin(admin.ModelAdmin):
+    """Calendar-feed links (made on the trip's Add to calendar page); set "revoked at" to stop one."""
+    list_display = ("user", "trip", "created_at", "revoked_at")
+    search_fields = ("user__username", "trip__name")
+    readonly_fields = ("token", "created_at")
+    autocomplete_fields = ("trip", "user")
 
 
 class UserTripGrantInline(admin.TabularInline):

@@ -61,10 +61,11 @@ class HeaderTests(Fixture):
         html = self.page(self.viewer).content.decode()
         for link in (share, delete, reverse("trips:trip_edit", args=[self.trip.pk])):
             self.assertNotIn(link, html)
-        self.assertNotIn("data-trip-menu", html)  # nothing for a viewer to put in it
+        self.assertIn("data-trip-menu", html)  # Add to calendar is for everyone (R4)
+        self.assertIn(reverse("trips:trip_calendar", args=[self.trip.pk]), html)
         self.trip.enable_public()
         html = self.page(self.viewer).content.decode()
-        self.assertIn("data-trip-menu", html)  # the shared link, to copy
+        self.assertIn(reverse("public_trip", args=[self.trip.public_token]), html)  # the shared link, to copy
         self.assertNotIn(reverse("trips:trip_unshare", args=[self.trip.pk]), html)
 
 

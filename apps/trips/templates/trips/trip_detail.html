@@ -25,11 +25,11 @@
       <div class="flex flex-wrap items-center gap-2">
         {% if can_edit %}<a class="btn" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
         <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
-        {% if trip.public_token or can_edit or can_delete %}
-          {# ⋯ menu: sharing and delete, kept out of the way (Alpine). #}
+        {# ⋯ menu: calendar, sharing and delete, kept out of the way (Alpine). #}
           <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
             <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
             <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
+              <a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_calendar' trip.pk %}" title="Subscribe to this trip in Google, Apple or Outlook calendar">Add to calendar</a>
               {% if trip.public_token %}
                 {% url 'public_trip' trip.public_token as public_path %}
                 <div x-data="{ copied: false, url: window.location.origin + '{{ public_path }}' }">
@@ -44,7 +44,6 @@
               {% if can_delete %}<a class="link-quiet mt-2 block font-medium hover:text-red-700" href="{% url 'trips:trip_delete' trip.pk %}">Delete trip</a>{% endif %}
             </div>
           </div>
-        {% endif %}
       </div>
     </div>
     <p class="mt-2 flex flex-wrap gap-4 text-sm">

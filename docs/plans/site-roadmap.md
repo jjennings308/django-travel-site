@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R3 done (2026-10-18); R4 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1–R4 done (2026-10-18); R5 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -116,6 +116,9 @@ the uptime monitor at `https://sharebucketlist.com/healthz/`.
 - **Tests:** handler configured in prod settings; flood guard; health 200 and 503 (DB mocked).
 
 ## R4 — Calendar feed for a trip
+
+**Status: done** (2026-10-18, branch `r4-calendar-feed`). Decision: confirmation numbers included.
+Additions: stays as check-in → check-out all-day events; the ⋯ menu now shows for every reader.
 
 **Ask James:** include confirmation numbers in the event descriptions? (Recommended: yes — the feed
 is behind a private token per person; say so on the page.)

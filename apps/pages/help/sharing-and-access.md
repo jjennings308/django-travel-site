@@ -75,7 +75,7 @@ The shared page ends with "This is a summary. Travel details, bookings and confi
 
 To turn the link off, open **⋯** and click **Stop sharing**. The old link stops working at once. Sharing again makes a new link.
 
-Anyone who can see the trip can open **⋯** to copy a shared link; only editors can share or stop sharing.
+Anyone who can see the trip can open **⋯** to copy a shared link; only editors can share or stop sharing. The **⋯** menu also has **Add to calendar**, a different, private link for your own calendar ([calendar feed](/help/calendar-feed/)).
 
 ## Problems
 
@@ -85,6 +85,5 @@ Anyone who can see the trip can open **⋯** to copy a shared link; only editors
 | "This invitation can't be used" | It expired, was cancelled, was already used, or was sent again with a new link. Ask whoever invited you to resend it. |
 | You joined with the wrong account | On **People**, click **Leave this trip**, and ask for a new invitation. |
 | No **Invite someone** on People | Only editors can invite. |
-| No **⋯** button on the trip page | The trip isn't shared and you aren't an editor. |
 | No **Share a read-only link** in the menu | Only editors can share. The trip may also already be shared: look for **Shared link**. |
 | A shared link stopped working | Sharing was stopped, or stopped and started again. Ask an editor for the new link. |

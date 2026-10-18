@@ -37,3 +37,8 @@ tinyhtml5==2.1.0
 weasyprint==70.0
 webencodings==0.6.1
 zopfli==0.4.3
+# Trip calendar feed (trips:trip_calendar_feed, apps/trips/calendar.py).
+icalendar==7.3.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2025.3

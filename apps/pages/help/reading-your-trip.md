@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the overview, each day's plan, and wh
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-17
+updated: 2026-10-18
 
 # Reading your trip
 
@@ -18,7 +18,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | **Edit trip** | Change the trip. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). |
 | **Download PDF** | The printable booklet ([see below](#booklet)). |
 | **Map** · **Budget** · **Photos** | The trip's map, its shared costs, and the shared photo album. |
-| **⋯** | Sharing and deleting, when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). |
+| **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). |
 
 The bar under the title jumps to the three parts of the page: **Overview**, **Days** and **Reference**. It stays at the top as you scroll.
 
