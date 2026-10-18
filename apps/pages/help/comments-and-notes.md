@@ -3,7 +3,7 @@ summary: Leave a note for everyone on a trip, on the trip itself or on a day, a 
 audience: everyone
 section: Trips
 order: 60
-updated: 2026-10-17
+updated: 2026-10-18
 
 # Comments and notes
 
@@ -35,6 +35,6 @@ Click **Edit** beside your note. Change it and click **Save**, or click **Delete
 
 | Problem | What to do |
 | --- | --- |
-| No **Add a comment** | You're a viewer. Ask for commentor access ([getting access](/help/sharing-and-access/#getting-access)). |
+| No **Add a comment** | You're a viewer. Ask an editor to make you a commentor ([changing roles](/help/sharing-and-access/#changing-roles-and-removing-people)). |
 | No **Edit** on a note | It isn't yours. |
 | A note isn't in the PDF | Notes are never printed. |

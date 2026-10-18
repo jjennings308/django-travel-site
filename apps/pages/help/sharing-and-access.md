@@ -1,9 +1,9 @@
 title: Sharing and access
-summary: Who can see, comment on or change a trip, how to get access, and what a public share link shows.
+summary: Who can see, comment on or change a trip, how to invite people, and what a public share link shows.
 audience: everyone
 section: Getting started
 order: 10
-updated: 2026-10-17
+updated: 2026-10-18
 
 # Sharing and access
 
@@ -17,15 +17,39 @@ Each person on a trip is a **viewer**, a **commentor** or an **editor**. Each ro
 | --- | --- |
 | Viewer | Read the whole trip, its map, budget and photos, and download the PDF booklet. |
 | Commentor | Also add notes on the trip, a day, a plan or a task ([comments and notes](/help/comments-and-notes/)), and add photos to the trip's album. |
-| Editor | Also change everything: the trip's details, days, journeys, stays, activities, meals, confirmations, contacts and tasks, and share the trip. |
+| Editor | Also change everything: the trip's details, days, journeys, stays, activities, meals, confirmations, contacts and tasks; invite people and change their roles; and share the trip. |
 
 Deleting a trip needs editor access **and** being the person who created it.
 
 The same account can be an editor on one trip and a viewer on another. If you open a trip you have no access to, the site says the page doesn't exist.
 
-## Getting access
+## Who's on the trip
 
-Access to a trip is given by the site's staff. To join a trip, or to be made an editor, ask the person who invited you, or [contact us](/contact/) with the trip's name.
+Click **People** at the top of the trip page (next to **Map**, **Budget** and **Photos**) to see everyone who can open the trip, their role, and who added them. Editors also find it on **Edit trip**.
+
+## Inviting people
+
+You need [editor access](#who-can-do-what).
+
+1. On the trip page, click **People**.
+2. Under **Invite someone**, type their **Email address** and pick a **Role**.
+3. Click **Invite**.
+
+If the address belongs to an account here, that person can open the trip straight away and gets a notification. Otherwise they get an email with a link to join. The link:
+
+- works once, for 14 days;
+- lets them log in, or create an account, and then click **Join trip**;
+- can be accepted from any account, so a forwarded invitation works too.
+
+When they join, they can tick **I'm travelling on this trip** to be added to the trip's travellers, and you get a notification.
+
+Invitations still waiting are under **Waiting to join**. **Copy link** gives you the link to send yourself (by text message, say), **Resend** emails a fresh link (the old one stops working), and **Cancel** turns it off. A trip can send 20 invitations a day.
+
+## Changing roles and removing people
+
+Editors can change anyone's role with the menu beside their name, or click **Remove**. You can't give anyone a role above your own, and the person who created the trip can't be demoted or removed.
+
+Anyone can leave a trip: on **People**, click **Leave this trip** beside your own name. You can't open the trip again unless someone invites you back.
 
 To start trips of your own, you can use **Plan a trip** on a goal in your bucket list. You become an editor of the trip it creates.
 
@@ -57,7 +81,10 @@ Anyone who can see the trip can open **⋯** to copy a shared link; only editors
 
 | Problem | What to do |
 | --- | --- |
-| "Page not found" when opening a trip | You don't have access to that trip. Ask the person who invited you. |
+| "Page not found" when opening a trip | You don't have access to that trip. Ask one of its editors to invite you. |
+| "This invitation can't be used" | It expired, was cancelled, was already used, or was sent again with a new link. Ask whoever invited you to resend it. |
+| You joined with the wrong account | On **People**, click **Leave this trip**, and ask for a new invitation. |
+| No **Invite someone** on People | Only editors can invite. |
 | No **⋯** button on the trip page | The trip isn't shared and you aren't an editor. |
 | No **Share a read-only link** in the menu | Only editors can share. The trip may also already be shared: look for **Shared link**. |
 | A shared link stopped working | Sharing was stopped, or stopped and started again. Ask an editor for the new link. |

@@ -59,7 +59,7 @@ class GrantRoleTests(AccessFixture):
         # only read somebody else's.
         self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.give(self.alice, TripRole.VIEWER, trip=self.taos)
-        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
         self.assertEqual(self.taos.capabilities_for(self.alice), {"view"})
 
     def test_one_grant_per_trip_and_user(self):
@@ -73,7 +73,7 @@ class GrantRoleTests(AccessFixture):
     def test_changing_the_role_changes_the_capabilities(self):
         self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         TripGrant.objects.filter(trip=self.europe, user=self.alice).update(role=TripRole.EDITOR)
-        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
 
     def test_creator_is_the_only_app_wide_role(self):
         self.assertEqual(Role.values, [Role.CREATOR])
@@ -95,20 +95,21 @@ class CapabilityTests(AccessFixture):
 
     def test_editor_can_view_comment_and_edit(self):
         self.give(self.alice, TripRole.EDITOR, trip=self.europe)
-        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
 
     def test_creator_with_an_editor_grant_gets_everything_except_manage(self):
-        # manage is staff-only; see the docstring. Being a creator adds nothing
+        # manage (the admin's grant editing) is staff-only; editors invite on
+        # the People page instead. See the docstring. Being a creator adds nothing
         # on an existing trip beyond its grant.
         self.give(self.alice, Role.CREATOR, trip=self.europe)
         self.assertEqual(
-            self.europe.capabilities_for(self.alice), {"view", "comment", "edit"}
+            self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"}
         )
 
     def test_superuser_bypasses_grant_and_role(self):
         self.assertEqual(
             self.europe.capabilities_for(self.admin),
-            {"view", "comment", "edit", "delete", "restore", "manage"},
+            {"view", "comment", "edit", "invite", "delete", "restore", "manage"},
         )
 
     def test_creator_without_a_grant_gets_nothing(self):
@@ -119,7 +120,7 @@ class CapabilityTests(AccessFixture):
 
     def test_a_grant_is_scoped_to_its_own_trip(self):
         self.give(self.alice, TripRole.EDITOR, trip=self.europe)
-        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit"})
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
         self.assertEqual(self.taos.capabilities_for(self.alice), set())
 
     def test_deactivating_an_account_revokes_access_immediately(self):
@@ -147,7 +148,7 @@ class CapabilityTests(AccessFixture):
         self.europe.save()
         self.give(self.alice, TripRole.EDITOR, trip=self.europe)
         self.assertEqual(
-            self.europe.capabilities_for(self.alice), {"view", "comment", "edit"}
+            self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"}
         )
 
     def test_access_is_independent_of_the_traveler_roster(self):

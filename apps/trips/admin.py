@@ -24,6 +24,7 @@ from .models import (
     Traveler,
     Trip,
     TripGrant,
+    TripInvite,
 )
 
 from apps.accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
@@ -662,6 +663,16 @@ class TripGrantAdmin(admin.ModelAdmin):
     list_filter = ("role", "trip")
     search_fields = ("user__username", "user__email", "trip__name")
     autocomplete_fields = ("user", "trip", "granted_by")
+
+
+@admin.register(TripInvite)
+class TripInviteAdmin(admin.ModelAdmin):
+    """Invites are made on the People page; here to look up and cancel (set "revoked at")."""
+    list_display = ("email", "trip", "role", "invited_by", "sent_at", "expires_at", "accepted_by", "revoked_at")
+    list_filter = ("role",)
+    search_fields = ("email", "trip__name")
+    readonly_fields = ("token", "created_at", "sent_at", "accepted_at", "accepted_by")
+    autocomplete_fields = ("trip", "invited_by")
 
 
 class UserTripGrantInline(admin.TabularInline):

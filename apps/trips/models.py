@@ -92,7 +92,7 @@ being discussed.
 """
 
 import uuid
-from datetime import date, datetime, timezone as dt_timezone
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -685,18 +685,19 @@ class Trip(models.Model):
         """Which actions ``user`` may take on this trip, as a set of strings.
 
         The single place the rule lives; ``can`` is the boolean form. Actions
-        are ``view``, ``comment``, ``edit``, ``delete``, ``restore`` and
-        ``manage``.
+        are ``view``, ``comment``, ``edit``, ``invite``, ``delete``, ``restore``
+        and ``manage``.
 
         Read access needs a grant on this trip; what else is allowed comes from
         that grant's ``role`` (viewer < commentor < editor), so the same person
         can edit one trip and only read another. ``delete`` needs an editor
         grant *and* ownership — being the ``created_by`` of the trip —
         so an editor who was handed someone else's trip cannot remove it.
-        ``restore`` and ``manage`` — changing who can reach this trip — stay
-        staff-only: a deleted trip is invisible to everyone, so there is no
-        self-service path back, and no user can hand out access they do not
-        themselves have.
+        ``invite`` (editors) is the People page: invite people, change roles and
+        remove people, never above the actor's own role and never the trip's
+        creator (``apps/trips/people.py``). ``restore`` and ``manage`` (the
+        admin's grant editing) stay staff-only: a deleted trip is invisible to
+        everyone, so there is no self-service path back.
 
         A trip authored in the admin has no ``created_by``, so nobody but staff
         can delete it. That is the right default: those trips were curated, and
@@ -705,7 +706,7 @@ class Trip(models.Model):
         if user is None or not user.is_authenticated or not user.is_active:
             return set()
         if user.is_staff or user.is_superuser:
-            return {"view", "comment", "edit", "delete", "restore", "manage"}
+            return {"view", "comment", "edit", "invite", "delete", "restore", "manage"}
 
         role = (
             self.grants.filter(user=user).values_list("role", flat=True).first()
@@ -2077,8 +2078,9 @@ class TripRole(models.TextChoices):
     """What a grant lets its holder do on one trip, weakest to strongest.
 
     A stronger role implies the ones below it: an editor can also comment and
-    read. Deleting additionally needs ownership (``Trip.created_by``), and
-    ``restore`` / ``manage`` stay staff-only — see ``Trip.capabilities_for``.
+    read. Editors may also invite (``invite``). Deleting additionally needs
+    ownership (``Trip.created_by``), and ``restore`` / ``manage`` stay
+    staff-only — see ``Trip.capabilities_for``.
     """
 
     VIEWER = "viewer", "Viewer"
@@ -2104,6 +2106,7 @@ def role_capabilities(role, owns=False):
         allowed.add("comment")
     if rank >= TRIP_ROLE_RANK[TripRole.EDITOR]:
         allowed.add("edit")
+        allowed.add("invite")  # the People page: invite, change roles, remove (site roadmap R1)
         if owns:
             allowed.add("delete")
     return allowed
@@ -2152,3 +2155,79 @@ class TripGrant(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.trip} ({self.get_role_display()})"
+
+
+INVITE_DAYS = 14  # how long an invite link works; Resend starts a fresh period (site roadmap R1)
+
+
+def new_invite_token():
+    import secrets
+    return secrets.token_urlsafe(32)
+
+
+class TripInvite(models.Model):
+    """An editor's invitation to a trip for an email address with no account yet (site roadmap R1).
+
+    The email gets a single-use link (``trips:invite_accept``); any signed-in account may accept it
+    (a forwarded invite works), which creates or raises that account's ``TripGrant``. An address that
+    already has an account is never invited: the People page grants it at once. One open invite
+    per trip and address (``tripinvite_one_open``: not accepted and not cancelled — an expired one
+    still counts, and inviting again renews it).
+    """
+
+    class State(models.TextChoices):
+        OPEN = "open", "Open"
+        EXPIRED = "expired", "Expired"
+        ACCEPTED = "accepted", "Accepted"
+        CANCELLED = "cancelled", "Cancelled"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="invites")
+    email = models.EmailField()
+    role = models.CharField(max_length=16, choices=TripRole.choices, default=TripRole.VIEWER)
+    token = models.CharField(max_length=64, unique=True, default=new_invite_token, editable=False)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(default=django_timezone.now)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="+")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "trips_tripinvite"
+        ordering = ["-sent_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["trip", "email"], name="tripinvite_one_open",
+                                    condition=Q(accepted_at__isnull=True, revoked_at__isnull=True)),
+        ]
+
+    def __str__(self):
+        return f"{self.email} → {self.trip} ({self.get_role_display()}, {self.state})"
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        if self.expires_at is None:
+            self.expires_at = (self.sent_at or django_timezone.now()) + timedelta(days=INVITE_DAYS)
+        super().save(*args, **kwargs)
+
+    @property
+    def state(self):
+        if self.accepted_at:
+            return self.State.ACCEPTED
+        if self.revoked_at:
+            return self.State.CANCELLED
+        if self.expires_at <= django_timezone.now():
+            return self.State.EXPIRED
+        return self.State.OPEN
+
+    @property
+    def is_open(self):
+        return self.state == self.State.OPEN
+
+    def renew(self):
+        """Resend: a new link (the old one stops working) good for another ``INVITE_DAYS``."""
+        self.token = new_invite_token()
+        self.sent_at = django_timezone.now()
+        self.expires_at = self.sent_at + timedelta(days=INVITE_DAYS)

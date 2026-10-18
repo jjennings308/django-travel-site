@@ -49,7 +49,7 @@
                     
                     <div class="mt-4 text-center">
                         <p><a href="{% url 'password_reset' %}">Forgot password?</a></p>
-                        <p>Don't have an account? <a href="{% url 'register' %}">Sign up</a></p>
+                        <p>Don't have an account? <a href="{% url 'register' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Sign up</a></p>
                     </div>
                 </div>
             </div>

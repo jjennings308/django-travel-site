@@ -1,0 +1,94 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+People on a trip (trips:trip_people, site roadmap R1): everyone who can see the trip sees who is on it; editors invite, change roles, remove, and resend or cancel open invites. The rules (never above your own role, never the creator) are in trips/people.py.
+{% endcomment %}
+{% block title %}People — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-4xl{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>People</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">People {% include "partials/_help_link.html" with slug="sharing-and-access" anchor="who-can-do-what" label="roles" %}</h1>
+      <p class="page-subtitle">{{ grants|length }} {{ grants|length|pluralize:"person,people" }} can open this trip.</p>
+    </div>
+  </div>
+
+  <section class="card mb-6 p-6" id="people">
+    <h2 class="card-title mb-3 text-lg">On this trip</h2>
+    <ul class="divide-y divide-zinc-100">
+      {% for grant in grants %}
+        <li class="flex flex-wrap items-center justify-between gap-3 py-3" id="grant-{{ grant.pk }}" data-grant="{{ grant.user.username }}">
+          <div>
+            <p class="font-medium">{{ grant.user.get_full_name|default:grant.user.username }}{% if grant.is_me %} <span class="text-zinc-500">(you)</span>{% endif %}</p>
+            <p class="text-sm text-zinc-500">{% if grant.is_creator %}Created the trip · {% endif %}{% if grant.granted_by and grant.granted_by_id != grant.user_id %}added by {{ grant.granted_by.get_full_name|default:grant.granted_by.username }} · {% endif %}since {{ grant.granted_at|date:"M j, Y" }}</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            {% if grant.can_set %}
+              <form method="post" class="flex items-center gap-2">{% csrf_token %}
+                <input type="hidden" name="action" value="role"><input type="hidden" name="grant" value="{{ grant.pk }}">
+                <label class="sr-only" for="role-{{ grant.pk }}">Role</label>
+                <select id="role-{{ grant.pk }}" name="role" onchange="this.form.submit()">
+                  {% for value, label in roles %}<option value="{{ value }}"{% if value == grant.role %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+                <noscript><button type="submit" class="btn-quiet">Change</button></noscript>
+              </form>
+            {% else %}
+              <span class="chip">{{ grant.get_role_display }}</span>
+            {% endif %}
+            {% if grant.can_remove %}
+              <form method="post">{% csrf_token %}
+                <input type="hidden" name="action" value="remove"><input type="hidden" name="grant" value="{{ grant.pk }}">
+                <button type="submit" class="link-quiet hover:text-red-700" onclick="return confirm('{% if grant.is_me %}Leave this trip? You will no longer be able to open it.{% else %}Remove this person from the trip?{% endif %}')">{% if grant.is_me %}Leave this trip{% else %}Remove{% endif %}</button>
+              </form>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if can_invite %}
+    <section class="card mb-6 p-6" id="invite">
+      <h2 class="card-title mb-1 text-lg">Invite someone</h2>
+      <p class="mb-4 text-sm text-zinc-500">If they have an account they can open the trip straight away; otherwise they get an email with a link to join, good for 14 days.</p>
+      <form method="post" class="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end" novalidate>{% csrf_token %}
+        <input type="hidden" name="action" value="invite">
+        <div><label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>{{ form.email }}{{ form.email.errors }}</div>
+        <div><label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>{{ form.role }}{{ form.role.errors }}</div>
+        <div><button type="submit" class="btn">Invite</button></div>
+      </form>
+      <p class="mt-3 text-sm text-zinc-500"><strong>Viewer</strong> reads the trip · <strong>Commentor</strong> also adds notes and photos · <strong>Editor</strong> also changes everything and invites people.</p>
+    </section>
+
+    {% if invites %}
+      <section class="card mb-6 p-6" id="invites">
+        <h2 class="card-title mb-3 text-lg">Waiting to join</h2>
+        <ul class="divide-y divide-zinc-100">
+          {% for invite in invites %}
+            <li class="py-3" id="invite-{{ invite.pk }}" data-invite="{{ invite.email }}" x-data="{ copied: false }">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="font-medium">{{ invite.email }} <span class="chip">{{ invite.get_role_display }}</span></p>
+                  <p class="text-sm text-zinc-500">Sent {{ invite.sent_at|date:"M j" }}{% if invite.invited_by %} by {{ invite.invited_by.get_full_name|default:invite.invited_by.username }}{% endif %} · {% if invite.state == "expired" %}<span class="text-red-700">expired</span>{% else %}link works until {{ invite.expires_at|date:"M j" }}{% endif %}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                  {% if invite.state == "open" %}<button type="button" class="link-quiet" @click="navigator.clipboard.writeText('{{ invite.link|escapejs }}'); copied = true; setTimeout(() => copied = false, 2000)" x-text="copied ? 'Copied' : 'Copy link'">Copy link</button>{% endif %}
+                  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="resend"><input type="hidden" name="invite" value="{{ invite.pk }}"><button type="submit" class="link-quiet">Resend</button></form>
+                  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><input type="hidden" name="invite" value="{{ invite.pk }}"><button type="submit" class="link-quiet hover:text-red-700">Cancel</button></form>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="mt-3 text-sm text-zinc-500">Resend makes a new link and the old one stops working. You can also copy a link and send it yourself.</p>
+      </section>
+    {% endif %}
+  {% endif %}
+
+  <p><a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}">← Back to the trip</a></p>
+{% endblock %}

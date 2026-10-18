@@ -1,0 +1,42 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+An invite link (trips:invite_accept, site roadmap R1). States: open (signed out: log in / create an account and come back; signed in: Join trip), expired, accepted, cancelled, missing. It never says whether an address has an account.
+{% endcomment %}
+{% block title %}{% if trip and state == "open" %}Join {{ trip.name }}{% else %}Invitation{% endif %}{% endblock %}
+{% block wrap_class %}max-w-xl{% endblock %}
+
+{% block content %}
+  <section class="card mt-6 p-6" data-invite-state="{{ state }}">
+    {% if state == "open" %}
+      <p class="card-kicker">Invitation</p>
+      <h1 class="page-title mb-2">{{ trip.name }}</h1>
+      <p class="mb-4 text-zinc-600">{{ inviter }} invited you to this trip{% if trip.start_date and trip.end_date %} ({{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}){% endif %} as <strong>{{ invite.get_role_display|lower }}</strong>.</p>
+      {% if not user.is_authenticated %}
+        <p class="mb-4">Log in or create an account to join. You'll come back here afterwards.</p>
+        <div class="flex flex-wrap gap-3">
+          <a class="btn" href="{{ login_url }}">Log in</a>
+          <a class="btn-quiet" href="{{ register_url }}">Create an account</a>
+        </div>
+      {% else %}
+        {% if existing and not raises %}<p class="mb-4 text-sm text-zinc-500">You can already open this trip as {{ existing.get_role_display|lower }}; joining keeps that.</p>
+        {% elif raises %}<p class="mb-4 text-sm text-zinc-500">You can already open this trip as {{ existing.get_role_display|lower }}; joining makes you {{ invite.get_role_display|lower }}.</p>{% endif %}
+        <form method="post">{% csrf_token %}
+          <label class="mb-4 flex items-center gap-2"><input type="checkbox" name="travelling" value="1" checked> I'm travelling on this trip</label>
+          <button type="submit" class="btn">Join trip</button>
+        </form>
+        <form method="post" action="{% url 'logout' %}" class="mt-4 text-sm text-zinc-500">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          Signed in as {{ user.username }}. Not you? <button type="submit" class="link-quiet">Log out</button> first.
+        </form>
+      {% endif %}
+    {% else %}
+      <h1 class="page-title mb-2">This invitation can't be used</h1>
+      <p class="mb-4 text-zinc-600">
+        {% if state == "expired" %}It has expired. Ask {{ inviter }} to send it again from the trip's People page.
+        {% elif state == "accepted" %}It has already been used. Each invitation link works once.
+        {% elif state == "cancelled" %}It was cancelled, or sent again with a new link. Ask {{ inviter }} for the latest one.
+        {% else %}The link isn't one we know. Check it was copied in full, or ask whoever sent it for a new one.{% endif %}
+      </p>
+      {% if user.is_authenticated %}<a class="btn-quiet" href="{% url 'trips:trip_list' %}">Your trips</a>{% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% autoescape off %}Hello,
+
+{{ inviter }} invited you to the trip “{{ trip.name }}”{% if trip.start_date and trip.end_date %} ({{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}){% endif %} on {{ site_name }}, as {{ invite.get_role_display|lower }}.
+
+Open this link to join:
+
+{{ url }}
+
+The link works once, until {{ invite.expires_at|date:"M j, Y" }}. If you don't have an account yet, you can create one from the link.
+
+If you weren't expecting this, you can ignore this email.
+
+— {{ site_name }}
+{% endautoescape %}

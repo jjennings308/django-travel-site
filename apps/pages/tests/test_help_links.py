@@ -53,6 +53,7 @@ class HelpLinkTests(TestCase):
             reverse("trips:activity_edit", args=[trip, self.day.pk, self.activity.pk]): {
                 "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
             reverse("trips:trip_tidy", args=[trip]): {"/help/tidying-an-itinerary/"},
+            reverse("trips:trip_people", args=[trip]): {"/help/sharing-and-access/#who-can-do-what"},
             reverse("pages:dashboard"): {"/help/"},  # the account menu
         }
         for url, wanted in expected.items():

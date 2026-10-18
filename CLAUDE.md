@@ -203,7 +203,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   every `/help/` link and anchor. **A change to a user-facing feature updates its guide in the same PR and
   bumps its `updated` date.**
 - **Public pages stay honest:** the home page's stats are real published-catalogue counts (`pages.views._catalogue_counts`, cached an hour); no invented numbers, testimonials or features. Every footer link must resolve (`test_site_pages` walks them). `pages:contact` emails `LEGAL_CONTACT_EMAIL` with Reply-To the sender (honeypot field, 3 per session per hour, disabled while the address is a placeholder); `pages:help` explains the lifecycle.
-- **Notifications:** `apps.notifications.services.notify(user, kind, title, message, url, obj)` creates a `Notification` and emails it unless `user.settings.email_notifications` is off or the address is a placeholder (mail errors are logged, never raised); `notify_staff(...)` reaches everyone with `can_access_staff`. Kinds (seeded by notifications 0002): `submission_reviewed` (from `Approvable.approve/reject/request_changes` → `_send_approval_notification`, to the submitter/creator, gated by `ApprovalSettings.notify_on_approval/notify_on_rejection`), `submission_received` (staff, from `Approvable.submit_for_review`, gated by `notify_on_submission`; the activity forms now call `submit_for_review` instead of setting PENDING by hand), `role_request_decided` (accounts sends the `accounts.signals.role_request_decided` signal; `notifications/receivers.py` reacts, because accounts may not import notifications), `trip_access_granted` (`trips/signals.py`, on a new `TripGrant` not granted to oneself). The header bell loads `notifications:unread_count` (JSON) after the page, so pages pay no query; `/notifications/` lists them, opening one marks it read. Cross-app notification tests live in `apps/pages/tests/test_notifications_flow.py` (pages may import everything).
+- **Notifications:** `apps.notifications.services.notify(user, kind, title, message, url, obj)` creates a `Notification` and emails it unless `user.settings.email_notifications` is off or the address is a placeholder (mail errors are logged, never raised); `notify_staff(...)` reaches everyone with `can_access_staff`. Kinds (seeded by notifications 0002): `submission_reviewed` (from `Approvable.approve/reject/request_changes` → `_send_approval_notification`, to the submitter/creator, gated by `ApprovalSettings.notify_on_approval/notify_on_rejection`), `submission_received` (staff, from `Approvable.submit_for_review`, gated by `notify_on_submission`; the activity forms now call `submit_for_review` instead of setting PENDING by hand), `role_request_decided` (accounts sends the `accounts.signals.role_request_decided` signal; `notifications/receivers.py` reacts, because accounts may not import notifications), `trip_access_granted` (`trips/signals.py`, on a new `TripGrant` not granted to oneself), `trip_invite_accepted` (`trips/people.accept`, to the inviter; created on first use, not seeded). The header bell loads `notifications:unread_count` (JSON) after the page, so pages pay no query; `/notifications/` lists them, opening one marks it read. Cross-app notification tests live in `apps/pages/tests/test_notifications_flow.py` (pages may import everything).
 - **Visitor counts:** `visitor_count` on POI, City, Region (locations 0011) and Country = distinct members who ticked off a goal there or travelled (with an account) on a finished trip naming the city (`Trip.cities` / `Day.city`); regions/countries roll up their cities. `apps/bucketlists/visitors.recount()` recomputes everything (bucketlists may read trips; locations may not); `bucketlists/signals.py` queues one recount per transaction (on commit) when a completed goal or a finished trip changes, and `manage.py recount_visitors` runs nightly on production (James's crontab) because trips finish by date. Pages show "Members who've been" only when non-zero; top attractions / a city's places sort by it.
 - **Place types:** a POI's type is a `locations.PlaceType` row managed in the admin (Locations → Place types; locations 0012 seeded the 14 old `POI_TYPES`), deliberately separate from activity/event categories (a type is what a place *is*). `POI.poi_type` is a FK on `PlaceType.code` stored in the original `poi_type` column (locations 0013), so set it with `poi_type_id="sports"`; the code is read-only once saved, a type in use can't be deleted (PROTECT), and unticking Active retires it from choices while its places keep it (`forms.active_place_types`, `PlaceType.choices()`). The CSV `type` column takes a code or a name; export writes the name.
 - **Pictures first:** the location lists (countries, regions, cities, places) and the regions/cities/places on a detail page sort the ones with a picture first, then their usual order (`locations.views.pictures_first`). Dropdowns, forms and "recently added" stay as they were.
@@ -232,7 +232,21 @@ that matter most:
   `role` on that trip: `TripRole` viewer < commentor < editor; `role_capabilities()` is the rule.
   No grant, no access. `accounts.UserRole` holds only `creator` ("may create trips", app-wide,
   granted by staff); creating a trip gives its creator an editor grant. Delete needs an editor
-  grant *and* `created_by`; `restore` and `manage` (editing grants) are staff-only. (The itinerary
+  grant *and* `created_by`; `restore` and `manage` (grant editing in the admin) are staff-only.
+  Editors also have `invite` (site roadmap R1): the **People** page `trips:trip_people` (`/trips/<pk>/people/`,
+  `apps/trips/people_views.py`, rules in `apps/trips/people.py`; linked beside Map · Budget · Photos and from
+  Edit trip) lists everyone with a grant to anyone who can see the trip; editors invite (email + role),
+  change roles and remove, never above their own role and never the creator (`people.can_set` /
+  `can_remove`); anyone but the creator may leave. Inviting an address with an active account grants at
+  once (`people.give_at_least`: creates or raises, never lowers; the usual `trip_access_granted`
+  notification); otherwise a `TripInvite` (trips 0034: token, 14-day `expires_at`, one open per trip +
+  email — partial unique `tripinvite_one_open`; Resend renews the token, Cancel sets `revoked_at`; 20
+  sent per trip per 24 h) is emailed (`trips/emails/invite.txt`). `trips:invite_accept`
+  (`/trips/invite/<token>/`, single use, any account may accept): signed out → login / register with
+  `?next=` back (accounts' `register` keeps a safe `next` through the verification link and pre-fills
+  `?email=`); signed in → **Join trip** (optionally adds their `Traveler` to `trip.travelers`), the grant
+  is made quietly (`grant._quiet`) and the inviter gets `trip_invite_accepted`. The confirmation
+  message is the same whether or not the address has an account. (The itinerary
   project had an app-wide role ladder; trips migration `0014` moved it onto the grants.) Views go through `Trip.objects.visible_to(user)` / `Trip.can(user, action)`
   / `Trip.capabilities_for(user)`: **404** with no grant, **403** when the trip is readable but
   the action is refused. `Trip.status`, `Trip.travelers` and booking-task names are never access
@@ -802,7 +816,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: not started.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`.
 
 ### Rules carried over from the itinerary project
 

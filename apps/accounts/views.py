@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
 from .models import (
     User, Profile, TravelPreferences, AccountSettings, 
@@ -38,10 +39,25 @@ logger = logging.getLogger(__name__)
 # REGISTRATION & EMAIL VERIFICATION
 # ============================================
 
+def _safe_next(request):
+    """The ``next`` to come back to after registering (an invite link, say), if it is on this site."""
+    candidate = request.POST.get('next') or request.GET.get('next') or ''
+    if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()},
+                                                     require_https=request.is_secure()):
+        return candidate
+    return ''
+
+
+def _login_url(next_url):
+    return f"{reverse('login')}?{urlencode({'next': next_url})}" if next_url else reverse('login')
+
+
 def register(request):
-    """Handle user registration"""
+    """Handle user registration. ``?next=`` survives the verification email (back to the page
+    that sent the person here, e.g. a trip invite); ``?email=`` pre-fills the address."""
     if request.user.is_authenticated and not request.user.can_access_staff:
-        return redirect('pages:home')
+        return redirect(_safe_next(request) or 'pages:home')
+    next_url = _safe_next(request)
     
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -81,7 +97,7 @@ def register(request):
                     
                     # Send verification email only if self-registering
                     if not (request.user.is_authenticated and request.user.can_access_staff):
-                        send_verification_email(request, user)
+                        send_verification_email(request, user, next_url=next_url)
                         messages.success(
                             request,
                             'Registration successful! Please check your email to verify your account.'
@@ -107,19 +123,20 @@ def register(request):
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
     else:
-        form = UserRegistrationForm()
+        form = UserRegistrationForm(initial={'email': request.GET.get('email', '')[:254]})
     
-    return render(request, 'accounts/register.html', {'form': form})
+    return render(request, 'accounts/register.html', {'form': form, 'next': next_url})
 
 
-def send_verification_email(request, user):
-    """Send email verification link to user"""
+def send_verification_email(request, user, next_url=''):
+    """Send email verification link to user (carrying ``next_url`` to the login after it)"""
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-    verification_link = request.build_absolute_uri(
-        reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
-    )
+    path = reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+    if next_url:
+        path += '?' + urlencode({'next': next_url})
+    verification_link = request.build_absolute_uri(path)
     
     logger.warning("VERIFICATION_LINK=%s", verification_link)
     print("VERIFICATION_LINK=", verification_link)
@@ -169,10 +186,11 @@ def verify_email(request, uidb64, token):
         logger.error(f"Email verification error - could not decode user: {e}")
         user = None
     
+    next_url = _safe_next(request)
     if user is not None:
         if user.is_verified and user.is_active:
             messages.info(request, 'Your email is already verified! You can log in.')
-            return redirect('login')
+            return redirect(_login_url(next_url))
         
         if default_token_generator.check_token(user, token):
             user.is_active = True
@@ -180,7 +198,7 @@ def verify_email(request, uidb64, token):
             user.save()
             
             messages.success(request, 'Your email has been verified! You can now log in.')
-            return redirect('login')
+            return redirect(_login_url(next_url))
         else:
             logger.warning(f"Invalid token for user {user.username}")
             messages.error(request, 'The verification link is invalid or has expired.')
