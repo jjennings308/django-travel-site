@@ -82,6 +82,19 @@ A confirmation number on a hotel, train or activity is a small chip; click it to
 
 Paper can't link, so the booklet repeats contacts and confirmation numbers on each day they matter, as well as in Reference.
 
+## Offline
+
+On a phone, the trip page keeps working without a signal (on a train, or abroad without data):
+
+- Each time you open a trip page, your phone keeps a copy of it.
+- To be sure before you go, open **⋯** and click **Save for offline**. That also keeps the PDF booklet and the trip's tickets and documents (see [tickets and documents](/help/bookings-and-confirmations/#tickets-and-documents)).
+
+With no signal, the trip page opens from that copy, with **Offline — this is the copy saved …** at the top. Anything changed since then isn't shown, and you can't make changes until you're back online. Edit pages, the map and other pages need a signal.
+
+The copy is only for you and only on that device. Signing out deletes it, so a shared phone or computer keeps nothing.
+
+To put the site on your home screen, use your browser's **Add to Home Screen** (iPhone: the share button; Android: the ⋮ menu).
+
 ## Problems
 
 | Problem | What to do |
@@ -89,4 +102,5 @@ Paper can't link, so the booklet repeats contacts and confirmation numbers on ea
 | A day won't open from a link | Click the day's line to open it, or **Expand all**. |
 | A train shows on the wrong day | A journey appears on the day it leaves. Ask an editor to check its date. |
 | No **Edit trip** button | You can read the trip but not change it. See [sharing and access](/help/sharing-and-access/). |
+| The trip page doesn't open without a signal | Open it once with a signal (or use **Save for offline**) on that device first. Private or incognito windows don't keep copies. |
 | **Download PDF** says the booklet can't be made yet | Use your browser's **Print** → **Save as PDF** for now, and tell us. |

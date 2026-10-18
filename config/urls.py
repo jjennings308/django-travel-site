@@ -20,11 +20,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from apps.core.health import healthz
+from apps.core.pwa import manifest, service_worker
 from apps.trips.views import public_trip_detail
 
 
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),
+    path('sw.js', service_worker, name='service_worker'),
+    path('manifest.webmanifest', manifest, name='manifest'),
     path('admin/', admin.site.urls),
     path('', include(('apps.pages.urls', 'pages'), namespace='pages')),
     path('accounts/', include('apps.accounts.urls')),

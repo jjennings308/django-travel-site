@@ -13,6 +13,8 @@
     Reference, and anything else is a one-line link to them.
   {% endcomment %}
 
+  {# Shown only on a saved copy served offline: the worker (core/sw.js) removes "hidden". #}
+  <div class="callout-warning mb-4" role="status" data-sbl-offline hidden>Offline — this is the copy saved {% now "M j, g:i A" %}. Changes made since then aren't shown.</div>
   <header class="mb-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
@@ -30,6 +32,10 @@
             <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
             <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
               <a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_calendar' trip.pk %}" title="Subscribe to this trip in Google, Apple or Outlook calendar">Add to calendar</a>
+              <div class="mb-2" x-data="offlineSave" x-show="supported" x-cloak>
+                <button type="button" class="link-quiet font-medium" @click="save()" :disabled="busy" data-offline-save title="Keep this page, the PDF booklet and the tickets on this device for when there's no signal">Save for offline</button>
+                <p class="text-xs text-zinc-500" x-show="message" x-text="message" aria-live="polite"></p>
+              </div>
               {% if trip.public_token %}
                 {% url 'public_trip' trip.public_token as public_path %}
                 <div x-data="{ copied: false, url: window.location.origin + '{{ public_path }}' }">
@@ -542,4 +548,5 @@
   <div class="no-print">
     {% include "trips/_comments.html" with comment_kind="trip" comment_pk=trip.pk comments=trip_comments can_comment=can_comment heading="Trip notes" %}
   </div>
+  {% include "trips/partials/_offline.html" %}
 {% endblock %}
