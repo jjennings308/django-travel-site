@@ -26,6 +26,7 @@ from .models import (
     TripGrant,
     TripInvite,
     TripCalendarToken,
+    TripChange,
 )
 
 from apps.accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
@@ -683,6 +684,18 @@ class TripCalendarTokenAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "trip__name")
     readonly_fields = ("token", "created_at")
     autocomplete_fields = ("trip", "user")
+
+
+@admin.register(TripChange)
+class TripChangeAdmin(admin.ModelAdmin):
+    """What changed on each trip (site roadmap R7; the digest). Read-only: written by trips/changes.py."""
+    list_display = ("when", "trip", "actor", "kind", "summary", "digest_sent_at")
+    list_filter = ("kind", "trip")
+    search_fields = ("summary", "trip__name")
+    readonly_fields = [f.name for f in TripChange._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
 
 
 class UserTripGrantInline(admin.TabularInline):

@@ -32,6 +32,12 @@
             <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
             <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
               <a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_calendar' trip.pk %}" title="Subscribe to this trip in Google, Apple or Outlook calendar">Add to calendar</a>
+              {% if my_grant %}
+                <form method="post" action="{% url 'trips:trip_notify' trip.pk %}" class="mb-2">{% csrf_token %}
+                  <input type="hidden" name="on" value="{% if my_grant.notify_changes %}0{% else %}1{% endif %}">
+                  <button type="submit" class="link-quiet font-medium" data-trip-notify>{% if my_grant.notify_changes %}Stop emails about this trip{% else %}Email me about changes to this trip{% endif %}</button>
+                </form>
+              {% endif %}
               <div class="mb-2" x-data="offlineSave" x-show="supported" x-cloak>
                 <button type="button" class="link-quiet font-medium" @click="save()" :disabled="busy" data-offline-save title="Keep this page, the PDF booklet and the tickets on this device for when there's no signal">Save for offline</button>
                 <p class="text-xs text-zinc-500" x-show="message" x-text="message" aria-live="polite"></p>

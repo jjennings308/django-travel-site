@@ -65,3 +65,14 @@ class UserThemeMiddleware:
                             secure=request.is_secure(), httponly=True, samesite="Lax")
 
         return response
+
+class CurrentUserMiddleware:
+    """Make ``request.user`` available to code without a request (``apps.core.current``)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from .current import acting_as
+        with acting_as(getattr(request, "user", None)):
+            return self.get_response(request)

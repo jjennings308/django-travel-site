@@ -23,6 +23,7 @@ KINDS = {
     "role_request_decided": "Your role request was decided",
     "trip_access_granted": "You were added to a trip",
     "trip_invite_accepted": "Someone accepted your trip invitation",
+    "trip_changed": "A trip you're on changed",
     "badge_earned": "You earned a badge",
     "review_reported": "A review was reported",
 }

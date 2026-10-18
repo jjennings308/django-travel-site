@@ -276,6 +276,20 @@ that matter most:
 - **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
 - **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city` (limited in the day form to the trip's cities). "Plan a trip" / adding a goal fills `trip.cities` from `BucketListItem.catalogue_cities()` — only when the user may edit the trip. Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
 - **Budget:** `TripExpense` (who paid, `shared_with` travellers; empty = everyone on the trip). `trips:trip_budget` (`/trips/<pk>/budget/`, linked from the trip header) shows totals per currency (no conversion), each traveller's paid/share/balance and a settle-up (`apps/trips/budget.py`: cents, payer absorbs odd cents, largest debtor pays largest creditor). Anyone who can see the trip sees it; editors add/edit/remove costs. Never in the public view; a separate page so the detail page's query count is unaffected.
+- **Change digest** (site roadmap R7, trips 0037, notifications 0003): `apps/trips/changes.py` records a
+  `TripChange` (trip, actor, kind added/changed/removed, item, `summary`, `digest_sent_at`) from
+  `pre_save`/`post_save`/`post_delete` on legs, stays, activities, meals, sections, days and
+  confirmations (only the fields in `TRACKED` that really changed, with readable before → after; leg times
+  through `departure_local_str`), plus confirmation links and ticket files. The actor is the request's user
+  via `apps.core.current` (set by `apps.core.middleware.CurrentUserMiddleware`; None in scripts). Removals
+  only for the object deleted on purpose (the signal's `origin`), so cascades (a day's meals, a whole trip)
+  aren't listed. `changes.batch(summary, trip=None)` writes one "… (N changes)" line per trip: wraps
+  `import_itinerary`, `travel_tables.apply`, `tidying.apply`. A leg's time/date change departing within
+  `URGENT_DAYS` (7) notifies everyone at once (on commit). `manage.py send_trip_digests [--dry-run]` (daily
+  cron on production) sends each person with a grant and `TripGrant.notify_changes` one `trip_changed`
+  notification per trip, without their own changes, then marks the changes sent. ⋯ → Stop emails / Email
+  me about changes (`trips:trip_notify`); the trip page gets the flag from the same query as its
+  capabilities (`Trip.capabilities_and_grant`), so the pin holds at 28.
 - **Offline trip page** (site roadmap R6): a service worker `apps/core/static/core/sw.js`, served at
   `/sw.js` by `apps.core.pwa.service_worker` (no-cache) and registered only by the trip page
   (`trips/partials/_offline.html`) with **scope `/trips/`** and `?u=<apps.core.pwa.offline_cache_key(user)>`
@@ -864,7 +878,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`.
 
 ### Rules carried over from the itinerary project
 

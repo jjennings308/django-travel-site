@@ -22,6 +22,7 @@ urlpatterns = [
     path("<int:pk>/edit/", views.trip_edit, name="trip_edit"),
     path("<int:pk>/delete/", views.trip_delete, name="trip_delete"),
     path("<int:pk>/share/", views.trip_share, name="trip_share"),
+    path("<int:pk>/notify/", views.trip_notify, name="trip_notify"),
     path("<int:pk>/people/", people_views.trip_people, name="trip_people"),
     path("invite/<str:token>/", people_views.invite_accept, name="invite_accept"),
     path("<int:pk>/calendar/", calendar_views.trip_calendar, name="trip_calendar"),

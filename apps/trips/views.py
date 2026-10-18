@@ -399,7 +399,8 @@ def trip_detail(request, pk):
     comments, comments_by_target = _trip_comments(trip, request.user)
     # One capabilities lookup for every action the page offers: each trip.can()
     # is a query, and this page pins its query count (QueryCountTests).
-    capabilities = trip.capabilities_for(request.user)
+    # The same query also brings the reader's grant, for the ⋯ menu's change-email switch (R7).
+    capabilities, my_grant = trip.capabilities_and_grant(request.user)
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     from . import booking_tasks
@@ -440,6 +441,7 @@ def trip_detail(request, pk):
             # The offline copy (site roadmap R6): this person's cache name, and fresh static
             # files in dev, where their names aren't hashed.
             "offline_key": offline_cache_key(request.user),
+            "my_grant": my_grant,
             "offline_debug": settings.DEBUG,
         },
     )
@@ -784,6 +786,20 @@ def trip_share(request, pk):
     trip = _readable_trip(request, pk, "edit")
     trip.enable_public()
     messages.success(request, "Sharing is on. Anyone with the link sees the trip's name, dates and outline, nothing else.")
+    return redirect("trips:trip_detail", pk=trip.pk)
+
+
+@login_required
+@require_POST
+def trip_notify(request, pk):
+    """Turn this person's emails about changes to the trip on or off (site roadmap R7)."""
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=pk)
+    grant = get_object_or_404(TripGrant, trip=trip, user=request.user)
+    grant.notify_changes = request.POST.get("on") == "1"
+    grant.save(update_fields=["notify_changes"])
+    messages.success(request, "You'll get a daily email when this trip changes, and one straight away if a "
+                              "journey's time changes in the week before it." if grant.notify_changes
+                     else "No more emails about changes to this trip. You can turn them back on from the ⋯ menu.")
     return redirect("trips:trip_detail", pk=trip.pk)
 
 

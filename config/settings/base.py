@@ -79,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.core.middleware.UserTimezoneMiddleware',
     'apps.core.middleware.UserThemeMiddleware',
+    'apps.core.middleware.CurrentUserMiddleware',  # who made a change (trips.changes)
 ]
 
 CACHES = {

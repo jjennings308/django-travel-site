@@ -53,6 +53,14 @@ Anyone can leave a trip: on **People**, click **Leave this trip** beside your ow
 
 To start trips of your own, you can use **Plan a trip** on a goal in your bucket list. You become an editor of the trip it creates.
 
+## Emails about changes
+
+When someone changes a trip you're on (a journey, a stay, an activity, a meal, a day's plans or a confirmation), you get one email a day listing what changed and who changed it. Your own changes aren't included, and nothing is sent on a day when nothing changed.
+
+If a journey's time or date changes in the week before it leaves, you're told straight away.
+
+To stop these emails for one trip, open **⋯** on the trip page and click **Stop emails about this trip**; **Email me about changes to this trip** turns them back on. To stop all emails from the site, turn off **Email notifications** in your Settings; the changes still show under the bell.
+
 ## The public share link
 
 An editor can make a read-only link that anyone can open, without an account. It shows a summary only:
