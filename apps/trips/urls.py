@@ -8,7 +8,7 @@ sibling of it.
 
 from django.urls import path
 
-from . import calendar_views, files, history_views, people_views, views
+from . import calendar_views, checklists, files, history_views, people_views, views
 
 app_name = "trips"
 
@@ -24,6 +24,11 @@ urlpatterns = [
     path("<int:pk>/share/", views.trip_share, name="trip_share"),
     path("<int:pk>/notify/", views.trip_notify, name="trip_notify"),
     path("<int:pk>/history/", history_views.trip_history, name="trip_history"),
+    path("<int:pk>/checklists/new/", checklists.checklist_edit, name="checklist_new"),
+    path("<int:pk>/checklists/template/", checklists.checklist_from_template, name="checklist_from_template"),
+    path("<int:pk>/checklists/<int:checklist_pk>/", checklists.checklist_edit, name="checklist_edit"),
+    path("<int:pk>/checklists/<int:checklist_pk>/delete/", checklists.checklist_delete, name="checklist_delete"),
+    path("<int:pk>/checklists/items/<int:item_pk>/tick/", checklists.checklist_tick, name="checklist_tick"),
     path("<int:pk>/history/<int:change_pk>/undo/", history_views.change_undo, name="change_undo"),
     path("<int:pk>/people/", people_views.trip_people, name="trip_people"),
     path("invite/<str:token>/", people_views.invite_accept, name="invite_accept"),

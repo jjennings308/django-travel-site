@@ -1,0 +1,50 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Make or edit a checklist (trips:checklist_new / checklist_edit, editors; site roadmap R9): its title and kind, and its items (text, "each person", order). Ticking happens on the trip page.
+{% endcomment %}
+{% block title %}{% if checklist %}{{ checklist.title }}{% else %}New checklist{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Checklist</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <h1 class="page-title mb-4">{% if checklist %}{{ checklist.title }}{% else %}New checklist{% endif %}</h1>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% for field in form %}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+    </div>
+    <fieldset class="form-section mt-6">
+      <legend class="form-section-title">Items</legend>
+      <p class="form-section-lede">Tick <strong>Each person</strong> for things every traveller does themselves (a passport, a visa): the trip page then shows a box per traveller.</p>
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}
+      <table class="w-full text-sm">
+        <thead><tr><th class="text-left">Item</th><th>Each person</th><th>Order</th><th>Remove</th></tr></thead>
+        <tbody>
+          {% for f in formset %}
+            <tr>
+              <td>{{ f.id }}{{ f.text }}{{ f.text.errors }}</td>
+              <td class="text-center">{{ f.per_person }}</td>
+              <td class="w-20">{{ f.order }}</td>
+              <td class="text-center">{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="note mt-2">Save to get more empty rows.</p>
+    </fieldset>
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{% url 'trips:trip_edit' trip.pk %}#checklists">Cancel</a>
+    </div>
+  </form>
+  {% if checklist %}
+    <form method="post" action="{% url 'trips:checklist_delete' trip.pk checklist.pk %}" class="mt-4">{% csrf_token %}
+      <button type="submit" class="link-quiet font-medium hover:text-red-700" onclick="return confirm('Delete this checklist and its ticks?')">Delete this checklist</button>
+    </form>
+  {% endif %}
+{% endblock %}

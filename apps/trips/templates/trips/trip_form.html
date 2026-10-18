@@ -211,5 +211,29 @@ would mean two places to fix the next time a field is added.
       <p class="empty-state py-6">None yet.</p>
     {% endif %}
   </section>
+
+  {% comment %}Checklists (R9): made and edited here; ticked on the trip page by anyone who can comment.{% endcomment %}
+  <section class="form-section mt-10" id="checklists">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="form-section-title">Checklists {% include "partials/_help_link.html" with slug="checklists" label="checklists" %}</h2>
+        <p class="form-section-lede">Packing, documents, before you go. They show in Reference on the trip page, where everyone who can comment ticks them off.</p>
+      </div>
+      <p><a class="btn-quiet" href="{% url 'trips:checklist_new' trip.pk %}">New checklist</a></p>
+    </div>
+    {% if trip.checklists.all %}
+      <ul class="mb-4 divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
+        {% for c in trip.checklists.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span class="font-medium">{{ c.title }}</span><span class="text-zinc-500">{{ c.get_kind_display }} · {{ c.items.count }} item{{ c.items.count|pluralize }}</span><a class="link-quiet ml-auto font-medium" href="{% url 'trips:checklist_edit' trip.pk c.pk %}">Edit</a></li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% if checklist_templates %}
+      <form method="post" action="{% url 'trips:checklist_from_template' trip.pk %}" class="flex flex-wrap items-end gap-2 text-sm">{% csrf_token %}
+        <label class="flex flex-col"><span class="card-kicker">Start from a template</span>
+          <select name="template">{% for t in checklist_templates %}<option value="{{ t.slug }}">{{ t.title }} — {{ t.summary }}</option>{% endfor %}</select>
+        </label>
+        <button type="submit" class="btn-quiet">Add it</button>
+      </form>
+    {% endif %}
+  </section>
 {% endif %}
 {% endblock %}

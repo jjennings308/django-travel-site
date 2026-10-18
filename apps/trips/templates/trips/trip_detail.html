@@ -99,12 +99,13 @@
     {% endif %}
 
     {% if can_edit %}<p class="mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:trip_tidy' trip.pk %}">Tidy suggestions</a> <span class="text-zinc-500">— text that repeats a leg, stay, booking or contact recorded elsewhere</span></p>{% endif %}
-    {% if not_booked or open_tasks or stray_legs or travel_tables_pending %}
+    {% if not_booked or open_tasks or stray_legs or travel_tables_pending or checklist_attention %}
       <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" id="needs-attention">
         <span class="card-kicker">Needs attention</span>
         {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
         {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
         {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
+        {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
         {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
         {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
       </p>
@@ -536,8 +537,16 @@
       </div>
     {% endif %}
 
-    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all and not trip.infos.all %}
-      <p class="empty-state">Nothing here yet: confirmations, contacts and things to book appear here.</p>
+    {% if checklists %}
+      {# Checklists (R9): ticked here by anyone who can comment; made and edited on Edit trip. #}
+      <h3 class="grid-label mt-8" id="checklists">Checklists {% include "partials/_help_link.html" with slug="checklists" label="checklists" %}</h3>
+      <div class="space-y-3">
+        {% for c in checklists %}{% include "trips/partials/_checklist.html" %}{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all and not trip.infos.all and not checklists %}
+      <p class="empty-state">Nothing here yet: confirmations, contacts, checklists and things to book appear here.</p>
     {% endif %}
   </section>
 

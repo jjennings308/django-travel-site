@@ -516,8 +516,17 @@ class QueryCountTests(DetailFixture):
                                check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
         from django.contrib.contenttypes.models import ContentType
         ContentType.objects.get_for_models(Trip, Day, Section, BookingTask)  # the comments' kinds, as in a warm process
-        # 28 = 27 + the confirmations' files (site roadmap R5).
-        with self.assertNumQueries(28):
+        # Checklists (R9) on several lists, with per-person ticks: still three queries.
+        from apps.trips.models import Checklist, ChecklistItem, ChecklistTick
+        self.trip.travelers.add(ada)
+        for n in range(3):
+            checklist = Checklist.objects.create(trip=self.trip, title=f"List {n}", kind="documents")
+            for m in range(4):
+                item = ChecklistItem.objects.create(checklist=checklist, text=f"Item {m}", per_person=bool(m % 2))
+                if m % 2:
+                    ChecklistTick.objects.create(item=item, traveler=ada)
+        # 31 = 27 + the confirmations' files (R5) + checklists, their items and ticks (R9).
+        with self.assertNumQueries(31):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

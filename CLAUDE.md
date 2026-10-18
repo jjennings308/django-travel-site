@@ -301,6 +301,17 @@ that matter most:
   under `changes.quiet()`, refuses when its day or trip has gone, and records "Restored …". Days,
   confirmations (files are deleted) and trips aren't restorable. `send_trip_digests` also prunes sent
   changes older than 180 days.
+- **Checklists** (site roadmap R9, trips 0039): `Checklist` (trip, title, kind packing / documents / before /
+  other, order), `ChecklistItem` (text, `per_person`, order; a shared item's `done_at` / `done_by`) and
+  `ChecklistTick` (per-person: item + traveller, unique). `apps/trips/checklists.py`: `attach` (from the trip
+  page's `checklists__items__ticks` + `travelers` prefetch, no query: `item.boxes`, `is_done`, list
+  `done`/`total`), `attention` (empty boxes on documents lists from 14 days before the start to the end →
+  Overview "N documents not ticked"), `trips:checklist_tick` (`comment`; form POST, 204 for Alpine's
+  background `X-Requested-With: fetch`), and editors' `checklist_new` / `_edit` (items formset) / `_delete` /
+  `_from_template`, reached from Edit trip's Checklists section. Per-person items use `trip.travelers`
+  (none → acts shared). Templates: `apps/trips/checklist_templates/*.md` (header `title` / `kind` /
+  `summary`, then `- item` lines, `- [each] …` per person; parsed strictly by the tests). Shown in
+  Reference (`partials/_checklist.html`) and the booklet's Reference. Not in the change history. Never public.
 - **Offline trip page** (site roadmap R6): a service worker `apps/core/static/core/sw.js`, served at
   `/sw.js` by `apps.core.pwa.service_worker` (no-cache) and registered only by the trip page
   (`trips/partials/_offline.html`) with **scope `/trips/`** and `?u=<apps.core.pwa.offline_cache_key(user)>`
@@ -435,7 +446,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (28 here — R5 added the confirmations' files — 4 of them from this site's
+- **The detail page** holds a fixed query count (31 here — R5 added the confirmations' files, R9 checklists, their items and ticks — 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -889,7 +900,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`; R9 (checklists) done on branch `r9-checklists`.
 
 ### Rules carried over from the itinerary project
 
