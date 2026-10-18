@@ -185,7 +185,6 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   - `apps.core.middleware.UserTimezoneMiddleware` activates the user's timezone.
   - `UserThemeMiddleware` sets `request.theme` and the `ui_theme` cookie.
   - Context processors in `apps/core/context_processors.py` expose `user_units`, `user_currency`, `user_theme`, `user_travel_styles` and similar to every template.
-  - `apps.rewards.context_processors.rewards_context` adds rewards data.
   - `apps/core/templatetags/conversion_tags.py` provides unit and currency filters that use these values (`{% load conversion_tags %}` — tag libraries load by name, not path).
 
 ### Templates and styling
@@ -196,6 +195,13 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the **typography** plugin loaded (`@plugin "@tailwindcss/typography"`, for the Help guides' `prose`). The forms plugin and DaisyUI are in `package.json` but deliberately not loaded (forms would restyle every input on the site). `@source` globs cover `templates/` and `apps/*/templates/`; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The old hand-written `!important` utility block is gone (it overrode every `hover:`/responsive variant); don't add `!important` utilities back. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` (dev only) after template or CSS changes. `base.html` / `base_marketing.html` link it with `{% static 'css/dist/styles.css' %}` (not django-tailwind's `{% tailwind_css %}` tag, so production needs no tailwind app); in DEBUG a `?v=` from the `site_branding` context processor defeats browser caching.
 - **Trips pages are scoped.** Every trips template extends `trips/base_trips.html`, which sets `content_class` = `trips-ui` (and a default `wrap_class` width) on `base.html`'s content area. The itinerary component layer (`.card`, `.btn`, `.badge-*`, `.callout-*`, `.chip`, form controls) and its `@media print` rules are written as `.trips-ui …` in `styles.css`, so they never restyle other apps' templates. Tests assert those class names. Site header, sidebars and footer carry `print:hidden`.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
+- **Phones** (site roadmap R11 phone pass, checked at 390 px): every page fits without sideways scroll —
+  tables scroll inside `.scroll-x` (which is `relative`, so absolutely positioned bits inside are clipped by
+  it, and bleeds only 16 px into the gutter on a phone), `fieldset { min-width: 0 }` (a fieldset's default
+  min-width is its content), grid/flex cards with one-line truncated text need `min-w-0`, and long words
+  wrap (`overflow-wrap: break-word` on `body`). Below `sm`, buttons, form fields, clickable chips, menu,
+  footer and breadcrumb links are at least 44 px tall (the phone block at the end of `styles.css`); the
+  header's icon buttons are `min-h-11 min-w-11`. Keep both when adding pages or components.
 - **Bucket lists (`apps/bucketlists`):** a `BucketListItem` is the user's thread through the lifecycle, `item.stage` = idea → dated → trip → done. Its "what" is one of: an `activity`, a `city`, an `event` on its own, one or more `pois` (M2M; adding a POI makes it "an activity for them", with an optional `custom_title` as the goal's name), or a custom goal (`custom_title`); `item.kind`, `item.target`, `item.target_url` resolve it. An activity item is dated by picking one of that activity's events (`item.event`, must be `related_activity` of it); other items are dated by `target_date`/`target_end_date`. Adding an event whose activity is already on the list dates that item instead of starting a new one. "Plan a trip" (`bucketlists:plan_trip`) is open to any signed-in user, pre-fills from `item.dates`/`item.place`, creates the `Trip` with an editor grant and sets `item.trip` (the FK lives on the item, so `bucketlists` → `trips`, never the reverse); `item.live_trip` ignores soft-deleted trips. **Several goals can share one trip** (`item.trip` is a plain FK): "Plan a trip" also lists the user's current trips (overlapping dates first) to add the goal to (`bucketlists:add_to_trip`); the trip page links (shell partial `partials/_trip_goals_link.html`, no query) to `bucketlists:trip_goals`, which lists the user's goals on that trip and lets them add or remove others; `bucketlists:remove_from_trip` unlinks. Seeing the trip is enough (a traveller can attach their own goal to a family trip); it changes the goal, never the trip. Migrations 0003–0005 are hand-written (schema / data / drop `poi`) because Postgres refuses index creation after a data change in the same transaction. Items are private to their owner (other users get 404) and `is_public` defaults to False; `/bucketlists/u/<username>/` shows public items only when the owner's `profile_visibility` is `public`. Categories are per user (`item.categories`, through `BucketListItemCategory`). The "Add to bucket list" button is the shell partial `partials/_bucket_add_button.html` (`{% include … with kind="city" obj=city %}`); it uses `{% url … as %}` so catalogue apps render fine without bucketlists — keep lower-layer templates referencing it only that way. `signals.py` keeps `Activity/Event.bucket_list_count` recounted on every save and delete (old and new target, since an item can gain an activity or event after creation). **My dates** (`bucketlists:dates`, sidebar stage 3) lists the user's open goals by `item.dates`: coming up (with Plan a trip), needs a date (activity goals offer that activity's next 3 visible events, picked via `bucketlists:pick_date`), and date has passed. The sidebar (`partials/_sidebar.html`) is grouped by the lifecycle: Discover (activities, events, places) → Dream (bucket list) → Pick a date (My dates) → Plan (trips) → Done (bucket list `?status=completed`); events/activities a user *submitted* are under "My contributions" in the header user menu. Each numbered sidebar section folds (Alpine): the current page's section is always open, the others remember open/closed in `localStorage` (`sbl-nav-<name>`), open by default; Home and About never fold. "Add a goal" suggests catalogue matches as the title is typed (`bucketlists:suggest`, JSON: public activities, upcoming visible events, approved cities/POIs), and a custom goal's edit page can link it to one (`bucketlists:link_item`): status, dates, notes and categories stay, `custom_description` is appended to `personal_notes`, `custom_title` is cleared except for POI goals, and a target already on the list is refused.
 - **Help center** (`docs/plans/help-center.md`): guides are markdown files in `apps/pages/help/<slug>.md`
   with a header (`title`, `summary`, `audience` = everyone / editors / staff, `section` — one of
@@ -273,6 +279,14 @@ that matter most:
   allowlisted dict, never a `Trip`; sections, themes, lodging, transport, confirmations and
   travellers are omitted on purpose. `manage.py audit_public_leak` checks the real data (exit 1
   on a certain leak).
+- **Rewards programs** (site roadmap R11; trips 0041/0042, rewards 0003): `trips.RewardsMembership` (per
+  `Traveler`, private like the rest of the travel profile) is the only membership model; `catalogue_program`
+  links an optional `rewards.RewardsProgram` (the form fills the name and kind from it; `?program=<id>` on
+  `trips:traveler_profile` pre-picks it). trips 0042 copied `rewards.UserRewardsMembership` rows onto each
+  account's traveller (matching an existing row by link, name, "company name" or a typed name containing the
+  program's) and declares `run_before` rewards 0003 (which dropped that model), so `rewards`' history never
+  depends on `trips`. `rewards` is now the catalogue only (browse / detail); its old membership URLs
+  redirect to the travel profile by URL name.
 - **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
 - **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city` (limited in the day form to the trip's cities). "Plan a trip" / adding a goal fills `trip.cities` from `BucketListItem.catalogue_cities()` — only when the user may edit the trip. Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
 - **Budget in one currency** (site roadmap R10; core 0001, trips 0040): `core.ExchangeRate` (date, currency,
@@ -458,7 +472,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (33 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency — 4 of them from this site's
+- **The detail page** holds a fixed query count (32 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query — 3 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -645,7 +659,8 @@ kept as history and describe the flat layout as it was at the time; their paths 
    migration history can be reset in Phase 1.)
 3. ~~Trip access model~~ — done on branch `phase-1b-grant-roles`: role per `TripGrant`;
    `creator` stays app-wide; sharing (grant management) stays staff-only for now.
-4. Rewards: one membership model owned by `rewards`, keyed to `Traveler` (recommended)?
+4. ~~Rewards~~ — answered 2026-10-18 (R11): one membership model, `trips.RewardsMembership` keyed to
+   `Traveler`, linked to the `rewards` catalogue (`rewards` can't point at `Traveler`: it's a lower layer).
    Phase 4 only.
 
 ### Phase 0 — prep
@@ -870,11 +885,13 @@ found. What stays at the root: `config/`, `theme/` (django-tailwind finds it by
 - `Trip` destination and `Day` city as FKs to `locations.City` / `Country`;
   `audit_public_leak` must stay green.
 - Optional links from `Meal` / `Section` to `activities`, `vendors`, POIs.
-- Rewards consolidation (Decision 4); `TripExpense` reinstated on the new `Trip`; post-trip
-  rating feeding `reviews`.
+- ~~Rewards consolidation (Decision 4)~~ — done in R11 (see Trips → Rewards programs); `TripExpense`
+  reinstated on the new `Trip`; post-trip rating feeding `reviews`.
 - ~~"Plan this" from a bucket-list item to a new trip~~ — done ("Plan a trip", branch `bucket-lifecycle`).
-- Retire the itinerary repo and its systemd service; redirect `/public/<uuid>/` on the old
-  host to this site so shared links keep working.
+- ~~Retire the itinerary site~~ — R11 (2026-10-18): it never ran anywhere but this machine (no nginx
+  site or service on tazcomputer; neither trip had a public link, so nothing to redirect). Nothing wrote to
+  its database after the 2026-10-07 merge; final dump `~/db_backups/itinerary_final_20261018-182819.dump`.
+  James decides on dropping the local `itinerary` database and archiving the GitHub repo.
 
 ### Trip items and confirmations
 
@@ -912,7 +929,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`; R9 (checklists) done on branch `r9-checklists`; R10 (budget in one currency) done on branch `r10-budget-currency`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`; R6 (offline trip page) done on branch `r6-offline-trip`; R7 (change digest) done on branch `r7-change-digest`; R8 (history and undo) done on branch `r8-change-history`; R9 (checklists) done on branch `r9-checklists`; R10 (budget in one currency) done on branch `r10-budget-currency`; R11 (phone pass, one rewards model, itinerary site retired) done on branch `r11-phone-pass`. The roadmap is complete.
 
 ### Rules carried over from the itinerary project
 

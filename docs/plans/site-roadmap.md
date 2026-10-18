@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: R1–R10 done (2026-10-18); R11 next. Hand to Claude Code **one phase per branch/PR, in order**
+Status: complete — R1–R11 done (2026-10-18). Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -274,6 +274,18 @@ override per trip.)
   settle-up unchanged without the tick.
 
 ## R11 — Phone pass, and Phase 4 loose ends
+
+**Status: done** (2026-10-18, branch `r11-phone-pass`).
+- **Phone pass:** 20 pages audited at 390 px in headless Chromium (dev data, a temporary staff user
+  since removed). Before: 5 pages scrolled sideways (trip page 642 px, Edit trip 565, trip list 901,
+  day page 417) and 1,056 tap targets were under 44 px. After: every page fits, 72 small targets remain
+  (mostly non-clickable labels; breadcrumb "Trips" is 44 tall but 32 wide), no anchor hidden under the
+  sticky bar. Causes fixed: `.scroll-x` not `relative` (absolutely positioned content escaped it),
+  its and the jump bar's 20 px bleed into a 16 px gutter, fieldsets' content min-width, a trip card
+  without `min-w-0`, long words. Screenshots before/after were kept outside the repo.
+- **Rewards** (decision: keep trips' model, link the catalogue): done; see CLAUDE.md.
+- **Itinerary site:** it never ran on a server, so no redirect or service; final dump archived.
+  James: drop the local `itinerary` database and archive the GitHub repo when ready.
 
 - **Phone pass:** at 390 px wide, walk through and fix: sign in; add a goal; Plan a trip; open the
   trip on today; open a confirmation; add a leg from Edit this day; add a confirmation number; the

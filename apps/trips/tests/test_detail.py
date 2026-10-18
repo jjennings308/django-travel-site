@@ -530,8 +530,9 @@ class QueryCountTests(DetailFixture):
         for n, currency in enumerate(["EUR", "GBP", "EUR"]):
             Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n,
                                         currency=currency)
-        # 33 = 27 + confirmation files (R5) + checklists, items, ticks (R9) + rates, trip rates (R10).
-        with self.assertNumQueries(33):
+        # 32 = 27 + confirmation files (R5) + checklists, items, ticks (R9) + rates, trip rates (R10)
+        # - the rewards context processor's query on every page (removed in R11).
+        with self.assertNumQueries(32):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 
