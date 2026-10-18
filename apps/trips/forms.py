@@ -1918,14 +1918,43 @@ class TravelerProfileForm(forms.ModelForm):
         return self.cleaned_data["passport_country"].strip().upper()
 
 
+# The catalogue's program types -> this model's kinds (site roadmap R11).
+CATALOGUE_KIND = {"airline": "airline", "hotel": "hotel", "car_rental": "car_rental", "credit_card": "credit_card",
+                  "train": "rail", "cruise": "other", "other": "other"}
+
+
 class RewardsMembershipForm(forms.ModelForm):
+    """One loyalty program on the travel profile. Pick it from the catalogue (fills the name and
+    kind) or type the name; either way the name is kept (site roadmap R11)."""
+
     class Meta:
         model = RewardsMembership
-        fields = ("kind", "program", "member_number", "tier", "expires", "notes")
+        fields = ("catalogue_program", "kind", "program", "member_number", "tier", "expires", "notes")
         widgets = {
             "expires": ISO_DATE_INPUT,
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
+        help_texts = {"catalogue_program": "Optional: pick it here, or type the name below."}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.rewards.models import RewardsProgram
+        self.fields["catalogue_program"].queryset = RewardsProgram.objects.filter(is_active=True).order_by(
+            "company", "name")
+        self.fields["catalogue_program"].label_from_instance = lambda p: (
+            p.name if p.company.lower() in p.name.lower() else f"{p.company} {p.name}")
+        self.fields["program"].required = False
+
+    def clean(self):
+        data = super().clean()
+        chosen = data.get("catalogue_program")
+        if chosen and not data.get("program"):
+            data["program"] = self.fields["catalogue_program"].label_from_instance(chosen)[:120]
+            if not self.instance.pk:
+                data["kind"] = CATALOGUE_KIND.get(chosen.program_type, data.get("kind") or "other")
+        if not data.get("program") and (data.get("member_number") or chosen):
+            self.add_error("program", "Pick a program from the catalogue or type its name.")
+        return data
 
 
 RewardsMembershipFormSet = inlineformset_factory(

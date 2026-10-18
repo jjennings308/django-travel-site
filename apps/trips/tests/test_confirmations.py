@@ -21,8 +21,11 @@ class MoveNumbersMigrationTests(RestoringTransactionTestCase):
     """trips 0023 on old-style data: numbers typed on legs and stays link to the trip's existing
     confirmation with that number, else become one confirmation per number."""
 
-    BEFORE = [("trips", "0022_confirmation_links")]
-    AFTER = [("trips", "0023_move_confirmation_numbers")]
+    # rewards is pinned too: its 0003 has to wait for trips 0042 (run_before), so leaving rewards at
+    # its newest migration would keep trips from stepping back this far (site roadmap R11).
+    REWARDS = ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more")
+    BEFORE = [("trips", "0022_confirmation_links"), REWARDS]
+    AFTER = [("trips", "0023_move_confirmation_numbers"), REWARDS]
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)

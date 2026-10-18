@@ -1387,8 +1387,11 @@ def traveler_profile(request):
     """
     traveler = get_object_or_404(Traveler, user=request.user)
     form = TravelerProfileForm(request.POST or None, instance=traveler)
+    # "Add to my travel profile" from a catalogue program page (?program=<id>) fills the blank row.
+    program_id = request.GET.get("program", "")
     memberships = RewardsMembershipFormSet(
-        request.POST or None, instance=traveler, prefix="memberships"
+        request.POST or None, instance=traveler, prefix="memberships",
+        initial=[{"catalogue_program": int(program_id)}] if program_id.isdigit() else None
     )
 
     if request.method == "POST":
