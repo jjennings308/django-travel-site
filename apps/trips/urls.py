@@ -8,7 +8,7 @@ sibling of it.
 
 from django.urls import path
 
-from . import views
+from . import people_views, views
 
 app_name = "trips"
 
@@ -22,6 +22,8 @@ urlpatterns = [
     path("<int:pk>/edit/", views.trip_edit, name="trip_edit"),
     path("<int:pk>/delete/", views.trip_delete, name="trip_delete"),
     path("<int:pk>/share/", views.trip_share, name="trip_share"),
+    path("<int:pk>/people/", people_views.trip_people, name="trip_people"),
+    path("invite/<str:token>/", people_views.invite_accept, name="invite_accept"),
     path("<int:pk>/budget/", views.trip_budget, name="trip_budget"),
     path("<int:pk>/photos/", views.trip_photos, name="trip_photos"),
     path("<int:pk>/map/", views.trip_map, name="trip_map"),

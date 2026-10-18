@@ -77,7 +77,7 @@ def link_traveler_to_account(sender, instance, **kwargs):
 def tell_new_grantee(sender, instance, created, raw=False, **kwargs):
     """Someone was given access to a trip: tell them, unless they granted it to
     themselves (creating a trip or "Plan a trip" gives the creator an editor grant)."""
-    if not created or raw or instance.granted_by_id == instance.user_id:
+    if not created or raw or instance.granted_by_id == instance.user_id or getattr(instance, "_quiet", False):
         return
     from django.urls import reverse
     from apps.notifications.services import notify

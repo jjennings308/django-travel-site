@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, then add who's g
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-17
+updated: 2026-10-18
 
 # Starting a trip
 
@@ -45,7 +45,7 @@ On the trip page, click **Edit trip**. From there:
 
 Everything under **Trip details** saves together when you click **Save changes**; if one row has a mistake, nothing is written and the mistake is shown.
 
-To let others see or edit the trip, see [sharing and access](/help/sharing-and-access/#getting-access).
+To let others see or edit the trip, click **People** on the trip page and invite them ([inviting people](/help/sharing-and-access/#inviting-people)).
 
 ## Problems
 

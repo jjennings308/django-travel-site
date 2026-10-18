@@ -1,6 +1,6 @@
 # Plan: what the site still needs — sharing, safety nets, travelling with it
 
-Status: planning only (2026-10-18). Hand to Claude Code **one phase per branch/PR, in order**
+Status: R1 done (2026-10-18, branch `r1-trip-invites`); R2 next. Hand to Claude Code **one phase per branch/PR, in order**
 (R1 → R11). Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask
 before the phase that needs them. Every phase that changes something a user sees updates its Help
 guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center rule.
@@ -37,6 +37,11 @@ guide in the same PR (`apps/pages/help/`, bump `updated`), per the Help center r
 ---
 
 ## R1 — Editors invite people to a trip
+
+**Status: done** (2026-10-18, branch `r1-trip-invites`). Decisions: (a) every editor, up to their own
+role, never the creator; (b) 14 days; accepting account's email need not match. People is linked
+beside Map · Budget · Photos (so viewers find it too) rather than in the ⋯ menu. The privacy page
+has a draft "Trip invitations" paragraph for James to approve.
 
 **Ask James:** (a) May every editor invite and change roles, or only the trip's creator? (Recommended:
 every editor, but only up to their own role, and nobody can demote or remove the creator.)

@@ -24,7 +24,7 @@ would mean two places to fix the next time a field is added.
 
   <section class="form-section">
     <h2 class="form-section-title">The trip</h2>
-    <p class="form-section-lede">Name, dates and who is going.</p>
+    <p class="form-section-lede">Name, dates and who is going.{% if not is_create %} Who can open the trip is on <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>.{% endif %}</p>
     <div class="field-grid">{{ form.as_p }}</div>
 
     <fieldset class="mt-2 border-t border-zinc-100 pt-5">

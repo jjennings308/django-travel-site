@@ -14,6 +14,7 @@
                 <div class="p-5">
                     <form method="post">
                         {% csrf_token %}
+                        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
                         
                         {% if form.errors %}
                             <div class="sbl-alert sbl-alert-danger">
