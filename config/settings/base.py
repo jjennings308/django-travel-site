@@ -209,6 +209,10 @@ EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 # The provider may only accept a From address on a domain verified with it.
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@sharebucketlist.com")
 SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)  # sender of error mails to ADMINS
+# Who gets error emails (prod.py wires apps.core.alerts to django.request), e.g.
+# DJANGO_ADMINS="James <james@example.com>, ops@example.com". Empty = no error emails.
+from apps.core.settings_helpers import parse_admins  # noqa: E402
+ADMINS = parse_admins(os.environ.get("DJANGO_ADMINS", ""))
 
 SITE_NAME = 'ShareBucketList'
 SITE_TAGLINE = 'Plan it. Live it. Share it.'

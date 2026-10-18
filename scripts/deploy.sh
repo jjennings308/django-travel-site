@@ -2,7 +2,7 @@
 # Deploy the latest `main` to production. Run ON the server:
 #     bash /var/www/travel_site/scripts/deploy.sh
 # Steps: sudo up front -> pull -> install requirements -> check --deploy -> (backup +)
-# migrate -> collectstatic (keeping the old hashed files) -> restart (sudo) -> live check
+# migrate -> collectstatic (keeping the old hashed files) -> restart (sudo) -> live check (home, stylesheet, /healthz/)
 # -> prune stale static files. Stops at the first failure; the running site keeps serving
 # (with its own static files still on disk) until the restart.
 #
@@ -73,8 +73,10 @@ printf '   %-8s %s\n' "/" "$HOME_STATUS"
 CSS=$(curl -s "$SITE/accounts/login/" | grep -oE '/static/css/dist/styles[^"]*\.css' | head -1)
 CSS_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$CSS")
 printf '   %-8s %s -> %s\n' "css" "${CSS:-not found}" "$CSS_STATUS"
-if [ "$HOME_STATUS" != "200" ] || [ -z "$CSS" ] || [ "$CSS_STATUS" != "200" ]; then
-  echo "!! The live site isn't right (home $HOME_STATUS, stylesheet ${CSS_STATUS:-none})."
+HEALTH_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE/healthz/")
+printf '   %-8s %s\n' "/healthz" "$HEALTH_STATUS"
+if [ "$HOME_STATUS" != "200" ] || [ -z "$CSS" ] || [ "$CSS_STATUS" != "200" ] || [ "$HEALTH_STATUS" != "200" ]; then
+  echo "!! The live site isn't right (home $HOME_STATUS, stylesheet ${CSS_STATUS:-none}, health $HEALTH_STATUS)."
   echo "!! Try: sudo systemctl restart travel_site   then run this script again."
   exit 1
 fi
