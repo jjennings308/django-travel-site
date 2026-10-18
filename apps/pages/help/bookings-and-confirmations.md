@@ -1,9 +1,9 @@
 title: Bookings and confirmations
-summary: Add confirmation numbers to journeys, stays and activities, keep track of what's still to book, and record a decision between options.
+summary: Add confirmation numbers, tickets and booking documents to journeys, stays and activities, keep track of what's still to book, and record a decision between options.
 audience: editors
 section: Bookings & contacts
 order: 10
-updated: 2026-10-17
+updated: 2026-10-18
 
 # Bookings and confirmations
 
@@ -28,6 +28,17 @@ Many bookings cover more than one thing: one flight booking for four flights, on
 You can also pick it from **Or pick one this trip has** and click **Add**.
 
 To take a number off one item, click **Remove from this**. The confirmation stays on the trip and on its other items.
+
+## Tickets and documents
+
+Boarding passes, e-tickets and booking PDFs go on the confirmation they belong to, so everyone on the trip can open them from their phone.
+
+1. Open the confirmation: click **Edit details** next to its number in an item's **Confirmations** box, or **Edit** on its row in Reference.
+2. Under **Tickets & documents**, choose one or more files and click **Upload**. In an item's **Confirmations** box, **Add a file** does the same.
+
+You can add PDF, PNG and JPEG files and iPhone photos (stored as JPEG), up to 10 MB each and 200 MB for the whole trip. Anything else is turned away with a message saying why.
+
+On the trip page, a confirmation with files shows **📎** and how many on its chip, and its row in Reference lists them; click a file to open it. Anyone who can see the trip can open them; only editors add or remove them (**Remove** next to the file). Deleting a confirmation deletes its files too. The PDF booklet lists the file names under each confirmation, but doesn't include the files.
 
 ## A journey's stages
 
@@ -70,3 +81,4 @@ The task now reads **Decide:** with its options, the chosen one ticked. Choosing
 | A train still says **Scheduled** | It has no confirmation yet. Add its number. |
 | Something is in **Not booked yet** that is booked | Add its confirmation number, or a task if it's being handled. |
 | No **Confirmations** box | You need editor access. See [sharing and access](/help/sharing-and-access/). |
+| A file won't upload | It must be a PDF, PNG, JPEG or iPhone photo, at most 10 MB, and the trip's files can't go over 200 MB in total. Remove old ones, or save a large scan at lower quality. |

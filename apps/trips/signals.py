@@ -16,10 +16,10 @@ other.
 """
 
 from django.contrib.auth import get_user_model
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import Traveler, TripGrant
+from .models import ConfirmationFile, Traveler, TripGrant
 
 User = get_user_model()
 
@@ -88,3 +88,11 @@ def tell_new_grantee(sender, instance, created, raw=False, **kwargs):
            f"{who} gave you access to the trip “{trip.name}” ({trip.start_date:%b} {trip.start_date.day} – "
            f"{trip.end_date:%b} {trip.end_date.day}, {trip.end_date.year}) as {role}.",
            reverse("trips:trip_detail", args=[trip.pk]), obj=trip)
+
+
+@receiver(post_delete, sender=ConfirmationFile, dispatch_uid="delete_confirmation_file")
+def delete_confirmation_file(sender, instance, **kwargs):
+    """A removed ticket or document (or one whose confirmation was deleted) leaves no stored
+    file behind in private storage (site roadmap R5)."""
+    if instance.file:
+        instance.file.storage.delete(instance.file.name)

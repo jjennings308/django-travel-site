@@ -69,7 +69,7 @@ The home of the trip's confirmations, contacts and to-dos. Everything elsewhere 
 - **Contacts**: name, role, phone (tap to call), email, website and address, with **On:** links to the days they matter.
 - **Info**: the trip's know-how, such as ticket rules or a tent guide, with **On:** links.
 
-A confirmation number on a hotel, train or activity is a small chip; click it to jump to its full entry here.
+A confirmation number on a hotel, train or activity is a small chip; click it to jump to its full entry here. **📎 2** on a chip means it has two tickets or documents; they're listed on its row in Reference. Click one to open it ([tickets and documents](/help/bookings-and-confirmations/#tickets-and-documents)).
 
 ## Booklet
 

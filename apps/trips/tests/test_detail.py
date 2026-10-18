@@ -490,6 +490,13 @@ class QueryCountTests(DetailFixture):
         stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
                                       check_out=self.trip.start_date + timedelta(days=2))
         Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").link(stay)
+        # Tickets and documents (R5): files on several confirmations, still one query.
+        from apps.trips.models import ConfirmationFile
+        for confirmation in Confirmation.objects.filter(trip=self.trip)[:4]:
+            for n in range(2):
+                ConfirmationFile.objects.create(confirmation=confirmation, file=f"trips/x/{confirmation.pk}-{n}.pdf",
+                                                original_name=f"ticket-{n}.pdf", content_type="application/pdf",
+                                                size=1000)
         # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
         # Python from the rows above (apps/trips/booking_tasks.py): no query of their own.
         BookingTask.objects.create(trip=self.trip, title="Hotel deposit", stay=stay)
@@ -509,7 +516,8 @@ class QueryCountTests(DetailFixture):
                                check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
         from django.contrib.contenttypes.models import ContentType
         ContentType.objects.get_for_models(Trip, Day, Section, BookingTask)  # the comments' kinds, as in a warm process
-        with self.assertNumQueries(27):
+        # 28 = 27 + the confirmations' files (site roadmap R5).
+        with self.assertNumQueries(28):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

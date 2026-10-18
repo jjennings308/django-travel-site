@@ -358,6 +358,15 @@ that matter most:
   (`confirmation_groups`: Flights / Trains / Stays / Activities (sections) / Meals / Other by
   `Confirmation.kind`, each ordered by `first_date`). `audit_public_leak` takes numbers from
   `trip.confirmations`; confirmations are never public.
+- **Tickets and documents** (site roadmap R5, trips 0036): `ConfirmationFile` on a confirmation, in
+  `private_storage` at `trips/<trip>/<uuid>.<ext>` (never under `MEDIA_ROOT`; backed up with
+  `private_uploads/`). `apps/trips/files.py` accepts by **contents** (PDF `%PDF-`; Pillow PNG/JPEG;
+  HEIC/HEIF stored as JPEG), 10 MB a file, 200 MB a trip; `confirmation_file_add` / `_delete` for
+  editors (on the confirmation page's Tickets & documents card and under each confirmation in an item's
+  Confirmations block, `partials/_confirmation_files.html`), `confirmation_file` (download, `view`; inline
+  under the original name, nosniff, `no-store`, CSP `sandbox`). Chips show "📎 n", Reference rows link
+  the files, the booklet lists names only. A `post_delete` signal removes the stored file (also on a
+  confirmation's cascade). Never public.
 - **Activities on a day** (`TripActivity`, trips 0029; named so because the catalogue has `Activity`):
   `kind` (tour / timed entry / ticket or pass / table reservation / car hire / other), `title`,
   `provider`, local `start_time` / `end_time` (wall clock on the day, no zone), `poi` (a catalogue place
@@ -388,7 +397,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (27 here, 4 of them from this site's
+- **The detail page** holds a fixed query count (28 here — R5 added the confirmations' files — 4 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -842,7 +851,7 @@ Plan: `docs/plans/site-roadmap.md` (editors invite people, production backups, e
 health check, calendar feed, tickets on bookings, offline trip page, change digest and history,
 checklists, budget in one currency, phone pass and Phase 4 loose ends; plus James's no-code
 checklist). Phases R1–R11, one branch each, in order; "Ask James" decisions there come first.
-Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`.
+Status: R1 (editors invite people; the People page) done on branch `r1-trip-invites`; R2 (production backups on popsicletoes.us, restore drill) done on branch `r2-prod-backups`; R3 (error emails, `/healthz/`) done on branch `r3-alerts-health`; R4 (calendar feed) done on branch `r4-calendar-feed`; R5 (tickets and documents) done on branch `r5-booking-files`.
 
 ### Rules carried over from the itinerary project
 

@@ -6,7 +6,7 @@ A meal with a reservation time, as a timeline row on its day (U3). Pass meal= an
   <div class="min-w-0">
     <p><span aria-hidden="true">🍽</span> <span class="font-medium text-zinc-900">{{ meal.name }}</span>
       <span class="text-zinc-500">{{ meal.get_meal_type_display }}{% if meal.cuisine %} · {{ meal.cuisine }}{% endif %}{% if meal.price_range %} · {{ meal.price_range }}{% endif %}</span>
-      {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}
+      {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}
       {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:day_edit' trip.pk meal.day_id %}">Edit</a>{% endif %}
     </p>
     {% if meal.why_recommended %}<p class="text-sm text-zinc-500">{{ meal.why_recommended }}</p>{% endif %}

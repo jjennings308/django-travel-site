@@ -299,7 +299,7 @@
           </div>
         {% endif %}
         {% if can_comment and not comments_by_target.section|dictkey:section.pk %}<p class="no-print -mt-3 mb-4 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'section' section.pk %}#body">Add a note</a></p>{% endif %}
-        {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
+        {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
 
       {% if day.good_to_know %}
@@ -327,7 +327,7 @@
                 {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
                 {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
                 {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
-                {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% endfor %}</p>{% endif %}
+                {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
                 {% if meal.refs %}<div class="mt-2">{% include "trips/partials/_refs.html" with refs=meal.refs %}</div>{% endif %}
               </div>
             {% endfor %}
@@ -418,6 +418,7 @@
                 {% if item.travelers.all %}<span class="text-zinc-500"> · For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
               </span>
               {% if item.url %}<a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking ↗</a>{% endif %}
+              {% for f in item.files.all %}<a class="link-quiet font-medium" href="{% url 'trips:confirmation_file' trip.pk f.pk %}" target="_blank" rel="noopener" title="{{ f.size_display }}">📎 {{ f.original_name }}</a>{% endfor %}
               {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23confirmation-{{ item.pk }}">Edit</a>{% endif %}
               {% if item.notes %}<p class="w-full text-zinc-500">{{ item.notes|linebreaksbr }}</p>{% endif %}
             </li>
