@@ -1,0 +1,2 @@
+{% comment %}The "Report" link on a catalogue page (site roadmap R15). Pass kind ("activity", "event", "place") and obj. By URL name only, so catalogue apps never depend on admin_tools.{% endcomment %}
+{% if user.is_authenticated %}{% url 'reports:report' kind obj.pk as report_url %}{% if report_url %}<a href="{{ report_url }}" class="sbl-btn sbl-btn-outline w-full text-warm-600"><i class="bi bi-flag"></i>Report</a>{% endif %}{% endif %}

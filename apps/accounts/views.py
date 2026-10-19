@@ -80,9 +80,17 @@ def register(request):
     allowed, code = _signup_allowed(request)
     if not allowed:
         typed = request.POST.get("signup_code") or request.GET.get("code") or ""
+        if typed:  # guessing codes: 10 wrong ones an hour per visitor (R15)
+            from apps.core.ratelimit import hit, too_many
+            ok, wait = hit(request, "signup_code", 10, 3600)
+            if not ok:
+                return too_many(request, wait)
         return render(request, 'accounts/register_closed.html', {
             'next': next_url, 'bad_code': bool(typed), 'typed': typed[:20]})
     
+    if request.method == 'POST' and request.POST.get('website'):
+        # The honeypot (R15): a hidden field people never see; bots fill it. Act as if it worked.
+        return redirect('registration_complete')
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():

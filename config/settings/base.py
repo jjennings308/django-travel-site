@@ -80,6 +80,7 @@ MIDDLEWARE = [
     'apps.core.middleware.UserTimezoneMiddleware',
     'apps.core.middleware.UserThemeMiddleware',
     'apps.core.middleware.CurrentUserMiddleware',  # who made a change (trips.changes)
+    'apps.media_app.middleware.QuotaMiddleware',  # a refused upload -> message (R15)
 ]
 
 CACHES = {
@@ -218,6 +219,8 @@ SITE_NAME = 'ShareBucketList'
 # Who may register (site roadmap R14): "invite" = only with a trip invite link or a sign-up code
 # (accounts.SignupCode, made in the admin); "open" = anyone (email verification still required).
 SIGNUP_MODE = os.environ.get("SIGNUP_MODE", "invite").strip().lower()
+# Per-account storage for photos and tickets (apps.media_app.quota, R15); staff are unlimited.
+STORAGE_LIMIT_MB = int(os.environ.get("STORAGE_LIMIT_MB", "1024"))
 SITE_TAGLINE = 'Plan it. Live it. Share it.'
 
 # Details used by the Terms, Privacy and Safety pages (apps/pages, templates under

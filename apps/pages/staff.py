@@ -189,6 +189,42 @@ def _attention(now, sla_hours):
         "tone": "info",
     })
 
+    # Reports on catalogue items (R15, admin_tools.reports) still open.
+    from apps.admin_tools.models import ReportedContent
+    open_reports = list(ReportedContent.objects.filter(status__in=("pending", "investigating"))
+                        .select_related("content_type").order_by("created_at")[:LIST_LIMIT])
+    entries.append({
+        "key": "reports", "title": "Open reports on catalogue items",
+        "count": ReportedContent.objects.filter(status__in=("pending", "investigating")).count(),
+        "detail": "Three on a member's activity or event hide it until you decide; resolve or dismiss in the admin.",
+        "url": reverse("admin:admin_tools_reportedcontent_changelist"),
+        "items": [{"text": str(r.content_object or "(removed)"), "meta": f"{r.get_reason_display()} · {r.content_type.model}",
+                   "url": reverse("admin:admin_tools_reportedcontent_change", args=[r.pk])} for r in open_reports],
+        "tone": "warning",
+    })
+
+    # Accounts at 80% or more of the storage limit (R15, media_app.quota).
+    from apps.media_app import quota
+    from django.db.models import Sum as _Sum
+    cap = quota.limit_bytes()
+    heavy = []
+    for row in (Media.objects.exclude(uploaded_by=None).values("uploaded_by").annotate(total=_Sum("file_size"))
+                .order_by("-total")[:50]):
+        uploader = User.objects.filter(pk=row["uploaded_by"]).first()
+        if uploader is None or uploader.is_staff:
+            continue
+        total = quota.used(uploader)
+        if total >= cap * 0.8:
+            heavy.append((uploader, total))
+    entries.append({
+        "key": "storage", "title": "Accounts near the storage limit", "count": len(heavy),
+        "detail": f"At 80% or more of {cap // (1024 * 1024)} MB for photos and tickets.",
+        "url": reverse("admin:accounts_user_changelist"),
+        "items": [{"text": u.username, "meta": f"{t / (1024 * 1024):.0f} MB", "url": _admin_url(u)}
+                  for u, t in heavy[:LIST_LIMIT]],
+        "tone": "info",
+    })
+
     from .account_data import deletion_date
     leaving = list(User.objects.exclude(deletion_requested_at=None).order_by("deletion_requested_at"))
     entries.append({

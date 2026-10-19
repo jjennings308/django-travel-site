@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% comment %}After unsubscribing (or undoing it) from one kind of email (site roadmap R15).{% endcomment %}
+{% block title %}Email settings · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="mx-auto mt-12 max-w-xl">
+  <div class="sbl-card p-6">
+    {% if on %}
+      <h1 class="sbl-page-title mb-2">Emails back on</h1>
+      <p class="text-warm-700">You'll get emails for <strong>{{ label|lower }}</strong> again.</p>
+    {% else %}
+      <h1 class="sbl-page-title mb-2">Unsubscribed</h1>
+      <p class="mb-4 text-warm-700">No more emails for <strong>{{ label|lower }}</strong>. You can turn all emails off under Settings → Email notifications.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="undo" value="1"><button type="submit" class="sbl-btn sbl-btn-outline">Undo</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

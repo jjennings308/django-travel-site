@@ -81,6 +81,7 @@
             {% if next_year.another %}<a href="{{ next_year.add_url }}" class="sbl-btn sbl-btn-outline w-full" title="Copies this event with the date left blank, for you to fill in and submit"><i class="bi bi-calendar-plus"></i>Add another date</a>{% elif next_year.event %}<a href="{% url 'events:event_detail' next_year.event.slug %}" class="sbl-btn sbl-btn-outline w-full"><i class="bi bi-calendar-plus"></i>{{ next_year.year }} dates</a>{% elif next_year %}<a href="{{ next_year.add_url }}" class="sbl-btn sbl-btn-outline w-full" title="Copies this event with the dates moved a year on, for you to check and submit"><i class="bi bi-calendar-plus"></i>Add {{ next_year.year }} dates</a>{% endif %}
             {% if can_edit %}<a href="{% url 'events:event_edit' event.slug %}" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-pencil"></i>Edit event</a>{% endif %}
             {% if can_delete %}<a href="{% url 'events:event_delete' event.slug %}" class="sbl-btn sbl-btn-outline-danger w-full"><i class="bi bi-trash"></i>Delete</a>{% endif %}
+            {% if event.created_by != user %}{% include "partials/_report_link.html" with kind="event" obj=event %}{% endif %}
           </div>
         </section>
       {% elif event.ticket_url %}

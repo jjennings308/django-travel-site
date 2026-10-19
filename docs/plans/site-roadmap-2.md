@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R14 done (2026-10-19); R15 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R15 done (2026-10-19); R16 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -105,6 +105,10 @@ content-provider role" boxes on the sign-up form? (Recommended: move them to Set
 - **Help:** getting-started guide rewritten for a newcomer.
 
 ## R15 — Abuse guards, storage limits, unsubscribe
+
+**Status: done** (2026-10-19, branch `r15-abuse-guards`). Decisions: 1 GB per account; no CAPTCHA.
+Reports reuse `admin_tools.ReportedContent` (so R19 keeps that model); places are never hidden
+automatically. James: approve the privacy line about counting attempts per IP.
 
 **Ask James:** per-account storage limit for photos and tickets (Recommended: 1 GB), and a CAPTCHA on
 sign-up only if spam appears (Recommended: honeypot + rate limit first, no CAPTCHA).

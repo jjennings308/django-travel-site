@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% comment %}Report a catalogue item (reports:report, site roadmap R15).{% endcomment %}
+{% block title %}Report · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="mx-auto mt-8 max-w-xl">
+  <form method="post" class="sbl-card space-y-4 p-6">{% csrf_token %}
+    <h1 class="sbl-page-title">Report “{{ obj }}”</h1>
+    <p class="text-warm-700">Tell us what's wrong. Staff review every report; the person who added it isn't told who reported it.</p>
+    <fieldset class="space-y-1">
+      <legend class="sbl-label">Reason</legend>
+      {% for radio in form.reason %}<label class="flex items-center gap-2 text-warm-700">{{ radio.tag }} {{ radio.choice_label }}</label>{% endfor %}
+      {% if form.reason.errors %}<div class="text-red-700">{{ form.reason.errors }}</div>{% endif %}
+    </fieldset>
+    <div><label for="{{ form.description.id_for_label }}" class="sbl-label">{{ form.description.label }}</label>{{ form.description }}</div>
+    <div class="flex flex-wrap gap-3"><button type="submit" class="sbl-btn sbl-btn-primary">Send report</button><a class="sbl-btn sbl-btn-outline" href="{{ back }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

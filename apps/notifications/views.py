@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import Notification
@@ -51,3 +52,29 @@ def open_notification(request, pk):
 def mark_all_read(request):
     _mine(request).filter(is_read=False).update(is_read=True, read_at=timezone.now())
     return redirect("notifications:list")
+
+
+@csrf_exempt  # the signed token is the credential; mail apps POST "List-Unsubscribe=One-Click" here
+def unsubscribe(request, token):
+    """Stop (or, with ``undo``, restart) emails of one kind for one person, signed out (R15)."""
+    from django.contrib.auth import get_user_model
+    from django.http import Http404, HttpResponse
+    from .models import UserNotificationPreference
+    from .services import KINDS, notification_type, read_unsubscribe_token
+    found = read_unsubscribe_token(token)
+    user = get_user_model().objects.filter(pk=found[0]).first() if found else None
+    if user is None:
+        raise Http404
+    kind = found[1]
+    label = KINDS.get(kind, kind)
+    if request.method == "POST":
+        on = request.POST.get("undo") == "1"
+        pref, _ = UserNotificationPreference.objects.get_or_create(user=user,
+                                                                   notification_type=notification_type(kind))
+        pref.email_enabled = on
+        pref.save(update_fields=["email_enabled"])
+        if request.POST.get("List-Unsubscribe") == "One-Click":
+            return HttpResponse("Unsubscribed.", content_type="text/plain")
+        return render(request, "notifications/unsubscribed.html",
+                      {"label": label, "token": token, "on": on})
+    return render(request, "notifications/unsubscribe.html", {"label": label, "token": token})

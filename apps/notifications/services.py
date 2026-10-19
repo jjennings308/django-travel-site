@@ -24,6 +24,7 @@ KINDS = {
     "trip_access_granted": "You were added to a trip",
     "trip_invite_accepted": "Someone accepted your trip invitation",
     "trip_changed": "A trip you're on changed",
+    "content_reported": "Something in the catalogue was reported",
     "badge_earned": "You earned a badge",
     "review_reported": "A review was reported",
 }
@@ -38,8 +39,36 @@ def notification_type(kind):
     return ntype
 
 
-def wants_email(user):
+UNSUBSCRIBE_SALT = "notifications.unsubscribe"
+
+
+def unsubscribe_token(user, kind):
+    """A signed token for "stop emailing me this kind" (site roadmap R15); works signed out."""
+    from django.core import signing
+    return signing.dumps({"u": user.pk, "k": kind}, salt=UNSUBSCRIBE_SALT, compress=True)
+
+
+def read_unsubscribe_token(token):
+    """(user id, kind) from a token, or None if it was tampered with. Tokens don't expire: an old
+    email's link should still work."""
+    from django.core import signing
+    try:
+        data = signing.loads(token, salt=UNSUBSCRIBE_SALT)
+        return int(data["u"]), str(data["k"])
+    except (signing.BadSignature, KeyError, TypeError, ValueError):
+        return None
+
+
+def kind_emails_off(user, kind):
+    from .models import UserNotificationPreference
+    return UserNotificationPreference.objects.filter(user=user, notification_type__name=kind,
+                                                     email_enabled=False).exists()
+
+
+def wants_email(user, kind=None):
     if not user.is_active or not user.email or user.email.endswith("@noemail.invalid"):
+        return False
+    if kind and kind_emails_off(user, kind):  # unsubscribed from this kind (R15)
         return False
     if getattr(user, "deletion_requested_at", None):  # waiting to be deleted: no emails (R13)
         return False
@@ -56,13 +85,20 @@ def notify(user, kind, title, message, url="", obj=None):
     if obj is not None and obj.pk is not None:
         note.content_object = obj
     note.save()
-    if wants_email(user):
-        link = f"{settings.SITE_URL.rstrip('/')}{url}" if url.startswith("/") else url
+    if wants_email(user, kind):
+        from django.urls import reverse
+        base = settings.SITE_URL.rstrip('/')
+        link = f"{base}{url}" if url.startswith("/") else url
+        off = f"{base}{reverse('notifications:unsubscribe', args=[unsubscribe_token(user, kind)])}"
         body = f"{message}\n\n{link}\n" if link else f"{message}\n"
-        body += f"\n— {settings.SITE_NAME}\nYou can turn these emails off under Settings → Email notifications."
+        body += (f"\n— {settings.SITE_NAME}\nStop emails like this: {off}\n"
+                 "Or turn all emails off under Settings → Email notifications.")
         try:
+            # One-click unsubscribe (RFC 8058) for mail apps that show their own button.
             EmailMessage(subject=f"[{settings.SITE_NAME}] {title}", body=body,
-                         from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email]).send()
+                         from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email],
+                         headers={"List-Unsubscribe": f"<{off}>",
+                                  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}).send()
             note.channels = ["in_app", "email"]
             note.email_sent, note.email_sent_at = True, timezone.now()
             note.save(update_fields=["channels", "email_sent", "email_sent_at"])

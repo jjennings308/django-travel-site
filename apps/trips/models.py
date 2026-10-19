@@ -596,8 +596,10 @@ class Trip(models.Model):
         from apps.core.utils.images import shrink_image
         from apps.media_app.forms import MAX_PICTURE_SIDE
         from apps.media_app.models import Media, MediaAlbum
+        from apps.media_app.quota import check, size_of
         if not files:
             return []
+        check(user, size_of(files))  # the storage limit, before anything is saved (R15)
         if self.album_id is None:
             self.album = MediaAlbum.objects.create(user=self.created_by or user, title=f"{self.name} photos"[:200],
                                                    privacy="private")

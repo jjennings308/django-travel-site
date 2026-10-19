@@ -3,7 +3,7 @@ summary: Add confirmation numbers, tickets and booking documents to journeys, st
 audience: editors
 section: Bookings & contacts
 order: 10
-updated: 2026-10-18
+updated: 2026-10-19
 
 # Bookings and confirmations
 
@@ -36,7 +36,7 @@ Boarding passes, e-tickets and booking PDFs go on the confirmation they belong t
 1. Open the confirmation: click **Edit details** next to its number in an item's **Confirmations** box, or **Edit** on its row in Reference.
 2. Under **Tickets & documents**, choose one or more files and click **Upload**. In an item's **Confirmations** box, **Add a file** does the same.
 
-You can add PDF, PNG and JPEG files and iPhone photos (stored as JPEG), up to 10 MB each and 200 MB for the whole trip. Anything else is turned away with a message saying why.
+You can add PDF, PNG and JPEG files and iPhone photos (stored as JPEG), up to 10 MB each and 200 MB for the whole trip. Tickets also count towards your own 1 GB for photos and tickets ([storage](/help/reporting-and-safety/#storage)). Anything else is turned away with a message saying why.
 
 On the trip page, a confirmation with files shows **📎** and how many on its chip, and its row in Reference lists them; click a file to open it. Anyone who can see the trip can open them; only editors add or remove them (**Remove** next to the file). Deleting a confirmation deletes its files too. The PDF booklet lists the file names under each confirmation, but doesn't include the files.
 

@@ -355,6 +355,8 @@ class BucketListItem(TimeStampedModel):
         from apps.core.utils.images import shrink_image
         from apps.media_app.forms import MAX_PICTURE_SIDE
         from apps.media_app.models import Media
+        from apps.media_app.quota import check, size_of
+        check(user, size_of(files))  # the storage limit, before anything is saved (R15)
         for f in files:
             Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
                   title=self.title[:200], alt_text=self.title[:200], content_object=self,

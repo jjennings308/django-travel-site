@@ -150,6 +150,26 @@ class UserAdmin(DjangoUserAdmin):
     search_fields = ("username", "email", "first_name", "last_name")
     readonly_fields = ("created_at", "updated_at", "last_login", "date_joined")
 
+    actions = ["suspend_accounts", "unsuspend_accounts"]
+
+    @admin.action(description="Suspend selected accounts (sign them out and block sign-in)")
+    def suspend_accounts(self, request, queryset):
+        """Site roadmap R15. Type a reason in Suspension reason first if you want one recorded."""
+        from django.utils import timezone
+        changed = 0
+        for user in queryset.exclude(pk=request.user.pk).filter(is_superuser=False):
+            user.is_active = False
+            user.suspended_at = timezone.now()
+            user.suspension_reason = user.suspension_reason or f"Suspended by {request.user.username}"
+            user.save(update_fields=["is_active", "suspended_at", "suspension_reason"])
+            changed += 1
+        self.message_user(request, f"Suspended {changed} account(s). They are signed out on their next request.")
+
+    @admin.action(description="Unsuspend selected accounts")
+    def unsuspend_accounts(self, request, queryset):
+        changed = queryset.exclude(suspended_at=None).update(is_active=True, suspended_at=None, suspension_reason="")
+        self.message_user(request, f"Unsuspended {changed} account(s).")
+
     fieldsets = (
         (None, {"fields": ("username", "email", "password")}),
         (_("Personal info"), {
@@ -177,6 +197,8 @@ class UserAdmin(DjangoUserAdmin):
                 "profile_visibility",
                 "trip_creation_blocked",
                 "deletion_requested_at",
+                "suspended_at",
+                "suspension_reason",
             )
         }),
         (_("Important dates"), {

@@ -1,11 +1,13 @@
 # accounts/urls.py
 from django.urls import path, re_path
 from django.contrib.auth import views as auth_views
+from apps.core.ratelimit import limit
+
 from . import views
 
 urlpatterns = [
     # Registration & Email Verification
-    path('register/', views.register, name='register'),
+    path('register/', limit("register", 5, 3600)(views.register), name='register'),
     path('role-requests/<int:pk>/document/', views.role_request_document, name='role_request_document'),
     path('registration-complete/', views.registration_complete, name='registration_complete'),
     re_path(
@@ -16,10 +18,11 @@ urlpatterns = [
     path('resend-verification/', views.resend_verification, name='resend_verification'),
     
     # Authentication
-    path('login/', auth_views.LoginView.as_view(
+    # Rate limits per visitor IP (site roadmap R15): log-in attempts and reset requests.
+    path('login/', limit("login", 10, 900)(auth_views.LoginView.as_view(
         template_name='accounts/login.html',
         redirect_authenticated_user=True
-    ), name='login'),
+    )), name='login'),
     path('logout/', auth_views.LogoutView.as_view(
         next_page='login'
     ), name='logout'),
@@ -33,12 +36,12 @@ urlpatterns = [
     ), name='password_change_done'),
 
     # Password Reset
-    path('password-reset/', auth_views.PasswordResetView.as_view(
+    path('password-reset/', limit("password_reset", 5, 3600)(auth_views.PasswordResetView.as_view(
         template_name="accounts/password_reset.html",
         email_template_name="accounts/emails/password_reset_email.txt",
         html_email_template_name="accounts/emails/password_reset_email.html",
         subject_template_name="accounts/emails/password_reset_subject.txt",
-    ), name="password_reset"),
+    )), name="password_reset"),
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='accounts/password_reset_done.html'
     ), name='password_reset_done'),
