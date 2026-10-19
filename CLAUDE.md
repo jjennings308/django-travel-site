@@ -81,6 +81,13 @@ python manage.py migrate
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`. Imported rows are marked approved automatically.
 
 ## Testing
+- `manage.py test` uses `config/settings/test.py` (when `DJANGO_SETTINGS_MODULE` isn't set): MD5 password
+  hashing (the real hasher made each test that creates accounts take seconds), locmem email, geocoding off,
+  no dev-only apps. The full parallel run takes about 70 seconds (was ~11½ minutes before R12).
+- **CI** (`.github/workflows/test.yml`, site roadmap R12) runs on every push to `main`: layer check,
+  `makemigrations --check`, `check --deploy` with dummy production env, the full suite on a fresh Postgres 17,
+  and a check that the committed Tailwind CSS matches a fresh `tailwind build`. A failure emails the pusher;
+  `gh run list` / `gh run watch` show it from here.
 - Always run tests with `--keepdb` and `--noinput`.
 - While iterating on a change, run only the affected app's tests:
   `.venv/bin/python manage.py test apps.<app> --keepdb --noinput`
@@ -585,8 +592,8 @@ that matter most:
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
   with role and trip-access inlines is registered from `apps/trips/admin.py`.
 - Management commands: `import_itinerary` (docx, dry run unless `--apply`), `dedupe_travelers`,
-  `audit_public_leak`, `unescape_html`. Tests: `python manage.py test apps.trips` (about 12 minutes
-  for the whole suite).
+  `audit_public_leak`, `unescape_html`. Tests: `python manage.py test apps.trips` (the whole suite, in parallel, takes
+  about 70 seconds).
 
 ## Dependency layers
 
