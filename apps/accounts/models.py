@@ -69,6 +69,9 @@ class User(AbstractUser, TimeStampedModel):
     )
     # The dashboard's first-run welcome, hidden with "Hide this" (R14).
     welcome_dismissed_at = models.DateTimeField(null=True, blank=True)
+    # Suspended by staff (site roadmap R15): inactive, so no sign-in, trip access, feeds or email.
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspension_reason = models.CharField(max_length=300, blank=True)
     
     # Privacy settings
     profile_visibility = models.CharField(

@@ -5,6 +5,7 @@
         <div class="grid gap-2">
             {% if can_edit %}<a href="{{ edit_url }}" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-pencil mr-2"></i>{{ edit_label }}</a>{% endif %}
             <a href="{{ back_url }}" class="sbl-btn sbl-btn-secondary w-full"><i class="bi bi-arrow-left mr-2"></i>{{ back_label }}</a>
+            {% if report_obj %}{% include "partials/_report_link.html" with kind="place" obj=report_obj %}{% endif %}
         </div>
     </div>
 </div>

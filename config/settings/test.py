@@ -15,3 +15,4 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 GEOCODING_ENABLED = False  # never call OpenStreetMap from a test
+RATELIMIT_ENABLED = False  # tests sign in hundreds of times; test_ratelimit turns it back on

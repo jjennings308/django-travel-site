@@ -40,6 +40,7 @@ urlpatterns = [
     path('staff/', include(('apps.accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
     path('staff/trips/', include('apps.trips.staff_urls')),
     path('staff/import/', include('apps.admin_tools.urls')),
+    path('report/', include(('apps.admin_tools.report_urls', 'reports'), namespace='reports')),
     # Public, non-detailed trip summary behind a share token. Outside the trips:
     # namespace because every URL there assumes a signed-in reader with a grant.
     path('public/<uuid:token>/', public_trip_detail, name='public_trip'),

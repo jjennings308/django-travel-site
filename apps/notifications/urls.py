@@ -10,4 +10,5 @@ urlpatterns = [
     path("unread.json", views.unread_count, name="unread_count"),
     path("<int:pk>/", views.open_notification, name="open"),
     path("read-all/", views.mark_all_read, name="mark_all_read"),
+    path("unsubscribe/<str:token>/", views.unsubscribe, name="unsubscribe"),
 ]

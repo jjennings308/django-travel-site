@@ -67,6 +67,11 @@ def add(confirmation, upload, user):
     """Store one upload on ``confirmation``; ``Refused`` says why not."""
     if upload.size > MAX_FILE_MB * MB:
         raise Refused(f"{upload.name}: over {MAX_FILE_MB} MB.")
+    from apps.media_app.quota import QuotaExceeded, check
+    try:
+        check(user, upload.size)  # the account's storage limit (R15)
+    except QuotaExceeded as exc:
+        raise Refused(f"{upload.name}: {exc}") from exc
     content, content_type, name = inspect(upload)
     size = content.size
     if trip_total(confirmation.trip) + size > MAX_TRIP_MB * MB:

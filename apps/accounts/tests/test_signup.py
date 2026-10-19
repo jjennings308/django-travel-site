@@ -67,6 +67,11 @@ class OpenSignupTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(User.objects.filter(username="newbie").exists())
 
+    def test_honeypot_makes_no_account(self):
+        response = self.client.post(reverse("register"), form(website="http://spam.example"))
+        self.assertRedirects(response, reverse("registration_complete"), fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(username="newbie").exists())
+
     def test_no_role_boxes_and_settings_links_the_request_page(self):
         page = self.client.get(reverse("register"))
         self.assertNotContains(page, "request_vendor_role")

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% comment %}Stop emails of one kind (notifications:unsubscribe, site roadmap R15). Works signed out: the link's signed token says who and which kind.{% endcomment %}
+{% block title %}Unsubscribe · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="mx-auto mt-12 max-w-xl">
+  <div class="sbl-card p-6">
+    <h1 class="sbl-page-title mb-2">Stop these emails?</h1>
+    <p class="mb-4 text-warm-700">You'll stop getting emails for <strong>{{ label|lower }}</strong>. They'll still show under the bell when you're signed in, and other emails aren't affected.</p>
+    <form method="post">{% csrf_token %}<button type="submit" class="sbl-btn sbl-btn-primary">Stop these emails</button></form>
+  </div>
+</div>
+{% endblock %}

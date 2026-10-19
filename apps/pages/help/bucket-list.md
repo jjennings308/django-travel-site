@@ -3,7 +3,7 @@ summary: Collect the things you want to do, give them dates, plan trips for them
 audience: everyone
 section: Bucket list
 order: 10
-updated: 2026-10-17
+updated: 2026-10-19
 
 # Your bucket list
 
@@ -41,6 +41,8 @@ A trip that's over shows **Trip over: tick it off** on its goal, and a prompt on
 ## Photos and albums
 
 A goal can have photos at any stage: click its **Photos** link. **My albums** gathers photos into albums: click **New album**, then add photos from your goals and trips (**Add the ticked photos**) or upload new ones. **Make cover** picks the album's cover; **Take out** removes a photo from the album without deleting it.
+
+Photos count towards your 1 GB of storage for photos and tickets; see [storage](/help/reporting-and-safety/#storage).
 
 ## Badges
 

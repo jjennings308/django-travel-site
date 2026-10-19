@@ -34,6 +34,8 @@ class PictureFormMixin:
         instance = self.instance
         picture = self.cleaned_data.get("picture")
         if picture:
+            from .quota import check
+            check(user, picture.size)  # the storage limit (R15); the item itself is already saved
             media = Media(
                 file=shrink_image(picture, MAX_PICTURE_SIDE) or picture, uploaded_by=user, media_type="image",
                 title=str(instance)[:200], alt_text=str(instance)[:200], content_object=instance,

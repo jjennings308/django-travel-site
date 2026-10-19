@@ -233,7 +233,7 @@
 
             <!-- Actions -->
             {% url 'locations:poi_edit' poi.slug as edit_url %}{% url 'locations:poi_list' as back_url %}
-            {% include "locations/partials/_actions.html" with edit_label="Edit Place" back_label="Back to Places" %}
+            {% include "locations/partials/_actions.html" with edit_label="Edit Place" back_label="Back to Places" report_obj=poi %}
         </div>
     </div>
 </div>

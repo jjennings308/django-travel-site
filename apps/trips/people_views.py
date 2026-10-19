@@ -16,6 +16,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.ratelimit import limit
+
 from . import people
 from .models import Trip, TripGrant, TripInvite, TripRole
 
@@ -126,6 +128,7 @@ def trip_people(request, pk):
     return back
 
 
+@limit("invite_accept", 60, 3600, methods=("GET", "POST"))
 def invite_accept(request, token):
     """The link in an invite email. Never says whether an address has an account."""
     invite = (TripInvite.objects.select_related("trip", "invited_by")

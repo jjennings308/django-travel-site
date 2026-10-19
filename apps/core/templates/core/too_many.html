@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% comment %}Rate limit reached (apps/core/ratelimit.py, site roadmap R15). Says nothing about any account.{% endcomment %}
+{% block title %}Too many attempts · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="mx-auto mt-12 max-w-xl">
+  <div class="sbl-card p-6">
+    <h1 class="sbl-page-title mb-2">Too many attempts</h1>
+    <p class="text-warm-700">For everyone's safety we limit how often this can be tried. Please wait {{ minutes }} minute{{ minutes|pluralize }} and try again.</p>
+  </div>
+</div>
+{% endblock %}

@@ -125,6 +125,8 @@ def album_detail(request, pk):
         if form.is_valid():
             from apps.core.utils.images import shrink_image
             from apps.media_app.forms import MAX_PICTURE_SIDE
+            from apps.media_app.quota import check, size_of
+            check(request.user, size_of(form.cleaned_data["photos"]))  # the storage limit (R15)
             media = []
             for f in form.cleaned_data["photos"]:
                 m = Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=request.user, media_type="image",

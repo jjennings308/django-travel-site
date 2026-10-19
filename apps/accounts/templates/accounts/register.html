@@ -16,6 +16,8 @@
                         {% csrf_token %}
                         {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
                         {% if signup_code %}<input type="hidden" name="signup_code" value="{{ signup_code }}">{% endif %}
+                        {# Honeypot (R15): hidden from people, so only bots fill it in. #}
+                        <div class="absolute -left-[9999px]" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
                         
                         {% if form.errors %}
                             <div class="sbl-alert sbl-alert-danger">
