@@ -134,6 +134,17 @@ group-writable; `james` is in group www-data), gunicorn 2 workers as `travel_sit
 (certbot TLS, `www` -> apex), Postgres 17 database/role `travel_site` on 127.0.0.1, outbound mail
 via smtp2go. `sudo` there needs a password, so service/nginx changes are run by James.
 
+**Staging** (site roadmap R16): https://staging.sharebucketlist.com on the same server — `config.settings.staging`
+(prod settings; mail goes to the console, never out; a yellow staging bar; `X-Robots-Tag: noindex`; its own
+`/tmp` cache folders), service `travel_site_staging` (1 worker), folder `/var/www/travel_site_staging`, database and
+role `travel_site_staging`, nginx with **basic auth** over the whole site (`deploy/staging/`; setup in its
+README). `scripts/sync_staging_from_prod.sh` (James's crontab, nightly) restores production into it and runs
+`scripts/staging_disguise.sql` (emails → `user<id>@staging.invalid`, phones and travel-document numbers blanked,
+contact/invite emails disguised; no `private_uploads`), then refuses to finish if any real email is left.
+`bash /var/www/travel_site_staging/scripts/deploy_staging.sh [branch]` puts a branch on staging through the same
+`deploy.sh` (which reads `SBL_APP` / `SBL_SITE` / `SBL_SETTINGS` / `SBL_SERVICE` / `SBL_CURL_AUTH`, defaulting to
+production). Sign in there as `user<id>@staging.invalid` with your usual password.
+
 **Deploying an update:** push to `main`, then on the server `bash /var/www/travel_site/scripts/deploy.sh`
 (asks for sudo first, then pull, requirements, `check --deploy`, `pg_dump` + migrate when migrations are
 pending, `collectstatic` **without** `--clear` so the still-running app keeps its old hashed files,
@@ -268,6 +279,12 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   notifications 0004); three open reports on a member-submitted, approved activity or event set it back to
   pending. **Suspend:** user admin actions set inactive + `suspended_at` / `suspension_reason` (accounts 0018).
   The staff dashboard shows open reports and accounts at 80%+ of the storage limit.
+- **Terms versions** (site roadmap R16): `TERMS_VERSION` / `PRIVACY_VERSION` in `base.py` — **bump the date in
+  the same change that edits `terms.html` / `privacy.html`**. Sign-up records them (`User.terms_version`,
+  `privacy_version`, `legal_accepted_at`; `User.accept_legal()`); `apps.accounts.middleware.LegalAcceptanceMiddleware`
+  sends a signed-in GET whose versions are out of date to `accept_legal` (`/accounts/legal/`), except the
+  paths in `apps/accounts/legal.EXEMPT_PREFIXES` (legal pages, log-out, admin, help, Your data, feeds, JSON,
+  app files). `LEGAL_ACCEPTANCE_REQUIRED = False` in the test settings (`test_legal_versions` turns it on).
 - **Public pages stay honest:** the home page's stats are real published-catalogue counts (`pages.views._catalogue_counts`, cached an hour); no invented numbers, testimonials or features. Every footer link must resolve (`test_site_pages` walks them). `pages:contact` emails `LEGAL_CONTACT_EMAIL` with Reply-To the sender (honeypot field, 3 per session per hour, disabled while the address is a placeholder); `pages:help` explains the lifecycle.
 - **Notifications:** `apps.notifications.services.notify(user, kind, title, message, url, obj)` creates a `Notification` and emails it unless `user.settings.email_notifications` is off or the address is a placeholder (mail errors are logged, never raised); `notify_staff(...)` reaches everyone with `can_access_staff`. Kinds (seeded by notifications 0002): `submission_reviewed` (from `Approvable.approve/reject/request_changes` → `_send_approval_notification`, to the submitter/creator, gated by `ApprovalSettings.notify_on_approval/notify_on_rejection`), `submission_received` (staff, from `Approvable.submit_for_review`, gated by `notify_on_submission`; the activity forms now call `submit_for_review` instead of setting PENDING by hand), `role_request_decided` (accounts sends the `accounts.signals.role_request_decided` signal; `notifications/receivers.py` reacts, because accounts may not import notifications), `trip_access_granted` (`trips/signals.py`, on a new `TripGrant` not granted to oneself), `trip_invite_accepted` (`trips/people.accept`, to the inviter; created on first use, not seeded). The header bell loads `notifications:unread_count` (JSON) after the page, so pages pay no query; `/notifications/` lists them, opening one marks it read. Cross-app notification tests live in `apps/pages/tests/test_notifications_flow.py` (pages may import everything).
 - **Visitor counts:** `visitor_count` on POI, City, Region (locations 0011) and Country = distinct members who ticked off a goal there or travelled (with an account) on a finished trip naming the city (`Trip.cities` / `Day.city`); regions/countries roll up their cities. `apps/bucketlists/visitors.recount()` recomputes everything (bucketlists may read trips; locations may not); `bucketlists/signals.py` queues one recount per transaction (on commit) when a completed goal or a finished trip changes, and `manage.py recount_visitors` runs nightly on production (James's crontab) because trips finish by date. Pages show "Members who've been" only when non-zero; top attractions / a city's places sort by it.

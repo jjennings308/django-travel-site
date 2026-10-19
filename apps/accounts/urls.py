@@ -3,10 +3,11 @@ from django.urls import path, re_path
 from django.contrib.auth import views as auth_views
 from apps.core.ratelimit import limit
 
-from . import views
+from . import legal, views
 
 urlpatterns = [
     # Registration & Email Verification
+    path('legal/', legal.accept_legal, name='accept_legal'),
     path('register/', limit("register", 5, 3600)(views.register), name='register'),
     path('role-requests/<int:pk>/document/', views.role_request_document, name='role_request_document'),
     path('registration-complete/', views.registration_complete, name='registration_complete'),

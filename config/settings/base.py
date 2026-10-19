@@ -81,6 +81,7 @@ MIDDLEWARE = [
     'apps.core.middleware.UserThemeMiddleware',
     'apps.core.middleware.CurrentUserMiddleware',  # who made a change (trips.changes)
     'apps.media_app.middleware.QuotaMiddleware',  # a refused upload -> message (R15)
+    'apps.accounts.middleware.LegalAcceptanceMiddleware',  # accept changed terms first (R16)
 ]
 
 CACHES = {
@@ -237,6 +238,12 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until 
 # Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
 GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
+
+# The current Terms of Service and Privacy policy (site roadmap R16): bump the date in the same change
+# that edits the text, and everyone signed in is asked to accept it again on their next visit.
+TERMS_VERSION = "2026-10-19"
+PRIVACY_VERSION = "2026-10-19"
+LEGAL_ACCEPTANCE_REQUIRED = True  # off only in the test settings
 
 LEGAL = {
     "entity": os.environ.get("LEGAL_ENTITY_NAME", "[Legal entity name]"),

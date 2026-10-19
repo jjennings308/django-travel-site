@@ -76,3 +76,15 @@ class CurrentUserMiddleware:
         from .current import acting_as
         with acting_as(getattr(request, "user", None)):
             return self.get_response(request)
+
+
+class NoIndexMiddleware:
+    """Staging only: tell search engines not to index anything (site roadmap R16)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response["X-Robots-Tag"] = "noindex, nofollow"
+        return response

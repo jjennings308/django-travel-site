@@ -97,6 +97,7 @@ def register(request):
             try:
                 with transaction.atomic():
                     user = form.save(commit=False)
+                    user.accept_legal(save=False)  # they ticked "I agree" (site roadmap R16)
                     
                     # If staff is creating the user, activate immediately
                     if request.user.is_authenticated and request.user.can_access_staff:

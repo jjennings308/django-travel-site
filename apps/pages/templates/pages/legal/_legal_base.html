@@ -22,7 +22,7 @@ Shared layout for the Terms, Privacy and Safety pages. Child templates fill {% b
 
   <header class="mb-8">
     <h1 class="sbl-page-title">{{ page_title }}</h1>
-    <p class="sbl-page-subtitle">Effective {{ legal.effective_date }}</p>
+    <p class="sbl-page-subtitle">Effective {{ legal.effective_date }}{% if legal.version %} · Version {{ legal.version }}{% endif %}</p>
   </header>
 
   <div class="sbl-card p-6 leading-relaxed text-warm-800 md:p-8 [&_a]:text-earth-clay [&_a]:underline [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-warm-900 [&_h2:first-child]:mt-0 [&_li]:mb-1 [&_p]:mb-4 [&_strong]:text-warm-900 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6">

@@ -26,8 +26,11 @@
   {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
   {% include "partials/_offline_cache.html" %}
+  {% if IS_STAGING %}<meta name="robots" content="noindex, nofollow">{% endif %}
 </head>
 <body class="bg-white text-warm-900 min-h-screen">
+  {% if IS_STAGING %}<div class="bg-amber-300 px-4 py-1.5 text-center text-sm font-semibold text-amber-950 print:hidden" role="note" data-staging-bar>Staging — not the real site. Emails are never sent; data is a disguised copy and is replaced every night.</div>{% endif %}
+
   
   {# Header - Simple version without sidebar toggle #}
   {% block header %}
