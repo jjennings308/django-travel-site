@@ -14,12 +14,10 @@ SITE_URL = os.environ.get("SITE_URL", "https://staging.sharebucketlist.com")  # 
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))  # noqa: F405
 MIDDLEWARE = [*MIDDLEWARE, "apps.core.middleware.NoIndexMiddleware"]  # noqa: F405
 
-# Its own rate-limit and error-email counts: sharing production's /tmp folders would let a staging
-# error silence the same error's email from production for an hour.
+# Its own rate-limit and error-email counts, kept in memory: staging runs one worker, so nothing needs
+# sharing, and files under /tmp can end up owned by another user (that broke sign-in once, 2026-10-19).
 CACHES = {
     **CACHES,  # noqa: F405
-    "alerts": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-               "LOCATION": "/tmp/sharebucketlist-staging-alerts"},
-    "ratelimit": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-                  "LOCATION": "/tmp/sharebucketlist-staging-ratelimit"},
+    "alerts": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "staging-alerts"},
+    "ratelimit": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "staging-ratelimit"},
 }
