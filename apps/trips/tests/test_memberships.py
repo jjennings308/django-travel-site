@@ -17,8 +17,10 @@ User = get_user_model()
 
 class CopyMigrationTests(RestoringTransactionTestCase):
     BEFORE = [("trips", "0041_membership_catalogue_program"),
-              ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more")]
-    AFTER = [("trips", "0042_copy_user_rewards_memberships"), ("rewards", "0003_delete_userrewardsmembership")]
+              ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more"),
+              ("reviews", "0003_alter_review_user")]  # reviews 0004 (R17) needs later trips
+    AFTER = [("trips", "0042_copy_user_rewards_memberships"), ("rewards", "0003_delete_userrewardsmembership"),
+             ("reviews", "0003_alter_review_user")]
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)

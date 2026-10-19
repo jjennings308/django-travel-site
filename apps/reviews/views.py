@@ -87,3 +87,36 @@ def report(request, pk):
                  exclude=request.user)
     messages.success(request, "Thanks, our team will take a look.")
     return redirect(back)
+
+
+@login_required
+def trip_rate(request, pk):
+    """Rate a finished trip's places (site roadmap R17); the rules are in ``trip_ratings``."""
+    from apps.trips.models import Trip
+    from . import trip_ratings
+    from .services import review_by
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=pk)
+    items = trip_ratings.targets(trip)
+    if request.method == "POST":
+        if request.POST.get("skip"):
+            trip_ratings.skip(trip, request.user)
+            messages.info(request, "No problem — we won't ask about this trip again.")
+            return redirect("trips:trip_detail", pk=trip.pk)
+        answers = {}
+        for kind, item in items:
+            field = f"{kind}-{item.pk}"
+            rating = request.POST.get(f"{field}-rating", "")
+            if rating.isdigit() and 1 <= int(rating) <= 5:
+                answers[(kind, item.pk)] = (int(rating), request.POST.get(f"{field}-comment", "").strip()[:2000])
+        saved = trip_ratings.save(trip, request.user, answers)
+        messages.success(request, f"Thanks — {saved} rating{'s' if saved != 1 else ''} saved." if saved
+                         else "Nothing rated; you can come back to this page any time.")
+        return redirect("trips:trip_detail", pk=trip.pk)
+    rows = []
+    for kind, item in items:
+        existing = review_by(request.user, item)
+        rows.append({"kind": kind, "item": item, "field": f"{kind}-{item.pk}",
+                     "label": "City" if kind == "city" else "Place",
+                     "rating": existing.rating if existing else None, "comment": existing.comment if existing else ""})
+    return render(request, "reviews/trip_rate.html", {"trip": trip, "rows": rows,
+                                                      "verified": trip_ratings.was_there(trip, request.user)})

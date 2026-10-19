@@ -25,6 +25,7 @@ KINDS = {
     "trip_invite_accepted": "Someone accepted your trip invitation",
     "trip_changed": "A trip you're on changed",
     "content_reported": "Something in the catalogue was reported",
+    "trip_rating": "Rate a finished trip",
     "badge_earned": "You earned a badge",
     "review_reported": "A review was reported",
 }

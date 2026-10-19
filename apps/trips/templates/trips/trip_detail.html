@@ -139,6 +139,7 @@
       {% if trip.destination %}<p><span class="card-kicker mr-1">Destination</span> {{ trip.destination }}</p>{% endif %}
       {% include "partials/_trip_goals_link.html" %}
       {% include "partials/_trip_bucket_prompt.html" %}
+      {% if trip.is_completed %}{% url 'reviews:trip_rate' trip.pk as rate_url %}{% if rate_url %}<p><a class="link-quiet font-medium" href="{{ rate_url }}" data-rate-link>Rate the places from this trip</a></p>{% endif %}{% endif %}
     </div>
     {% if trip.notes %}<p class="note mt-4 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
   </section>

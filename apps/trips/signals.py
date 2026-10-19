@@ -17,11 +17,15 @@ other.
 
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
+from django.dispatch import Signal, receiver
 
 from .models import ConfirmationFile, Traveler, TripGrant
 
 User = get_user_model()
+
+# Sent once a day by manage.py send_trip_digests; apps above trips hook their daily jobs onto it
+# (reviews: trip rating prompts, site roadmap R17). Receivers may return a line to print.
+daily_run = Signal()
 
 
 def display_name(user):

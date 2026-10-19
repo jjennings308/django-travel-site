@@ -24,8 +24,10 @@ class MoveNumbersMigrationTests(RestoringTransactionTestCase):
     # rewards is pinned too: its 0003 has to wait for trips 0042 (run_before), so leaving rewards at
     # its newest migration would keep trips from stepping back this far (site roadmap R11).
     REWARDS = ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more")
-    BEFORE = [("trips", "0022_confirmation_links"), REWARDS]
-    AFTER = [("trips", "0023_move_confirmation_numbers"), REWARDS]
+    # reviews 0004 (R17) needs today's trips too, so it's pinned below it as well.
+    REVIEWS = ("reviews", "0003_alter_review_user")
+    BEFORE = [("trips", "0022_confirmation_links"), REWARDS, REVIEWS]
+    AFTER = [("trips", "0023_move_confirmation_numbers"), REWARDS, REVIEWS]
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)

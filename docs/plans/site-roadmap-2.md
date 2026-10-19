@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R16 done (2026-10-19); R17 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R17 done (2026-10-19); R18 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -146,6 +146,11 @@ copy with emails rewritten to `+staging` placeholders and outgoing mail off).
 - **Tests:** version change asks again; staging settings refuse to send mail.
 
 ## R17 — Post-trip ratings feed reviews
+
+**Status: done** (2026-10-19, branch `r17-trip-ratings`). Decision: ask everyone with access ("Been
+there" only for roster travellers). Built in `reviews` (the layer table allows reviews → trips, not
+the reverse, so the plan's "trips → reviews" was wrong); the daily digest run triggers it through a
+`trips.signals.daily_run` signal, so no new cron line.
 
 **Ask James:** ask everyone on the trip, or only those with an account who travelled (on the roster)?
 (Recommended: account holders on the roster.)

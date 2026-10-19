@@ -44,6 +44,12 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Print what would be sent; send and mark nothing.")
 
     def handle(self, *args, dry_run=False, **options):
+        # Other apps' daily jobs ride on this run (site roadmap R17: reviews sends "How was your trip?").
+        if not dry_run:
+            from apps.trips.signals import daily_run
+            for _receiver, result in daily_run.send(sender=self.__class__):
+                if result:
+                    self.stdout.write(str(result))
         pending = list(TripChange.objects.filter(digest_sent_at=None).select_related("trip", "actor")
                        .order_by("trip_id", "when", "id"))
         if not dry_run:
