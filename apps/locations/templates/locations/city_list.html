@@ -51,6 +51,8 @@
                         </select>
                     </div>
 
+                    {% if show_status_filter %}
+
                     <div class="col-span-12 sm:col-span-6 md:col-span-2">
                         <label for="filter_status" class="sbl-label text-sm font-semibold">Status</label>
                         <select id="filter_status" name="status" class="sbl-input">
@@ -61,6 +63,8 @@
                             <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                         </select>
                     </div>
+
+                    {% endif %}
 
                     <div class="col-span-12 sm:col-span-6 md:col-span-2 flex flex-col justify-end gap-2">
                         <label class="flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="capital" value="true" {% if capital_only %}checked{% endif %} class="sbl-check">Capitals only</label>

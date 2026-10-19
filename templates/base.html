@@ -26,6 +26,7 @@
   {# Hide Alpine-controlled elements (dropdowns, drawer) until Alpine has started #}
   <style>[x-cloak] { display: none !important; }</style>
 
+  {% block seo %}{% include "partials/_seo.html" %}{% endblock %}
   {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
   {% include "partials/_offline_cache.html" %}

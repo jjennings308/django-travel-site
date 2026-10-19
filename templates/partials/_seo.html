@@ -1,0 +1,15 @@
+{% comment %}
+Description, canonical link, Open Graph / Twitter-card tags, optional noindex and JSON-LD (site roadmap R22). Views pass seo (apps.core.seo.meta); everything falls back to the site's name, tagline and share picture.
+{% endcomment %}{% load seo_tags %}<meta name="description" content="{{ seo.description|default:SITE_TAGLINE }}">
+  <link rel="canonical" href="{{ CANONICAL_URL }}">
+  <meta property="og:site_name" content="{{ SITE_NAME }}">
+  <meta property="og:type" content="{{ seo.type|default:'website' }}">
+  <meta property="og:title" content="{{ seo.title|default:SITE_NAME }}">
+  <meta property="og:description" content="{{ seo.description|default:SITE_TAGLINE }}">
+  <meta property="og:url" content="{{ CANONICAL_URL }}">
+  <meta property="og:image" content="{{ seo.image|default:DEFAULT_SHARE_IMAGE }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ seo.title|default:SITE_NAME }}">
+  <meta name="twitter:description" content="{{ seo.description|default:SITE_TAGLINE }}">
+  <meta name="twitter:image" content="{{ seo.image|default:DEFAULT_SHARE_IMAGE }}">
+  {% if seo.noindex %}<meta name="robots" content="noindex">{% endif %}{% if seo.jsonld %}{{ seo.jsonld|jsonld }}{% endif %}

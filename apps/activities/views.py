@@ -10,6 +10,7 @@ from django.http import HttpResponseForbidden
 from django.utils import timezone
 from .models import Activity, ActivityCategory, UserActivityBookmark
 from .forms import ActivityCreateForm, ActivityEditForm, ActivityQuickCreateForm
+from .seo import activity_meta
 from apps.approval_system.models import ApprovalStatus
 
 
@@ -102,6 +103,7 @@ def activity_detail(request, slug):
         'upcoming_seasons': upcoming,
         'past_seasons': past,
         'past_count': sum(len(events) for _, events in past),
+        'seo': activity_meta(activity),
     }
     
     return render(request, 'activities/activity_detail.html', context)

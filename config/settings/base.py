@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize', 
     'django.contrib.postgres',  # catalogue search: unaccent, trigram, full-text (R20)
+    'django.contrib.sitemaps',  # sitemap.xml (R22, apps/pages/sitemaps.py)
     'widget_tweaks',
     'taggit',
     'crispy_forms',

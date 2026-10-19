@@ -17,6 +17,7 @@ from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.locations.models import City, Country, Region
 
 from .forms import EventForm
+from .seo import event_meta
 from .models import Event
 
 
@@ -117,6 +118,7 @@ def event_detail(request, slug):
             if request.user.is_staff and event.needs_city_link and event.country_id else None
         ),
         "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (event.name, None)]),
+        "seo": event_meta(event),
     })
 
 

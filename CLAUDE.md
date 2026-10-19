@@ -347,7 +347,21 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   (venue for a place), most popular first; the card hides itself when both are empty. **Add to my calendar**
   `events:event_ics` (`/events/<slug>/calendar.ics`, anyone who may see the event, else 404): timed → `TZID` of
   `Event.timezone` (+1 h without an end), else all day with an exclusive end. `apps/core/ical.py` (`calendar`,
-  `vevent`, `DOMAIN`) is shared with the trip feed (R4; its output unchanged). Place pages still need a login.
+  `vevent`, `DOMAIN`) is shared with the trip feed (R4; its output unchanged).
+- **SEO basics** (site roadmap R22; no migrations): **place pages are public** — country / region / city / place
+  lists, details and the places map need no login (add/edit still do); `locations.views.visible(qs, user)`: staff
+  everything, members approved + their own submissions, visitors approved only (others 404); the lists' Status
+  filter is staff-only (`_status_filter`). `/robots.txt` (`apps/pages/sitemaps.robots_txt`; `DISALLOW` = trips,
+  public trip links, accounts, staff, admin, approval, notifications, bucket lists, search, What's on fragments,
+  report, reviews; staging disallows all) and `/sitemap.xml` (`django.contrib.sitemaps`, `SITEMAPS`; on
+  `SITE_URL`'s host, never the request's: public pages, everyone-guides, approved places, public activities,
+  approved events from a year ago on). Every page: `partials/_seo.html` (in both bases' `{% block seo %}`) writes
+  description, canonical (`CANONICAL_URL` = `SITE_URL` + path, no query), Open Graph + Twitter tags (default
+  picture `DEFAULT_SHARE_IMAGE`, from `site_branding`) from the view's `seo` (`apps.core.seo.meta`); detail views
+  pass `event_meta` / `activity_meta` / `place_meta` (`<app>/seo.py`), which carry schema.org JSON-LD (`Event` with
+  local times + offset, `TouristTrip`, `TouristAttraction` / `City` / `AdministrativeArea` / `Country`) written by
+  the `|jsonld` filter (`core/templatetags/seo_tags.py`, escapes `<` `>` `&`). `noindex` meta on search, public
+  bucket lists and shared trips.
 - **Badges:** `apps/bucketlists/badges.py` defines them (code, title, icon, a counter and a target: goals added, ticked off, countries, events, trips, photos). `award_badges(user)` runs after every goal save (signal) and photo upload, records each new badge once as a `BucketListMilestone` (unique user + `code`, bucketlists 0006) and sends a `badge_earned` notification. `progress(user)` feeds the strip (`bucketlists/partials/_badges.html`) on the dashboard and My adventures; the public bucket list shows earned ones only. `manage.py award_badges` backfills silently (`--notify` to announce).
 - **Recommendations:** `apps/recommendations/services.for_user(Goals)` scores public activities and upcoming events (new date for an undated goal > same category > same country > popular; one card per activity); `pages.views._goals` builds `Goals` from the user's bucket list because `recommendations` may not import `bucketlists`. The app has no models (R19 removed the unused ones, recommendations 0002).
 - **Goal photos and My albums** (`apps/bucketlists/photos.py`): a goal has photos at any stage (`bucketlists:item_photos`, linked from its card and edit page; owner only; the dashboard and public cards show the first via `views._attach_first_photos`). A personal album is a `media_app.MediaAlbum` with no trip (`trip__isnull=True`; trip albums are `Trip.album`): `bucketlists:albums` (sidebar under Done, and My adventures), new/edit/delete, pick from your own goal and trip photos (`album_pick`), or upload straight in (that Media is attached to the album and deleted with it; borrowed photos stay on their goal or trip). `MediaAlbum.add()` / `items()` / `ensure_cover()` keep order and cover for both kinds. Albums are private, or public on the owner's public bucket list when their profile is public.

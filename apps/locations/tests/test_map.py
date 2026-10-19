@@ -71,9 +71,11 @@ class PlacesMapTests(TestCase):
         self.assertContains(page, 'data-provider="google"')
         self.assertNotContains(page, "leaflet.js")  # no adapter yet: the page says the map isn't available
 
-    def test_login_required(self):
+    def test_open_to_visitors(self):
+        # Public since site roadmap R22; the data is published places only.
         self.client.logout()
-        self.assertEqual(self.client.get(reverse("locations:poi_map_data")).status_code, 302)
+        self.assertEqual(self.client.get(reverse("locations:poi_map")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("locations:poi_map_data")).status_code, 200)
 
 
 class TileRefererTests(TestCase):

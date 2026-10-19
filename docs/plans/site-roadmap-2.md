@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R21 done (2026-10-19); R22 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R22 done (2026-10-19); R23 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -232,6 +232,11 @@ What's on link to them) — for R22.
 - **Tests:** month boundaries and time zones; pending events hidden; query counts.
 
 ## R22 — SEO basics
+
+**Status: done** (2026-10-19, branch `r22-seo`). Decisions: place pages (countries, regions, cities, places,
+map) are open to signed-out visitors (approved items only; pending ones for their submitter and staff);
+members' public bucket lists are noindex and not in the sitemap. James's no-code step: add
+`https://sharebucketlist.com/sitemap.xml` in Google Search Console (and Bing Webmaster Tools if wanted).
 
 - `sitemap.xml` (published activities, events, places, help guides, public pages) and `robots.txt`
   disallowing `/trips/`, `/accounts/`, `/staff/`, `/admin/` and `/public/` (shared trip links are

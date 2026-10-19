@@ -15,6 +15,26 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import BreadcrumbPatterns
 
 from .forms import CityForm, POIForm, RegionForm
+from .seo import place_meta
+
+
+def visible(queryset, user):
+    """What ``user`` may see of a location queryset (site roadmap R22: the place pages are public):
+    staff everything; members approved items and their own submissions; visitors approved only."""
+    if user.is_authenticated and (user.is_staff or getattr(user, "can_access_staff", False)):
+        return queryset
+    approved = Q(approval_status=ApprovalStatus.APPROVED)
+    return queryset.filter(approved | Q(submitted_by=user) if user.is_authenticated else approved)
+
+
+def _status_filter(request, queryset):
+    """The lists' Status filter, for staff only (everyone else sees ``visible`` items)."""
+    user = request.user
+    staff = user.is_authenticated and (user.is_staff or getattr(user, "can_access_staff", False))
+    status = request.GET.get('status', 'all') if staff else 'all'
+    if status != 'all':
+        queryset = queryset.filter(approval_status=status)
+    return visible(queryset, user), status, staff
 
 
 def pictures_first(queryset, *order):
@@ -83,19 +103,13 @@ def location_dashboard(request):
 # COUNTRY VIEWS
 # ============================================================================
 
-@login_required
 def country_list(request):
     """List all countries with filtering"""
     
-    status_filter = request.GET.get('status', 'all')
     search_query = request.GET.get('q', '')
     continent_filter = request.GET.get('continent', '')
     
-    countries = Country.objects.select_related('featured_media').all()
-    
-    # Apply filters
-    if status_filter != 'all':
-        countries = countries.filter(approval_status=status_filter)
+    countries, status_filter, show_status = _status_filter(request, Country.objects.select_related('featured_media'))
     
     if search_query:
         countries = countries.filter(
@@ -116,7 +130,7 @@ def country_list(request):
     
     context = {
         'page_obj': page_obj,
-        'status_filter': status_filter,
+        'status_filter': status_filter, 'show_status_filter': show_status,
         'search_query': search_query,
         'continent_filter': continent_filter,
         'continents': [choice[0] for choice in Country._meta.get_field('continent').choices],
@@ -126,12 +140,11 @@ def country_list(request):
     return render(request, 'locations/country_list.html', context)
 
 
-@login_required
 def country_detail(request, slug):
     """View country details with regions and cities"""
     
     country = get_object_or_404(
-        Country.objects.select_related('featured_media')
+        visible(Country.objects.all(), request.user).select_related('featured_media')
         .prefetch_related('regions', 'cities')
         .annotate(
             _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED)),
@@ -141,7 +154,8 @@ def country_detail(request, slug):
     )
     
     # Get regions with city count
-    regions = pictures_first(country.regions.annotate(total_cities=Count('cities')), 'name')
+    regions = pictures_first(visible(country.regions.all(), request.user).annotate(
+        total_cities=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED))), 'name')
     
     # Get major cities
     cities = pictures_first(country.cities.filter(
@@ -161,6 +175,7 @@ def country_detail(request, slug):
         'cities': cities,
         'featured_pois': featured_pois,
         'breadcrumb_list': BreadcrumbPatterns.country_detail(country),
+        'seo': place_meta('country', country),
     }
     
     return render(request, 'locations/country_detail.html', context)
@@ -303,19 +318,13 @@ def country_edit(request, slug):
 # REGION VIEWS
 # ============================================================================
 
-@login_required
 def region_list(request):
     """List all regions with filtering"""
     
-    status_filter = request.GET.get('status', 'all')
     country_id = request.GET.get('country')
     search_query = request.GET.get('q', '')
     
-    regions = Region.objects.select_related('country', 'featured_media').all()
-    
-    # Apply filters
-    if status_filter != 'all':
-        regions = regions.filter(approval_status=status_filter)
+    regions, status_filter, show_status = _status_filter(request, Region.objects.select_related('country', 'featured_media'))
     
     if country_id:
         regions = regions.filter(country_id=country_id)
@@ -338,7 +347,7 @@ def region_list(request):
     
     context = {
         'page_obj': page_obj,
-        'status_filter': status_filter,
+        'status_filter': status_filter, 'show_status_filter': show_status,
         'search_query': search_query,
         'countries': countries,
         'selected_country': country_id,
@@ -348,12 +357,11 @@ def region_list(request):
     return render(request, 'locations/region_list.html', context)
 
 
-@login_required
 def region_detail(request, slug):
     """View region details"""
     
     region = get_object_or_404(
-        Region.objects.select_related('country', 'featured_media')
+        visible(Region.objects.all(), request.user).select_related('country', 'featured_media')
         .prefetch_related('cities')
         .annotate(_city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED))),
         slug=slug
@@ -367,7 +375,8 @@ def region_detail(request, slug):
     context = {
         'region': region, 'can_edit': can_edit(request.user, region),
         'cities': cities,
-        'breadcrumb_list': BreadcrumbPatterns.region_detail(region)
+        'breadcrumb_list': BreadcrumbPatterns.region_detail(region),
+        'seo': place_meta('region', region),
     }
     
     return render(request, 'locations/region_detail.html', context)
@@ -442,21 +451,15 @@ def region_add(request):
 # CITY VIEWS
 # ============================================================================
 
-@login_required
 def city_list(request):
     """List all cities with filtering"""
     
-    status_filter = request.GET.get('status', 'all')
     country_id = request.GET.get('country')
     region_id = request.GET.get('region')
     search_query = request.GET.get('q', '')
     capital_only = request.GET.get('capital') == 'true'
     
-    cities = City.objects.select_related('country', 'region', 'featured_media').all()
-    
-    # Apply filters
-    if status_filter != 'all':
-        cities = cities.filter(approval_status=status_filter)
+    cities, status_filter, show_status = _status_filter(request, City.objects.select_related('country', 'region', 'featured_media'))
     
     if country_id:
         cities = cities.filter(country_id=country_id)
@@ -485,7 +488,7 @@ def city_list(request):
     
     context = {
         'page_obj': page_obj,
-        'status_filter': status_filter,
+        'status_filter': status_filter, 'show_status_filter': show_status,
         'search_query': search_query,
         'countries': countries,
         'regions': Region.objects.filter(country__approval_status=ApprovalStatus.APPROVED).order_by('name'),
@@ -498,12 +501,11 @@ def city_list(request):
     return render(request, 'locations/city_list.html', context)
 
 
-@login_required
 def city_detail(request, slug):
     """View city details"""
     
     city = get_object_or_404(
-        City.objects.select_related('country', 'region', 'featured_media')
+        visible(City.objects.all(), request.user).select_related('country', 'region', 'featured_media')
         .prefetch_related('pois')
         .annotate(_poi_count=Count('pois', filter=Q(pois__approval_status=ApprovalStatus.APPROVED))),
         slug=slug
@@ -518,7 +520,8 @@ def city_detail(request, slug):
     context = {
         'city': city, 'can_edit': can_edit(request.user, city),
         'pois': pois,
-        'breadcrumb_list': BreadcrumbPatterns.city_detail(city)
+        'breadcrumb_list': BreadcrumbPatterns.city_detail(city),
+        'seo': place_meta('city', city),
     }
     
     return render(request, 'locations/city_detail.html', context)
@@ -638,7 +641,6 @@ def _place_filter_choices():
     }
 
 
-@login_required
 def poi_map(request):
     """All published places on a map, with the same filters as the Places list."""
     _, filters = _place_filters(request, POI.objects.none())
@@ -650,7 +652,6 @@ def poi_map(request):
     })
 
 
-@login_required
 def poi_map_data(request):
     """Published places as GeoJSON (the map's data; provider-neutral)."""
     pois = POI.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related(
@@ -672,14 +673,11 @@ def poi_map_data(request):
     return JsonResponse({'type': 'FeatureCollection', 'features': features})
 
 
-@login_required
 def poi_list(request):
     """List all POIs with filtering"""
     
-    status_filter = request.GET.get('status', 'all')
-    pois = POI.objects.select_related('city', 'city__country', 'featured_media', 'poi_type').all()
-    if status_filter != 'all':
-        pois = pois.filter(approval_status=status_filter)
+    pois, status_filter, show_status = _status_filter(
+        request, POI.objects.select_related('city', 'city__country', 'featured_media', 'poi_type'))
     pois, filters = _place_filters(request, pois)
     search_query, poi_type, country_id = filters['q'], filters['type'], filters['country']
 
@@ -693,7 +691,7 @@ def poi_list(request):
     context = {
         **_place_filter_choices(),
         'page_obj': page_obj,
-        'status_filter': status_filter,
+        'status_filter': status_filter, 'show_status_filter': show_status,
         'search_query': search_query,
         'selected_type': poi_type,
         'selected_country': country_id,
@@ -703,18 +701,18 @@ def poi_list(request):
     return render(request, 'locations/poi_list.html', context)
 
 
-@login_required
 def poi_detail(request, slug):
     """View POI details"""
     
     poi = get_object_or_404(
-        POI.objects.select_related('city', 'city__country', 'city__region', 'featured_media', 'poi_type'),
+        visible(POI.objects.all(), request.user).select_related('city', 'city__country', 'city__region', 'featured_media', 'poi_type'),
         slug=slug
     )
         
     context = {
         'poi': poi, 'can_edit': can_edit(request.user, poi),
-        'breadcrumb_list': BreadcrumbPatterns.poi_detail(poi)
+        'breadcrumb_list': BreadcrumbPatterns.poi_detail(poi),
+        'seo': place_meta('place', poi),
     }
     
     return render(request, 'locations/poi_detail.html', context)

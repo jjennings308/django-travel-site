@@ -49,5 +49,6 @@ class CityListRegionFilterTests(TestCase):
         html = page.content.decode()
         self.assertIn(f'value="{self.ks.pk}" data-country="{self.us.pk}" selected', html)
         self.assertIn("locations/country_filter.js", html)
-        order = [html.index(f'id="filter_{n}"') for n in ("q", "country", "region", "status")]
+        order = [html.index(f'id="filter_{n}"') for n in ("q", "country", "region")]
         self.assertEqual(order, sorted(order))
+        self.assertNotIn('id="filter_status"', html)  # staff only since R22

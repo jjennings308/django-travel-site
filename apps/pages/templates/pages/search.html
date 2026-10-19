@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}{# not for search engines (R22) #}
 
 {% block title %}{% if search_q %}{{ search_q }} — {% endif %}Search{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}

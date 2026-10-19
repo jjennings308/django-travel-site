@@ -3,6 +3,8 @@ import time
 
 from django.conf import settings
 
+from . import seo
+
 
 def site_branding(request):
     """Existing function - provides site branding information"""
@@ -10,6 +12,10 @@ def site_branding(request):
         "SITE_NAME": getattr(settings, "SITE_NAME", ""),
         "SITE_TAGLINE": getattr(settings, "SITE_TAGLINE", ""),
         "IS_STAGING": getattr(settings, "STAGING", False),  # the staging bar (R16)
+        # Link previews and search engines (R22, partials/_seo.html): the page's address on SITE_URL,
+        # without the query string, and the share picture used when a page has none of its own.
+        "CANONICAL_URL": seo.absolute(request.path),
+        "DEFAULT_SHARE_IMAGE": seo.default_image(),
         # In DEBUG, a changing ?v= on the stylesheet so the browser never shows
         # stale CSS while styles are being edited; empty in production.
         "TAILWIND_CSS_VERSION": int(time.time()) if settings.DEBUG else "",

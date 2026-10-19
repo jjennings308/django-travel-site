@@ -30,6 +30,8 @@
                 <div class="grid grid-cols-12 gap-4">
                     {% include "locations/partials/_place_filter_fields.html" %}
 
+                    {% if show_status_filter %}
+
                     <div class="col-span-12 md:col-span-2">
                         <label class="sbl-label text-sm font-semibold">Status</label>
                         <select name="status" class="sbl-input">
@@ -40,6 +42,8 @@
                             <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                         </select>
                     </div>
+
+                    {% endif %}
                     
                     <div class="col-span-12 md:col-span-2 flex items-end">
                         <button type="submit" class="sbl-btn sbl-btn-danger w-full">
