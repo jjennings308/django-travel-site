@@ -43,7 +43,12 @@
     <div class="empty-state">
       <svg class="mx-auto mb-3 size-10 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
       <p class="font-medium text-zinc-700">No trips yet</p>
-      <p class="mt-1">Trips appear here once someone gives you access to one.</p>
+      {% if can_create %}
+        <p class="mt-1">Start one from scratch, or plan one from a goal on your bucket list. Trips you're invited to show here too.</p>
+        <p class="mt-4 flex flex-wrap justify-center gap-3"><a class="btn" href="{% url 'trips:trip_create' %}">Start a trip</a>{% url 'bucketlists:dashboard' as goals_url %}{% if goals_url %}<a class="btn-quiet" href="{{ goals_url }}">Plan from a goal</a>{% endif %}</p>
+      {% else %}
+        <p class="mt-1">Trips appear here once someone invites you to one.</p>
+      {% endif %}
     </div>
   {% endif %}
 {% endblock %}

@@ -20,7 +20,7 @@ from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
 from .models import (
     User, Profile, TravelPreferences, AccountSettings, 
-    RoleRequest, VendorProfile, ContentProviderProfile
+    RoleRequest, VendorProfile, ContentProviderProfile, SignupCode
 )
 from .forms import (
     UserRegistrationForm, 
@@ -52,12 +52,36 @@ def _login_url(next_url):
     return f"{reverse('login')}?{urlencode({'next': next_url})}" if next_url else reverse('login')
 
 
+# Set by the trips app's invite page for a signed-out visitor holding an open invite (a unix
+# time until which they may register); a plain string contract, so accounts imports nothing.
+SIGNUP_SESSION_KEY = "signup_allowed_until"
+
+
+def _signup_allowed(request):
+    """(allowed, SignupCode or None): may this visitor register? (site roadmap R14)"""
+    if getattr(settings, "SIGNUP_MODE", "invite") == "open":
+        return True, None
+    if request.user.is_authenticated and request.user.can_access_staff:
+        return True, None
+    code = SignupCode.find(request.POST.get("signup_code") or request.GET.get("code"))
+    if code:
+        return True, code
+    import time
+    return bool(request.session.get(SIGNUP_SESSION_KEY, 0) > time.time()), None
+
+
 def register(request):
     """Handle user registration. ``?next=`` survives the verification email (back to the page
-    that sent the person here, e.g. a trip invite); ``?email=`` pre-fills the address."""
+    that sent the person here, e.g. a trip invite); ``?email=`` pre-fills the address.
+    While ``SIGNUP_MODE`` is "invite" only a trip invite or a sign-up code lets someone in."""
     if request.user.is_authenticated and not request.user.can_access_staff:
         return redirect(_safe_next(request) or 'pages:home')
     next_url = _safe_next(request)
+    allowed, code = _signup_allowed(request)
+    if not allowed:
+        typed = request.POST.get("signup_code") or request.GET.get("code") or ""
+        return render(request, 'accounts/register_closed.html', {
+            'next': next_url, 'bad_code': bool(typed), 'typed': typed[:20]})
     
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -79,21 +103,9 @@ def register(request):
                     Profile.objects.create(user=user)
                     TravelPreferences.objects.create(user=user)
                     AccountSettings.objects.create(user=user)
-                    
-                    # Handle role requests if checked during registration
-                    if form.cleaned_data.get('request_vendor_role'):
-                        RoleRequest.objects.create(
-                            user=user,
-                            requested_role=RoleRequest.RequestedRole.VENDOR,
-                            business_description="Applied during registration - pending details"
-                        )
-                    
-                    if form.cleaned_data.get('request_content_provider_role'):
-                        RoleRequest.objects.create(
-                            user=user,
-                            requested_role=RoleRequest.RequestedRole.CONTENT_PROVIDER,
-                            business_description="Applied during registration - pending details"
-                        )
+                    if code is not None:  # one use of the sign-up code (R14)
+                        from django.db.models import F
+                        SignupCode.objects.filter(pk=code.pk, uses_left__gt=0).update(uses_left=F("uses_left") - 1)
                     
                     # Send verification email only if self-registering
                     if not (request.user.is_authenticated and request.user.can_access_staff):
@@ -125,7 +137,8 @@ def register(request):
     else:
         form = UserRegistrationForm(initial={'email': request.GET.get('email', '')[:254]})
     
-    return render(request, 'accounts/register.html', {'form': form, 'next': next_url})
+    return render(request, 'accounts/register.html', {'form': form, 'next': next_url,
+                                                      'signup_code': code.code if code else ''})
 
 
 def send_verification_email(request, user, next_url=''):

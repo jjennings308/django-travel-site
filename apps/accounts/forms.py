@@ -171,24 +171,6 @@ class UserRegistrationForm(UserCreationForm):
     )
     
     # Optional role requests during registration
-    request_vendor_role = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'sbl-check'
-        }),
-        label='I want to apply to become a vendor',
-        help_text='Your account will be created immediately, but vendor features require approval'
-    )
-    
-    request_content_provider_role = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'sbl-check'
-        }),
-        label='I want to apply to become a content provider',
-        help_text='Your account will be created immediately, but content provider features require approval'
-    )
-    
     terms_accepted = forms.BooleanField(
         required=True,
         widget=forms.CheckboxInput(attrs={

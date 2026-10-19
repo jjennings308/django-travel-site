@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% comment %}
+Sign-up while SIGNUP_MODE is "invite" (site roadmap R14) and the visitor has neither a trip invite nor a sign-up code: say so, and take a code.
+{% endcomment %}
+{% block title %}Sign up · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto mt-12 w-full max-w-xl">
+  <div class="sbl-card p-6">
+    <h1 class="sbl-page-title mb-2">Sign-up is by invitation</h1>
+    <p class="mb-4 text-warm-700">{{ SITE_NAME }} is open to invited people for now. If someone invited you to a trip, open the link in their email: it lets you create your account. If you were given a sign-up code, enter it here.</p>
+    <form method="get" action="{% url 'register' %}" class="flex flex-wrap items-end gap-2">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <label class="flex flex-col"><span class="sbl-label">Sign-up code</span>
+        <input type="text" name="code" value="{{ typed }}" class="sbl-input font-mono uppercase" autocomplete="off" maxlength="20" required>
+      </label>
+      <button type="submit" class="sbl-btn sbl-btn-primary">Continue</button>
+    </form>
+    {% if bad_code %}<p class="mt-2 text-red-700">That code isn't valid, or it has been used up or has expired.</p>{% endif %}
+    <p class="mt-6 text-sm text-warm-500">Already have an account? <a class="sbl-link" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Log in</a>.</p>
+  </div>
+</div>
+{% endblock %}

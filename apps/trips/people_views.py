@@ -139,6 +139,10 @@ def invite_accept(request, token):
     if not invite.is_open:
         return render(request, "trips/invite_accept.html", context, status=410)
     if not request.user.is_authenticated:
+        # While sign-up is invite-only, holding an open invite lets this visitor register for a
+        # day (accounts reads the same session key; site roadmap R14).
+        import time
+        request.session["signup_allowed_until"] = time.time() + 86400
         here = request.get_full_path()
         context["login_url"] = f"{reverse('login')}?{urlencode({'next': here})}"
         context["register_url"] = f"{reverse('register')}?{urlencode({'next': here, 'email': invite.email})}"

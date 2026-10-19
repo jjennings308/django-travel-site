@@ -15,6 +15,7 @@
                     <form method="post">
                         {% csrf_token %}
                         {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+                        {% if signup_code %}<input type="hidden" name="signup_code" value="{{ signup_code }}">{% endif %}
                         
                         {% if form.errors %}
                             <div class="sbl-alert sbl-alert-danger">
@@ -93,43 +94,10 @@
                         </div>
                         
                         <!-- Optional Role Requests -->
-                        <div class="mb-4">
-                            <div class="sbl-card bg-warm-50">
-                                <div class="p-5">
-                                    <h6 class="font-semibold text-warm-900 mb-4">
-                                        <i class="bi bi-briefcase"></i> Professional Features (Optional)
-                                    </h6>
-                                    <p class="text-sm text-warm-500 mb-4">
-                                        Apply for additional capabilities. Your account will be created immediately, but these features require approval.
-                                    </p>
-                                    
-                                    <div class="flex items-center gap-2 mb-2">
-                                        {{ form.request_vendor_role }}
-                                        <label class="text-sm text-warm-700" for="{{ form.request_vendor_role.id_for_label }}">
-                                            <strong>{{ form.request_vendor_role.label }}</strong>
-                                        </label>
-                                        {% if form.request_vendor_role.help_text %}
-                                            <small class="sbl-help text-warm-500 block ml-6">{{ form.request_vendor_role.help_text }}</small>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        {{ form.request_content_provider_role }}
-                                        <label class="text-sm text-warm-700" for="{{ form.request_content_provider_role.id_for_label }}">
-                                            <strong>{{ form.request_content_provider_role.label }}</strong>
-                                        </label>
-                                        {% if form.request_content_provider_role.help_text %}
-                                            <small class="sbl-help text-warm-500 block ml-6">{{ form.request_content_provider_role.help_text }}</small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <div class="mb-4 flex items-center gap-2">
                             {{ form.terms_accepted }}
                             <label class="text-sm text-warm-700" for="{{ form.terms_accepted.id_for_label }}">
-                                I agree to the <a href="#" target="_blank">Terms and Conditions</a> <span class="text-red-700">*</span>
+                                I agree to the <a href="{% url 'pages:terms' %}" target="_blank" rel="noopener" class="sbl-link">Terms</a> and <a href="{% url 'pages:privacy' %}" target="_blank" rel="noopener" class="sbl-link">Privacy policy</a> <span class="text-red-700">*</span>
                             </label>
                             {% if form.terms_accepted.errors %}
                                 <div class="text-red-700">{{ form.terms_accepted.errors }}</div>

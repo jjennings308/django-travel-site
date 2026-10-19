@@ -18,6 +18,26 @@
   </dl>
 </header>
 
+{% if welcome %}
+  {# First-run welcome (site roadmap R14): ticks itself off; hidden for good with "Hide this". #}
+  <section class="mb-8 {{ card }} p-6" id="welcome">
+    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+      <h2 class="{{ h2 }}">Getting started</h2>
+      <form method="post" action="{% url 'pages:welcome_dismiss' %}">{% csrf_token %}<button type="submit" class="text-sm text-warm-500 hover:text-warm-900">Hide this</button></form>
+    </div>
+    <ol class="grid gap-4 md:grid-cols-3">
+      {% for step in welcome %}
+        <li class="rounded-lg border {% if step.done %}border-emerald-200 bg-emerald-50{% else %}border-warm-200{% endif %} p-4" data-welcome-step>
+          <p class="font-semibold text-warm-900">{% if step.done %}<span class="text-emerald-700">✓</span>{% else %}{{ forloop.counter }}.{% endif %} {{ step.title }}</p>
+          <p class="mt-1 text-sm text-warm-600">{{ step.text }}</p>
+          {% if not step.done %}<p class="mt-3 flex flex-wrap items-center gap-3 text-sm"><a class="{{ solid }}" href="{% url step.url %}">{{ step.title }}</a>{% include "partials/_help_link.html" with slug=step.help label=step.title text="How" %}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+    <p class="mt-4 text-sm text-warm-600">New here? Read <a class="sbl-link" href="{% url 'pages:help_guide' 'getting-started' %}">Getting started</a>.</p>
+  </section>
+{% endif %}
+
 {# Quick access #}
 <section class="mb-8">
   <h2 class="mb-4 {{ h2 }}">Quick Access</h2>

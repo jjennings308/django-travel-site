@@ -202,8 +202,17 @@ class CanCreateTripTests(AccessFixture):
         self.give(self.alice, Role.CREATOR)
         self.assertTrue(can_create_trip(self.alice))
 
-    def test_an_editor_grant_does_not_allow_creating(self):
-        self.give(self.alice, TripRole.EDITOR, trip=self.europe)
+    def test_any_active_account_may_create(self):
+        # Site roadmap R14: the staff-granted creator role is no longer needed.
+        self.assertTrue(can_create_trip(self.alice))
+
+    def test_blocked_or_inactive_may_not_create(self):
+        self.alice.trip_creation_blocked = True
+        self.alice.save()
+        self.assertFalse(can_create_trip(self.alice))
+        self.alice.trip_creation_blocked = False
+        self.alice.is_active = False
+        self.alice.save()
         self.assertFalse(can_create_trip(self.alice))
 
     def test_staff_may_create(self):

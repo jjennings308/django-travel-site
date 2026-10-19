@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, then add who's g
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-18
+updated: 2026-10-19
 
 # Starting a trip
 
@@ -11,7 +11,7 @@ There are two ways to start a trip. Either way you become its editor.
 
 ## From a goal on your bucket list
 
-The easiest way, open to every member. On a goal in **My bucket list** or **My dates**, click **Plan a trip**.
+The quickest way. On a goal in **My bucket list** or **My dates**, click **Plan a trip**.
 
 1. The trip's name, dates and place are filled in from the goal; change them if you like. "Trip dates can change later."
 2. Click **Start the trip**.
@@ -20,7 +20,7 @@ To put the goal on a trip you already have instead, pick it under **Or add it to
 
 ## From scratch
 
-Open **Trips** in the left menu and click **New trip**. You only see **New trip** if the site's staff have let you create trips; ask them if it's missing.
+Open **Trips** in the left menu and click **New trip** (or **Start a trip** when you have none yet).
 
 Fill in **The trip** and click **Create trip**:
 
@@ -51,7 +51,7 @@ To let others see or edit the trip, click **People** on the trip page and invite
 
 | Problem | What to do |
 | --- | --- |
-| No **New trip** button | Use **Plan a trip** on a bucket-list goal, or ask the site's staff to let you create trips. |
+| No **New trip** button | Your account can't start trips: it isn't verified yet (use the link in your sign-up email), or staff have stopped it. [Contact us](/contact/) if you think that's wrong. |
 | "The end date cannot be before the start date." | Swap the dates. |
 | A city isn't in the **Cities** list | It isn't in the catalogue yet. Add it under **Places**, or ask the site's staff. |
 | A day has no city after adding a stay | The stay needs a city, and the day only gets one if it had none. |

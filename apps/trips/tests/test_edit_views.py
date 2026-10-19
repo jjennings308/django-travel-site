@@ -122,8 +122,9 @@ class TripCreateTests(TripEditingFixture):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "New trip")
 
-    def test_a_viewer_may_not_create(self):
-        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
+    def test_a_blocked_account_may_not_create(self):
+        self.alice.trip_creation_blocked = True
+        self.alice.save()
         self.client.force_login(self.alice)
         self.assertEqual(
             self.client.get(reverse("trips:trip_create")).status_code, 403
@@ -427,16 +428,17 @@ class TripListLinkTests(TripEditingFixture):
         self.assertContains(response, reverse("trips:trip_edit", args=[self.trip.pk]))
         self.assertContains(response, reverse("trips:trip_delete", args=[self.trip.pk]))
 
-    def test_only_a_creator_sees_the_new_trip_button(self):
+    def test_the_new_trip_button_follows_can_create_trip(self):
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
-        self.assertNotContains(
+        self.assertContains(
             self.client.get(reverse("trips:trip_list")),
             reverse("trips:trip_create"),
         )
 
-        self.give(self.alice, Role.CREATOR)
-        self.assertContains(
+        self.alice.trip_creation_blocked = True
+        self.alice.save()
+        self.assertNotContains(
             self.client.get(reverse("trips:trip_list")),
             reverse("trips:trip_create"),
         )
@@ -499,11 +501,11 @@ class ListCapabilityEquivalenceTests(TripEditingFixture):
 
 class CreateTripGuardTests(TripEditingFixture):
     def test_can_create_trip_is_still_the_gate(self):
-        self.assertFalse(can_create_trip(self.alice))
-        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
-        self.assertFalse(can_create_trip(self.alice))
-        self.give(self.alice, Role.CREATOR)
+        # Site roadmap R14: any active account, unless staff blocked it.
         self.assertTrue(can_create_trip(self.alice))
+        self.alice.trip_creation_blocked = True
+        self.alice.save()
+        self.assertFalse(can_create_trip(self.alice))
         self.assertTrue(can_create_trip(self.staff))
 
 

@@ -155,6 +155,7 @@ def dashboard(request):
     badges = progress(user)
 
     context = {
+        'welcome': _welcome(user, bucket_list_count, trips_count),
         'recent_activities': recent_activities,
         'upcoming_trips': upcoming_trips,
         'bucket_list_stats': bucket_list_stats,
@@ -164,6 +165,34 @@ def dashboard(request):
     }
     
     return render(request, 'pages/dashboard.html', context)
+
+
+def _welcome(user, goals, trips):
+    """The first-run welcome's steps (site roadmap R14), or None once dismissed or all done."""
+    if user.welcome_dismissed_at:
+        return None
+    from apps.trips.models import TripInvite
+    # Their trips first, then everyone on them (counting on the same join would count only them).
+    theirs = Trip.objects.filter(grants__user=user).values("pk")
+    invited = (Trip.objects.filter(pk__in=theirs).annotate(people=Count("grants")).filter(people__gt=1).exists()
+               or TripInvite.objects.filter(invited_by=user).exists())
+    steps = [
+        {"done": goals > 0, "title": "Add a goal", "text": "Something you want to do or see, someday.",
+         "url": "bucketlists:item_add", "help": "bucket-list"},
+        {"done": trips > 0, "title": "Start a trip", "text": "Plan one from a goal, or start one from scratch.",
+         "url": "trips:trip_create", "help": "starting-a-trip"},
+        {"done": invited, "title": "Invite someone", "text": "Open a trip, click People, and invite who's going.",
+         "url": "trips:trip_list", "help": "sharing-and-access"},
+    ]
+    return None if all(step["done"] for step in steps) else steps
+
+
+@login_required
+def welcome_dismiss(request):
+    if request.method == "POST":
+        request.user.welcome_dismissed_at = timezone.now()
+        request.user.save(update_fields=["welcome_dismissed_at"])
+    return redirect("pages:dashboard")
 
 
 def about(request):

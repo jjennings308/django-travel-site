@@ -186,6 +186,14 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - `Event` uses `Approvable` too, plus `created_by`. Users submit events at `/events/add/` (staff publish directly); a submission is `pending` and visible only to its creator and staff (`Event.objects.visible_to(user)` / `event.is_visible_to(user)`, 404 otherwise) until approved in the "Events" approval queue (seeded by `events` migration 0003, with starter `EventCategory` rows). Creators can edit/delete until approval; editing a rejected or changes-requested event re-submits it.
 
 ### Users, roles and per-user settings
+- **Sign-up** (site roadmap R14): `SIGNUP_MODE` (`.env`, default `invite`; `open` lets anyone register).
+  In invite mode `accounts.views.register` needs a usable `accounts.SignupCode` (`?code=` / the form's
+  `signup_code`; made in the admin, each sign-up uses one) or the session key `signup_allowed_until`, which
+  the trips invite page sets for a signed-out visitor holding an open invite (a string contract — neither
+  app imports the other); otherwise `accounts/register_closed.html`. Staff creating accounts are exempt.
+  The sign-up form no longer has role boxes; Settings links **Request a role**. The dashboard's first-run
+  **welcome** (`pages.views._welcome`: add a goal, start a trip, invite someone; hidden when all done or with
+  Hide this → `User.welcome_dismissed_at`) links the `getting-started` guide.
 - Roles are Django Groups: `Vendors` and `Content Providers`. Users request a role through `accounts.RoleRequest`, and approving the request adds them to the group. Staff access uses the `accounts.can_access_staff_dashboard` permission. Check access with the `User` properties `is_vendor`, `can_access_staff` and `can_access_*_dashboard`.
 - Per-user data is spread over `Profile`, `AccountSettings` (`user.settings`: units, currency, language, timezone, theme) and `TravelPreferences` (`user.travel_preferences`). `UserPreferences` is the older combined model and was split into these.
 - Request-time plumbing:
@@ -272,9 +280,10 @@ that matter most:
   `RewardsMembership`.
 - **Access is per trip.** A `trips.TripGrant` row (one per trip and user) carries the person's
   `role` on that trip: `TripRole` viewer < commentor < editor; `role_capabilities()` is the rule.
-  No grant, no access. `accounts.UserRole` holds only `creator` ("may create trips", app-wide,
-  granted by staff); creating a trip gives its creator an editor grant. Delete needs an editor
-  grant *and* `created_by`; `restore` and `manage` (grant editing in the admin) are staff-only.
+  No grant, no access. **Creating a trip** is open to every active (email-verified) account unless
+  staff ticked `User.trip_creation_blocked` (site roadmap R14; `can_create_trip`); `accounts.UserRole`'s
+  `creator` is no longer checked (the staff trips dashboard still counts it). Creating a trip gives its
+  creator an editor grant. Delete needs an editor grant *and* `created_by`; `restore` and `manage` (grant editing in the admin) are staff-only.
   Editors also have `invite` (site roadmap R1): the **People** page `trips:trip_people` (`/trips/<pk>/people/`,
   `apps/trips/people_views.py`, rules in `apps/trips/people.py`; linked beside Map · Budget · Photos and from
   Edit trip) lists everyone with a grant to anyone who can see the trip; editors invite (email + role),

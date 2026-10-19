@@ -63,6 +63,12 @@ class User(AbstractUser, TimeStampedModel):
     # "Delete my account" (site roadmap R13): set when they ask; signing in again clears it; after
     # ``DELETION_GRACE_DAYS`` the daily purge deletes the account (pages.account_data).
     deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    # Site roadmap R14: staff can stop an account starting trips (abuse); everyone else may.
+    trip_creation_blocked = models.BooleanField(
+        default=False, help_text="Stops this account from starting new trips (it keeps the ones it is on)."
+    )
+    # The dashboard's first-run welcome, hidden with "Hide this" (R14).
+    welcome_dismissed_at = models.DateTimeField(null=True, blank=True)
     
     # Privacy settings
     profile_visibility = models.CharField(
@@ -762,3 +768,47 @@ class UserRole(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.get_role_display()}"
+
+
+def new_signup_code():
+    import secrets
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I to misread
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+class SignupCode(models.Model):
+    """A code that lets someone register while sign-up is invite-only (site roadmap R14).
+
+    Made by staff in the admin and handed out; each successful sign-up uses one. A trip invite
+    link (trips) also lets its holder register, through the session, without a code.
+    """
+
+    code = models.CharField(max_length=20, unique=True, default=new_signup_code)
+    note = models.CharField(max_length=200, blank=True, help_text="Who it's for, e.g. 'Book club'")
+    uses_left = models.PositiveIntegerField(default=1)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="Blank: never expires")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_signupcode"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.code} ({self.uses_left} left){' — ' + self.note if self.note else ''}"
+
+    def save(self, *args, **kwargs):
+        self.code = self.code.strip().upper()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_usable(self):
+        from django.utils import timezone
+        return self.uses_left > 0 and (self.expires_at is None or self.expires_at > timezone.now())
+
+    @classmethod
+    def find(cls, code):
+        """The usable code matching ``code`` (any case, spaces ignored), or None."""
+        found = cls.objects.filter(code=(code or "").replace(" ", "").upper()).first()
+        return found if found and found.is_usable else None
