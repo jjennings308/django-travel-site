@@ -19,3 +19,14 @@ def recount_target(sender, instance, raw=False, **kwargs):
         return
     if target is not None:
         recount(target)
+
+
+from apps.trips.signals import daily_run  # noqa: E402
+
+
+@receiver(daily_run, dispatch_uid="reviews_ask_trip_ratings")
+def ask_trip_ratings(sender, **kwargs):
+    """The daily run (send_trip_digests): "How was your trip?" for trips that just ended (R17)."""
+    from .trip_ratings import ask
+    sent = ask()
+    return f"Sent {sent} trip rating prompt(s)." if sent else ""

@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the overview, each day's plan, and wh
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-18
+updated: 2026-10-19
 
 # Reading your trip
 
@@ -41,6 +41,7 @@ Below the table:
 - **Journeys not on any day** and **Stays outside the trip's days** show bookings whose dates fall outside the trip's days, so nothing is hidden.
 - **Estimated trip cost**, when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)).
 - **Travelling**, **Cities** and **Destination**, then the trip's notes.
+- Once the trip is over, **Rate the places from this trip** ([rating a finished trip](/help/places-and-events/#rating-a-finished-trip)).
 - Editors also see **Tidy suggestions**: places where the text repeats a booking or contact recorded elsewhere.
 
 ## Days

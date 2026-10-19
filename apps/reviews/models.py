@@ -435,3 +435,19 @@ class ReviewReport(TimeStampedModel):
     
     def __str__(self):
         return f"Report by {self.reporter.username} on review {self.review.id}"
+
+
+class TripRatingPrompt(models.Model):
+    """One person was asked to rate a finished trip's places (site roadmap R17); asked once, ever.
+    ``answered_at`` / ``skipped_at`` record what they did (``reviews/trip_ratings.py``). Lives in
+    reviews because reviews may use trips, never the other way round."""
+
+    trip = models.ForeignKey("trips.Trip", on_delete=models.CASCADE, related_name="rating_prompts")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trip_rating_prompts")
+    asked_at = models.DateTimeField(auto_now_add=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+    skipped_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "reviews_tripratingprompt"
+        constraints = [models.UniqueConstraint(fields=["trip", "user"], name="tripratingprompt_once")]

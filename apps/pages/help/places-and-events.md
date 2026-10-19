@@ -3,7 +3,7 @@ summary: Browse what there is to do, suggest new places, activities and events, 
 audience: everyone
 section: Places & events
 order: 10
-updated: 2026-10-17
+updated: 2026-10-19
 
 # Places, activities and events
 
@@ -26,6 +26,12 @@ New suggestions are checked by the site's staff before others see them. Until th
 On a published activity, event, city or place, click **Write a review**, give it a rating and some words, and click **Post review**. You can write one review per item; **Edit your review** changes it, and **Delete review** removes it. Reviews are public and show your username. A review you share when ticking off a goal is marked **Been there**.
 
 If a review breaks the rules, click **Report**, say **What's wrong with it?** and click **Send report**. Staff decide whether to keep it.
+
+## Rating a finished trip
+
+The day after a trip ends, everyone on it gets a notification: **How was <the trip>?** Open it (or, on the finished trip's page, click **Rate the places from this trip**) to see the trip's cities and the places its activities visited.
+
+Give any of them 1 to 5 stars and a sentence if you like, then click **Save ratings**. Each rating is your review of that place, the same one you'd write on its page; rating it again here changes your review. If you travelled (you're on the trip's list of travellers), the review is marked **Been there**. Leave out anything you'd rather not rate, or click **Skip — don't ask again**.
 
 ## Problems
 

@@ -1,0 +1,43 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Rate a finished trip's places (reviews:trip_rate, site roadmap R17). Each row is a published catalogue city or place the trip went to; a rating becomes (or updates) that member's review. Unrated rows are left alone.
+{% endcomment %}
+{% block title %}Rate {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Rate</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">How was it? {% include "partials/_help_link.html" with slug="places-and-events" anchor="rating-a-finished-trip" label="rating a trip" %}</h1>
+      <p class="page-subtitle">Rate the places from this trip. Each rating is a review on that place's page{% if verified %}, marked “Been there”{% endif %}. Skip any you like.</p>
+    </div>
+  </div>
+  {% if rows %}
+    <form method="post" class="space-y-3">{% csrf_token %}
+      {% for row in rows %}
+        <fieldset class="card p-4" data-rate-row>
+          <legend class="sr-only">{{ row.item.name }}</legend>
+          <p class="font-medium">{{ row.item.name }} <span class="text-sm font-normal text-zinc-500">· {{ row.label }}</span></p>
+          <div class="mt-2 flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Rating for {{ row.item.name }}">
+            {% for n in "12345" %}
+              <label class="chip cursor-pointer"><input type="radio" name="{{ row.field }}-rating" value="{{ n }}"{% if row.rating|stringformat:"s" == n %} checked{% endif %}> {{ n }}★</label>
+            {% endfor %}
+          </div>
+          <label class="mt-2 block text-sm"><span class="sr-only">A sentence about {{ row.item.name }}</span>
+            <input type="text" name="{{ row.field }}-comment" value="{{ row.comment }}" maxlength="2000" placeholder="One sentence, if you like" class="w-full">
+          </label>
+        </fieldset>
+      {% endfor %}
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="btn">Save ratings</button>
+        <button type="submit" name="skip" value="1" class="btn-quiet">Skip — don't ask again</button>
+      </div>
+    </form>
+  {% else %}
+    <p class="empty-state">This trip has no catalogue cities or places to rate yet.</p>
+  {% endif %}
+{% endblock %}
