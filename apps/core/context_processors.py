@@ -9,6 +9,7 @@ def site_branding(request):
     return {
         "SITE_NAME": getattr(settings, "SITE_NAME", ""),
         "SITE_TAGLINE": getattr(settings, "SITE_TAGLINE", ""),
+        "IS_STAGING": getattr(settings, "STAGING", False),  # the staging bar (R16)
         # In DEBUG, a changing ?v= on the stylesheet so the browser never shows
         # stale CSS while styles are being edited; empty in production.
         "TAILWIND_CSS_VERSION": int(time.time()) if settings.DEBUG else "",

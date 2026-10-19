@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% comment %}Accept the current Terms / Privacy policy (accept_legal, site roadmap R16). Shown once per new version.{% endcomment %}
+{% block title %}Terms and privacy · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="mx-auto mt-10 max-w-xl">
+  <div class="sbl-card p-6">
+    <h1 class="sbl-page-title mb-2">{% if first %}Please confirm our terms{% else %}We've updated our terms{% endif %}</h1>
+    <p class="mb-4 text-warm-700">{% if first %}Before you carry on, please read and accept our{% else %}We've changed our{% endif %} <a class="sbl-link" href="{% url 'pages:terms' %}" target="_blank" rel="noopener">Terms of Service</a> (version {{ terms_version }}) and <a class="sbl-link" href="{% url 'pages:privacy' %}" target="_blank" rel="noopener">Privacy policy</a> (version {{ privacy_version }}).{% if not first %} Please read them, then accept to carry on.{% endif %}</p>
+    <form method="post" class="flex flex-wrap items-center gap-3">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="sbl-btn sbl-btn-primary">Accept and continue</button>
+    </form>
+    <form method="post" action="{% url 'logout' %}" class="mt-4 text-sm text-warm-500">{% csrf_token %}Don't agree? <button type="submit" class="sbl-link">Log out</button>{% url 'pages:my_data' as my_data_url %}{% if my_data_url %}, or <a class="sbl-link" href="{{ my_data_url }}#delete">delete your account</a>{% endif %}.</form>
+  </div>
+</div>
+{% endblock %}

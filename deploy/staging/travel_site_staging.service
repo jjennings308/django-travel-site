@@ -1,0 +1,30 @@
+# systemd unit for staging.sharebucketlist.com (site roadmap R16); see deploy/staging/README.md.
+# Install: sudo cp deploy/staging/travel_site_staging.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now travel_site_staging
+# Logs:    journalctl -u travel_site_staging -f   (prod.py logs to stderr)
+#
+# Assumes the repo is cloned to /var/www/travel_site_staging (the repo root is the Django
+# project; manage.py lives there) with a virtualenv at .venv and a .env file.
+# EnvironmentFile is parsed by systemd, not python-dotenv: lines starting with #
+# are ignored and $ is not expanded. Django-generated secret keys parse fine.
+[Unit]
+Description=ShareBucketList STAGING Gunicorn daemon
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/travel_site_staging
+RuntimeDirectory=travel_site_staging
+Environment="DJANGO_SETTINGS_MODULE=config.settings.staging"
+EnvironmentFile=/var/www/travel_site_staging/.env
+ExecStart=/var/www/travel_site_staging/.venv/bin/gunicorn \
+    --workers 1 \
+    --bind unix:/run/travel_site_staging/travel_site_staging.sock \
+    --access-logfile - \
+    config.wsgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

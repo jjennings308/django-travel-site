@@ -72,6 +72,22 @@ class User(AbstractUser, TimeStampedModel):
     # Suspended by staff (site roadmap R15): inactive, so no sign-in, trip access, feeds or email.
     suspended_at = models.DateTimeField(null=True, blank=True)
     suspension_reason = models.CharField(max_length=300, blank=True)
+    # Which Terms / Privacy versions they accepted, and when (site roadmap R16; settings.TERMS_VERSION).
+    terms_version = models.CharField(max_length=20, blank=True)
+    privacy_version = models.CharField(max_length=20, blank=True)
+    legal_accepted_at = models.DateTimeField(null=True, blank=True)
+
+    def accept_legal(self, save=True):
+        """Record that they accept the current Terms and Privacy policy."""
+        from django.utils import timezone
+        self.terms_version, self.privacy_version = settings.TERMS_VERSION, settings.PRIVACY_VERSION
+        self.legal_accepted_at = timezone.now()
+        if save:
+            self.save(update_fields=["terms_version", "privacy_version", "legal_accepted_at"])
+
+    @property
+    def needs_legal_acceptance(self):
+        return (self.terms_version, self.privacy_version) != (settings.TERMS_VERSION, settings.PRIVACY_VERSION)
     
     # Privacy settings
     profile_visibility = models.CharField(

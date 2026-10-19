@@ -46,6 +46,10 @@ When it's deleted:
 
 Our backups keep copies for up to 12 months before they expire; we never use them to bring an account back.
 
+## When our terms change
+
+When we change our Terms of Service or Privacy policy, the next time you sign in or open a page you're asked to read and accept the new version before carrying on. The pages you need stay open while you decide: the [Terms](/terms/), [Privacy policy](/privacy/), Help, and this page if you'd rather delete your account. Each policy shows its version near the top.
+
 ## Problems
 
 | Problem | What to do |

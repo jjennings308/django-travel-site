@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R15 done (2026-10-19); R16 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R16 done (2026-10-19); R17 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -127,6 +127,11 @@ sign-up only if spam appears (Recommended: honeypot + rate limit first, no CAPTC
   reports and suspension.
 
 ## R16 — Launch readiness: legal, terms versions, staging site
+
+**Status: done** (2026-10-19, branch `r16-launch-ready`). Decisions: `staging.sharebucketlist.com`
+(DNS added by James); nightly disguised copy. Additions: basic auth over staging, travel-document numbers
+blanked in the copy, staging has its own cache folders. James: the server steps in
+`deploy/staging/README.md`; existing accounts accept the terms once on their next visit.
 
 **Ask James:** the staging hostname and whether staging shows production data (Recommended: a nightly
 copy with emails rewritten to `+staging` placeholders and outgoing mail off).

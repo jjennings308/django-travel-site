@@ -200,21 +200,22 @@ def about(request):
     return render(request, "pages/about.html", {"catalogue": _catalogue_counts()})
 
 
-def _legal_page(request, template, title):
-    """Render one of the legal pages with the details from settings.LEGAL."""
+def _legal_page(request, template, title, version=""):
+    """Render one of the legal pages with the details from settings.LEGAL (and its version, R16)."""
     legal = dict(settings.LEGAL)
     legal["is_draft"] = any(str(v).startswith("[") for v in legal.values())
+    legal["version"] = version
     return render(request, template, {"legal": legal, "page_title": title})
 
 
 def terms(request):
     """Terms of Service."""
-    return _legal_page(request, "pages/legal/terms.html", "Terms of Service")
+    return _legal_page(request, "pages/legal/terms.html", "Terms of Service", settings.TERMS_VERSION)
 
 
 def privacy(request):
     """Privacy Policy."""
-    return _legal_page(request, "pages/legal/privacy.html", "Privacy Policy")
+    return _legal_page(request, "pages/legal/privacy.html", "Privacy Policy", settings.PRIVACY_VERSION)
 
 
 def safety(request):

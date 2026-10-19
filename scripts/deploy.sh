@@ -11,12 +11,18 @@
 # `collectstatic --clear` before a restart that then didn't happen (sudo prompt cancelled)
 # deleted those files and left the site unstyled. Now the old names stay until a restart
 # has succeeded, and stale ones are pruned only once they're a week old.
+#
+# Staging (site roadmap R16) runs this same script through scripts/deploy_staging.sh, which sets
+# SBL_APP / SBL_SITE / SBL_SETTINGS / SBL_SERVICE / SBL_CURL_AUTH; production uses the defaults.
 set -euo pipefail
-APP=/var/www/travel_site
-SITE=https://sharebucketlist.com
+APP="${SBL_APP:-/var/www/travel_site}"
+SITE="${SBL_SITE:-https://sharebucketlist.com}"
+SERVICE="${SBL_SERVICE:-travel_site}"
+CURL=(curl -s)
+[ -n "${SBL_CURL_AUTH:-}" ] && CURL+=(-u "$SBL_CURL_AUTH")   # staging sits behind basic auth
 cd "$APP"
 umask 002                                   # files stay group-writable for www-data
-export DJANGO_SETTINGS_MODULE=config.settings.prod
+export DJANGO_SETTINGS_MODULE="${SBL_SETTINGS:-config.settings.prod}"
 PY="$APP/.venv/bin/python"
 
 echo "== sudo (asked now so the restart at the end can't fail half-way)"
@@ -63,21 +69,21 @@ echo "== static files"
 "$PY" manage.py collectstatic --noinput | tail -1
 
 echo "== restart (sudo)"
-sudo systemctl restart travel_site
+sudo systemctl restart "$SERVICE"
 sleep 3
-systemctl is-active travel_site
+systemctl is-active "$SERVICE"
 
 echo "== live check"
-HOME_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE/")
+HOME_STATUS=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$SITE/")
 printf '   %-8s %s\n' "/" "$HOME_STATUS"
-CSS=$(curl -s "$SITE/accounts/login/" | grep -oE '/static/css/dist/styles[^"]*\.css' | head -1)
-CSS_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$CSS")
+CSS=$("${CURL[@]}" "$SITE/accounts/login/" | grep -oE '/static/css/dist/styles[^"]*\.css' | head -1)
+CSS_STATUS=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$SITE$CSS")
 printf '   %-8s %s -> %s\n' "css" "${CSS:-not found}" "$CSS_STATUS"
-HEALTH_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SITE/healthz/")
+HEALTH_STATUS=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$SITE/healthz/")
 printf '   %-8s %s\n' "/healthz" "$HEALTH_STATUS"
 if [ "$HOME_STATUS" != "200" ] || [ -z "$CSS" ] || [ "$CSS_STATUS" != "200" ] || [ "$HEALTH_STATUS" != "200" ]; then
   echo "!! The live site isn't right (home $HOME_STATUS, stylesheet ${CSS_STATUS:-none}, health $HEALTH_STATUS)."
-  echo "!! Try: sudo systemctl restart travel_site   then run this script again."
+  echo "!! Try: sudo systemctl restart $SERVICE   then run this script again."
   exit 1
 fi
 
