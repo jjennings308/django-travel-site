@@ -19,7 +19,7 @@
         </div>
         <p class="mt-1 whitespace-pre-line text-warm-700">{{ review.comment }}</p>
         <p class="mt-1 text-xs text-warm-500">
-          @{{ review.user.username }} · {{ review.created_at|date:"M j, Y" }}{% if review.visit_date %} · visited {{ review.visit_date|date:"M Y" }}{% endif %}
+          {{ review.author_name }} · {{ review.created_at|date:"M j, Y" }}{% if review.visit_date %} · visited {{ review.visit_date|date:"M Y" }}{% endif %}
           {% if user.is_authenticated and review.user_id != user.pk %}
             {% if review.pk in reported %}· reported{% else %}· <button type="button" class="hover:underline" @click="reporting = !reporting">Report</button>{% endif %}
           {% endif %}

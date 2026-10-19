@@ -106,7 +106,9 @@ class Media(TimeStampedModel):
     # Ownership and attribution
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # a deleted account's catalogue pictures stay (R13); personal photos
+        null=True,                  # are deleted explicitly, with their files (pages.account_data)
+        blank=True,
         related_name='uploaded_media'
     )
     

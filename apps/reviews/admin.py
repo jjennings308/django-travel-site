@@ -318,7 +318,7 @@ class ReviewResponseAdmin(admin.ModelAdmin):
             '<div><strong>{}</strong></div>'
             '<div style="color: #6B7280; font-size: 12px;">by {}</div>',
             obj.review.get_review_target_name(),
-            obj.review.user.username
+            obj.review.author_name
         )
     review_display.short_description = 'Review'
     
@@ -386,7 +386,7 @@ class ReviewHelpfulAdmin(admin.ModelAdmin):
             '<div style="color: #6B7280; font-size: 12px;">by {}</div>',
             stars,
             obj.review.get_review_target_name(),
-            obj.review.user.username
+            obj.review.author_name
         )
     review_display.short_description = 'Review'
     
@@ -470,7 +470,7 @@ class ReviewReportAdmin(admin.ModelAdmin):
             '<div style="color: #6B7280; font-size: 12px;">by {}</div>',
             stars,
             obj.review.get_review_target_name(),
-            obj.review.user.username
+            obj.review.author_name
         )
     review_display.short_description = 'Review'
     

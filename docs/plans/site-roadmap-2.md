@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12 done (2026-10-18); R13 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R13 done (2026-10-19); R14 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -58,6 +58,12 @@ requests? (Recommended: every push to a branch, plus `main`.)
   (tried once, then removed).
 
 ## R13 — Delete my account, download my data
+
+**Status: done** (2026-10-19, branch `r13-delete-export`). Decisions: shared trips stay with the others;
+30-day grace period. Changes from the plan: the download streams at the click (no stored file, no
+emailed link); four user FKs became SET_NULL so catalogue items, pictures, reviews and trip notes
+survive. Also bumped the GitHub Actions (checkout v5, setup-python v6, setup-node v5). James: add
+`purge_deleted_accounts` to the production crontab (daily) and approve the privacy page wording.
 
 **Ask James:** (a) when someone deletes their account, what happens to trips they created that others
 are on? (Recommended: the trip stays with its other editors — creatorship moves to the longest-standing

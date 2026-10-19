@@ -38,7 +38,7 @@ them is whether ``comment`` is set and whether the form has something in it.
   {% if comment %}
     <p class="text-sm text-zinc-500">
       Posted {{ comment.created_at|date:"j M Y, H:i" }} by
-      {{ comment.author.get_username }}. Deleting removes it for everyone.
+      {{ comment.author_name }}. Deleting removes it for everyone.
     </p>
   {% endif %}
 {% endblock %}

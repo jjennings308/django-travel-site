@@ -80,7 +80,7 @@ def report(request, pk):
     from apps.notifications.services import notify_staff
     hidden = " It has been hidden until someone looks at it." if not review.is_approved else ""
     notify_staff("review_reported", f"Review reported: {review.get_review_target_name()}",
-                 f"@{request.user.username} reported @{review.user.username}'s review of "
+                 f"@{request.user.username} reported {review.author_name}'s review of "
                  f"{review.get_review_target_name()} ({review.get_review_type_display()}): "
                  f"{form.instance.get_reason_display()}.{hidden}",
                  reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0", obj=review,

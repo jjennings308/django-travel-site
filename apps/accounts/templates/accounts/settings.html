@@ -182,12 +182,12 @@
                         <div class="col-span-12 md:col-span-6 mb-4">
                             <h6>Download Your Data</h6>
                             <p class="text-warm-500 text-sm">Export all your data</p>
-                            <button class="sbl-btn sbl-btn-outline sbl-btn-sm" disabled>Coming Soon</button>
+                            {% url 'pages:my_data' as my_data_url %}{% if my_data_url %}<a href="{{ my_data_url }}" class="sbl-btn sbl-btn-outline sbl-btn-sm">Download my data</a>{% endif %}
                         </div>
                         <div class="col-span-12 md:col-span-6 mb-4">
                             <h6 class="text-red-700">Delete Account</h6>
                             <p class="text-warm-500 text-sm">Permanently delete your account</p>
-                            <button class="sbl-btn sbl-btn-outline-danger sbl-btn-sm" disabled>Coming Soon</button>
+                            {% if my_data_url %}<a href="{{ my_data_url }}#delete" class="sbl-btn sbl-btn-outline-danger sbl-btn-sm">Delete my account</a>{% endif %}
                         </div>
                     </div>
                 </div>

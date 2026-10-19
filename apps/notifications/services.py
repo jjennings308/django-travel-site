@@ -41,6 +41,8 @@ def notification_type(kind):
 def wants_email(user):
     if not user.is_active or not user.email or user.email.endswith("@noemail.invalid"):
         return False
+    if getattr(user, "deletion_requested_at", None):  # waiting to be deleted: no emails (R13)
+        return False
     account_settings = getattr(user, "settings", None)  # accounts.AccountSettings, may not exist yet
     return getattr(account_settings, "email_notifications", True) if account_settings is not None else True
 

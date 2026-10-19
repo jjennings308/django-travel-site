@@ -16,7 +16,9 @@ class Review(TimeStampedModel):
     # Reviewer
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # a deleted account's reviews stay, as "A former member" (R13)
+        null=True,
+        blank=True,
         related_name='reviews'
     )
     
@@ -236,7 +238,12 @@ class Review(TimeStampedModel):
     
     def __str__(self):
         target = self.get_review_target_name()
-        return f"{self.user.username}'s review of {target} ({self.rating}★)"
+        return f"{self.author_name}'s review of {target} ({self.rating}★)"
+
+    @property
+    def author_name(self):
+        """@username, or "A former member" once the account is deleted (site roadmap R13)."""
+        return f"@{self.user.username}" if self.user_id else "A former member"
     
     @property
     def target(self):
@@ -373,7 +380,7 @@ class ReviewHelpful(TimeStampedModel):
     
     def __str__(self):
         helpful_text = "helpful" if self.is_helpful else "not helpful"
-        return f"{self.user.username} found review {helpful_text}"
+        return f"{self.user.username if self.user_id else 'A former member'} found review {helpful_text}"
 
 
 class ReviewReport(TimeStampedModel):
