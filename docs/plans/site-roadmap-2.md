@@ -108,7 +108,8 @@ content-provider role" boxes on the sign-up form? (Recommended: move them to Set
 
 **Status: done** (2026-10-19, branch `r15-abuse-guards`). Decisions: 1 GB per account; no CAPTCHA.
 Reports reuse `admin_tools.ReportedContent` (so R19 keeps that model); places are never hidden
-automatically. James: approve the privacy line about counting attempts per IP.
+automatically. The privacy line about counting attempts per IP was approved by James on 2026-10-19, extended
+to searches (R20's per-IP limit); `PRIVACY_VERSION` 2026-10-20.
 
 **Ask James:** per-account storage limit for photos and tickets (Recommended: 1 GB), and a CAPTCHA on
 sign-up only if spam appears (Recommended: honeypot + rate limit first, no CAPTCHA).

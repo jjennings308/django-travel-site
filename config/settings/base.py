@@ -244,7 +244,7 @@ GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
 # The current Terms of Service and Privacy policy (site roadmap R16): bump the date in the same change
 # that edits the text, and everyone signed in is asked to accept it again on their next visit.
 TERMS_VERSION = "2026-10-19"
-PRIVACY_VERSION = "2026-10-19"
+PRIVACY_VERSION = "2026-10-20"  # searches counted per IP (R20 limit, approved 2026-10-19)
 LEGAL_ACCEPTANCE_REQUIRED = True  # off only in the test settings
 
 LEGAL = {
