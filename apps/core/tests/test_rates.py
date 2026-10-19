@@ -87,3 +87,26 @@ class ConvertTests(TestCase):
         with self.assertNumQueries(0):
             for currency in ("USD", "GBP", "JPY"):
                 table.convert(Decimal("1"), "EUR", currency, on=date(2027, 9, 20))
+
+
+class CatalogueConversionTests(TestCase):
+    """The catalogue's convert_currency / |convert_curr use the stored ECB rates (site roadmap R19)."""
+
+    def setUp(self):
+        ExchangeRate.objects.create(date=date(2027, 9, 17), currency="USD", per_euro=Decimal("1.0000"))
+        ExchangeRate.objects.create(date=date(2027, 9, 20), currency="USD", per_euro=Decimal("1.1000"))
+        ExchangeRate.objects.create(date=date(2027, 9, 20), currency="GBP", per_euro=Decimal("0.8800"))
+
+    def test_converts_with_stored_rates_and_never_calls_out(self):
+        from django.template import Context, Template
+
+        from apps.core.utils.currency import convert_currency
+        with mock.patch("apps.core.rates.urlopen", side_effect=AssertionError("no network")):
+            self.assertEqual(convert_currency(100, "EUR", "USD"), Decimal("110.00"))  # latest
+            self.assertEqual(convert_currency(100, "EUR", "USD", on=date(2027, 9, 18)), Decimal("100.00"))
+            self.assertEqual(convert_currency(110, "USD", "GBP"), Decimal("88.00"))
+            self.assertEqual(convert_currency(5, "USD", "USD"), Decimal("5.00"))
+            self.assertIsNone(convert_currency(100, "EUR", "XYZ"))  # unknown: never a guess
+            self.assertIsNone(convert_currency(None, "EUR", "USD"))
+            rendered = Template("{% load conversion_tags %}[{{ 100|convert_curr:'EUR:USD' }}|{{ 1|convert_curr:'EUR:XYZ' }}]").render(Context())
+        self.assertEqual(rendered, "[$110.00|]")

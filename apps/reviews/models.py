@@ -30,7 +30,6 @@ class Review(TimeStampedModel):
         ('location', 'City'),
         ('poi', 'Place'),
         ('trip', 'Trip'),
-        ('site', 'Website Feedback')
     ]
     review_type = models.CharField(
         max_length=20,
@@ -264,8 +263,6 @@ class Review(TimeStampedModel):
             return self.poi.name
         elif self.trip:
             return self.trip.name
-        elif self.review_type == 'site':
-            return "Website"
         return "Unknown"
     
     @property
@@ -286,10 +283,6 @@ class Review(TimeStampedModel):
         """Validate that exactly one content reference is set"""
         from django.core.exceptions import ValidationError
         
-        if self.review_type == 'site':
-            # Site feedback doesn't need any FK
-            return
-        
         references = sum([
             bool(self.vendor),
             bool(self.activity),
@@ -303,84 +296,6 @@ class Review(TimeStampedModel):
             raise ValidationError('Must specify what is being reviewed')
         elif references > 1:
             raise ValidationError('Can only review one item at a time')
-
-
-class ReviewResponse(TimeStampedModel):
-    """Responses to reviews (from business owners or admins)"""
-    
-    review = models.OneToOneField(
-        Review,
-        on_delete=models.CASCADE,
-        related_name='response'
-    )
-    
-    responder = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='review_responses'
-    )
-    
-    RESPONDER_TYPES = [
-        ('owner', 'Business Owner'),
-        ('manager', 'Manager'),
-        ('admin', 'Site Admin'),
-        ('staff', 'Staff Member')
-    ]
-    responder_type = models.CharField(
-        max_length=20,
-        choices=RESPONDER_TYPES,
-        default='owner'
-    )
-    
-    response_text = models.TextField()
-    
-    is_approved = models.BooleanField(
-        default=True,
-        help_text="Response approved by moderators"
-    )
-    
-    class Meta:
-        db_table = 'review_responses'
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"Response to {self.review}"
-    
-    def save(self, *args, **kwargs):
-        # Update review to indicate it has a response
-        self.review.has_response = True
-        self.review.save(update_fields=['has_response'])
-        super().save(*args, **kwargs)
-
-
-class ReviewHelpful(TimeStampedModel):
-    """Track which users found reviews helpful"""
-    
-    review = models.ForeignKey(
-        Review,
-        on_delete=models.CASCADE,
-        related_name='helpful_votes'
-    )
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='helpful_review_votes'
-    )
-    
-    is_helpful = models.BooleanField(
-        default=True,
-        help_text="True if helpful, False if not helpful"
-    )
-    
-    class Meta:
-        db_table = 'review_helpful'
-        unique_together = [['review', 'user']]
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        helpful_text = "helpful" if self.is_helpful else "not helpful"
-        return f"{self.user.username if self.user_id else 'A former member'} found review {helpful_text}"
 
 
 class ReviewReport(TimeStampedModel):

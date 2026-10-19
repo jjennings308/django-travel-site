@@ -3,15 +3,7 @@ from django.contrib import admin
 from django.db.models import Count, Avg
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import Review, ReviewResponse, ReviewHelpful, ReviewReport
-
-
-class ReviewResponseInline(admin.StackedInline):
-    model = ReviewResponse
-    extra = 0
-    max_num = 1
-    fields = ['responder', 'responder_type', 'response_text', 'is_approved']
-    autocomplete_fields = ['responder']
+from .models import Review, ReviewReport
 
 
 @admin.register(Review)
@@ -55,7 +47,6 @@ class ReviewAdmin(admin.ModelAdmin):
     autocomplete_fields = ['user', 'vendor', 'activity', 'event', 'location', 'poi', 'trip']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
-    inlines = [ReviewResponseInline]
     
     fieldsets = (
         ('Reviewer', {
@@ -151,7 +142,6 @@ class ReviewAdmin(admin.ModelAdmin):
             'location': '#8B5CF6',
             'poi': '#8B5CF6',
             'trip': '#EC4899',
-            'site': '#6B7280'
         }
         color = colors.get(obj.review_type, '#6B7280')
         return format_html(
@@ -265,152 +255,6 @@ class ReviewAdmin(admin.ModelAdmin):
             'location',
             'poi',
             'trip'
-        )
-        return queryset
-
-
-@admin.register(ReviewResponse)
-class ReviewResponseAdmin(admin.ModelAdmin):
-    list_display = [
-        'review_display',
-        'responder',
-        'responder_type',
-        'is_approved',
-        'created_at'
-    ]
-    list_filter = [
-        'responder_type',
-        'is_approved',
-        'created_at'
-    ]
-    search_fields = [
-        'response_text',
-        'responder__username',
-        'review__title',
-        'review__user__username'
-    ]
-    autocomplete_fields = ['review', 'responder']
-    date_hierarchy = 'created_at'
-    ordering = ['-created_at']
-    
-    fieldsets = (
-        ('Review', {
-            'fields': ('review',)
-        }),
-        ('Responder', {
-            'fields': ('responder', 'responder_type')
-        }),
-        ('Response', {
-            'fields': ('response_text', 'is_approved')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
-    
-    readonly_fields = ['created_at', 'updated_at']
-    
-    actions = ['approve_responses', 'disapprove_responses']
-    
-    def review_display(self, obj):
-        return format_html(
-            '<div><strong>{}</strong></div>'
-            '<div style="color: #6B7280; font-size: 12px;">by {}</div>',
-            obj.review.get_review_target_name(),
-            obj.review.author_name
-        )
-    review_display.short_description = 'Review'
-    
-    def approve_responses(self, request, queryset):
-        updated = queryset.update(is_approved=True)
-        self.message_user(request, f'{updated} response(s) approved.')
-    approve_responses.short_description = 'Approve selected responses'
-    
-    def disapprove_responses(self, request, queryset):
-        updated = queryset.update(is_approved=False)
-        self.message_user(request, f'{updated} response(s) disapproved.')
-    disapprove_responses.short_description = 'Disapprove selected responses'
-    
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        queryset = queryset.select_related(
-            'review__user',
-            'review__vendor',
-            'review__activity',
-            'review__event',
-            'review__location',
-            'review__trip',
-            'responder'
-        )
-        return queryset
-
-
-@admin.register(ReviewHelpful)
-class ReviewHelpfulAdmin(admin.ModelAdmin):
-    list_display = [
-        'review_display',
-        'user',
-        'helpful_status_display',
-        'created_at'
-    ]
-    list_filter = [
-        'is_helpful',
-        'created_at'
-    ]
-    search_fields = [
-        'user__username',
-        'review__title',
-        'review__user__username'
-    ]
-    autocomplete_fields = ['review', 'user']
-    date_hierarchy = 'created_at'
-    ordering = ['-created_at']
-    
-    fieldsets = (
-        ('Vote', {
-            'fields': ('review', 'user', 'is_helpful')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
-    
-    readonly_fields = ['created_at', 'updated_at']
-    
-    def review_display(self, obj):
-        stars = '⭐' * obj.review.rating
-        return format_html(
-            '<div>{} {}</div>'
-            '<div style="color: #6B7280; font-size: 12px;">by {}</div>',
-            stars,
-            obj.review.get_review_target_name(),
-            obj.review.author_name
-        )
-    review_display.short_description = 'Review'
-    
-    def helpful_status_display(self, obj):
-        if obj.is_helpful:
-            return format_html(
-                '<span style="color: #10B981; font-weight: 500;">👍 Helpful</span>'
-            )
-        return format_html(
-            '<span style="color: #EF4444; font-weight: 500;">👎 Not Helpful</span>'
-        )
-    helpful_status_display.short_description = 'Vote'
-    helpful_status_display.admin_order_field = 'is_helpful'
-    
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        queryset = queryset.select_related(
-            'review__user',
-            'review__vendor',
-            'review__activity',
-            'review__event',
-            'review__location',
-            'review__trip',
-            'user'
         )
         return queryset
 
