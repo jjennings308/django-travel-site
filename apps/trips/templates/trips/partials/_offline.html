@@ -4,7 +4,7 @@ The trip page offline (site roadmap R6): register the worker (core/sw.js, served
 {% url 'service_worker' as sw_url %}{% url 'trips:trip_pdf' trip.pk as booklet_url %}
 <script>
 (function () {
-  var CACHE = "sbl-offline-{{ offline_key }}";
+  var CACHE = "sbl-offline-v2-{{ offline_key }}";  {# must match core/sw.js CACHE (v2 since R23) #}
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("{{ sw_url }}?u={{ offline_key }}{% if offline_debug %}&debug=1{% endif %}", { scope: "/trips/" }).catch(function () {});
   }

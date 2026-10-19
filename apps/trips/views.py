@@ -714,6 +714,8 @@ def trip_edit(request, pk):
             _warn_if_ready_with_open_tasks(request, trip)
             return redirect("trips:trip_detail", pk=trip.pk)
 
+    from .forms import share_choices
+    share_choices(form, *(formset for _key, _label, formset in formsets))  # one query per select list (R23)
     return render(
         request,
         "trips/trip_form.html",
@@ -725,6 +727,10 @@ def trip_edit(request, pk):
             "days": _days_with_counts(trip),
             "is_create": False,
             "checklist_templates": checklists.templates(),
+            # Counted in the query, not once per row (R23).
+            "edit_contacts": trip.contacts.annotate(link_count=Count("item_links")),
+            "edit_infos": trip.infos.annotate(link_count=Count("item_links")),
+            "edit_checklists": trip.checklists.annotate(item_count=Count("items")),
             **_edit_trip_travel_and_bookings(trip),
         },
     )

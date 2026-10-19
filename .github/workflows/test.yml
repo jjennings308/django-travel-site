@@ -1,9 +1,12 @@
-# Checks and the full test suite on every push to main (site roadmap R12).
+# Checks and the full test suite on every push to main (site roadmap R12) and on pull requests into it
+# (R23: Dependabot's monthly update PRs are tested before they're merged). Branch pushes don't run it.
 # A failing run emails whoever pushed. Same steps as "Before finishing a task" in CLAUDE.md.
 name: tests
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -48,6 +51,13 @@ jobs:
 
       - name: Python packages
         run: pip install -r requirements-dev.txt
+
+      - name: Known vulnerabilities in requirements.txt (pip-audit)
+        # Fails on any known vulnerability (R23). One that can't be fixed yet goes in .pip-audit-ignore.
+        run: |
+          pip install pip-audit==2.10.1
+          ignores=$(grep -oE '^[A-Za-z0-9-]+' .pip-audit-ignore | sed 's/^/--ignore-vuln /' | tr '\n' ' ' || true)
+          pip-audit -r requirements.txt --progress-spinner off $ignores
 
       - name: Layer check
         run: python scripts/check_layers.py

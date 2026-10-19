@@ -11,7 +11,9 @@
  * them all on sign-out and on any signed-out page.
  */
 const params = new URL(self.location).searchParams;
-const CACHE = "sbl-offline-" + (params.get("u") || "anon");
+// "v2" (site roadmap R23): CDN files now load with SRI (CORS), so copies cached before, fetched without
+// CORS, must go; activate deletes every other sbl-offline-* cache. Bump it when that happens again.
+const CACHE = "sbl-offline-v2-" + (params.get("u") || "anon");
 const DEBUG = params.get("debug") === "1";  // dev: static files aren't hashed, so fetch them fresh
 const PAGE = /^\/trips\/\d+\/$/;
 const SAVED = [PAGE, /^\/trips\/\d+\/booklet\.pdf$/, /^\/trips\/\d+\/files\/\d+\/$/];
