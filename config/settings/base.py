@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize', 
+    'django.contrib.postgres',  # catalogue search: unaccent, trigram, full-text (R20)
     'widget_tweaks',
     'taggit',
     'crispy_forms',

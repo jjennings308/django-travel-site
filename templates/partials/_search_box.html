@@ -1,0 +1,7 @@
+{% comment %}
+The catalogue search box in both headers (site roadmap R20): a plain GET form to pages:search; on a phone just a magnifier linking to the search page. Never printed.
+{% endcomment %}{% url 'pages:search' as search_url %}{% if search_url %}<form method="get" action="{{ search_url }}" role="search" class="hidden md:block print:hidden">
+  <label for="site-search" class="sr-only">Search places, activities and events</label>
+  <div class="relative"><i class="bi bi-search pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-warm-400"></i><input id="site-search" type="search" name="q" value="{{ search_q|default:'' }}" placeholder="Search places, activities…" class="w-48 rounded-md border border-warm-200 bg-warm-50 py-1.5 pl-8 pr-2 text-sm text-warm-800 placeholder:text-warm-400 focus:w-64 focus:border-earth-clay focus:bg-white focus:outline-none lg:w-56"></div>
+</form>
+<a href="{{ search_url }}" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-warm-600 hover:bg-warm-100 hover:text-warm-900 md:hidden print:hidden" title="Search" aria-label="Search"><i class="bi bi-search text-lg"></i></a>{% endif %}

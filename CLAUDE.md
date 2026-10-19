@@ -320,6 +320,18 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   live trips using it (`apps/trips/catalogue_counts.recount()`, run by the nightly `recount_visitors`); pages show
   "On trips" only via `shown_trip_count` (≥ `locations.models.TRIP_COUNT_MIN` = 2), never which trips. The
   `food` place type (Food & drink) was seeded by locations 0015.
+- **Catalogue search** (site roadmap R20; core 0002 enables `pg_trgm` + `unaccent`, trusted extensions the
+  DB owner may create; `django.contrib.postgres` installed): `pages:search` (`/search/`, everyone, 120 GETs a
+  minute per IP) over `apps/pages/search.py` (in `pages` because it reads every catalogue app). `ranked(qs, q)`:
+  full-text `SearchVector` per model (`FIELDS`: A name, B where, C category/type, D description; config
+  `english`, every column through `unaccent`, the query through `strip_accents`) + `TrigramWordSimilarity` on
+  the name (≥ 0.45, ≥ 0.7 under 5 letters) + a bonus for an exact (2.0) or leading (0.6) name, plus a substring
+  match from 3 letters. Published only: approved countries/regions/cities/places, `Activity.get_public_activities`,
+  `Event.objects.visible_to(user)` upcoming unless `past`. Kinds `KINDS` (area = countries + regions, city,
+  place, activity, event); `Filters` (kind, country slug, month — event start / activity `usual_months` —,
+  category, past; month/category leave activities and events). `grouped()` = up to 8 per kind, one query per
+  model, so the page is a fixed 8 queries; `?kind=` paginates one kind. The box is the shell partial
+  `partials/_search_box.html` in both headers (`url … as`). Results reuse `_catalogue_card` / `_event_card`.
 - **Badges:** `apps/bucketlists/badges.py` defines them (code, title, icon, a counter and a target: goals added, ticked off, countries, events, trips, photos). `award_badges(user)` runs after every goal save (signal) and photo upload, records each new badge once as a `BucketListMilestone` (unique user + `code`, bucketlists 0006) and sends a `badge_earned` notification. `progress(user)` feeds the strip (`bucketlists/partials/_badges.html`) on the dashboard and My adventures; the public bucket list shows earned ones only. `manage.py award_badges` backfills silently (`--notify` to announce).
 - **Recommendations:** `apps/recommendations/services.for_user(Goals)` scores public activities and upcoming events (new date for an undated goal > same category > same country > popular; one card per activity); `pages.views._goals` builds `Goals` from the user's bucket list because `recommendations` may not import `bucketlists`. The app has no models (R19 removed the unused ones, recommendations 0002).
 - **Goal photos and My albums** (`apps/bucketlists/photos.py`): a goal has photos at any stage (`bucketlists:item_photos`, linked from its card and edit page; owner only; the dashboard and public cards show the first via `views._attach_first_photos`). A personal album is a `media_app.MediaAlbum` with no trip (`trip__isnull=True`; trip albums are `Trip.album`): `bucketlists:albums` (sidebar under Done, and My adventures), new/edit/delete, pick from your own goal and trip photos (`album_pick`), or upload straight in (that Media is attached to the album and deleted with it; borrowed photos stay on their goal or trip). `MediaAlbum.add()` / `items()` / `ensure_cover()` keep order and cover for both kinds. Albums are private, or public on the owner's public bucket list when their profile is public.

@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R19 done (2026-10-19); R20 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R20 done (2026-10-19); R21 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -205,6 +205,9 @@ future vendor feature? (Recommended: remove; it can be rebuilt from git history.
 - **Tests:** price filters convert with stored rates; the suite passes with the apps/models gone.
 
 ## R20 — One search for the catalogue
+
+**Status: done** (2026-10-19, branch `r20-search`). Decisions: everyone may search (box in both headers);
+countries and regions included; accents ignored (`unaccent`). Extensions in core 0002.
 
 - One search box (header and `/search/`) over published activities, events (upcoming by default),
   cities and places, using Postgres full-text search (`SearchVector` with weights: name > place >
