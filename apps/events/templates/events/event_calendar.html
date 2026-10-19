@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Events · {{ first|date:"F Y" }}{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+{# The month calendar (site roadmap R21): a Monday-first grid from sm up, a list of busy days on a phone. An event shows on every day it runs. #}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="sbl-page-title">{{ first|date:"F Y" }}</h1>
+    <p class="sbl-page-subtitle">{% if event_count %}{{ event_count }} event{{ event_count|pluralize }} this month.{% else %}Nothing on this month yet.{% endif %}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a class="sbl-btn sbl-btn-outline" href="{% url 'events:calendar' prev.0 prev.1 %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" ><i class="bi bi-chevron-left"></i>{{ prev_first|date:"M Y" }}</a>
+    <a class="sbl-btn sbl-btn-outline" href="{% url 'events:calendar_today' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">Today</a>
+    <a class="sbl-btn sbl-btn-outline" href="{% url 'events:calendar' next.0 next.1 %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" >{{ next_first|date:"M Y" }}<i class="bi bi-chevron-right"></i></a>
+    <a class="sbl-btn sbl-btn-outline" href="{% url 'events:event_list' %}"><i class="bi bi-list-ul"></i>List</a>
+  </div>
+</header>
+
+<form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:items-end">
+  <div><label class="sbl-label" for="cal-category">Category</label>
+    <select id="cal-category" name="category" class="sbl-input"><option value="">All</option>{% for c in categories %}<option value="{{ c.slug }}" {% if filters.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="cal-country">Country</label>
+    <select id="cal-country" name="country" class="sbl-input"><option value="">Anywhere</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-funnel"></i>Filter</button>
+</form>
+
+<div class="hidden sm:block">
+  <div class="grid grid-cols-7 border-l border-t border-warm-200 text-sm">
+    <div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Mon</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Tue</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Wed</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Thu</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Fri</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Sat</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Sun</div>
+    {% for week in weeks %}{% for day in week %}
+      <div class="min-h-28 border-b border-r border-warm-200 p-1.5 {% if not day.in_month %}bg-warm-50/60 text-warm-400{% elif day.date < today %}bg-warm-50/40{% endif %}" {% if day.events %}id="day-{{ day.date|date:'Y-m-d' }}"{% endif %}>
+        <p class="mb-1 text-xs font-semibold {% if day.date == today %}inline-flex size-6 items-center justify-center rounded-full bg-earth-clay text-white{% elif day.date < today %}text-warm-400{% else %}text-warm-600{% endif %}">{{ day.date.day }}</p>
+        {% for event in day.shown %}<a href="{% url 'events:event_detail' event.slug %}" class="mb-0.5 block truncate rounded px-1.5 py-0.5 text-xs {% if event.approval_status != 'approved' %}border border-dashed border-earth-ochre bg-white text-warm-700{% else %}bg-earth-clay/10 text-earth-clay-dark hover:bg-earth-clay/20{% endif %}" title="{{ event.name }} · {{ event.place_name }}">{{ event.name }}</a>{% endfor %}
+        {% if day.more %}<a href="#list-{{ day.date|date:'Y-m-d' }}" class="block px-1.5 text-xs text-warm-500 hover:text-earth-clay">+{{ day.more }} more</a>{% endif %}
+      </div>
+    {% endfor %}{% endfor %}
+  </div>
+</div>
+
+{# Every busy day as a list: the whole view on a phone; on a laptop, where "+N more" leads. #}
+<section class="mt-8 {% if not busy_days %}hidden{% endif %}" aria-label="Days with events">
+  <h2 class="mb-3 text-lg font-semibold text-warm-900 sm:sr-only">Day by day</h2>
+  <ol class="space-y-4">
+    {% for day in busy_days %}
+      <li id="list-{{ day.date|date:'Y-m-d' }}" class="scroll-mt-20 {% if day.events|length <= 3 %}sm:hidden{% endif %}">
+        <p class="mb-1 text-sm font-semibold {% if day.date == today %}text-earth-clay{% elif day.date < today %}text-warm-400{% else %}text-warm-700{% endif %}">{{ day.date|date:"l j F" }}{% if day.date == today %} · today{% endif %}</p>
+        <ul class="sbl-card divide-y divide-warm-100">
+          {% for event in day.events %}<li><a class="flex min-h-11 flex-wrap items-baseline gap-x-2 px-4 py-2 hover:bg-warm-50" href="{% url 'events:event_detail' event.slug %}"><span class="font-medium text-warm-900">{{ event.name }}</span><span class="text-sm text-warm-500">{{ event.place_name }}{% if event.start_time and not event.is_all_day %} · {{ event.start_time|time:"H:i" }}{% endif %}{% if event.approval_status != 'approved' %} · waiting for approval{% endif %}</span></a></li>{% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% if not busy_days %}<p class="mt-6 text-warm-600 sm:hidden">Nothing on this month{% if filters.category or filters.country %} with these filters{% endif %}.</p>{% endif %}
+{% endblock %}

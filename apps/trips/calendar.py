@@ -21,12 +21,11 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Prefetch
 from django.urls import reverse
-from icalendar import Calendar, Event
+from apps.core.ical import DOMAIN, calendar, vevent
 
 from .itinerary import ACTIVITY_ICONS, MODE_ICONS
 from .models import ConfirmationLink, Day, Lodging, Meal, TransportLeg, Traveler, TripActivity
 
-DOMAIN = "sharebucketlist.com"
 REFRESH = timedelta(hours=4)
 
 
@@ -69,26 +68,13 @@ def build(trip, viewer=None, mine=False):
 
     trip_url = f"{settings.SITE_URL.rstrip('/')}{reverse('trips:trip_detail', args=[trip.pk])}"
     now = datetime.now(dt_timezone.utc)
-    cal = Calendar()
-    cal.add("prodid", "-//ShareBucketList//Trip calendar//EN")
-    cal.add("version", "2.0")
-    cal.add("calscale", "GREGORIAN")
-    cal.add("x-wr-calname", trip.name)
+    cal = calendar("Trip calendar", trip.name)
     cal.add("refresh-interval", REFRESH, parameters={"VALUE": "DURATION"})
     cal.add("x-published-ttl", "PT4H")  # Outlook's older name for REFRESH-INTERVAL
 
     def event(uid, summary, start, end, location="", lines=(), anchor=""):
-        ev = Event()
-        ev.add("uid", f"{uid}@{DOMAIN}")
-        ev.add("dtstamp", now)
-        ev.add("summary", summary)
-        ev.add("dtstart", start)
-        ev.add("dtend", end)
-        if location:
-            ev.add("location", location)
         description = [line for line in lines if line] + [f"{trip_url}#{anchor}" if anchor else trip_url]
-        ev.add("description", "\n".join(description))
-        cal.add_component(ev)
+        cal.add_component(vevent(uid, summary, start, end, location, "\n".join(description), now=now))
 
     for leg in legs:
         if not mine_ok(day_travelers(by_date.get(leg.date))):

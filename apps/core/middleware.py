@@ -20,9 +20,11 @@ class UserTimezoneMiddleware:
         tzname = "UTC"
 
         if request.user.is_authenticated:
-            # user.preferences may not exist yet; handle safely
-            prefs = getattr(request.user, "preferences", None)
-            tzname = getattr(prefs, "timezone", "UTC") if prefs else "UTC"
+            # The zone chosen in Settings (AccountSettings). Until R21 this read the deprecated
+            # UserPreferences, which nobody has, so everyone was UTC. UserThemeMiddleware reads the
+            # same related object, so the two share one query.
+            settings_row = getattr(request.user, "settings", None)
+            tzname = getattr(settings_row, "timezone", None) or "UTC"
 
         if ZoneInfo:
             try:

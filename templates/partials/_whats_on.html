@@ -1,0 +1,7 @@
+{% comment %}
+What's on and Things to do on a country / region / city / place page (site roadmap R21). Pass kind ("country", "region", "city", "place") and obj. Loads events:whats_on after the page, so the page pays no query and locations never imports events or activities; hidden when there's nothing on.
+{% endcomment %}{% url 'events:whats_on' kind obj.slug as whats_on_url %}{% if whats_on_url %}
+<section id="whats-on" class="sbl-card scroll-mt-20 p-6" x-data="{ html: '', done: false, async load() { try { const r = await fetch('{{ whats_on_url }}'); if (r.ok) this.html = (await r.text()).trim(); } catch (e) {} this.done = true; } }" x-init="load()" x-show="!done || html" x-cloak>
+  <div x-html="html"><p class="text-sm text-warm-500">Loading what's on…</p></div>
+</section>
+{% endif %}

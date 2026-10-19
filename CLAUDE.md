@@ -214,7 +214,9 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - Roles are Django Groups: `Vendors` and `Content Providers`. Users request a role through `accounts.RoleRequest`, and approving the request adds them to the group. Staff access uses the `accounts.can_access_staff_dashboard` permission. Check access with the `User` properties `is_vendor`, `can_access_staff` and `can_access_*_dashboard`.
 - Per-user data is spread over `Profile`, `AccountSettings` (`user.settings`: units, currency, language, timezone, theme) and `TravelPreferences` (`user.travel_preferences`). `UserPreferences` is the older combined model and was split into these.
 - Request-time plumbing:
-  - `apps.core.middleware.UserTimezoneMiddleware` activates the user's timezone.
+  - `apps.core.middleware.UserTimezoneMiddleware` activates the zone chosen in Settings (`AccountSettings.timezone`,
+    `user.settings` — the row UserThemeMiddleware also reads, so one query). Until R21 it read the deprecated
+    `UserPreferences`, which nobody has, so every reader was UTC.
   - `UserThemeMiddleware` sets `request.theme` and the `ui_theme` cookie.
   - Context processors in `apps/core/context_processors.py` expose `user_units`, `user_currency`, `user_theme`, `user_travel_styles` and similar to every template.
   - `apps/core/templatetags/conversion_tags.py` provides unit and currency filters that use these values (`{% load conversion_tags %}` — tag libraries load by name, not path).
@@ -332,6 +334,20 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   category, past; month/category leave activities and events). `grouped()` = up to 8 per kind, one query per
   model, so the page is a fixed 8 queries; `?kind=` paginates one kind. The box is the shell partial
   `partials/_search_box.html` in both headers (`url … as`). Results reuse `_catalogue_card` / `_event_card`.
+- **What's on** (site roadmap R21; no migrations): `apps/events/whats_on.py`. **Calendar** `events:calendar`
+  (`/events/calendar/<y>/<m>/`; `events:calendar_today` redirects to the reader's month): events the reader may
+  see (`visible_to`), country/category filters, `month_events` (one query; an event's dates are local, so a month
+  is a date range — only "today" depends on the reader) and `month_grid` (Monday first, an event on every day it
+  runs, `DAY_CAP` 3 then "+N more" → the day list, which is the whole view below `sm`). **What's on / Things to do**
+  on country, region, city and place pages: the shell partial `partials/_whats_on.html` (`url … as`) loads
+  `events:whats_on` (`/events/whats-on/<country|region|city|place>/<slug>/`, 3 queries) after the page, because
+  `locations` may not import `events`/`activities`; `events_for` = upcoming visible events in the place (venue:
+  `poi`), a city adding others within `NEARBY_KM` (50; bounding box in SQL on the event's / venue's / city's
+  coordinates, haversine in Python, `distance_km` shown as "Nearby"); `things_to_do` = public activities there
+  (venue for a place), most popular first; the card hides itself when both are empty. **Add to my calendar**
+  `events:event_ics` (`/events/<slug>/calendar.ics`, anyone who may see the event, else 404): timed → `TZID` of
+  `Event.timezone` (+1 h without an end), else all day with an exclusive end. `apps/core/ical.py` (`calendar`,
+  `vevent`, `DOMAIN`) is shared with the trip feed (R4; its output unchanged). Place pages still need a login.
 - **Badges:** `apps/bucketlists/badges.py` defines them (code, title, icon, a counter and a target: goals added, ticked off, countries, events, trips, photos). `award_badges(user)` runs after every goal save (signal) and photo upload, records each new badge once as a `BucketListMilestone` (unique user + `code`, bucketlists 0006) and sends a `badge_earned` notification. `progress(user)` feeds the strip (`bucketlists/partials/_badges.html`) on the dashboard and My adventures; the public bucket list shows earned ones only. `manage.py award_badges` backfills silently (`--notify` to announce).
 - **Recommendations:** `apps/recommendations/services.for_user(Goals)` scores public activities and upcoming events (new date for an undated goal > same category > same country > popular; one card per activity); `pages.views._goals` builds `Goals` from the user's bucket list because `recommendations` may not import `bucketlists`. The app has no models (R19 removed the unused ones, recommendations 0002).
 - **Goal photos and My albums** (`apps/bucketlists/photos.py`): a goal has photos at any stage (`bucketlists:item_photos`, linked from its card and edit page; owner only; the dashboard and public cards show the first via `views._attach_first_photos`). A personal album is a `media_app.MediaAlbum` with no trip (`trip__isnull=True`; trip albums are `Trip.album`): `bucketlists:albums` (sidebar under Done, and My adventures), new/edit/delete, pick from your own goal and trip photos (`album_pick`), or upload straight in (that Media is attached to the album and deleted with it; borrowed photos stay on their goal or trip). `MediaAlbum.add()` / `items()` / `ensure_cover()` keep order and cover for both kinds. Albums are private, or public on the owner's public bucket list when their profile is public.
@@ -577,7 +593,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
   the trip.
-- **The detail page** holds a fixed query count (32 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query — 3 of them from this site's
+- **The detail page** holds a fixed query count (31 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the

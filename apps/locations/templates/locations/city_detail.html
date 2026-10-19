@@ -91,7 +91,7 @@
                     {% endif %}
                 </div>
             </div>
-            {% if city.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_reviews.html" with kind="city" obj=city %}</div>{% endif %}
+            {% if city.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_whats_on.html" with kind="city" obj=city %}</div><div class="mt-6">{% include "partials/_reviews.html" with kind="city" obj=city %}</div>{% endif %}
         </div>
 
         <!-- Sidebar -->

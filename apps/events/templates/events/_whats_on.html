@@ -1,0 +1,21 @@
+{% comment %}
+What's on and Things to do for a country / region / city / place page (site roadmap R21), loaded after the page by partials/_whats_on.html. Empty when there's nothing to show (the card then hides itself).
+{% endcomment %}{% if events or activities %}<div class="grid gap-6 {% if events and activities %}md:grid-cols-2{% endif %}" data-whats-on>
+{% if events %}<div>
+  <h2 class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-calendar-event"></i> What's on{% if kind == "place" %} here{% endif %}</h2>
+  <ul class="divide-y divide-warm-100">
+    {% for event in events %}<li><a class="flex min-h-11 items-start gap-3 py-2 hover:text-earth-clay" href="{% url 'events:event_detail' event.slug %}">
+      <span class="flex w-12 shrink-0 flex-col items-center rounded-md bg-earth-clay/10 py-1 text-earth-clay-dark"><span class="text-[10px] font-semibold uppercase">{{ event.start_date|date:"M" }}</span><span class="text-lg font-bold leading-none">{{ event.start_date|date:"j" }}</span></span>
+      <span class="min-w-0"><span class="block font-medium text-warm-900">{{ event.name }}</span><span class="block truncate text-sm text-warm-500">{% if event.end_date and event.end_date != event.start_date %}to {{ event.end_date|date:"j M" }} · {% endif %}{{ event.venue_and_place }}{% if event.distance_km is not None %} · <span class="sbl-badge sbl-badge-neutral">Nearby, {{ event.distance_km }} km</span>{% endif %}</span></span>
+    </a></li>{% endfor %}
+  </ul>
+  <p class="mt-2 text-sm"><a class="sbl-link" href="{% url 'events:calendar_today' %}{% if country_slug %}?country={{ country_slug }}{% endif %}"><i class="bi bi-calendar3"></i> See the calendar</a></p>
+</div>{% endif %}
+{% if activities %}<div>
+  <h2 class="mb-3 text-xl font-semibold text-warm-900"><i class="bi bi-signpost-2"></i> Things to do</h2>
+  <ul class="divide-y divide-warm-100">
+    {% for activity in activities %}<li><a class="flex min-h-11 items-baseline justify-between gap-3 py-2 hover:text-earth-clay" href="{% url 'activities:activity_detail' activity.slug %}"><span class="font-medium text-warm-900">{{ activity.name }}</span><span class="shrink-0 text-sm text-warm-500">{{ activity.category.name }}</span></a></li>{% endfor %}
+  </ul>
+  <p class="mt-2 text-sm"><a class="sbl-link" href="{% url 'activities:activity_list' %}{% if country_slug %}?country={{ country_slug }}{% endif %}">More activities</a></p>
+</div>{% endif %}
+</div>{% endif %}

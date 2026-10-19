@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from datetime import date as date_cls
 
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
@@ -289,3 +290,68 @@ def event_link_city(request, slug):
     messages.success(request, f"Linked the event to {city.name}, {city.country.name}.")
     return redirect("events:event_detail", slug=slug)
 
+
+
+# --- What's on (site roadmap R21) ---------------------------------------------------------------
+
+def calendar_today(request):
+    """/events/calendar/: the reader's current month, filters kept."""
+    today = timezone.localdate()
+    url = reverse("events:calendar", args=[today.year, today.month])
+    return redirect(f"{url}?{request.GET.urlencode()}" if request.GET else url)
+
+
+def calendar_month(request, year, month):
+    """A month of events the reader may see: a grid on a laptop, a list of days on a phone."""
+    from . import whats_on
+    if not (1 <= month <= 12 and 1900 <= year <= 2200):
+        raise Http404
+    events = Event.objects.visible_to(request.user).select_related("category", "city__country", "country")
+    category = request.GET.get("category", "")
+    country = request.GET.get("country", "")
+    if category:
+        events = events.filter(category__slug=category)
+    if country:
+        events = events.filter(Q(city__country__slug=country) | Q(country__slug=country))
+    found = whats_on.month_events(events, year, month)
+    weeks = whats_on.month_grid(found, year, month)
+    (prev_year, prev_month), (next_year, next_month) = whats_on.neighbours(year, month)
+    first = date_cls(year, month, 1)
+    return render(request, "events/event_calendar.html", {
+        "weeks": weeks, "first": first, "today": timezone.localdate(),
+        "busy_days": [day for week in weeks for day in week if day.in_month and day.events],
+        "prev": (prev_year, prev_month), "next": (next_year, next_month), "event_count": len(found),
+        "prev_first": date_cls(prev_year, prev_month, 1), "next_first": date_cls(next_year, next_month, 1),
+        "categories": ActivityCategory.objects.filter(is_active=True),
+        "countries": Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by("name").only("name", "slug"),
+        "filters": {"category": category, "country": country},
+        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (f"{first:%B %Y}", None)]),
+    })
+
+
+def whats_on_fragment(request, kind, slug):
+    """What's on and Things to do for a country / region / city / place page, loaded after that page
+    (``partials/_whats_on.html``) because locations may not import events or activities."""
+    from . import whats_on
+    model = whats_on.TARGETS.get(kind)
+    if model is None:
+        raise Http404
+    target = get_object_or_404(model, slug=slug, approval_status=ApprovalStatus.APPROVED)
+    events = whats_on.events_for(kind, target, Event.objects.visible_to(request.user))
+    activities = whats_on.things_to_do(kind, target)
+    country = target if kind == "country" else (target.country if kind in ("city", "region") else target.city.country)
+    return render(request, "events/_whats_on.html", {
+        "kind": kind, "target": target, "events": events, "activities": activities,
+        "nearby_km": whats_on.NEARBY_KM, "country_slug": country.slug if country else "",
+    })
+
+
+def event_ics(request, slug):
+    """"Add to my calendar": the event as an .ics file, for anyone who may see it."""
+    from django.http import HttpResponse
+    from . import whats_on
+    event = _visible_event_or_404(request, slug)
+    url = request.build_absolute_uri(reverse("events:event_detail", args=[event.slug]))
+    response = HttpResponse(whats_on.event_ics(event, url), content_type="text/calendar; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{event.slug}.ics"'
+    return response
