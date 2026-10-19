@@ -37,4 +37,6 @@ class CountryEditTests(TestCase):
     def test_other_users_are_turned_away(self):
         other = User.objects.create_user("other", "other@example.com", "pw-1234-abcd")
         self.client.force_login(other)
-        self.assertRedirects(self.client.get(self.url), reverse("locations:country_detail", args=["testland"]))
+        # Back to the country page (which, while the country is pending, they can't open: R22).
+        self.assertRedirects(self.client.get(self.url), reverse("locations:country_detail", args=["testland"]),
+                             fetch_redirect_response=False)

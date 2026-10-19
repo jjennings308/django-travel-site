@@ -11,7 +11,7 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 ## Browse
 
-Under **Discover** in the left menu: **Activities**, **Events** and **Places**. Each has filters, and places also have a map. A place or activity that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
+Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. A place or activity that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
 
 ## Searching
 

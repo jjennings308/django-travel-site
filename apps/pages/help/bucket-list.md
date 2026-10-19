@@ -50,7 +50,7 @@ Badges mark milestones: your first goal (**Dreamer**), ten goals (**Big dreamer*
 
 ## Who can see it
 
-Your bucket list is private. A goal marked **Show on my public bucket list** appears on your public page, but only when your profile is set to public. Albums follow the same rule.
+Your bucket list is private. A goal marked **Show on my public bucket list** appears on your public page, but only when your profile is set to public. Albums follow the same rule. Your public page can be opened by anyone with its link, but it asks search engines not to list it.
 
 ## Problems
 

@@ -21,11 +21,15 @@ from django.conf.urls.static import static
 
 from apps.core.health import healthz
 from apps.core.pwa import manifest, service_worker
+from apps.pages.sitemaps import SITEMAPS, robots_txt
+from django.contrib.sitemaps.views import sitemap as sitemap_view
 from apps.trips.views import public_trip_detail
 
 
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),
+    path('robots.txt', robots_txt, name='robots_txt'),
+    path('sitemap.xml', sitemap_view, {'sitemaps': SITEMAPS}, name='sitemap'),
     path('sw.js', service_worker, name='service_worker'),
     path('manifest.webmanifest', manifest, name='manifest'),
     path('admin/', admin.site.urls),

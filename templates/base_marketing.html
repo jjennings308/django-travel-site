@@ -23,6 +23,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="{% static 'core/branding/png/favicon/favicon-16x16.png' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'core/branding/png/app/icon-180x180.png' %}">
 
+  {% block seo %}{% include "partials/_seo.html" %}{% endblock %}
   {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
   {% include "partials/_offline_cache.html" %}
