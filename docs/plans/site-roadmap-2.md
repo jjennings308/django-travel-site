@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R18 done (2026-10-19); R19 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R19 done (2026-10-19); R20 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -184,6 +184,13 @@ which trips or who.)
 - **Tests:** links limited to the trip's cities; counts private; query pin stated; booklet snapshot.
 
 ## R19 — One exchange-rate source; retire unused models
+
+**Status: done** (2026-10-19, branch `r19-rates-cleanup`). Decisions: keep the `vendors` app (and so
+`Review.vendor` and the vendor review type) for a future vendor feature; keep the Vendors role; keep the trip
+review type. Removed (all empty on production, counted first): the five recommendation models, five
+`admin_tools` models (`ReportedContent` stays), `ReviewResponse`, `ReviewHelpful` and the "site" review type.
+The catalogue's currency conversion uses the stored ECB rates; `requests` and its four dependencies left
+`requirements.txt`.
 
 **Ask James:** remove the `vendors` app (models only — no pages, nothing uses it) or keep it for a
 future vendor feature? (Recommended: remove; it can be rebuilt from git history.)

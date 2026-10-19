@@ -10,8 +10,8 @@ already covers. Candidates are public activities and upcoming events, scored:
   - in a country the user's goals are in                        -> "Near your plans"
   - otherwise the most bucket-listed                            -> "Popular"
 
-Ties go to featured items, then newest. The recommendation models in this app
-are unused; they were scaffolding for something larger.
+Ties go to featured items, then newest. The app has no models: the unused
+scaffolding models were removed in site roadmap R19.
 """
 from dataclasses import dataclass, field
 
