@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R22 done (2026-10-19); R23 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R23 done (2026-10-19). The roadmap is complete. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -248,6 +248,14 @@ members' public bucket lists are noindex and not in the sitemap. James's no-code
 - **Tests:** sitemap lists only published items; robots disallows the private areas; JSON-LD valid.
 
 ## R23 — Performance and dependency upkeep
+
+**Status: done** (2026-10-19, branch `r23-upkeep`). Decisions: Dependabot monthly (CI now also runs on
+pull requests into `main`); pip-audit fails the build; no `pg_stat_statements` on the shared box (table stats +
+EXPLAIN on dev instead). Found and fixed: Edit trip ran a query per select per row (177 → 63 on the
+17-day trip, 1.36 s → 0.90 s); pip-audit's five vulnerable pins (pillow 12.3.0, sqlparse 0.6.0,
+python-dotenv 1.2.2, setuptools 83.0.0, wheel 0.46.2). No index needed: the exchange-rate query already uses
+its date index (0.3 ms) and every other table is a few hundred rows. Offline cache renamed `sbl-offline-v2-`
+so copies of CDN files cached without CORS are dropped.
 
 - A management command that times the trip page, booklet and calendar feed on the biggest trip and
   prints query counts and timings; run before and after this phase.

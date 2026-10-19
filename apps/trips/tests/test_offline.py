@@ -29,7 +29,7 @@ class OfflineTripPageTests(TestCase):
         html = self.html(reverse("trips:trip_detail", args=[self.trip.pk]), self.vi)
         self.assertIn(f'register("/sw.js?u={offline_cache_key(self.vi)}', html)
         self.assertIn('scope: "/trips/"', html)
-        self.assertIn(f'"sbl-offline-{offline_cache_key(self.vi)}"', html)
+        self.assertIn(f'"sbl-offline-v2-{offline_cache_key(self.vi)}"', html)  # the worker's cache name (sw.js)
         self.assertIn("data-offline-save", html)  # Save for offline, for a viewer too
         self.assertIn("data-sbl-offline hidden", html)  # the banner, off until served offline
         self.assertNotIn(offline_cache_key(self.ed), html)

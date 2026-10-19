@@ -202,10 +202,10 @@ would mean two places to fix the next time a field is added.
       </div>
       <p class="flex gap-2"><a class="btn-quiet" href="{% url 'trips:contact_new' trip.pk %}?next={{ edit_url|urlencode }}%23contacts-info">New contact</a><a class="btn-quiet" href="{% url 'trips:info_new' trip.pk %}?next={{ edit_url|urlencode }}%23contacts-info">New info note</a></p>
     </div>
-    {% if trip.contacts.all or trip.infos.all %}
+    {% if edit_contacts or edit_infos %}
       <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
-        {% for c in trip.contacts.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>☎</span><span class="font-medium">{{ c.name }}</span><span class="text-zinc-500">{{ c.role }} {{ c.phone }}</span><span class="ml-auto text-zinc-500">{{ c.item_links.count }} link{{ c.item_links.count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:contact_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
-        {% for i in trip.infos.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>ⓘ</span><span class="font-medium">{{ i.title }}</span><span class="ml-auto text-zinc-500">{{ i.item_links.count }} link{{ i.item_links.count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:info_edit' trip.pk i.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
+        {% for c in edit_contacts %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>☎</span><span class="font-medium">{{ c.name }}</span><span class="text-zinc-500">{{ c.role }} {{ c.phone }}</span><span class="ml-auto text-zinc-500">{{ c.link_count }} link{{ c.link_count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:contact_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
+        {% for i in edit_infos %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span>ⓘ</span><span class="font-medium">{{ i.title }}</span><span class="ml-auto text-zinc-500">{{ i.link_count }} link{{ i.link_count|pluralize }}</span><a class="link-quiet font-medium" href="{% url 'trips:info_edit' trip.pk i.pk %}?next={{ edit_url|urlencode }}%23contacts-info">Edit</a></li>{% endfor %}
       </ul>
     {% else %}
       <p class="empty-state py-6">None yet.</p>
@@ -221,9 +221,9 @@ would mean two places to fix the next time a field is added.
       </div>
       <p><a class="btn-quiet" href="{% url 'trips:checklist_new' trip.pk %}">New checklist</a></p>
     </div>
-    {% if trip.checklists.all %}
+    {% if edit_checklists %}
       <ul class="mb-4 divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
-        {% for c in trip.checklists.all %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span class="font-medium">{{ c.title }}</span><span class="text-zinc-500">{{ c.get_kind_display }} · {{ c.items.count }} item{{ c.items.count|pluralize }}</span><a class="link-quiet ml-auto font-medium" href="{% url 'trips:checklist_edit' trip.pk c.pk %}">Edit</a></li>{% endfor %}
+        {% for c in edit_checklists %}<li class="flex flex-wrap items-center gap-3 px-4 py-2"><span class="font-medium">{{ c.title }}</span><span class="text-zinc-500">{{ c.get_kind_display }} · {{ c.item_count }} item{{ c.item_count|pluralize }}</span><a class="link-quiet ml-auto font-medium" href="{% url 'trips:checklist_edit' trip.pk c.pk %}">Edit</a></li>{% endfor %}
       </ul>
     {% endif %}
     {% if checklist_templates %}

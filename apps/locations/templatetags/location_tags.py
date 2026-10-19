@@ -45,7 +45,7 @@ def country_flag_icon(country):
     <span class="{{ country|country_flag_icon }}"></span>
     
     Requires flag-icons CSS in base.html:
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css" integrity="sha384-aQuvIWWIbpu/mSqULLDiUveyYiPoJzPKAWjUmGJ+Elm+N/LJhzfZqsutsfw870JS" crossorigin="anonymous">
     """
     if hasattr(country, 'iso_code') and country.iso_code:
         iso_code = country.iso_code.lower()

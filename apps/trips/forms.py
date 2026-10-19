@@ -1194,10 +1194,16 @@ def trip_subsection_formsets(trip, data=None, initial=None):
     by Django rather than saved as a row of NULLs, so it costs the user nothing.
     """
     initial = initial or {}
-    return [
+    formsets = [
         (key, label, formset_cls(data=data, instance=trip, prefix=key, initial=initial.get(key)))
         for key, label, formset_cls in TRIP_SUBSECTION_FORMSETS
     ]
+    # Every row shares this trip object (rows are built lazily, after this), so ``row.trip`` costs
+    # no query and the trip's cached city choices are reused (R23: was a trip + cities query per row).
+    for _key, _label, formset in formsets:
+        for row in formset.get_queryset():
+            row.trip = trip
+    return formsets
 
 
 # ---------------------------------------------------------------------------
@@ -2200,3 +2206,25 @@ class AddConfirmationForm(forms.Form):
     confirmation_number = forms.CharField(max_length=60, label="Confirmation number")
     provider = forms.CharField(max_length=120, required=False, help_text="Only used for a new number.")
     label = forms.CharField(max_length=200, required=False, help_text="Optional, for a new number.")
+
+
+def share_choices(*forms_or_formsets):
+    """Load each distinct model-select's options once for a whole page (site roadmap R23).
+
+    A ModelChoiceField re-runs its queryset every time it renders, so Edit trip's formsets (a leg, stay,
+    day, activity and city picker on every row) cost one query per row per select — 177 on a 17-day trip.
+    Fields with the same queryset and label get the same evaluated list; validation on POST still checks
+    against the real queryset, so nothing is loosened."""
+    lists = {}
+    for item in forms_or_formsets:
+        forms_ = list(getattr(item, "forms", [item]))
+        empty = getattr(item, "empty_form", None) if hasattr(item, "forms") else None
+        for form in forms_ + ([empty] if empty is not None else []):
+            for field in form.fields.values():
+                if not isinstance(field, forms.ModelChoiceField):
+                    continue
+                label = getattr(field.label_from_instance, "__func__", field.label_from_instance)
+                key = (type(field), str(field.queryset.query), label, field.empty_label)
+                if key not in lists:
+                    lists[key] = list(field.choices)
+                field.choices = lists[key]

@@ -84,10 +84,17 @@ python manage.py migrate
 - `manage.py test` uses `config/settings/test.py` (when `DJANGO_SETTINGS_MODULE` isn't set): MD5 password
   hashing (the real hasher made each test that creates accounts take seconds), locmem email, geocoding off,
   no dev-only apps. The full parallel run takes about 70 seconds (was ~11½ minutes before R12).
-- **CI** (`.github/workflows/test.yml`, site roadmap R12) runs on every push to `main`: layer check,
-  `makemigrations --check`, `check --deploy` with dummy production env, the full suite on a fresh Postgres 17,
-  and a check that the committed Tailwind CSS matches a fresh `tailwind build`. A failure emails the pusher;
-  `gh run list` / `gh run watch` show it from here.
+- **CI** (`.github/workflows/test.yml`, site roadmap R12) runs on every push to `main` and on pull requests into
+  it (R23, for Dependabot): `pip-audit -r requirements.txt` (fails on any known vulnerability; an unfixable one
+  goes in `.pip-audit-ignore`, one ID per line with a `#` reason), layer check, `makemigrations --check`,
+  `check --deploy` with dummy production env, the full suite on a fresh Postgres 17, and a check that the
+  committed Tailwind CSS matches a fresh `tailwind build`. A failure emails the pusher; `gh run list` /
+  `gh run watch` show it from here. **Dependabot** (`.github/dependabot.yml`) opens one grouped PR a month for
+  the pip pins and one for the Actions versions.
+- **Timing:** `manage.py perf_report [--trip <pk>] [--runs 3]` (R23, `apps/pages`) prints queries and median ms
+  for the trip page, Edit trip, the booklet (HTML / PDF), the calendar feed, search, the events calendar, the
+  sitemap and a city page + What's on, rendered as a staff user inside a rolled-back transaction (nothing
+  saved). Run it on dev's copy of production before and after a performance change.
 - Always run tests with `--keepdb` and `--noinput`.
 - While iterating on a change, run only the affected app's tests:
   `.venv/bin/python manage.py test apps.<app> --keepdb --noinput`
@@ -229,6 +236,15 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - Tailwind source is `theme/static_src/src/styles.css`, using Tailwind v4 (`@import "tailwindcss"`) with the **typography** plugin loaded (`@plugin "@tailwindcss/typography"`, for the Help guides' `prose`). The forms plugin and DaisyUI are in `package.json` but deliberately not loaded (forms would restyle every input on the site). `@source` globs cover `templates/` and `apps/*/templates/`; the brand palette is a `@theme` block (`earth-*`, `warm-*`, and `accent-*` = clay, which the trips components use). `tailwind.config.js` is ignored by v4. The old hand-written `!important` utility block is gone (it overrode every `hover:`/responsive variant); don't add `!important` utilities back. The built `theme/static/css/dist/styles.css` is committed: rebuild with `python manage.py tailwind build` (dev only) after template or CSS changes. `base.html` / `base_marketing.html` link it with `{% static 'css/dist/styles.css' %}` (not django-tailwind's `{% tailwind_css %}` tag, so production needs no tailwind app); in DEBUG a `?v=` from the `site_branding` context processor defeats browser caching.
 - **Trips pages are scoped.** Every trips template extends `trips/base_trips.html`, which sets `content_class` = `trips-ui` (and a default `wrap_class` width) on `base.html`'s content area. The itinerary component layer (`.card`, `.btn`, `.badge-*`, `.callout-*`, `.chip`, form controls) and its `@media print` rules are written as `.trips-ui …` in `styles.css`, so they never restyle other apps' templates. Tests assert those class names. Site header, sidebars and footer carry `print:hidden`.
 - Icons: Bootstrap Icons (`bi bi-*`) and flag-icons, both loaded from a CDN.
+- **CDN files are pinned with SRI** (R23): every external `<script src>` / stylesheet `<link>` names an exact
+  version and carries `integrity="sha384-…"` (or sha512) and `crossorigin="anonymous"` — Alpine 3.17.4, Bootstrap
+  Icons 1.11.0, flag-icons 7.2.3 (npm path), Leaflet; `apps/pages/tests/test_upkeep` fails otherwise. To update
+  one: change the version, hash the exact file (`curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A`)
+  and, since the offline worker caches CDN files, bump the cache name in `core/sw.js` **and**
+  `trips/partials/_offline.html` (`sbl-offline-v2-` → `v3`; a test checks they match). Dependabot doesn't cover them.
+- **Edit trip's selects** load each option list once per page (`trips.forms.share_choices`, R23; a
+  ModelChoiceField re-queries on every render), and `trip_subsection_formsets` gives every row the parent trip
+  object, so the page's query count doesn't grow with rows (`test_upkeep.EditTripQueryTests`).
 - **Phones** (site roadmap R11 phone pass, checked at 390 px): every page fits without sideways scroll —
   tables scroll inside `.scroll-x` (which is `relative`, so absolutely positioned bits inside are clipped by
   it, and bleeds only 16 px into the gutter on a phone), `fieldset { min-width: 0 }` (a fieldset's default

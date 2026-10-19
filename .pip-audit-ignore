@@ -1,0 +1,3 @@
+# Known vulnerabilities CI's pip-audit step may ignore (site roadmap R23), one ID per line, each with
+# a comment saying why and when to look again, e.g.
+#   PYSEC-2026-1234  # no fixed release yet; we don't use the affected feature; re-check 2026-12
