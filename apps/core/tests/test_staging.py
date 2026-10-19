@@ -27,7 +27,7 @@ class StagingSettingsTests(TestCase):
         self.assertEqual(staging["EMAIL_BACKEND"], "django.core.mail.backends.console.EmailBackend")
         self.assertTrue(staging["STAGING"])
         self.assertIn("apps.core.middleware.NoIndexMiddleware", staging["MIDDLEWARE"])
-        self.assertNotEqual(staging["CACHES"]["alerts"]["LOCATION"], "/tmp/sharebucketlist-alerts")
+        self.assertIn("LocMemCache", staging["CACHES"]["ratelimit"]["BACKEND"])  # never production's /tmp files
 
     def test_the_bar_and_robots_tag(self):
         from django.test import override_settings

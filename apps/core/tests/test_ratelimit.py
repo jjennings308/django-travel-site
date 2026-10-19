@@ -44,3 +44,10 @@ class RateLimitTests(TestCase):
         with override_settings(RATELIMIT_ENABLED=False):
             for _ in range(15):
                 self.assertNotEqual(self.client.post(reverse("login"), {"username": "a", "password": "b"}).status_code, 429)
+
+    def test_a_broken_counter_lets_the_request_through(self):
+        from unittest import mock
+        with mock.patch("apps.core.ratelimit._cache") as broken, self.assertLogs("apps.core.ratelimit", "WARNING"):
+            broken.return_value.add.side_effect = PermissionError("unreadable cache file")
+            response = self.client.post(reverse("login"), {"username": "ada@example.com", "password": "pw-1234-abcd"})
+        self.assertEqual(response.status_code, 302)  # signed in, not a 500

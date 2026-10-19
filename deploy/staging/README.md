@@ -9,8 +9,13 @@ it. James runs these steps (they need sudo); the DNS record already exists.
 ```bash
 sudo mkdir -p /var/www/travel_site_staging && sudo chown www-data:www-data /var/www/travel_site_staging
 sudo chmod 2775 /var/www/travel_site_staging
-git clone git@github.com:jjennings308/django-travel-site.git /var/www/travel_site_staging
+# Clone with the same address production pulls from (git -C /var/www/travel_site remote -v);
+# james has no GitHub SSH key on the server, so the git@github.com address is refused.
+git clone "$(git -C /var/www/travel_site remote get-url origin)" /var/www/travel_site_staging \
+  || git clone /var/www/travel_site /var/www/travel_site_staging   # else from production's checkout
+git config --global --add safe.directory /var/www/travel_site_staging   # the folder is owned by www-data
 cd /var/www/travel_site_staging
+git remote set-url origin "$(git -C /var/www/travel_site remote get-url origin)"
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 mkdir -p uploads private_uploads && chmod 2770 private_uploads
 ```
@@ -68,8 +73,10 @@ bash /var/www/travel_site_staging/scripts/deploy_staging.sh main        # starts
 tail -1 ~/backups/staging_sync.log                                       # "ok: … all disguised"
 ```
 
-Open https://staging.sharebucketlist.com (user `staging` + the step 4 password), then sign in as
-`user<your id>@staging.invalid` with your normal password. The yellow bar says it's staging.
+Open https://staging.sharebucketlist.com: the browser asks for a username and password first — type
+**`staging`** and the step 4 password (not your site account). Then the site's own Log in page takes
+your **username** (or `user<your id>@staging.invalid`) and your normal password. The yellow bar says
+it's staging. `STAGING_BASIC_AUTH` in `.env` must be `staging:<that password>`, colon included.
 
 ## 7. Nightly refresh
 
