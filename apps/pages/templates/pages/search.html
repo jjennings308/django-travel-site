@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if search_q %}{{ search_q }} — {% endif %}Search{% endblock %}
+{% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
+
+{% block content %}
+{# Catalogue search (site roadmap R20): one box over countries, regions, cities, places, activities and events; only published items. #}
+<header class="mb-6">
+  <h1 class="sbl-page-title">Search</h1>
+  <p class="sbl-page-subtitle">Places, activities and events in the catalogue.</p>
+</header>
+
+<form method="get" role="search" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
+  <div class="md:col-span-2"><label class="sbl-label" for="search-q">Search for</label><input id="search-q" type="search" name="q" value="{{ search_q }}" class="sbl-input" placeholder="Oktoberfest, Kyoto, museum…" autofocus></div>
+  <div><label class="sbl-label" for="search-kind">Show</label>
+    <select id="search-kind" name="kind" class="sbl-input"><option value="">Everything</option>{% for key, heading in kinds.items %}<option value="{{ key }}" {% if filters.kind == key %}selected{% endif %}>{{ heading }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="search-country">Country</label>
+    <select id="search-country" name="country" class="sbl-input"><option value="">Anywhere</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="search-month">Month</label>
+    <select id="search-month" name="month" class="sbl-input"><option value="">Any</option>{% for n, name in months %}<option value="{{ n }}" {% if filters.month == n %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+  <div><label class="sbl-label" for="search-category">Category</label>
+    <select id="search-category" name="category" class="sbl-input"><option value="">Any</option>{% for c in categories %}<option value="{{ c.slug }}" {% if filters.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="flex flex-wrap items-center justify-between gap-3 md:col-span-6">
+    <label class="flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="past" value="1" class="sbl-check" {% if filters.past %}checked{% endif %}>Include past events</label>
+    <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-search"></i>Search</button>
+  </div>
+</form>
+
+{% if narrowed %}<p class="mb-4 text-sm text-warm-500">A month or category only applies to activities and events, so places aren't shown.</p>{% endif %}
+
+{% if search_q|length < 2 %}
+  <div class="sbl-card p-6 text-warm-600">
+    <p>Type at least two letters: a place (<em>Kyoto</em>, <em>Bavaria</em>), something to do (<em>food tour</em>, <em>museum</em>) or an event (<em>Oktoberfest</em>). Small spelling slips and missing accents are fine.</p>
+  </div>
+{% elif page_obj is not None %}
+  <h2 class="mb-3 text-lg font-semibold text-warm-900">{{ kind_heading }}</h2>
+  {% if page_obj.object_list %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{% for obj in page_obj %}{% include "pages/_search_result.html" with kind=filters.kind %}{% endfor %}</div>
+    {% include "partials/_pagination.html" %}
+  {% else %}<p class="text-warm-600">Nothing matches “{{ search_q }}” here.</p>{% endif %}
+  <p class="mt-4"><a class="sbl-link" href="?{% querystring kind=None page=None %}">← All results</a></p>
+{% elif groups %}
+  {% for group in groups %}
+    <section class="mb-8">
+      <div class="mb-3 flex items-baseline justify-between gap-3"><h2 class="text-lg font-semibold text-warm-900">{{ group.heading }}</h2>{% if group.more %}<a class="sbl-link text-sm" href="?{% querystring kind=group.kind page=None %}">More {{ group.heading|lower }} →</a>{% endif %}</div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{% for obj in group.items %}{% include "pages/_search_result.html" with kind=group.kind %}{% endfor %}</div>
+    </section>
+  {% endfor %}
+{% else %}
+  <div class="sbl-card p-6 text-warm-600"><p>Nothing matches “{{ search_q }}”{% if filters.country or filters.month or filters.category or filters.kind %} with these filters{% endif %}. Try fewer words, another spelling, or {% if not filters.past %}<a class="sbl-link" href="?{% querystring past=1 %}">include past events</a>{% else %}clearing the filters{% endif %}.</p></div>
+{% endif %}
+{% endblock %}

@@ -9,7 +9,8 @@ from django.contrib import messages
 from django.core.cache import cache
 from django.core.mail import EmailMessage
 from apps.approval_system.models import ApprovalStatus
-from datetime import timedelta
+from apps.core.ratelimit import limit
+from datetime import date as date_cls, timedelta
 from apps.accounts.models import Profile
 from apps.trips.models import Trip
 from apps.bucketlists.models import BucketListItem
@@ -289,3 +290,31 @@ def help_guide(request, slug):
         "guide": guide, "related": related, "show_toc": len(guide.toc) >= 3,
         "breadcrumb_list": build_breadcrumbs([("Help", "pages:help"), (guide.title, None)]),
     })
+
+
+@limit("search", 120, 60, methods=("GET",))
+def search(request):
+    """One search over the published catalogue (site roadmap R20; apps/pages/search.py). Grouped by
+    kind, up to 8 each; ``?kind=`` shows one kind, paginated. Open to everyone."""
+    from django.core.paginator import Paginator
+    from apps.core.utils.breadcrumbs import build_breadcrumbs
+    from . import search as catalogue_search
+    q = request.GET.get("q", "").strip()[:100]
+    filters = catalogue_search.Filters.from_get(request.GET)
+    context = {"search_q": q, "filters": filters, "kinds": catalogue_search.KINDS,
+               "kind_heading": catalogue_search.KINDS.get(filters.kind, ""),
+               "months": [(n, date_cls(2000, n, 1).strftime("%B")) for n in range(1, 13)],
+               "narrowed": bool(filters.month or filters.category),
+               "breadcrumb_list": build_breadcrumbs([("Search", None)]),
+               **catalogue_search.filter_choices()}
+    if len(q) >= 2:
+        if filters.kind:
+            querysets = catalogue_search.results(filters.kind, q, request.user, filters)
+            if len(querysets) == 1:
+                context["page_obj"] = Paginator(querysets[0], 24).get_page(request.GET.get("page"))
+            else:  # areas: countries then regions, a short list
+                items = catalogue_search.areas([obj for qs in querysets for obj in qs[:50]])
+                context["page_obj"] = Paginator(items, 24).get_page(request.GET.get("page"))
+        else:
+            context["groups"] = catalogue_search.grouped(q, request.user, filters)
+    return render(request, "pages/search.html", context)

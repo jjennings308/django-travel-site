@@ -17,6 +17,7 @@
     </div>
 
     <div class="flex items-center gap-1">
+      {% include "partials/_search_box.html" %}
       {% if user.is_authenticated %}
         <nav class="hidden items-center gap-1 lg:flex">
           <a href="{% url 'pages:dashboard' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Dashboard">

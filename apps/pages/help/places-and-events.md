@@ -13,6 +13,17 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 Under **Discover** in the left menu: **Activities**, **Events** and **Places**. Each has filters, and places also have a map. A place or activity that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
 
+## Searching
+
+The **search box** at the top of every page looks through the whole catalogue at once: countries and regions, cities, places, activities and events. On a phone, tap the magnifier.
+
+- Type a place (*Kyoto*, *Bavaria*), something to do (*food tour*, *museum*) or an event (*Oktoberfest*). Small spelling slips and missing accents are fine: *Neuschwanstien* and *Munchen* both work.
+- Results are grouped by kind, best match first. A name match comes before a match on where something is, which comes before a match in its description. **More …** shows all of one kind.
+- Narrow it with **Country**, **Month** (when an event starts, or the months an activity usually happens), **Category** and **Show**. A month or category leaves only activities and events.
+- Past events are left out unless you tick **Include past events**.
+
+Only published items are found; your own suggestions waiting for approval show up for you alone.
+
 ## Suggest something new
 
 - **Add an activity** on the Activities page.
