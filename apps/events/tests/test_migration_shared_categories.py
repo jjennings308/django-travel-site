@@ -7,8 +7,10 @@ from datetime import date
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
-BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level")]
-AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories")]
+# trips 0044 (R18) needs today's activities, so trips is pinned below it.
+TRIPS = ("trips", "0043_alter_comment_author")
+BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS]
+AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS]
 
 
 class SharedCategoryMigrationTests(RestoringTransactionTestCase):

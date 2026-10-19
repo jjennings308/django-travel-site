@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R17 done (2026-10-19); R18 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R18 done (2026-10-19); R19 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -166,6 +166,11 @@ the reverse, so the plan's "trips → reviews" was wrong); the daily digest run 
 - **Help:** reviews guide (or bucket-list guide) gets "Rating a trip".
 
 ## R18 — Trip items linked to the catalogue
+
+**Status: done** (2026-10-19, branch `r18-catalogue-links`). Decisions: show "On trips · N" (count only)
+on place and activity pages; all live trips count; shown from 2 trips; meal → place, section → place or
+activity. Added: a **Food & drink** place type (locations 0015), for notable restaurants only — most meals
+stay typed text.
 
 **Ask James:** should catalogue pages show "on N trips" counts? (Recommended: yes, a count only — never
 which trips or who.)

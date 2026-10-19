@@ -4,7 +4,7 @@ from django.conf import settings
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.approval_system.models import Approvable, ApprovalStatus
-from apps.locations.models import POI, City, Country, Region
+from apps.locations.models import POI, TRIP_COUNT_MIN, City, Country, Region
 
 
 class ActivityCategory(TimeStampedModel, SlugMixin):
@@ -393,6 +393,8 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         default=0,
         help_text="How many events created from this activity"
     )
+    # Live trips with a section linked to this activity (site roadmap R18); recounted nightly.
+    trip_count = models.IntegerField(default=0, help_text="Live trips that include this activity (recounted nightly)")
     average_rating = models.DecimalField(
         max_digits=3,
         decimal_places=2,
@@ -608,6 +610,11 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         self.approval_status = ApprovalStatus.DRAFT
         self.save()
     
+    @property
+    def shown_trip_count(self):
+        """``trip_count`` when it's at least TRIP_COUNT_MIN, else 0."""
+        return self.trip_count if self.trip_count >= TRIP_COUNT_MIN else 0
+
     @classmethod
     def get_public_activities(cls):
         """Get all approved public activities"""

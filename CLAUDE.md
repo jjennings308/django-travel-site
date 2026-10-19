@@ -104,7 +104,8 @@ python manage.py migrate
   kinds), and with `--keepdb` the emptied parallel copies break the next run.
 - A migration test that steps an app back (e.g. `trips` to 0022) must also pin every *other* app whose
   newer migrations need that app's newer state — today `rewards` (0003 runs after trips 0042) and `reviews`
-  (0004 depends on today's trips) — or the old state can't be reached and the test errors (and a failed
+  (0004 depends on today's trips); and one that steps `activities` back must pin `trips` (0043: trips 0044 needs
+  today's activities and locations) — or the old state can't be reached and the test errors (and a failed
   migration test can leave the parallel copies half-migrated, which hangs the next parallel run: drop
   every `test_travel_site*` database and rerun).
 - `tblib` (in `requirements-dev.txt`) lets the parallel runner report a failing test's traceback;
@@ -306,6 +307,19 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   people on `trip.travelers`). `reviews:trip_rate` (`/reviews/trip/<pk>/rate/`), linked from a finished trip's
   Overview by URL name. The daily `send_trip_digests` fires `trips.signals.daily_run`, which reviews
   answers by calling `ask()` (no extra cron); `manage.py ask_trip_ratings` runs it by hand.
+- **Trip items linked to the catalogue** (site roadmap R18; trips 0044, locations 0014/0015, activities 0014):
+  `Meal.poi` (a notable restaurant: most meals stay typed text) and `Section.poi` / `Section.activity`, optional,
+  SET_NULL; choices are the trip's cities (`forms.catalogue_places` — Food & drink first for meals — and
+  `catalogue_activities`: published activities in those cities or country-wide in their countries), on the day
+  page's meal formset and the section page. `apps/trips/catalogue_links.py`: on "On this day" an unlinked meal /
+  section whose name matches exactly one of them (`normalise`: capitals, spacing, punctuation) gets "Looks like …
+  — Link / Not this one" (`trips:catalogue_link`, editors; a dismissal is a `TidyDismissal` keyed `catalogue:…`);
+  never automatic. The trip page shows the links (`partials/_catalogue_link.html`, select_related in the
+  prefetch, so the pin holds), the booklet plain text (`pdf/_catalogue.html`). `import_itinerary`'s dry run lists
+  exact matches (`import_matches`), never links. **Counts:** `POI.trip_count` / `Activity.trip_count` = distinct
+  live trips using it (`apps/trips/catalogue_counts.recount()`, run by the nightly `recount_visitors`); pages show
+  "On trips" only via `shown_trip_count` (≥ `locations.models.TRIP_COUNT_MIN` = 2), never which trips. The
+  `food` place type (Food & drink) was seeded by locations 0015.
 - **Badges:** `apps/bucketlists/badges.py` defines them (code, title, icon, a counter and a target: goals added, ticked off, countries, events, trips, photos). `award_badges(user)` runs after every goal save (signal) and photo upload, records each new badge once as a `BucketListMilestone` (unique user + `code`, bucketlists 0006) and sends a `badge_earned` notification. `progress(user)` feeds the strip (`bucketlists/partials/_badges.html`) on the dashboard and My adventures; the public bucket list shows earned ones only. `manage.py award_badges` backfills silently (`--notify` to announce).
 - **Recommendations:** `apps/recommendations/services.for_user(Goals)` scores public activities and upcoming events (new date for an undated goal > same category > same country > popular; one card per activity); `pages.views._goals` builds `Goals` from the user's bucket list because `recommendations` may not import `bucketlists`. The recommendation models are unused.
 - **Goal photos and My albums** (`apps/bucketlists/photos.py`): a goal has photos at any stage (`bucketlists:item_photos`, linked from its card and edit page; owner only; the dashboard and public cards show the first via `views._attach_first_photos`). A personal album is a `media_app.MediaAlbum` with no trip (`trip__isnull=True`; trip albums are `Trip.album`): `bucketlists:albums` (sidebar under Done, and My adventures), new/edit/delete, pick from your own goal and trip photos (`album_pick`), or upload straight in (that Media is attached to the album and deleted with it; borrowed photos stay on their goal or trip). `MediaAlbum.add()` / `items()` / `ensure_cover()` keep order and cover for both kinds. Albums are private, or public on the owner's public bucket list when their profile is public.
