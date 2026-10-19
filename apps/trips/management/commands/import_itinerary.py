@@ -119,6 +119,9 @@ class Command(BaseCommand):
         else:
             self._report(parsed, options)
 
+        if not options["apply"] and not options["json"]:
+            self._report_catalogue_matches(parsed)
+
         if not options["apply"]:
             if clash_notice:
                 self.stderr.write(
@@ -270,6 +273,18 @@ class Command(BaseCommand):
         for leg in parsed.transport:
             leg.pop("_local", None)
         return data
+
+    def _report_catalogue_matches(self, parsed):
+        """Meals and section titles that name a catalogue place or activity (site roadmap R18).
+        Listed only: the new trip has no cities yet, so they are linked by hand on the day page."""
+        from apps.trips.catalogue_links import import_matches
+        matches = import_matches(parsed.days)
+        if matches:
+            out = self.stdout.write
+            out(self.style.MIGRATE_HEADING("\n=== Possible catalogue matches (not linked) ==="))
+            for number, what, name, label in sorted(matches, key=lambda m: (m[0] or 0, m[1], m[2])):
+                out(f"  Day {number} {what} {name!r} -> {label}")
+            out("  Link them on each day's page once the trip has its cities.")
 
     def _report(self, parsed, options):
         trip = parsed.trip

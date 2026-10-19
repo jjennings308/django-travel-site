@@ -1240,6 +1240,12 @@ class Section(models.Model):
     icon = models.CharField(max_length=32, blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     content = models.JSONField(default=dict)
+    # What this block is about in the catalogue (site roadmap R18), optional; limited to the
+    # trip's cities by SectionForm. Shown as a link on the trip page, plain text in the booklet.
+    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_sections",
+                            verbose_name="place")
+    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="trip_sections")
 
     class Meta:
         ordering = ["day", "order", "id"]
@@ -1336,6 +1342,9 @@ class Meal(models.Model):
     # day's timeline; blank: it's a food idea. (Trip-page UX plan, U3.)
     reserved_time = models.TimeField(null=True, blank=True, verbose_name="reservation time")
     order = models.PositiveSmallIntegerField(default=0)
+    # The restaurant in the catalogue, when it's a notable one (site roadmap R18); optional.
+    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_meals",
+                            verbose_name="place")
 
     class Meta:
         ordering = ["day", "order", "id"]

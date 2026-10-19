@@ -408,6 +408,15 @@ class QueryCountTests(DetailFixture):
 
     def test_a_multi_day_trip_holds_a_fixed_query_count(self):
         ada = Traveler.objects.create(name="Ada")
+        # R18: every meal and section linked to a catalogue place (and activity) — no extra query.
+        from apps.activities.models import Activity, ActivityCategory
+        from apps.locations.models import POI, City, Country
+        country = Country.objects.create(name="Testland", slug="tl", iso_code="TL", iso3_code="TLD", continent="Europe")
+        city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=1)
+        place = POI.objects.create(name="Old Bakery", slug="old-bakery", city=city, latitude=1, longitude=1)
+        catalogue_activity = Activity.objects.create(
+            name="Bread tour", slug="bread-tour", description="x",
+            category=ActivityCategory.objects.create(name="Food", slug="food-cat"))
         for offset in range(1, 16):
             day = Day.objects.create(
                 trip=self.trip,
@@ -420,7 +429,8 @@ class QueryCountTests(DetailFixture):
                 {"columns": ["Time", "Stop"], "rows": [["9:00", "Somewhere"], ["12:00", "Elsewhere"]]},
                 order=offset,
             )
-            Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER)
+            Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER, poi=place)
+            day.sections.update(poi=place, activity=catalogue_activity)
             day.travelers.add(ada)
             # Phase A: legs shown on their day cost nothing either — one placed in a travel
             # section, one in the day's automatic block, both from the one transport prefetch.

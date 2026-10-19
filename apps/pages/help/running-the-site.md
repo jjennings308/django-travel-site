@@ -3,7 +3,7 @@ summary: The staff dashboard, approving submissions, giving people access to tri
 audience: staff
 section: Staff
 order: 10
-updated: 2026-10-17
+updated: 2026-10-19
 
 # Running the site
 
@@ -28,6 +28,8 @@ The dashboard shows the site's numbers and a **needs attention** list, most urge
 
 New activities, events and places from members wait in the approval queue (linked from **Submissions waiting for review**). Approve, reject, or ask for changes; the member is notified. Approved items are public at once.
 
+Restaurants, cafés, bars and markets use the **Food & drink** place type. Approve only notable ones: places people travel for (a famous market, a beer hall, a bucket-list restaurant). Turn down everyday lunch spots; a trip's meals work fine as typed text, and catalogue opening hours go stale.
+
 ## Access to trips
 
 Trip access is per person and per trip, set in the admin:
@@ -50,7 +52,7 @@ A **blank template** shows the columns; **export what's loaded now** downloads t
 
 ## Nightly counts
 
-"Members who've been" counts and badges are recounted automatically. If a count looks wrong after fixing data, ask whoever runs the server to run the recount.
+"Members who've been", "On trips" and badges are recounted automatically, once a night. If a count looks wrong after fixing data, ask whoever runs the server to run the recount.
 
 ## Problems
 

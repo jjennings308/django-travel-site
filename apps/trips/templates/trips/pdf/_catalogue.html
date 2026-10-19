@@ -1,0 +1,3 @@
+{% comment %}
+A meal's or section's catalogue place / activity as plain text in the booklet (site roadmap R18). Pass item=.
+{% endcomment %}{% if item.poi_id %}{{ item.poi.name }}{% if item.poi.city_id %}, {{ item.poi.city.name }}{% endif %}{% endif %}{% if item.poi_id and item.activity_id %} · {% endif %}{% if item.activity_id %}{{ item.activity.name }}{% endif %}

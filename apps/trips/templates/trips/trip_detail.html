@@ -318,6 +318,7 @@
             <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
           </div>
         {% endif %}
+        {% if section.poi_id or section.activity_id %}<div class="-mt-2 mb-4">{% include "trips/partials/_catalogue_link.html" with item=section %}</div>{% endif %}
         {% if can_comment and not comments_by_target.section|dictkey:section.pk %}<p class="no-print -mt-3 mb-4 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'section' section.pk %}#body">Add a note</a></p>{% endif %}
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}
@@ -345,6 +346,7 @@
                   <span class="badge badge-mode">{{ meal.get_meal_type_display }}</span>
                 </div>
                 {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
+                {% include "trips/partials/_catalogue_link.html" with item=meal %}
                 {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
                 {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
                 {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}

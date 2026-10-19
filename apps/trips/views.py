@@ -28,7 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -64,6 +64,7 @@ from .models import (
     TripRole,
     TransportLeg,
     TripActivity,
+    TidyDismissal,
     Confirmation,
     ConfirmationLink,
     ItemLink,
@@ -153,8 +154,10 @@ def _day_workshop(trip, day):
     for leg in day.day_legs:
         leg.order_label = f"order {leg.order}"  # untimed legs run in this order
     day.ordered_activities = list(day.activities.select_related("poi"))
-    day.ordered_meals = list(day.meals.order_by("order", "id"))
-    sections = list(_day_sections(day))
+    day.ordered_meals = list(day.meals.select_related("poi").order_by("order", "id"))
+    sections = list(_day_sections(day).select_related("poi", "activity"))
+    from . import catalogue_links
+    catalogue_links.attach_suggestions(trip, day.ordered_meals, sections)
     itinerary.timeline([day])
     items = {}
     for model, objs in ((TransportLeg, day.day_legs), (TripActivity, day.ordered_activities),
@@ -176,6 +179,30 @@ def _day_workshop(trip, day):
             item.refs.append(source)
     return {"sections": sections, "timeline": day.timeline, "any_time": day.any_time,
             "food_ideas": day.food_ideas}
+
+
+@login_required
+@require_POST
+def catalogue_link(request, trip_pk, day_pk, kind, item_pk):
+    """Link a meal or section to a suggested catalogue place / activity, or say "Not this one"
+    (site roadmap R18). The target must be among the trip's catalogue choices."""
+    from . import catalogue_links
+    trip, day = _editable_day(request, trip_pk, day_pk)
+    model = catalogue_links.KINDS.get(kind)
+    if model is None:
+        raise Http404
+    item = get_object_or_404(model.objects.filter(day=day), pk=item_pk)
+    target_kind, target_pk = request.POST.get("target_kind", ""), request.POST.get("target", "")
+    if not target_pk.isdigit() or target_kind not in ("poi", "activity"):
+        return HttpResponseBadRequest("Missing target.")
+    if request.POST.get("dismiss"):
+        TidyDismissal.objects.get_or_create(
+            trip=trip, key=catalogue_links.dismissal_key(kind, item.pk, target_kind, int(target_pk)))
+    elif catalogue_links.link(trip, item, target_kind, int(target_pk)):
+        messages.success(request, f"Linked to {getattr(item, target_kind).name} in the catalogue.")
+    else:
+        messages.error(request, "That isn't a catalogue place or activity in this trip's cities.")
+    return redirect(reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day")
 
 
 def _day_sections(day):
@@ -332,12 +359,13 @@ def _trip_page_queryset(user):
             Prefetch("days", queryset=Day.objects.select_related("city")),
             Prefetch(
                 "days__sections",
-                queryset=Section.objects.order_by("order", "id"),
+                # Their catalogue place (with city) and activity ride along (R18; no extra query).
+                queryset=Section.objects.select_related("poi__city", "activity").order_by("order", "id"),
                 to_attr="ordered_sections",
             ),
             Prefetch(
                 "days__meals",
-                queryset=Meal.objects.order_by("order", "id"),
+                queryset=Meal.objects.select_related("poi__city").order_by("order", "id"),
                 to_attr="ordered_meals",
             ),
             # A day's activities (tours, timed entries, tables…) with their place and who's
@@ -920,7 +948,7 @@ def day_edit(request, trip_pk, pk):
     """
     trip, day = _editable_day(request, trip_pk, pk)
     form = DayForm(request.POST or None, instance=day, trip=trip)
-    meal_formset = MealFormSet(request.POST or None, instance=day)
+    meal_formset = MealFormSet(request.POST or None, instance=day, form_kwargs={"trip": trip})
 
     if request.method == "POST":
         day_ok = form.is_valid()
@@ -1071,7 +1099,7 @@ def _section_context(trip, day, section, payload_form, *, is_create):
         "trip": trip,
         "day": day,
         "section": section,
-        "form": SectionForm(instance=section),
+        "form": SectionForm(instance=section, trip=trip),
         "payload_form": payload_form,
         "options_formset": getattr(payload_form, "options", None),
         "unsupported_type": None if payload_form is not None else section.section_type,
@@ -1110,7 +1138,7 @@ def _save_section(request, trip, day, section, section_type):
     if section is None:
         section = Section(day=day, section_type=section_type)
 
-    metadata_form = SectionForm(request.POST, instance=section)
+    metadata_form = SectionForm(request.POST, instance=section, trip=trip)
     payload_form = section_payload_form(
         section_type, request.POST, content=section.content
     )

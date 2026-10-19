@@ -6,6 +6,9 @@ from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.approval_system.models import Approvable
 
+# "On trips · N" shows only from this many trips (site roadmap R18): one trip could point at one family.
+TRIP_COUNT_MIN = 2
+
 
 class LocationStatus(models.TextChoices):
     """Status choices for location review workflow"""
@@ -598,7 +601,10 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     review_count = models.IntegerField(default=0)
-    
+    # Live trips with a meal, section or day activity here (site roadmap R18); recounted nightly
+    # by recount_visitors (apps.trips.catalogue_counts). Shown only from TRIP_COUNT_MIN.
+    trip_count = models.IntegerField(default=0, help_text="Live trips that include this place (recounted nightly)")
+
     class Meta:
         db_table = 'locations_pois'
         verbose_name = 'POI'
@@ -612,7 +618,12 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     
     def __str__(self):
         return f"{self.name} ({self.city.name})"
-    
+
+    @property
+    def shown_trip_count(self):
+        """``trip_count`` when it's at least TRIP_COUNT_MIN, else 0 (one trip could point at one family)."""
+        return self.trip_count if self.trip_count >= TRIP_COUNT_MIN else 0
+
     def save(self, *args, **kwargs):
         if not self.slug:
             from apps.core.utils import generate_unique_slug

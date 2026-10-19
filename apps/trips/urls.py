@@ -58,6 +58,8 @@ urlpatterns = [
     # first and an unreachable trip is a 404 whatever the day.
     path("<int:trip_pk>/days/new/", views.day_create, name="day_create"),
     path("<int:trip_pk>/days/<int:pk>/", views.day_edit, name="day_edit"),
+    path("<int:trip_pk>/days/<int:day_pk>/catalogue/<str:kind>/<int:item_pk>/", views.catalogue_link,
+         name="catalogue_link"),
     path(
         "<int:trip_pk>/days/<int:pk>/delete/",
         views.day_delete,

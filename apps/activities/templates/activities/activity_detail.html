@@ -102,6 +102,7 @@
                         <div><dt class="text-sm text-warm-500">When</dt><dd>{% if activity.suggested_timeframe %}{{ activity.suggested_timeframe }}{% endif %}{% if activity.suggested_date_range_start %}{% if activity.suggested_timeframe %}<br>{% endif %}{{ activity.suggested_date_range_start|date:"M j, Y" }}{% if activity.suggested_date_range_end %} – {{ activity.suggested_date_range_end|date:"M j, Y" }}{% endif %}{% endif %}</dd></div>
                     {% endif %}
                     <div><dt class="text-sm text-warm-500">On bucket lists</dt><dd>{{ activity.bucket_list_count }}</dd></div>
+                    {% if activity.shown_trip_count %}<div><dt class="text-sm text-warm-500" title="Members' trips that include this activity">On trips</dt><dd>{{ activity.shown_trip_count }}</dd></div>{% endif %}
                     {% if activity.created_by %}<div><dt class="text-sm text-warm-500">Added by</dt><dd>@{{ activity.created_by.username }}</dd></div>{% endif %}
                 </dl>
             </section>

@@ -23,7 +23,7 @@ class PlaceTypeTests(TestCase):
                                       poi_type_id="historical", approval_status=APPROVED)
 
     def test_seeded_with_the_old_list(self):
-        self.assertEqual(PlaceType.objects.count(), 14)
+        self.assertEqual(PlaceType.objects.count(), 15)  # the 14 old types + Food & drink (0015, R18)
         self.assertEqual(PlaceType.objects.get(code="sports").name, "Sports Venues")
         self.assertEqual(POI.objects.create(name="X", slug="x", city=self.city, latitude=1, longitude=2).poi_type_id, "landmark")
 

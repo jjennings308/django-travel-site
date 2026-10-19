@@ -11,13 +11,13 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 ## Browse
 
-Under **Discover** in the left menu: **Activities**, **Events** and **Places**. Each has filters, and places also have a map. On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
+Under **Discover** in the left menu: **Activities**, **Events** and **Places**. Each has filters, and places also have a map. A place or activity that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
 
 ## Suggest something new
 
 - **Add an activity** on the Activities page.
 - **Add an event** on the Events page, or **Add a date** on an activity, for its next occurrence. If the city isn't listed, tick **City not listed** and type it.
-- **Add POI** on the Places list, for a new place.
+- **Add POI** on the Places list, for a new place. A restaurant, market or bakery belongs here only if people travel for it (type **Food & drink**); everyday meals stay on your trip as typed text.
 
 New suggestions are checked by the site's staff before others see them. Until then you can see and edit yours under **My contributions** in your account menu (**Activities I added**, **Events I added**). You get a notification when one is approved.
 

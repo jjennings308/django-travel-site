@@ -1,0 +1,4 @@
+{% comment %}
+A meal's or section's catalogue place / activity as links (site roadmap R18). Pass item=. Prints nothing when neither is set.
+{% endcomment %}
+{% if item.poi_id or item.activity_id %}<p class="text-sm text-zinc-600">{% if item.poi_id %}<span aria-hidden="true">📍</span> <a class="link-quiet" href="{% url 'locations:poi_detail' item.poi.slug %}">{{ item.poi.name }}</a>{% if item.poi.city_id %}<span class="text-zinc-500">, {{ item.poi.city.name }}</span>{% endif %}{% endif %}{% if item.poi_id and item.activity_id %} · {% endif %}{% if item.activity_id %}<a class="link-quiet" href="{% url 'activities:activity_detail' item.activity.slug %}">{{ item.activity.name }}</a>{% endif %}</p>{% endif %}

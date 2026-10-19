@@ -211,7 +211,7 @@
             </div>
 
             <!-- Stats -->
-            {% if poi.visitor_count or poi.average_rating %}
+            {% if poi.visitor_count or poi.average_rating or poi.shown_trip_count %}
                 <div class="sbl-card shadow-sm mb-6">
                     <div class="p-5">
                         <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
@@ -219,6 +219,12 @@
                             <div class="flex justify-between mb-4">
                                 <span class="text-warm-500" title="Members who ticked off a goal here">Members who've been</span>
                                 <span class="text-lg font-semibold mb-0">{{ poi.visitor_count }}</span>
+                            </div>
+                        {% endif %}
+                        {% if poi.shown_trip_count %}
+                            <div class="flex justify-between mb-4">
+                                <span class="text-warm-500" title="Members' trips that include this place">On trips</span>
+                                <span class="text-lg font-semibold mb-0">{{ poi.shown_trip_count }}</span>
                             </div>
                         {% endif %}
                         {% if poi.average_rating %}

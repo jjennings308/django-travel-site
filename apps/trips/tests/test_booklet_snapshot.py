@@ -18,6 +18,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.activities.models import Activity, ActivityCategory
+from apps.locations.models import POI, City, Country
 from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Section,
                                TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
 
@@ -80,10 +82,18 @@ def build_trip():
                                       {"letter": "A", "title": "Castle", "description": "Up the hill",
                                        "duration": "2 h", "cost": "€8"},
                                       {"letter": "B", "title": "Old town", "description": "Stroll"}]})
-    Section.objects.create(day=d3, section_type="free_text", title="Notes", order=2,
+    # Catalogue links (site roadmap R18): a section about a place and an activity, a meal at a place.
+    de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe")
+    marburg = City.objects.create(name="Marburg", slug="marburg", country=de, latitude=50.8, longitude=8.77)
+    castle = POI.objects.create(name="Marburg Castle", slug="marburg-castle", city=marburg, latitude=50.81,
+                                longitude=8.77)
+    franco = POI.objects.create(name="Da Franco", slug="da-franco", city=marburg, latitude=50.8, longitude=8.77)
+    category = ActivityCategory.objects.create(name="Sightseeing", slug="sightseeing")
+    walk = Activity.objects.create(name="Castle walk", slug="castle-walk", category=category, description="x")
+    Section.objects.create(day=d3, section_type="free_text", title="Notes", order=2, poi=castle, activity=walk,
                            content={"paragraphs": ["First paragraph.", "Second paragraph."]})
     dinner = Meal.objects.create(day=d2, name="Ristorante Da Franco", meal_type="dinner", cuisine="Italian",
-                                 price_range="$$", why_recommended="Wood-fired pizza",
+                                 price_range="$$", why_recommended="Wood-fired pizza", poi=franco,
                                  reservation_notes="Call ahead", reserved_time=time(19, 30))
     Meal.objects.create(day=d3, name="Café Vetter", meal_type="lunch", order=1)
 

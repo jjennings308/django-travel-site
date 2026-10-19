@@ -3,8 +3,10 @@ from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
-BEFORE = [("activities", "0009_activity_location_recurrence")]
-AFTER = [("activities", "0010_link_suggested_locations")]
+# trips 0044 (R18) needs today's activities, so trips is pinned below it.
+TRIPS = ("trips", "0043_alter_comment_author")
+BEFORE = [("activities", "0009_activity_location_recurrence"), TRIPS]
+AFTER = [("activities", "0010_link_suggested_locations"), TRIPS]
 
 
 class LinkLocationsMigrationTests(RestoringTransactionTestCase):

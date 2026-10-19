@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from django import forms
 from django.db import models
+from django.db.models import Case, Q, Value, When
 from django.forms.formsets import formset_factory
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone as django_timezone
@@ -1277,8 +1278,52 @@ class DayForm(forms.ModelForm):
         return cleaned_data
 
 
+def catalogue_places(trip, food_first=False):
+    """Approved catalogue places in the trip's cities, for an item's Place select (site roadmap R18;
+    the same rule as day activities). ``food_first`` puts Food & drink places first, for meals."""
+    from apps.approval_system.models import ApprovalStatus
+    cities = list(trip.cities.values_list("pk", flat=True)) if trip else []
+    if not cities:
+        return POI.objects.none()
+    places = POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED).select_related("city")
+    if food_first:
+        places = places.annotate(not_food=Case(When(poi_type_id="food", then=Value(1)), default=Value(2)))
+        return places.order_by("not_food", "name")
+    return places.order_by("name")
+
+
+def catalogue_activities(trip):
+    """Published activities in the trip's cities, or country-wide ones (no city) in their countries."""
+    from apps.activities.models import Activity
+    cities = list(trip.cities.values_list("pk", "country_id")) if trip else []
+    if not cities:
+        return Activity.objects.none()
+    return (Activity.get_public_activities()
+            .filter(Q(city_id__in=[c for c, _ in cities])
+                    | Q(city__isnull=True, country_id__in={k for _, k in cities if k}))
+            .select_related("city", "country").order_by("name"))
+
+
+def _place_label(poi):
+    return f"{poi.name} · {poi.city.name}" if poi.city_id else poi.name
+
+
+def _setup_catalogue_fields(form, trip, food_first=False):
+    """Limit a form's ``poi`` (and ``activity``) selects to the trip's cities."""
+    form.fields["poi"].queryset = catalogue_places(trip, food_first)
+    form.fields["poi"].label_from_instance = _place_label
+    form.fields["poi"].help_text = ("Optional: the catalogue place, when it's in one of this trip's cities."
+                                    if trip and trip.cities.exists() else
+                                    "Add cities to the trip to link a catalogue place.")
+    if "activity" in form.fields:
+        form.fields["activity"].queryset = catalogue_activities(trip)
+        form.fields["activity"].label_from_instance = (
+            lambda a: f"{a.name} · {a.city.name if a.city_id else a.country.name}" if (a.city_id or a.country_id) else a.name)
+        form.fields["activity"].help_text = "Optional: the catalogue activity this is about."
+
+
 class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
-    """One restaurant or food stop on a day."""
+    """One restaurant or food stop on a day. ``poi`` links a notable one to the catalogue (R18)."""
 
     class Meta:
         model = Meal
@@ -1290,6 +1335,7 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
             "price_range",
             "why_recommended",
             "reservation_notes",
+            "poi",
             "order",
         ]
         widgets = {
@@ -1299,12 +1345,15 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
         }
         help_texts = {"reserved_time": "A booked table's time: the meal joins the day's timeline. Blank: a food idea."}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["order"].required = False
         # price_range is blank=True on the model ("" for "no band"), so an
         # unset meal is not forced to invent a price.
         self.fields["price_range"].required = False
+        if trip is None and self.instance.day_id:
+            trip = self.instance.day.trip
+        _setup_catalogue_fields(self, trip, food_first=True)
 
 
 MealFormSet = inlineformset_factory(
@@ -1766,16 +1815,19 @@ class SectionForm(BlankOrderFallbackMixin, forms.ModelForm):
 
     class Meta:
         model = Section
-        fields = ["title", "icon", "order"]
+        fields = ["title", "icon", "poi", "activity", "order"]
         widgets = {
             "icon": forms.TextInput(
                 attrs={"placeholder": "emoji or short label", "autocomplete": "off"}
             )
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["order"].required = False
+        if trip is None and self.instance.day_id:
+            trip = self.instance.day.trip
+        _setup_catalogue_fields(self, trip)
 
 
 class CommentForm(forms.ModelForm):
