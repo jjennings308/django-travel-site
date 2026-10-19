@@ -189,6 +189,17 @@ def _attention(now, sla_hours):
         "tone": "info",
     })
 
+    from .account_data import deletion_date
+    leaving = list(User.objects.exclude(deletion_requested_at=None).order_by("deletion_requested_at"))
+    entries.append({
+        "key": "deletions", "title": "Accounts scheduled for deletion", "count": len(leaving),
+        "detail": "Deleted by the daily purge_deleted_accounts unless they sign in again; can't be undone after.",
+        "url": reverse("admin:accounts_user_changelist"),
+        "items": [{"text": u.username, "meta": f"deleted on {deletion_date(u):%b} {deletion_date(u).day}",
+                   "url": _admin_url(u)} for u in leaving[:LIST_LIMIT]],
+        "tone": "info",
+    })
+
     draft_legal = [k for k, v in settings.LEGAL.items() if str(v).startswith("[")]
     entries.append({
         "key": "legal", "title": "Legal pages still have placeholders", "count": len(draft_legal),

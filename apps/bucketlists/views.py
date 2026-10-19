@@ -599,8 +599,8 @@ def public_list(request, username):
     """A user's public bucket list. 404 unless their profile is public (or it's yours)."""
     owner = get_object_or_404(get_user_model(), username=username, is_active=True)
     is_owner = request.user.is_authenticated and request.user == owner
-    if not is_owner and owner.profile_visibility != "public":
-        raise Http404
+    if not is_owner and (owner.profile_visibility != "public" or owner.deletion_requested_at):
+        raise Http404  # a profile waiting to be deleted is hidden (site roadmap R13)
     items = (
         _items().filter(user=owner, is_public=True).exclude(status="abandoned")
         .order_by("status", "-priority", "-completed_date")

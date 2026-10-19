@@ -241,7 +241,7 @@ def profile_view(request, username=None):
     
     # Check privacy settings
     if profile_user != request.user:
-        if profile_user.profile_visibility == 'private':
+        if profile_user.profile_visibility == 'private' or profile_user.deletion_requested_at:
             messages.error(request, 'This profile is private.')
             return redirect('pages:home')
     

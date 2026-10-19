@@ -88,7 +88,9 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     # Creator and visibility
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # a deleted account's activities stay in the catalogue (R13)
+        null=True,
+        blank=True,
         related_name='created_activities',
         help_text="User who created this activity",
     )    

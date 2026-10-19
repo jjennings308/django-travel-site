@@ -59,6 +59,10 @@ class User(AbstractUser, TimeStampedModel):
         default=False,
         help_text="Email verification status"
     )
+
+    # "Delete my account" (site roadmap R13): set when they ask; signing in again clears it; after
+    # ``DELETION_GRACE_DAYS`` the daily purge deletes the account (pages.account_data).
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
     
     # Privacy settings
     profile_visibility = models.CharField(

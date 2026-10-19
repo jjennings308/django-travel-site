@@ -2040,7 +2040,9 @@ class Comment(models.Model):
 
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # notes on a shared trip stay, as "A former member" (R13)
+        null=True,
+        blank=True,
         related_name="trip_comments",
     )
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -2061,7 +2063,14 @@ class Comment(models.Model):
         indexes = [models.Index(fields=["content_type", "object_id", "created_at"])]
 
     def __str__(self):
-        return f"{self.author}: {self.body[:40]}"
+        return f"{self.author_name}: {self.body[:40]}"
+
+    @property
+    def author_name(self):
+        """The author's name, or "A former member" once the account is deleted (site roadmap R13)."""
+        if self.author_id is None:
+            return "A former member"
+        return self.author.get_full_name() or self.author.get_username()
 
     def trip(self):
         """The trip this comment is about, or ``None`` if unattached.

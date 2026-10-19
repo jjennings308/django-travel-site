@@ -229,6 +229,21 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   works"; the account menu has Help. `apps/pages/tests/test_help_links.py` renders those pages and checks
   every `/help/` link and anchor. **A change to a user-facing feature updates its guide in the same PR and
   bumps its `updated` date.**
+- **Your data** (site roadmap R13; `pages:my_data` at `/account/data/`, linked from Settings): **download**
+  (`pages:data_export`, POST, once per 10 min) streams a zip built by `apps/pages/account_data.export_zip` —
+  JSON per area plus `files/` (their uploads); trips as they see them, other people by name only, never
+  another person's private profile. **Delete** (password + tick) sets `User.deletion_requested_at` (accounts
+  0016), signs them out and emails the date; while pending their public bucket list and profile 404 and
+  `notify()` sends them no email; signing in cancels it (`pages/signals.py`, `user_logged_in`).
+  `manage.py purge_deleted_accounts [--dry-run]` (daily cron on production) purges accounts asked > 30 days
+  ago (`account_data.purge`): shared trips they created go to the longest-standing other editor (else the
+  longest-standing member, made editor), solo trips are deleted with their photos and tickets, personal
+  `Media` is deleted **with its files** (pictures used as a catalogue `featured_media` stay), the `Traveler`
+  is scrubbed and unlinked (deleted if no trip uses it), the role-request document is removed, then the
+  user is deleted. `Activity.created_by`, `Media.uploaded_by`, `Review.user` and `trips.Comment.author` are
+  SET_NULL (R13) so catalogue items, pictures, reviews and trip notes survive as "A former member"
+  (`Review.author_name`, `Comment.author_name` — use these, never `.user.username` / `.author` directly).
+  The staff dashboard lists accounts scheduled for deletion. It lives in `pages` because it reaches every app.
 - **Public pages stay honest:** the home page's stats are real published-catalogue counts (`pages.views._catalogue_counts`, cached an hour); no invented numbers, testimonials or features. Every footer link must resolve (`test_site_pages` walks them). `pages:contact` emails `LEGAL_CONTACT_EMAIL` with Reply-To the sender (honeypot field, 3 per session per hour, disabled while the address is a placeholder); `pages:help` explains the lifecycle.
 - **Notifications:** `apps.notifications.services.notify(user, kind, title, message, url, obj)` creates a `Notification` and emails it unless `user.settings.email_notifications` is off or the address is a placeholder (mail errors are logged, never raised); `notify_staff(...)` reaches everyone with `can_access_staff`. Kinds (seeded by notifications 0002): `submission_reviewed` (from `Approvable.approve/reject/request_changes` → `_send_approval_notification`, to the submitter/creator, gated by `ApprovalSettings.notify_on_approval/notify_on_rejection`), `submission_received` (staff, from `Approvable.submit_for_review`, gated by `notify_on_submission`; the activity forms now call `submit_for_review` instead of setting PENDING by hand), `role_request_decided` (accounts sends the `accounts.signals.role_request_decided` signal; `notifications/receivers.py` reacts, because accounts may not import notifications), `trip_access_granted` (`trips/signals.py`, on a new `TripGrant` not granted to oneself), `trip_invite_accepted` (`trips/people.accept`, to the inviter; created on first use, not seeded). The header bell loads `notifications:unread_count` (JSON) after the page, so pages pay no query; `/notifications/` lists them, opening one marks it read. Cross-app notification tests live in `apps/pages/tests/test_notifications_flow.py` (pages may import everything).
 - **Visitor counts:** `visitor_count` on POI, City, Region (locations 0011) and Country = distinct members who ticked off a goal there or travelled (with an account) on a finished trip naming the city (`Trip.cities` / `Day.city`); regions/countries roll up their cities. `apps/bucketlists/visitors.recount()` recomputes everything (bucketlists may read trips; locations may not); `bucketlists/signals.py` queues one recount per transaction (on commit) when a completed goal or a finished trip changes, and `manage.py recount_visitors` runs nightly on production (James's crontab) because trips finish by date. Pages show "Members who've been" only when non-zero; top attractions / a city's places sort by it.
@@ -942,6 +957,9 @@ Status: R1 (editors invite people; the People page) done on branch `r1-trip-invi
 
 These bit that project once each; they apply here from Phase 1 on.
 
+- **A migration whose FK points at the user must depend on accounts 0002 or later**, not only on
+  `swappable_dependency(settings.AUTH_USER_MODEL)` (which means accounts 0001): the user table became
+  `users` in 0002, and without it the migration's SQL names `accounts_user` (caught in R13 with `sqlmigrate`).
 - **Read every `makemigrations` proposal for `RemoveField` / `DeleteModel` before applying it**,
   and confirm with `sqlmigrate` that a rename is a `RENAME`, not a `DROP`.
 - **`manage.py shell` runs against the real database.** Take a `pg_dump` before any shell command

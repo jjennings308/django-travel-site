@@ -22,10 +22,10 @@ Usage:
     <ul class="space-y-3">
       {% for comment in comments %}
         <li id="comment-{{ comment.pk }}" class="comment scroll-mt-24">
-          <span class="avatar ring-0">{{ comment.author.get_full_name|default:comment.author.get_username|slice:":1" }}</span>
+          <span class="avatar ring-0">{{ comment.author_name|slice:":1" }}</span>
           <div class="comment-body">
             <p class="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
-              <span class="text-sm font-semibold text-zinc-900">{{ comment.author.get_full_name|default:comment.author.get_username }}</span>
+              <span class="text-sm font-semibold text-zinc-900">{{ comment.author_name }}</span>
               <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"j M Y, H:i" }}</time>
               {% if comment.edited_at %}
                 <span class="text-zinc-400">(edited)</span>

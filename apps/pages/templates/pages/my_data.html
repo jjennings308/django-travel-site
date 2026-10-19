@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% comment %}
+Your data (pages:my_data, site roadmap R13): download everything, or delete the account after a grace period. The rules are in pages/account_data.py.
+{% endcomment %}
+{% block title %}Your data · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-3xl space-y-6">
+  <header>
+    <h1 class="sbl-page-title">Your data {% include "partials/_help_link.html" with slug="your-data" label="your data" %}</h1>
+    <p class="sbl-page-subtitle">Take a copy of everything, or delete your account.</p>
+  </header>
+
+  <section class="sbl-card p-6">
+    <h2 class="mb-2 text-xl font-semibold text-warm-900">Download your data</h2>
+    <p class="mb-4 text-warm-700">A zip file with your account, profile, travel profile and loyalty programs, bucket list, reviews, notes, notifications, what you've added to the catalogue, the trips you're on, and the photos and tickets you uploaded. It's made when you click and isn't kept on our server.</p>
+    <form method="post" action="{% url 'pages:data_export' %}">{% csrf_token %}
+      <button type="submit" class="sbl-btn sbl-btn-primary"><i class="bi bi-download"></i> Download my data</button>
+    </form>
+  </section>
+
+  <section class="sbl-card border-red-200 p-6" id="delete">
+    <h2 class="mb-2 text-xl font-semibold text-red-800">Delete your account</h2>
+    <ul class="mb-4 list-disc space-y-1 pl-5 text-warm-700">
+      <li>Your account is hidden and you're signed out straight away. It's deleted for good after <strong>{{ grace_days }} days</strong>. <strong>Signing in before then cancels it.</strong></li>
+      <li>Your bucket list, photos, travel profile, loyalty programs, notifications and calendar links are deleted.</li>
+      <li>Trips you started that others are on stay with them; trips only you are on are deleted.</li>
+      <li>Your reviews, your notes on shared trips and anything you added to the catalogue stay, shown as from "A former member".</li>
+      <li>Copies in our backups age out within 12 months and are never used to bring an account back.</li>
+    </ul>
+    <p class="mb-4 text-warm-700">Want a copy first? Download your data above.</p>
+    <form method="post" class="space-y-3" novalidate>{% csrf_token %}
+      {% if form.non_field_errors %}<div class="sbl-alert sbl-alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <div>
+        <label for="{{ form.password.id_for_label }}" class="sbl-label">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% if form.password.errors %}<div class="text-red-700">{{ form.password.errors }}</div>{% endif %}
+      </div>
+      <label class="flex items-start gap-2 text-warm-700">{{ form.confirm }} <span>{{ form.confirm.label }}</span></label>
+      {% if form.confirm.errors %}<div class="text-red-700">{{ form.confirm.errors }}</div>{% endif %}
+      <button type="submit" class="sbl-btn sbl-btn-danger">Delete my account</button>
+    </form>
+  </section>
+</article>
+{% endblock %}
