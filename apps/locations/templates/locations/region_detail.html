@@ -83,6 +83,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% if region.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_whats_on.html" with kind="region" obj=region %}</div>{% endif %}
         </div>
 
         <!-- Sidebar -->

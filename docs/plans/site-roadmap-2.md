@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R20 done (2026-10-19); R21 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R21 done (2026-10-19); R22 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -217,6 +217,12 @@ countries and regions included; accents ignored (`unaccent`). Extensions in core
 - **Help:** places-and-events guide gets "Searching".
 
 ## R21 — What's on: events by month, and on place pages
+
+**Status: done** (2026-10-19, branch `r21-whats-on`). Decisions: nearby = within 50 km of a city; venue pages
+show their events; a multi-day event shows on every day it runs; the .ics is for anyone who can see the
+event. Also fixed: `UserTimezoneMiddleware` read the deprecated `UserPreferences`, so the Settings time zone
+was ignored and everyone was UTC (James chose to fix it here). Found: place pages need a login (search and
+What's on link to them) — for R22.
 
 - `/events/calendar/<year>/<month>/`: a month grid (list on a phone) of upcoming visible events, with
   country and category filters, linking prev/next month.

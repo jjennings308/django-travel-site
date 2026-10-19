@@ -24,6 +24,14 @@ The **search box** at the top of every page looks through the whole catalogue at
 
 Only published items are found; your own suggestions waiting for approval show up for you alone.
 
+## What's on and the calendar
+
+- **Calendar:** on the Events page, click **Calendar** for a month at a glance. An event shows on every day it runs; a busy day says "+N more", which jumps to that day's list. Use the arrows for other months and the filters for a country or category. On a phone it's a list of the days with something on.
+- **What's on:** country, region, city and place pages list what's coming up there. A city also shows events within 50 km, marked **Nearby** with the distance; a place (a stadium, a hall) shows the events held there. **Things to do** lists activities in the same place.
+- **Add to my calendar:** on an event's page, this downloads a file your calendar app (Apple, Google, Outlook) opens to add the event, with its times in the event's own time zone.
+
+Dates and "today" follow the time zone in your **Settings**.
+
 ## Suggest something new
 
 - **Add an activity** on the Activities page.
