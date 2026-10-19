@@ -8,7 +8,7 @@ from zoneinfo import available_timezones, ZoneInfo
 
 from .models import (
     User, Profile, TravelPreferences, AccountSettings,
-    RoleRequest, VendorProfile, ContentProviderProfile, UserRole
+    RoleRequest, VendorProfile, ContentProviderProfile, UserRole, SignupCode
 )
 
 # AccountSettingsForm supplies the ISO 4217 currency choices
@@ -175,6 +175,8 @@ class UserAdmin(DjangoUserAdmin):
                 "subscription_tier",
                 "subscription_expires",
                 "profile_visibility",
+                "trip_creation_blocked",
+                "deletion_requested_at",
             )
         }),
         (_("Important dates"), {
@@ -481,3 +483,18 @@ class UserRoleInline(admin.TabularInline):
     autocomplete_fields = ("granted_by",)
     verbose_name = "app role"
     verbose_name_plural = "app roles"
+
+
+@admin.register(SignupCode)
+class SignupCodeAdmin(admin.ModelAdmin):
+    """Codes that let someone register while sign-up is invite-only (site roadmap R14). Leave
+    Code as suggested (8 letters, no look-alikes) or type your own; hand it out as a link:
+    https://sharebucketlist.com/accounts/register/?code=CODE"""
+    list_display = ("code", "note", "uses_left", "expires_at", "created_by", "created_at")
+    search_fields = ("code", "note")
+    readonly_fields = ("created_by", "created_at")
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

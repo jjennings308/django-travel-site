@@ -3,7 +3,7 @@ summary: Who can see, comment on or change a trip, how to invite people, and wha
 audience: everyone
 section: Getting started
 order: 10
-updated: 2026-10-18
+updated: 2026-10-19
 
 # Sharing and access
 
@@ -51,7 +51,7 @@ Editors can change anyone's role with the menu beside their name, or click **Rem
 
 Anyone can leave a trip: on **People**, click **Leave this trip** beside your own name. You can't open the trip again unless someone invites you back.
 
-To start trips of your own, you can use **Plan a trip** on a goal in your bucket list. You become an editor of the trip it creates.
+To start trips of your own, click **New trip** on **Trips**, or **Plan a trip** on a goal in your bucket list ([starting a trip](/help/starting-a-trip/)). You become the editor of the trip you start.
 
 ## Emails about changes
 

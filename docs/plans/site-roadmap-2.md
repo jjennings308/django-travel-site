@@ -1,6 +1,6 @@
 # Plan: the next batch — beyond the family, Phase 4's loose ends, the catalogue, and ops
 
-Status: R12–R13 done (2026-10-19); R14 next. Follows `site-roadmap.md` (R1–R11, complete), so the
+Status: R12–R14 done (2026-10-19); R15 next. Follows `site-roadmap.md` (R1–R11, complete), so the
 phases continue at **R12**. Hand to Claude Code **one phase per branch/PR, in order**. Read with
 `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs
 them. Every phase that changes something a user sees updates its Help guide in the same PR
@@ -84,6 +84,11 @@ grace period they can cancel by signing in? (Recommended: 14 days.)
 - **Help + privacy page:** how to export and delete.
 
 ## R14 — Open sign-up and trip creation, and a first-run welcome
+
+**Status: done** (2026-10-19, branch `r14-open-signup`). Decisions: every verified account may create
+trips (staff can block one); sign-up invite-only for now (`SIGNUP_MODE=invite`: a trip invite link or a
+sign-up code from the admin; set `open` to open it); role requests moved to Settings. R13's privacy
+wording approved by James on 2026-10-19.
 
 **Ask James:** (a) may every verified account create trips? (Recommended: yes — drop the staff-granted
 "creator" role as a requirement; keep it only as a way to *revoke* for abuse.) (b) Open sign-up to anyone,

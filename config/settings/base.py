@@ -215,6 +215,9 @@ from apps.core.settings_helpers import parse_admins  # noqa: E402
 ADMINS = parse_admins(os.environ.get("DJANGO_ADMINS", ""))
 
 SITE_NAME = 'ShareBucketList'
+# Who may register (site roadmap R14): "invite" = only with a trip invite link or a sign-up code
+# (accounts.SignupCode, made in the admin); "open" = anyone (email verification still required).
+SIGNUP_MODE = os.environ.get("SIGNUP_MODE", "invite").strip().lower()
 SITE_TAGLINE = 'Plan it. Live it. Share it.'
 
 # Details used by the Terms, Privacy and Safety pages (apps/pages, templates under

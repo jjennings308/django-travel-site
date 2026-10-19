@@ -97,7 +97,6 @@ from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from apps.accounts.models import Role
 from apps.core.storage import private_storage
 from apps.locations.models import POI, City
 from django.conf import settings
@@ -2125,16 +2124,15 @@ class Comment(models.Model):
 def can_create_trip(user):
     """Whether ``user`` may author a new trip.
 
-    App-wide rather than per-trip, because it is about the person rather than
-    any one trip. Nothing builds on this yet — all trips are still authored in
-    the admin — but it is the check the future create view will use, so it lives
-    with the other rules rather than in a view.
+    Every active (so email-verified) account may, unless staff blocked it for abuse
+    (``User.trip_creation_blocked``, site roadmap R14). The staff-granted ``creator`` role
+    that used to be required is no longer checked; staff and superusers always may.
     """
     if user is None or not user.is_authenticated or not user.is_active:
         return False
     if user.is_staff or user.is_superuser:
         return True
-    return user.roles.filter(role=Role.CREATOR).exists()
+    return not getattr(user, "trip_creation_blocked", False)
 
 
 class TripRole(models.TextChoices):
