@@ -1,0 +1,4 @@
+{% comment %}
+Visit statistics: the self-hosted Umami on analytics.tazcomputer.com (cookieless; settings ANALYTICS_SCRIPT_URL / ANALYTICS_WEBSITE_ID, production only). No SRI: it is our own server and its script changes when Umami is upgraded. Query strings and #fragments are never sent (sign-up codes, emails, searches), and browsers asking Do Not Track are not counted. Pages with a secret in their address get no script (core.context_processors.ANALYTICS_SKIP). Included in base.html and base_marketing.html.
+{% endcomment %}
+{% if ANALYTICS_SCRIPT_URL and ANALYTICS_WEBSITE_ID %}<script defer src="{{ ANALYTICS_SCRIPT_URL }}" data-website-id="{{ ANALYTICS_WEBSITE_ID }}" data-exclude-search="true" data-exclude-hash="true" data-do-not-track="true"></script>{% endif %}

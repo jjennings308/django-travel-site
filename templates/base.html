@@ -30,6 +30,7 @@
   {% block extra_css %}{% endblock %}
   {% block extra_head %}{% endblock %}
   {% include "partials/_offline_cache.html" %}
+  {% include "partials/_analytics.html" %}
   {% if IS_STAGING %}<meta name="robots" content="noindex, nofollow">{% endif %}
 </head>
 <body class="bg-warm-50 text-warm-900 min-h-screen">

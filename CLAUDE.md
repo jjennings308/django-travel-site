@@ -140,6 +140,14 @@ the static manifest resolves `css/dist/styles.css`, else 503 `unavailable` (reas
 never mailed); plain text, no login, `no-store`. `deploy.sh`'s live check requires it; James's uptime
 monitor watches it.
 
+**Visit statistics:** the shared box's self-hosted Umami (`analytics.tazcomputer.com`, cookieless) via
+`templates/partials/_analytics.html` in both bases. `ANALYTICS_SCRIPT_URL` / `ANALYTICS_WEBSITE_ID` are empty in
+`base.py` (dev and tests never count), filled in by `prod.py` and emptied again by `staging.py`. No SRI (our own
+server; its script changes with Umami upgrades — the upkeep SRI test skips template-variable URLs); query strings
+and fragments aren't sent, Do Not Track is honoured, and addresses holding a secret (`core.context_processors.ANALYTICS_SKIP`:
+shared trips, invites, password reset, email verification, unsubscribe) get no script — add any new token URL there.
+The privacy page's section 5 describes it.
+
 **Live:** https://sharebucketlist.com on `james@tazcomputer.com` (shared Debian 13 box that also hosts
 soho, score, tazcomputer, umami, excalidraw). Repo at `/var/www/travel_site` (owner www-data,
 group-writable; `james` is in group www-data), gunicorn 2 workers as `travel_site.service` on
