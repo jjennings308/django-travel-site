@@ -330,7 +330,8 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   SET_NULL; choices are the trip's cities (`forms.catalogue_places` — Food & drink first for meals — and
   `catalogue_activities`: published activities in those cities or country-wide in their countries), on the day
   page's meal formset and the section page. `apps/trips/catalogue_links.py`: on "On this day" an unlinked meal /
-  section whose name matches exactly one of them (`normalise`: capitals, spacing, punctuation) gets "Looks like …
+  section whose name matches exactly one of them (`match_keys`: capitals, spacing, punctuation, accents, German
+  ö/ä/ü = oe/ae/ue) gets "Looks like …
   — Link / Not this one" (`trips:catalogue_link`, editors; a dismissal is a `TidyDismissal` keyed `catalogue:…`);
   never automatic. The trip page shows the links (`partials/_catalogue_link.html`, select_related in the
   prefetch, so the pin holds), the booklet plain text (`pdf/_catalogue.html`). `import_itinerary`'s dry run lists

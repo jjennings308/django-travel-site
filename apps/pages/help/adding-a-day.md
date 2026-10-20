@@ -70,7 +70,7 @@ Items with a time (legs, activities, booked meals) go on the day's timeline in t
 
 A meal can name its catalogue **Place** (in the Meals form), and a section a **Place** or an **Activity** (on the section's page). The lists offer only places and activities in the trip's cities, so add the city to the trip first. It's optional: most meals stay plain text, and only notable restaurants are in the catalogue. A linked item shows the catalogue name as a link on the trip page and as plain text in the booklet.
 
-When a meal's name or a section's title is exactly the name of one catalogue place or activity in the trip's cities, **On this day** shows **Looks like … — Link / Not this one**. Nothing is linked until you click **Link**; **Not this one** stops suggesting it.
+When a meal's name or a section's title is the name of one catalogue place or activity in the trip's cities (capitals, punctuation and accents don't matter, and German ö, ä, ü may be written oe, ae, ue), **On this day** shows **Looks like … — Link / Not this one**. Nothing is linked until you click **Link**; **Not this one** stops suggesting it.
 
 ## Check it on the trip page and in the booklet
 

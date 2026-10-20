@@ -81,6 +81,17 @@ class SuggestionTests(Fixture):
         self.client.force_login(self.editor)
         return self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]))
 
+    def test_umlauts_and_accents_either_way(self):
+        from apps.trips.catalogue_links import match_keys
+        for typed, catalogue in (("Zur Höll", "Zur Hoell"), ("zur hoell", "Zur Höll"), ("Hofbraeuhaus", "Hofbräuhaus"),
+                                 ("Strasse Cafe", "Straße Café")):
+            self.assertTrue(match_keys(typed) & match_keys(catalogue), (typed, catalogue))
+        self.assertFalse(match_keys("Zur Hell") & match_keys("Zur Hoell"))
+        POI.objects.create(name="Zur Hoell", slug="zur-hoell", city=self.london, latitude=51.5, longitude=0,
+                           poi_type_id="food", **APPROVED)
+        Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
+        self.assertContains(self.page(), "Looks like the catalogue place")
+
     def test_exact_name_is_suggested_and_linked_on_request(self):
         meal = Meal.objects.create(day=self.day, name="borough  market!", meal_type="lunch")
         self.assertContains(self.page(), "Looks like the catalogue place")
