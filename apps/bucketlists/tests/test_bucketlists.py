@@ -708,6 +708,32 @@ class VisitorCountTests(BucketFixture):
         call_command("recount_visitors", stdout=StringIO())
         self.assertEqual(self.counts()[0], 1)
 
+    def test_profile_stats_follow_goals_and_finished_trips(self):
+        from apps.accounts.models import Profile
+        from apps.trips.models import Traveler, Trip
+        other = Country.objects.create(name="Elsewhere", slug="elsewhere", iso_code="EW", iso3_code="EWX",
+                                       continent="Europe")
+        abroad = City.objects.create(name="Far", slug="far", country=other, latitude=1, longitude=1)
+        BucketListItem.objects.create(user=self.alice, city=self.city).complete()
+        BucketListItem.objects.create(user=self.alice, custom_title="Not yet")
+        trip = Trip.objects.create(name="Done", start_date=date.today() - timedelta(days=10),
+                                   end_date=date.today() - timedelta(days=3))
+        trip.travelers.add(Traveler.objects.get(user=self.alice))
+        trip.cities.add(abroad)
+        self.commit()
+        profile = Profile.objects.get(user=self.alice)  # made by the recount: alice never opened her profile
+        self.assertEqual((profile.countries_visited_count, profile.trips_completed_count,
+                          profile.bucket_list_completed_count), (2, 1, 1))
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse("profile"))
+        self.assertContains(page, "<strong>Countries Visited:</strong> 2")
+        self.assertContains(page, "<strong>Goals ticked off:</strong> 1")
+        Trip.objects.filter(pk=trip.pk).update(end_date=date.today() + timedelta(days=1))  # not finished after all
+        from apps.bucketlists.visitors import recount
+        recount()
+        profile.refresh_from_db()
+        self.assertEqual((profile.countries_visited_count, profile.trips_completed_count), (1, 0))
+
     def test_page_shows_it_only_when_nonzero(self):
         url = reverse("locations:city_detail", args=[self.city.slug])
         self.assertNotContains(self.client.get(url), "Members who&#x27;ve been")
