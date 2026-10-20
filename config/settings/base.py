@@ -238,11 +238,15 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until 
 # Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
 GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
+# Visit statistics (partials/_analytics.html): James's self-hosted Umami, cookieless. Empty = off, so
+# dev and tests never count; prod.py fills them in and staging.py empties them again.
+ANALYTICS_SCRIPT_URL = os.environ.get("ANALYTICS_SCRIPT_URL", "")
+ANALYTICS_WEBSITE_ID = os.environ.get("ANALYTICS_WEBSITE_ID", "")
 
 # The current Terms of Service and Privacy policy (site roadmap R16): bump the date in the same change
 # that edits the text, and everyone signed in is asked to accept it again on their next visit.
 TERMS_VERSION = "2026-10-19"
-PRIVACY_VERSION = "2026-10-20"  # searches counted per IP (R20 limit, approved 2026-10-19)
+PRIVACY_VERSION = "2026-10-20.2"  # visit statistics (Umami); before: searches counted per IP
 LEGAL_ACCEPTANCE_REQUIRED = True  # off only in the test settings
 
 LEGAL = {

@@ -12,6 +12,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 SITE_URL = os.environ.get("SITE_URL", "https://staging.sharebucketlist.com")  # noqa: F405
 # A brand-new host: remember HTTPS for an hour only, as prod.py's own comment advises.
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))  # noqa: F405
+# Testers' clicks would muddy production's visit statistics.
+ANALYTICS_SCRIPT_URL = ANALYTICS_WEBSITE_ID = ""
 MIDDLEWARE = [*MIDDLEWARE, "apps.core.middleware.NoIndexMiddleware"]  # noqa: F405
 
 # Its own rate-limit and error-email counts, kept in memory: staging runs one worker, so nothing needs

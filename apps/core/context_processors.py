@@ -5,6 +5,11 @@ from django.conf import settings
 
 from . import seo
 
+# Pages whose address holds a secret (shared trip links, invites, password reset, email verification,
+# unsubscribe): never sent to the visit statistics.
+ANALYTICS_SKIP = ("/public/", "/trips/invite/", "/accounts/reset/", "/accounts/verify-email/",
+                  "/notifications/unsubscribe/")
+
 
 def site_branding(request):
     """Existing function - provides site branding information"""
@@ -23,6 +28,9 @@ def site_branding(request):
         "MAP_PROVIDER": getattr(settings, "MAP_PROVIDER", "osm"),
         "MAP_TILE_URL": getattr(settings, "MAP_TILE_URL", ""),
         "MAP_ATTRIBUTION": getattr(settings, "MAP_ATTRIBUTION", ""),
+        # Visit statistics (partials/_analytics.html): only where configured, never on a secret address.
+        "ANALYTICS_SCRIPT_URL": "" if request.path.startswith(ANALYTICS_SKIP) else settings.ANALYTICS_SCRIPT_URL,
+        "ANALYTICS_WEBSITE_ID": settings.ANALYTICS_WEBSITE_ID,
     }
 
 

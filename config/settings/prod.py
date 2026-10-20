@@ -25,6 +25,9 @@ ALLOWED_HOSTS = [h.strip() for h in _required("DJANGO_ALLOWED_HOSTS").split(",")
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
 SITE_URL = os.environ.get("SITE_URL", "https://www.sharebucketlist.com")
+# Visit statistics on the shared box's Umami (analytics.tazcomputer.com); the id isn't a secret.
+ANALYTICS_SCRIPT_URL = os.environ.get("ANALYTICS_SCRIPT_URL", "https://analytics.tazcomputer.com/script.js")
+ANALYTICS_WEBSITE_ID = os.environ.get("ANALYTICS_WEBSITE_ID", "199d995c-5a14-452c-9e87-c216773fd476")
 
 # --- Static files ----------------------------------------------------------------
 # collectstatic writes content-hashed copies (styles.<hash>.css) plus a manifest, and
