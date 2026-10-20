@@ -13,6 +13,9 @@ Lives in bucketlists because it reads goals *and* trips (locations may import
 neither). ``recount()`` recomputes everything in a few grouped queries and writes
 only the counts that changed; signals call it when a goal or trip changes, and
 ``manage.py recount_visitors`` runs it nightly for trips that finished by date.
+
+The same pass keeps each member's profile stats (``accounts.Profile``: countries visited, trips
+completed, goals ticked off) in step, by the same rule — they were never filled in before.
 """
 from collections import defaultdict
 
@@ -48,6 +51,44 @@ def _visitors():
     return city, poi, country
 
 
+def _store_profiles(city_users, country_only):
+    """Profile stats from the visitors data (+ two grouped queries); only changed rows are written."""
+    from django.db.models import Count
+
+    from apps.accounts.models import Profile
+    countries = defaultdict(set)
+    city_country = dict(City.objects.filter(pk__in=city_users).values_list("pk", "country_id"))
+    for city_id, users in city_users.items():
+        for user in users:
+            countries[user].add(city_country.get(city_id))
+    for country_id, users in country_only.items():
+        for user in users:
+            countries[user].add(country_id)
+    done = dict(BucketListItem.objects.filter(status="completed").values("user_id")
+                .annotate(n=Count("pk")).values_list("user_id", "n"))
+    finished = (Trip.objects.live().filter(end_date__lt=timezone.localdate(), travelers__user__isnull=False)
+                .values("travelers__user_id").annotate(n=Count("pk", distinct=True))
+                .values_list("travelers__user_id", "n"))
+    trips = dict(finished)
+    changed = []
+    fields = ["countries_visited_count", "trips_completed_count", "bucket_list_completed_count"]
+    for profile in Profile.objects.only("pk", "user_id", *fields):
+        new = (len(countries.get(profile.user_id, set()) - {None}), trips.get(profile.user_id, 0),
+               done.get(profile.user_id, 0))
+        if tuple(getattr(profile, f) for f in fields) != new:
+            for field, value in zip(fields, new):
+                setattr(profile, field, value)
+            changed.append(profile)
+    Profile.objects.bulk_update(changed, fields, batch_size=500)
+    # Profiles are made on first visit to the profile page; members with something to show get one now.
+    have = set(Profile.objects.values_list("user_id", flat=True))
+    missing = [Profile(user_id=user, countries_visited_count=len(countries.get(user, set()) - {None}),
+                       trips_completed_count=trips.get(user, 0), bucket_list_completed_count=done.get(user, 0))
+               for user in (set(countries) | set(trips) | set(done)) - have]
+    Profile.objects.bulk_create(missing, batch_size=500)
+    return len(changed) + len(missing)
+
+
 def _store(model, counts):
     """Write the new counts (0 for anything not in ``counts``); only changed rows."""
     changed = []
@@ -71,4 +112,5 @@ def recount():
     for country_id, users in country_only.items():
         country_users[country_id] |= users
     return sum(_store(model, {pk: len(users) for pk, users in data.items()}) for model, data in (
-        (City, city_users), (POI, poi_users), (Region, region_users), (Country, country_users)))
+        (City, city_users), (POI, poi_users), (Region, region_users), (Country, country_users))
+    ) + _store_profiles(city_users, country_only)
