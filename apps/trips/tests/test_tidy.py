@@ -100,6 +100,36 @@ class DetectorTests(SimpleTestCase):
         self.assertEqual(tidy.suggest(snap, dismissed={key}), [])
 
 
+class MealPhaseDetectorTests(SimpleTestCase):
+    """Kind 7: an empty "~7pm — Dinner" phase next to that day's one dinner."""
+
+    def found(self, heading, meals, **content):
+        day = plain_day(7, meals=meals, sections=[section(20, "phase", heading, heading=heading, **content)])
+        snap = {"notes": "", "days": [day], "trip_legs": [], "trip_stays": [], "tasks": [], "known_numbers": [],
+                "contact_phones": []}
+        return [s for s in tidy.suggest(snap) if s.kind == "meal_phase"]
+
+    def test_untimed_dinner_gets_the_phase_time(self):
+        dinner = {"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": None}
+        lunch = {"id": 6, "name": "Gasthof", "notes": "", "type": "lunch", "time": None}
+        [s] = self.found("~7pm — Dinner", [dinner, lunch])
+        self.assertEqual((s.after, s.actions[0][0], s.change["time"]), ("Zur Höll at 19:00, in the day's timeline",
+                                                                         "time_remove", "19:00"))
+        self.assertEqual(self.found("7:30 Dinner", [dinner])[0].change["time"], "19:30")  # no am/pm: evening
+
+    def test_timed_meal_just_drops_the_phase(self):
+        [s] = self.found("~7pm — Dinner", [{"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": "19:30"}])
+        self.assertEqual(s.actions, [("remove", "Remove the phase (the meal is in the timeline)")])
+
+    def test_left_alone(self):
+        dinner = {"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": None}
+        self.assertEqual(self.found("~7pm — Dinner", [dinner], summary="Sit outside if warm"), [])  # has words
+        self.assertEqual(self.found("~7pm — Dinner and a walk", [dinner]), [])  # more than "Dinner"
+        self.assertEqual(self.found("~7pm — Dinner", [dinner, {**dinner, "id": 9}]), [])  # two dinners: which?
+        self.assertEqual(self.found("~7pm — Dinner", []), [])
+        self.assertEqual(self.found("Dinner", [dinner]), [])  # no time to give it
+
+
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
@@ -170,6 +200,29 @@ class ApplyTests(Fixture):
         self.phase.save()
         applied, skipped = tidying.apply(self.trip, found, {ice.key: "remove"})
         self.assertEqual((applied, len(skipped)), ([], 1))
+
+    def test_meal_phase_sets_the_time_and_removes_the_phase(self):
+        meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
+        phase = Section.objects.create(day=self.day, section_type="phase", title="~7pm — Dinner", order=5,
+                                       content={"heading": "~7pm — Dinner", "summary": "", "highlights": []})
+        [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
+        applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
+        self.assertEqual((len(applied), skipped), (1, []))
+        meal.refresh_from_db()
+        self.assertEqual(meal.reserved_time.strftime("%H:%M"), "19:00")
+        self.assertFalse(Section.objects.filter(pk=phase.pk).exists())
+        self.assertFalse([s for s in self.suggestions() if s.kind == "meal_phase"])
+
+    def test_meal_phase_stale_when_the_meal_got_a_time(self):
+        from datetime import time
+        meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
+        phase = Section.objects.create(day=self.day, section_type="phase", title="~7pm — Dinner", order=5,
+                                       content={"heading": "~7pm — Dinner"})
+        [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
+        Meal.objects.filter(pk=meal.pk).update(reserved_time=time(20, 0))
+        applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
+        self.assertEqual((applied, len(skipped)), ([], 1))
+        self.assertTrue(Section.objects.filter(pk=phase.pk).exists())
 
     def test_notes_options_become_a_decision(self):
         self.trip.notes = "Augsburg options:\n1. Hotel Augusta\n2. Drei Mohren"
