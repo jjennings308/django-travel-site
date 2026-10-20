@@ -121,12 +121,7 @@
         
         <!-- Right Column - Activity Feed -->
         <div class="col-span-12 md:col-span-8">
-            <div class="sbl-card">
-                <div class="p-5">
-                    <h5>Recent Activity</h5>
-                    <p class="text-warm-500">Activity feed coming soon...</p>
-                </div>
-            </div>
+            {% include "partials/_profile_activity.html" with username=profile_user.username %}
         </div>
     </div>
 </div>

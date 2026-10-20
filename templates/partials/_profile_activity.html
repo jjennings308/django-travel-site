@@ -1,0 +1,7 @@
+{% comment %}
+The profile page's Recent Activity box: loads pages:profile_activity after the page, so accounts never imports the apps the feed reads and the page pays no query. Pass username.
+{% endcomment %}{% url 'pages:profile_activity' username as activity_url %}{% if activity_url %}
+<section class="sbl-card" x-data="{ html: '', async load() { try { const r = await fetch('{{ activity_url }}'); if (r.ok) this.html = await r.text(); } catch (e) {} } }" x-init="load()">
+  <div class="p-5" x-html="html"><h5 class="mb-2 font-semibold text-warm-900">Recent activity</h5><p class="text-sm text-warm-500">Loading…</p></div>
+</section>
+{% endif %}
