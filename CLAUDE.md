@@ -678,8 +678,10 @@ that matter most:
   info note on the task's item), a phone number in text or trip notes (`phone` → a contact linked to the
   named meal/section; a "name / notes / Phone:" block in the trip notes becomes one contact), trip notes
   repeating legs/stays or listing numbered options (`notes_repeat`, `notes_options` → a decision task),
-  a logistics table titled like an activity (`table_activity` → an info note on it) and "Day N" written
-  on another day (`day_slip`, flag only). **High confidence** only for kinds 1–2 when the item *leads*
+  a logistics table titled like an activity (`table_activity` → an info note on it), "Day N" written
+  on another day (`day_slip`, flag only) and an empty phase that is only "<time> — Dinner" next to the day's
+  one meal of that type (`meal_phase`: give the meal that `reserved_time` — `tidy.clock_time`, am/pm from the
+  meal type when missing — and delete the phase; review only). **High confidence** only for kinds 1–2 when the item *leads*
   the line (after an optional "Lunch:" label, followed by a dash/bracket/end — not "Borough Market →
   Tate Modern") or the callout's title says Book/Reserve/Critical. **Suggestions only**: the review page
   `trips:trip_tidy` (`/trips/<pk>/tidy/`, editors; linked from the trip page's Overview) shows them by

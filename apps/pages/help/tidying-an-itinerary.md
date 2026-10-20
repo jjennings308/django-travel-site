@@ -3,7 +3,7 @@ summary: Turn travel tables into real journeys, and use the clean-up suggestions
 audience: editors
 section: Trips
 order: 50
-updated: 2026-10-17
+updated: 2026-10-19
 
 # Tidying an itinerary
 
@@ -34,6 +34,7 @@ On the trip page, editors see **Tidy suggestions** in the Overview. The page lis
 | A phone number in the text | "Call ahead: 06033 65147" | Makes a contact, linked to the meal or plan, and removes the number from the text. |
 | Trip notes that belong elsewhere | A hotels line, or a numbered list of options | Removes the line, or makes a decision with those options. |
 | A table that describes an activity | A tour's times and meeting point | Moves the rows into an info note on the activity. |
+| An empty plan that's only a time and a meal | "~7pm — Dinner", on a day with one dinner | Gives the meal that reservation time, so it shows in the day's timeline, and removes the plan. If the meal already has a time, just removes the plan. |
 | A "Day N" that doesn't match | "Day 3 is a travel day" on Day 4 | Nothing: marked **Check by hand**. |
 
 Everything starts unticked. Tick what you agree with, choose an action where there are two, and click **Apply the ticked suggestions**. **Exact match** marks the safest ones. If the text changed since the page was opened, that suggestion is skipped and reported. **Not this** hides a suggestion for good.

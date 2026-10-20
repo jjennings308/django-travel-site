@@ -13,7 +13,7 @@ Snapshot shape (plain dicts and lists)::
                              "paragraphs": [...], "text", "columns": [...], "rows": [[...]]}],
                "legs": [{"id", "origin", "destination"}],
                "stays": [{"id", "name"}],              # checking in or out that day
-               "meals": [{"id", "name", "notes"}],
+               "meals": [{"id", "name", "notes", "type", "time"}],   # time "HH:MM" or None
                "activities": [{"id", "title"}]}],
      "trip_legs": [...], "trip_stays": [...],
      "tasks": [{"id", "title", "item": {"kind", "id", "label"} | None}],
@@ -29,6 +29,9 @@ Kinds (``Suggestion.kind``):
    options that is really a decision.
 5. ``table_activity`` — a logistics table describing an activity of that day.
 6. ``day_slip`` — "Day 3" written in Day 4's text (flag only).
+7. ``meal_phase`` — an empty phase that is only a time and a meal ("~7pm — Dinner") on a day with one
+   such meal: give the meal that reservation time (it then shows in the day's timeline) and remove the
+   phase. Review only (never applied by ``tidy_trip --apply``).
 
 Confidence is ``high`` only for exact name matches of kinds 1–2; ``manage.py tidy_trip --apply``
 applies those and nothing else.
@@ -251,6 +254,66 @@ def _table_activity(day, section):
             return
 
 
+# ---- 7. an empty phase that is only "time — Dinner" --------------------------------------------
+MEAL_WORDS = {"breakfast": "breakfast", "brunch": "breakfast", "lunch": "lunch", "dinner": "dinner",
+              "supper": "dinner", "drinks": "drinks", "snack": "snack"}
+CLOCK = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.IGNORECASE)
+
+
+#: Without am/pm, an hour below this is read as the afternoon/evening for that meal ("7:30 dinner").
+PM_BELOW = {"lunch": 6, "dinner": 12, "drinks": 12}
+
+
+def clock_time(text, meal_type=""):
+    """The first time in ``text`` as "HH:MM" ("~7pm" → 19:00, "~6:30–7pm" → 18:30, "19:00"), else None.
+    In a range, a missing am/pm is taken from the end of the range ("6:30–7pm" is pm); with none at all,
+    ``meal_type`` decides ("7:30 dinner" is 19:30, "1:00 lunch" is 13:00)."""
+    times = list(CLOCK.finditer(text or ""))
+    if not times:
+        return None
+    first = times[0]
+    hour, minute = int(first.group(1)), int(first.group(2) or 0)
+    meridiem = (first.group(3) or next((t.group(3) for t in times[1:] if t.group(3)), "") or "").lower()
+    if not meridiem and not first.group(2) and hour <= 12:
+        return None  # a bare number ("Day 7"), not a time
+    if not meridiem and hour < PM_BELOW.get(meal_type, 0):
+        meridiem = "pm"
+    if meridiem == "pm" and hour < 12:
+        hour += 12
+    if meridiem == "am" and hour == 12:
+        hour = 0
+    if hour > 23 or minute > 59:
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _meal_phase(day, section):
+    if section["type"] != "phase" or section.get("summary") or section.get("highlights"):
+        return
+    heading = section.get("heading") or section.get("title") or ""
+    words = [w.lower() for w in re.findall(r"[A-Za-z]+", heading) if w.lower() not in ("am", "pm", "and")]
+    if len(words) != 1 or words[0] not in MEAL_WORDS:
+        return  # only "<time> — Dinner": a phase with more words is narrative, not a placeholder
+    meals = [m for m in day["meals"] if m.get("type") == MEAL_WORDS[words[0]]]
+    if len(meals) != 1:
+        return
+    meal, time = meals[0], clock_time(heading, MEAL_WORDS[words[0]])
+    if meal.get("time"):
+        after, actions = (f"(shown by the meal: {meal['name']} at {meal['time']})",
+                          [("remove", "Remove the phase (the meal is in the timeline)")])
+    elif time:
+        after, actions = (f"{meal['name']} at {time}, in the day's timeline",
+                          [("time_remove", f"Set {meal['name']} to {time} and remove the phase")])
+    else:
+        return
+    yield Suggestion(
+        key=_key("meal_phase", section["id"], meal["id"], heading),
+        kind="meal_phase", day=day["number"], where=heading, before=heading, after=after,
+        confidence="high", actions=actions,
+        change={"op": "meal_phase", "section": section["id"], "heading": heading, "meal": meal["id"],
+                "time": time})
+
+
 # ---- 6. "Day N" written on another day -------------------------------------------------------
 def _day_slips(day, section):
     texts = [line for _f, _i, line in _narrative_lines(section)]
@@ -280,6 +343,7 @@ def suggest(snapshot, dismissed=()):
             out += list(_callout_task(day, section, snapshot.get("tasks", [])))
             out += list(_table_activity(day, section))
             out += list(_day_slips(day, section))
+            out += list(_meal_phase(day, section))
             for field_name, index, line in list(_narrative_lines(section)) + (
                     [("text", None, section.get("text") or "")] if section["type"] == "callout" else []):
                 for number in _phones(line, known):

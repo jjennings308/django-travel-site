@@ -26,7 +26,7 @@ def snapshot(trip):
         for s in (s for s in sections if s.day_id == day.pk):
             c = s.content if isinstance(s.content, dict) else {}
             plain_sections.append({
-                "id": s.pk, "type": s.section_type, "title": s.title,
+                "id": s.pk, "type": s.section_type, "title": s.title, "heading": c.get("heading") or "",
                 "summary": c.get("summary") or "", "highlights": list(c.get("highlights") or []),
                 "paragraphs": list(c.get("paragraphs") or []), "text": c.get("text") or "",
                 "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []]})
@@ -35,7 +35,9 @@ def snapshot(trip):
             "legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination}
                      for l in legs if l.date and l.date == day.date],
             "stays": [{"id": st.pk, "name": st.name} for st in stays if day.date in (st.check_in, st.check_out)],
-            "meals": [{"id": m.pk, "name": m.name, "notes": m.reservation_notes} for m in meals if m.day_id == day.pk],
+            "meals": [{"id": m.pk, "name": m.name, "notes": m.reservation_notes, "type": m.meal_type,
+                       "time": m.reserved_time.strftime("%H:%M") if m.reserved_time else None}
+                      for m in meals if m.day_id == day.pk],
             "activities": [{"id": a.pk, "title": a.title} for a in activities if a.day_id == day.pk]})
     tasks = []
     for task in trip.booking_tasks.filter(done=False).select_related("leg", "stay", "activity"):
@@ -189,6 +191,23 @@ def _apply_one(trip, s, action):
             lines.remove(line)
         trip.notes = "\n".join(lines).strip()
         trip.save(update_fields=["notes"])
+    elif op == "meal_phase":
+        section = _section(trip, c["section"])
+        content = section.content or {}
+        if (section.section_type != "phase" or content.get("summary") or content.get("highlights")
+                or (content.get("heading") or section.title) != c["heading"]):
+            raise Stale("the phase changed")
+        meal = Meal.objects.filter(day__trip=trip, day_id=section.day_id, pk=c["meal"]).first()
+        if meal is None:
+            raise Stale("the meal is gone")
+        if action == "time_remove":
+            if meal.reserved_time is not None:
+                raise Stale("the meal already has a time")
+            from datetime import time as clock
+            hours, minutes = map(int, c["time"].split(":"))
+            meal.reserved_time = clock(hours, minutes)
+            meal.save(update_fields=["reserved_time"])
+        section.delete()
     elif op == "table_to_info":
         section = _section(trip, c["section"])
         columns = c["columns"]
