@@ -1,0 +1,16 @@
+{% comment %}
+A member's recent activity (apps/pages/activity_feed.py), inside the profile page's Recent Activity box.
+{% endcomment %}<h5 class="mb-3 font-semibold text-warm-900">Recent activity</h5>
+{% if entries %}
+<ul class="divide-y divide-warm-100">
+  {% for e in entries %}
+    <li class="flex min-h-11 items-start gap-3 py-2">
+      <i class="bi {{ e.icon }} mt-0.5 text-earth-clay"></i>
+      <span class="min-w-0 grow"><span class="text-warm-600">{{ e.verb }}</span> {% if e.url %}<a class="sbl-link font-medium" href="{{ e.url }}">{{ e.title }}</a>{% else %}<span class="font-medium text-warm-900">{{ e.title }}</span>{% endif %}{% if e.more %}<span class="text-warm-600">, {{ e.more|slice:":2"|join:", " }}{% if e.more|length > 2 %} +{{ e.more|length|add:"-2" }}{% endif %}</span>{% endif %}{% if e.private %} <span class="sbl-badge sbl-badge-neutral" title="Only you see this">Only you</span>{% endif %}</span>
+      <span class="shrink-0 text-xs text-warm-500">{{ e.when|date:"j M Y" }}</span>
+    </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-sm text-warm-500">{% if own %}Nothing yet. Add a goal, tick one off or review a place, and it shows here.{% else %}Nothing to show yet.{% endif %}</p>
+{% endif %}

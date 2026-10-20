@@ -17,6 +17,7 @@ urlpatterns = [
     path("help/<slug:slug>/", views.help_guide, name="help_guide"),
     path("features/", views.features, name="features"),
     path("search/", views.search, name="search"),
+    path("people/<str:username>/activity/", views.profile_activity, name="profile_activity"),
     path("account/data/", account_views.my_data, name="my_data"),
     path("dashboard/welcome/hide/", views.welcome_dismiss, name="welcome_dismiss"),
     path("account/data/download/", account_views.data_export, name="data_export"),

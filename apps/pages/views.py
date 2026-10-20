@@ -318,3 +318,18 @@ def search(request):
         else:
             context["groups"] = catalogue_search.grouped(q, request.user, filters)
     return render(request, "pages/search.html", context)
+
+
+def profile_activity(request, username):
+    """A member's recent activity, for their profile page's Recent Activity box (loaded after the page,
+    ``partials/_profile_activity.html``; apps/pages/activity_feed.py). Same gate as the profile: a
+    private profile, or one waiting to be deleted, is only for its owner (404 otherwise)."""
+    from django.http import Http404
+    from django.shortcuts import get_object_or_404
+    from .activity_feed import feed
+    owner = get_object_or_404(get_user_model(), username=username, is_active=True)
+    own = request.user.is_authenticated and request.user.pk == owner.pk
+    if not own and (owner.profile_visibility == "private" or owner.deletion_requested_at):
+        raise Http404
+    return render(request, "pages/_profile_activity.html", {"entries": feed(owner, request.user), "own": own,
+                                                            "owner": owner})
