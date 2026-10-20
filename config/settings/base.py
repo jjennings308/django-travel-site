@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',  # sitemap.xml (R22, apps/pages/sitemaps.py)
     'widget_tweaks',
     'taggit',
-    'crispy_forms',
-    'crispy_bootstrap5',
     
     # local apps 
     'apps.core',
