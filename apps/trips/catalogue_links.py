@@ -3,10 +3,12 @@
 A meal may name its catalogue place (a notable restaurant, market or bakery: most meals stay typed
 text); a section a place or a catalogue activity. Choices are limited to the trip's cities
 (``forms.catalogue_places`` / ``catalogue_activities``). On the day page, an unlinked meal or section
-whose name matches exactly one of those (ignoring capitals, spacing and punctuation) gets a
+whose name matches exactly one of those (ignoring capitals, spacing, punctuation and accents, with
+German ö/ä/ü written either way: "Zur Höll" = "Zur Hoell" = "Zur Holl") gets a
 suggestion — offered, never linked automatically; "Not this one" stores a ``TidyDismissal``.
 """
 import re
+import unicodedata
 
 from django.db.models import Q
 
@@ -20,6 +22,22 @@ def normalise(name):
     return " ".join(re.sub(r"[^\w\s]", " ", (name or "").casefold()).split())
 
 
+GERMAN = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue"})
+
+
+def _strip_accents(text):
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+
+
+def match_keys(name):
+    """The forms a name may match in: as typed, accents dropped (ö → o) and German umlauts spelled out
+    (ö → oe); ß is already "ss" (casefold). Two names match when any keys agree."""
+    base = normalise(name)
+    if not base:
+        return set()
+    return {base, _strip_accents(base), _strip_accents(base.translate(GERMAN))}
+
+
 def dismissal_key(kind, item_pk, target_kind, target_pk):
     return f"catalogue:{kind}:{item_pk}:{target_kind}:{target_pk}"
 
@@ -27,8 +45,18 @@ def dismissal_key(kind, item_pk, target_kind, target_pk):
 def _index(objs):
     found = {}
     for obj in objs:
-        found.setdefault(normalise(obj.name), []).append(obj)
+        for key in match_keys(obj.name):
+            found.setdefault(key, []).append(obj)
     return found
+
+
+def _lookup(index, keys):
+    """Objects under any of ``keys``, each once, in a stable order."""
+    seen = {}
+    for key in sorted(keys):
+        for obj in index.get(key, []):
+            seen.setdefault(obj.pk, obj)
+    return list(seen.values())
 
 
 class Candidates:
@@ -40,12 +68,12 @@ class Candidates:
 
     def match(self, name, activities=True):
         """The one (target_kind, obj) whose name is ``name``, else None (none, or more than one)."""
-        key = normalise(name)
-        if not key:
+        keys = match_keys(name)
+        if not keys:
             return None
-        found = [("poi", p) for p in self.places.get(key, [])]
+        found = [("poi", p) for p in _lookup(self.places, keys)]
         if activities:
-            found += [("activity", a) for a in self.activities.get(key, [])]
+            found += [("activity", a) for a in _lookup(self.activities, keys)]
         return found[0] if len(found) == 1 else None
 
 
