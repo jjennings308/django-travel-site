@@ -17,6 +17,7 @@
         {{ trip.start_date|date:"M j" }} &ndash; {{ trip.end_date|date:"M j, Y" }} &middot; {{ trip.nights }} nights
         {% if trip.destination %}<br>{{ trip.destination }}{% endif %}
       </p>
+      {% if trip.countdown %}<p class="mt-1 text-sm font-medium text-accent-700" data-countdown>{{ trip.countdown }}</p>{% endif %}
     </div>
   </div>
 

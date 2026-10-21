@@ -12,6 +12,7 @@ The section payloads are built by hand rather than imported, so a change to
 """
 
 
+import re
 from datetime import date, timedelta
 from unittest import mock
 
@@ -569,6 +570,23 @@ class CompletedTripTests(DetailFixture):
         html = self.get().content.decode()
         self.assertNotIn("badge-done", html)
         self.assertNotIn(reverse("bucketlists:trip_done", args=[self.trip.pk]), html)
+
+
+class CountdownTests(DetailFixture):
+    """The trip list's cards count down to the start (the trip runs Sep 12–19, 2026)."""
+
+    def countdown(self, today):
+        with mock.patch("apps.trips.models.django_timezone.localdate", return_value=today):
+            listing = self.client.get(reverse("trips:trip_list"))
+        found = re.search(r"<p [^>]*data-countdown>([^<]*)</p>", listing.content.decode())
+        return found.group(1) if found else None
+
+    def test_before_during_and_after(self):
+        self.assertEqual(self.countdown(date(2026, 8, 13)), "In 30 days")
+        self.assertEqual(self.countdown(date(2026, 9, 11)), "Tomorrow")
+        self.assertEqual(self.countdown(date(2026, 9, 12)), "Starts today")
+        self.assertEqual(self.countdown(date(2026, 9, 19)), "Underway")
+        self.assertIsNone(self.countdown(date(2026, 9, 20)))
 
 
 class HeaderActionTests(DetailFixture):
