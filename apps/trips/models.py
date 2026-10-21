@@ -662,6 +662,17 @@ class Trip(models.Model):
         return self.end_date is not None and self.end_date < django_timezone.localdate()
 
     @property
+    def countdown(self):
+        """"In 12 days" / "Tomorrow" / "Starts today" / "Underway" for the trip list, from the
+        dates in the active time zone; empty once the trip is over or without a start date."""
+        if not self.start_date or self.is_completed:
+            return ""
+        days = (self.start_date - django_timezone.localdate()).days
+        if days < 0:
+            return "Underway"
+        return {0: "Starts today", 1: "Tomorrow"}.get(days, f"In {days} days")
+
+    @property
     def badge(self):
         """(label, css class) for the status badge: Completed once the trip is over,
         otherwise the planning stage (Ready to go is green, earlier stages amber)."""
