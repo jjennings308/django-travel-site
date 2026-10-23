@@ -253,6 +253,27 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - **Edit trip's selects** load each option list once per page (`trips.forms.share_choices`, R23; a
   ModelChoiceField re-queries on every render), and `trip_subsection_formsets` gives every row the parent trip
   object, so the page's query count doesn't grow with rows (`test_upkeep.EditTripQueryTests`).
+- **Dates and times on forms always use the browser's pickers** (rule added 2026-10-23). Every form field
+  that takes a date, a time or a date-and-time — model forms, plain forms, formsets, fields added in
+  `__init__` — renders as a native picker, never a plain text box:
+  - date → `<input type="date">`, value format `%Y-%m-%d`;
+  - time → `<input type="time">`, format `%H:%M` (no seconds);
+  - date and time in one value → `<input type="datetime-local">`, format `%Y-%m-%dT%H:%M`.
+    Trip leg times (`LocalDateTimeField`, incl. the return trip's) use this widget for the wall-clock time
+    and keep their zone select beside it; the field's lenient parser stays, so older typed formats and an
+    explicit offset still parse.
+  - A model that stores date and time separately (an event's `start_date` + `start_time`) gets two inputs
+    side by side, not one `datetime-local`.
+  Use the shared widgets in `apps/core/widgets.py` (`DateInput`, `TimeInput`, `DateTimeLocalInput`, which
+  set the type, the format and the site's input class) rather than repeating `attrs={"type": "date"}`.
+  Free-text "when" fields that aren't dates stay text (`BookingTask.due_note`, `target_season`, "mid-morning"
+  in narrative). The Django admin keeps its own date widgets. `apps/core/tests/test_date_pickers.py` imports
+  every `apps/*/forms.py`, builds each form (with the arguments its tests use, else from `base_fields`) and
+  fails on any date / time / datetime field whose widget isn't one of these; a deliberate exception goes in
+  its allow-list with a one-line reason. **Not yet converted when the rule was written** (fix these first):
+  `TripForm` start/end date, `LodgingForm` check-in/check-out, `DayForm` date, `BookingTaskForm` due, the
+  leg's departure/arrival and return-trip times (`LocalDateTimeField`'s text widget), and the activity
+  forms that list `suggested_date_range_start/_end` without a widget (two of the three).
 - **Phones** (site roadmap R11 phone pass, checked at 390 px): every page fits without sideways scroll —
   tables scroll inside `.scroll-x` (which is `relative`, so absolutely positioned bits inside are clipped by
   it, and bleeds only 16 px into the gutter on a phone), `fieldset { min-width: 0 }` (a fieldset's default
