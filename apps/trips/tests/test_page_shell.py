@@ -1,5 +1,6 @@
-"""The trip page's shell (docs/plans/trip-page-ux.md, U2): header and ⋯ menu, Overview,
-collapsible days that open on the right day, and Reference as the home of confirmations."""
+"""The trip page's shell (docs/plans/trip-page-ux.md, U2; trip-days-as-overview.md): header and ⋯ menu,
+the Needs attention banner, collapsible days whose summaries are the overview, About this trip, and
+Reference as the home of confirmations."""
 import re
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from unittest import mock
@@ -47,7 +48,7 @@ class OpenDayTests(Fixture):
         html = self.page().content.decode()
         self.assertIn("data-days-toggle", html)  # Expand all / Collapse all
         self.assertIn('if (node.tagName === "DETAILS") node.open = true;', html)  # a #link opens its day
-        self.assertIn('href="#day-2"', html)  # Overview rows link to their day
+        self.assertIn('if (id === "overview") id = "days";', html)  # old #overview links land on the days
 
 
 class HeaderTests(Fixture):
@@ -69,8 +70,16 @@ class HeaderTests(Fixture):
         self.assertNotIn(reverse("trips:trip_unshare", args=[self.trip.pk]), html)
 
 
-class OverviewTests(Fixture):
-    def test_rows_sleeping_overnight_travel_highlights_and_attention(self):
+def summary(html, number):
+    """The <summary> of day N's fold."""
+    found = re.search(rf'<details class="day day-fold" id="day-{number}"[^>]*>\s*<summary class="day-summary">(.*?)</summary>',
+                      html, re.S)
+    return found.group(1)
+
+
+class DaySummaryTests(Fixture):
+    def setUp(self):
+        super().setUp()
         d1, d2, d3, _d4 = self.days
         TransportLeg.objects.create(trip=self.trip, mode="plane", origin="PIT", destination="FRA",
                                     origin_timezone="America/New_York", destination_timezone="Europe/Berlin",
@@ -79,26 +88,91 @@ class OverviewTests(Fixture):
         for origin, destination, order in (("Butzbach", "Frankfurt", 0), ("Frankfurt", "Marburg", 1)):
             TransportLeg.objects.create(trip=self.trip, mode="train", origin=origin, destination=destination,
                                         date=d3.date, est_duration=timedelta(minutes=45), order=order)
-        hof = Lodging.objects.create(trip=self.trip, name="Hessischer Hof", check_in=d2.date, check_out=d3.date)
+        self.hof = Lodging.objects.create(trip=self.trip, name="Hessischer Hof", check_in=d2.date, check_out=d3.date)
         Lodging.objects.create(trip=self.trip, name="Early Inn", check_in=date(2027, 9, 10),
                                check_out=date(2027, 9, 11))
         TripActivity.objects.create(trip=self.trip, day=d3, kind="tour", title="Student guide", start_time=time(15))
-        BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=hof)
+        BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=self.hof)
+
+    def test_the_old_overview_table_is_gone(self):
+        html = self.page().content.decode()
+        self.assertNotIn("trip-overview", html)
+        self.assertNotIn('id="overview"', html)
+        nav = re.search(r'<nav class="day-nav"[^>]*>(.*?)</nav>', html, re.S).group(1)
+        self.assertEqual(re.findall(r'href="#([a-z-]+)"', nav), ["days", "reference"])
+
+    def test_each_summary_carries_the_day_at_a_glance(self):
         page = self.page()
         html = page.content.decode()
         by_day = {day.day_number: day for day in page.context["days"]}
-        self.assertTrue(by_day[1].overnight)
-        self.assertIsNone(by_day[1].stay)
-        self.assertEqual(by_day[1].travel_summary, "PIT → FRA")
-        self.assertEqual(by_day[2].stay, hof)
-        self.assertEqual(by_day[2].attention, 1)  # the stay's task, on its check-in day
-        self.assertEqual((by_day[3].travel_icons, by_day[3].travel_summary), ("🚆", "2 legs · ~1 h 30 min"))
-        self.assertEqual(by_day[3].highlights, ["Student guide"])
-        self.assertEqual(by_day[4].highlights, ["Theme 4"])
-        self.assertIn("✈ overnight", html)
-        self.assertIn(f'id="stay-{hof.pk}"', html)  # the stay's card, on its check-in day
-        self.assertIn("Stays outside the trip's days", html)  # Early Inn has no day to live on
-        self.assertIn('href="#still-to-book">1 to do</a>', html)
+        self.assertEqual((by_day[1].travel_summary, by_day[2].stay, by_day[2].attention), ("PIT → FRA", self.hof, 1))
+        one, two, three, four = (summary(html, n) for n in range(1, 5))
+        self.assertIn("✈ overnight", one)
+        self.assertIn("✈ PIT → FRA", one)
+        self.assertNotIn("🛏", one)  # no stay that night: left out, no empty separator
+        self.assertIn(f'🛏 <a class="link-quiet" href="#stay-{self.hof.pk}">Hessischer Hof</a> (check in)', two)
+        self.assertIn('href="#needs-attention" title="Not booked or still to do">⚠1</a>', two)
+        self.assertIn(f'href="#stay-{self.hof.pk}">Hessischer Hof</a> (check out)', three)
+        self.assertIn("🚆 2 legs · ~1 h 30 min", three)
+        self.assertIn("Student guide", three)
+        self.assertIn("Theme 4", four)  # line 1 keeps the theme ...
+        self.assertNotIn("data-day-glance", four)  # ... and a day with nothing else has no second line
+        self.assertEqual(three.count("Theme 3"), 1)  # not repeated as a highlight
+        self.assertIn(f'id="stay-{self.hof.pk}"', html)  # the stay's card, on its check-in day
+
+    def test_needs_attention_banner(self):
+        html = self.page().content.decode()
+        banner = re.search(r'<p class="callout-warning[^"]*" id="needs-attention">(.*?)</p>', html, re.S).group(1)
+        self.assertIn('href="#still-to-book">1 to do</a>', banner)
+        self.assertLess(html.index('id="needs-attention"'), html.index('class="day-nav"'))  # under the header
+        BookingTask.objects.all().delete()
+        Lodging.objects.all().delete()
+        TransportLeg.objects.all().delete()
+        TripActivity.objects.all().delete()  # a tour with no confirmation is "not booked"
+        self.assertNotIn('id="needs-attention"', self.page().content.decode())
+
+    def test_bookings_on_no_day_show_for_a_viewer(self):
+        TransportLeg.objects.create(trip=self.trip, mode="train", origin="Ulm", destination="Bonn",
+                                    date=date(2027, 9, 30))
+        html = self.page(self.viewer).content.decode()
+        block = html[html.index('id="not-on-any-day"'):html.index('id="day-1"')]
+        self.assertIn("Journeys not on any day", block)
+        self.assertIn("Ulm", block)
+        self.assertIn("Stays outside the trip&#x27;s days", block.replace("'", "&#x27;"))
+        self.assertIn("Early Inn", block)
+        self.assertNotIn("a leg shows on the day it departs", block)  # the date hint is for editors
+        self.assertIn("a leg shows on the day it departs", self.page(self.editor).content.decode())
+        self.assertIn('href="#stray-legs">1 not on any day</a>', html)
+
+
+class AboutThisTripTests(Fixture):
+    def test_closed_fold_with_travellers_cities_goals_and_notes(self):
+        from apps.trips.models import Traveler
+        self.trip.notes = "Bring the rail passes."
+        self.trip.save()
+        self.trip.travelers.add(Traveler.objects.create(name="Regan"))
+        html = self.page().content.decode()
+        about = html[html.index('id="about"'):html.index("</details>", html.index('id="about"'))]
+        self.assertIn('<details class="about-fold" id="about">', html)  # closed by default
+        self.assertIn("About this trip", about)
+        self.assertIn("Regan", about)
+        self.assertIn("Bring the rail passes.", about)
+        goals = reverse("bucketlists:trip_goals", args=[self.trip.pk])
+        self.assertIn(goals, about)
+
+    def test_open_when_the_trip_has_no_days(self):
+        Day.objects.filter(trip=self.trip).delete()
+        self.assertIn('<details class="about-fold" id="about" open>', self.page().content.decode())
+
+
+class TidyLinkTests(Fixture):
+    def test_in_the_menu_for_editors_only(self):
+        tidy = reverse("trips:trip_tidy", args=[self.trip.pk])
+        html = self.page(self.editor).content.decode()
+        start = html.index("data-trip-menu")
+        menu = html[start:html.index("</header>", start)]
+        self.assertIn(f'href="{tidy}"', menu)
+        self.assertNotIn(tidy, self.page(self.viewer).content.decode())
 
 
 class ReferenceTests(Fixture):

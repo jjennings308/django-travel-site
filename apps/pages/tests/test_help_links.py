@@ -44,7 +44,7 @@ class HelpLinkTests(TestCase):
         trip = self.trip.pk
         expected = {
             reverse("trips:trip_detail", args=[trip]): {
-                "/help/reading-your-trip/#overview", "/help/reading-your-trip/#days",
+                "/help/reading-your-trip/#days-at-a-glance",
                 "/help/reading-your-trip/#reference", "/help/reading-your-trip/#booklet"},
             reverse("trips:trip_edit", args=[trip]): {"/help/starting-a-trip/"},
             reverse("trips:day_edit", args=[trip, self.day.pk]): {"/help/adding-a-day/"},

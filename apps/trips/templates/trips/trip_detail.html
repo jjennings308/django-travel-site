@@ -32,6 +32,7 @@
             <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
             <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
               <a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_calendar' trip.pk %}" title="Subscribe to this trip in Google, Apple or Outlook calendar">Add to calendar</a>
+              {% if can_edit %}<a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_tidy' trip.pk %}" title="Text that repeats a leg, stay, booking or contact recorded elsewhere" data-tidy-link>Tidy suggestions</a>{% endif %}
               {% if my_grant %}
                 <form method="post" action="{% url 'trips:trip_notify' trip.pk %}" class="mb-2">{% csrf_token %}
                   <input type="hidden" name="on" value="{% if my_grant.notify_changes %}0{% else %}1{% endif %}">
@@ -67,95 +68,76 @@
     </p>
   </header>
 
+  {% if not_booked or open_tasks or open_decisions or stray_legs or travel_tables_pending or checklist_attention %}
+    {# Needs attention (days-as-overview plan): one banner under the header, each count linking to its list. #}
+    <p class="callout-warning mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm scroll-mt-32" id="needs-attention">
+      <span class="card-kicker">Needs attention</span>
+      {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
+      {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
+      {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
+      {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
+      {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
+      {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
+    </p>
+  {% endif %}
+
   <nav class="day-nav" aria-label="Sections of this page">
-    <a href="#overview">Overview</a>
     <a href="#days">Days</a>
     <a href="#reference">Reference</a>
   </nav>
-
-  {# ---------------------------------------------------------------- overview #}
-  <section class="mb-10 scroll-mt-32" id="overview">
-    <h2 class="day-heading mb-3">Overview {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="overview" label="the Overview" %}</h2>
-    {% if days %}
-      <div class="scroll-x">
-        <table class="data-grid trip-overview">
-          <thead><tr><th>Day</th><th>Where</th><th>Sleeping</th><th>Travel</th><th>Highlights</th><th><span class="sr-only">Needs attention</span></th></tr></thead>
-          <tbody>
-            {% for day in days %}
-              <tr>
-                <td class="whitespace-nowrap"><a class="link-quiet font-medium" href="#day-{{ day.day_number }}">{{ day.day_number }}</a> <span class="text-zinc-500">{{ day.date|date:"D M j" }}</span></td>
-                <td>{% if day.city %}{{ day.city.name }}{% else %}<span class="text-zinc-400">—</span>{% endif %}</td>
-                <td>{% if day.stay %}<a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay in day.checking_in %} <span class="text-zinc-500">(in)</span>{% endif %}{% elif day.overnight %}✈ overnight{% endif %}</td>
-                <td class="whitespace-nowrap">{% if day.travel_summary %}{{ day.travel_icons }} {{ day.travel_summary }}{% endif %}</td>
-                <td>{{ day.highlights|join:" · " }}</td>
-                <td>{% if day.attention %}<span class="text-amber-700" title="Not booked or still to do">⚠{{ day.attention }}</span>{% endif %}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <p class="empty-state">No days have been planned yet.</p>
-    {% endif %}
-
-    {% if can_edit %}<p class="mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:trip_tidy' trip.pk %}">Tidy suggestions</a> <span class="text-zinc-500">— text that repeats a leg, stay, booking or contact recorded elsewhere</span></p>{% endif %}
-    {% if not_booked or open_tasks or stray_legs or travel_tables_pending or checklist_attention %}
-      <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" id="needs-attention">
-        <span class="card-kicker">Needs attention</span>
-        {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
-        {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
-        {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
-        {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
-        {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
-        {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
-      </p>
-    {% endif %}
-
-    {% if cost_estimate %}
-      {# Estimated trip cost (R10): bookings' and activities' costs in the reader's currency. #}
-      <p class="mt-3 text-sm" id="cost-estimate"><span class="card-kicker">Estimated trip cost</span> <strong>{% if cost_estimate.approx %}≈ {% endif %}{{ cost_estimate.currency }} {{ cost_estimate.total }}</strong> <span class="text-zinc-500">from {{ cost_estimate.bookings }} booking{{ cost_estimate.bookings|pluralize }} and {{ cost_estimate.activities }} activit{{ cost_estimate.activities|pluralize:"y,ies" }}{% if cost_estimate.missing %}; not counted: costs in {{ cost_estimate.missing|join:", " }} (no rate){% endif %}</span> · <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>{% if cost_estimate.used %}<span class="block text-xs text-zinc-500">{{ cost_estimate.used|join:" · " }}</span>{% endif %}</p>
-    {% endif %}
-
-    {% if stray_legs %}
-      {# Legs whose date is no day of this trip: shown in full here (they have no day to live on). #}
-      <p class="card-kicker mt-5 mb-2" id="stray-legs">Journeys not on any day</p>
-      {% if can_edit %}<p class="note mb-2">Check {{ stray_legs|length|pluralize:"its,their" }} date{{ stray_legs|length|pluralize }}: a leg shows on the day it departs.</p>{% endif %}
-      <div class="card-grid">{% for leg in stray_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
-    {% endif %}
-
-    {% if stray_stays %}
-      {# Stays whose check-in is no day of this trip: shown here so their details aren't lost. #}
-      <p class="card-kicker mt-5 mb-2">Stays outside the trip's days</p>
-      <div class="card-grid">{% for stay in stray_stays %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
-    {% endif %}
-
-    <div class="mt-5 space-y-2 text-sm">
-      {% if trip.travelers.all %}
-        <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Travelling</span>{% for traveler in trip.travelers.all %}<span class="chip">{{ traveler.name }}</span>{% endfor %}</p>
-      {% endif %}
-      {% if trip.cities.all %}
-        <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Cities</span>{% for city in trip.cities.all %}<a class="chip hover:border-zinc-400" href="{% url 'locations:city_detail' city.slug %}">{{ city.name }}</a>{% endfor %}</p>
-      {% endif %}
-      {% if trip.destination %}<p><span class="card-kicker mr-1">Destination</span> {{ trip.destination }}</p>{% endif %}
-      {% include "partials/_trip_goals_link.html" %}
-      {% include "partials/_trip_bucket_prompt.html" %}
-      {% if trip.is_completed %}{% url 'reviews:trip_rate' trip.pk as rate_url %}{% if rate_url %}<p><a class="link-quiet font-medium" href="{{ rate_url }}" data-rate-link>Rate the places from this trip</a></p>{% endif %}{% endif %}
-    </div>
-    {% if trip.notes %}<p class="note mt-4 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
-  </section>
 
   {# ------------------------------------------------------------------- days #}
   {% comment %}
     Collapsible days (U2): a plain <details> works without JavaScript. The day that opens on arrival
     is today's during the trip, Day 1 before it, none after (itinerary.open_day). The script below
-    opens whichever day holds the target of a #link (Overview rows, chips, "For:" links) and drives
+    opens whichever day holds the target of a #link (summary lines, chips, "For:" links) and drives
     Expand all / Collapse all.
   {% endcomment %}
   <section id="days" class="scroll-mt-32">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <h2 class="day-heading">Days {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="days" label="reading a day" %}</h2>
+      <h2 class="day-heading">Days {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="days-at-a-glance" label="the days" %}</h2>
       {% if days %}<p class="flex gap-3 text-sm"><button type="button" class="link-quiet font-medium" data-days-toggle="open">Expand all</button><button type="button" class="link-quiet font-medium" data-days-toggle="close">Collapse all</button></p>{% endif %}
     </div>
+    {# About this trip: what the old Overview held besides its table. Closed by default; open while there are no days. #}
+    <details class="about-fold" id="about"{% if not days %} open{% endif %}>
+      <summary class="day-summary"><span class="font-semibold text-zinc-900">About this trip</span></summary>
+      <div class="day-body">
+        <div class="space-y-2 text-sm">
+          {% if trip.travelers.all %}
+            <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Travelling</span>{% for traveler in trip.travelers.all %}<span class="chip">{{ traveler.name }}</span>{% endfor %}</p>
+          {% endif %}
+          {% if trip.cities.all %}
+            <p class="flex flex-wrap items-center gap-1.5"><span class="card-kicker mr-1">Cities</span>{% for city in trip.cities.all %}<a class="chip hover:border-zinc-400" href="{% url 'locations:city_detail' city.slug %}">{{ city.name }}</a>{% endfor %}</p>
+          {% endif %}
+          {% if trip.destination %}<p><span class="card-kicker mr-1">Destination</span> {{ trip.destination }}</p>{% endif %}
+          {% include "partials/_trip_goals_link.html" %}
+          {% include "partials/_trip_bucket_prompt.html" %}
+          {% if trip.is_completed %}{% url 'reviews:trip_rate' trip.pk as rate_url %}{% if rate_url %}<p><a class="link-quiet font-medium" href="{{ rate_url }}" data-rate-link>Rate the places from this trip</a></p>{% endif %}{% endif %}
+        </div>
+        {% if trip.notes %}<p class="note mt-4 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
+        {% if cost_estimate %}
+          {# Estimated trip cost (R10): bookings' and activities' costs in the reader's currency. #}
+          <p class="mt-3 text-sm" id="cost-estimate"><span class="card-kicker">Estimated trip cost</span> <strong>{% if cost_estimate.approx %}≈ {% endif %}{{ cost_estimate.currency }} {{ cost_estimate.total }}</strong> <span class="text-zinc-500">from {{ cost_estimate.bookings }} booking{{ cost_estimate.bookings|pluralize }} and {{ cost_estimate.activities }} activit{{ cost_estimate.activities|pluralize:"y,ies" }}{% if cost_estimate.missing %}; not counted: costs in {{ cost_estimate.missing|join:", " }} (no rate){% endif %}</span> · <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>{% if cost_estimate.used %}<span class="block text-xs text-zinc-500">{{ cost_estimate.used|join:" · " }}</span>{% endif %}</p>
+        {% endif %}
+      </div>
+    </details>
+    {% if stray_legs or stray_stays %}
+      {# Not on any day: bookings whose dates fall outside the trip's days, in full (they have no day to live on). #}
+      <div class="callout mb-4" id="not-on-any-day">
+        {% if stray_legs %}
+          {# Legs whose date is no day of this trip: shown in full here (they have no day to live on). #}
+          <p class="card-kicker mb-2 scroll-mt-32" id="stray-legs">Journeys not on any day</p>
+          {% if can_edit %}<p class="note mb-2">Check {{ stray_legs|length|pluralize:"its,their" }} date{{ stray_legs|length|pluralize }}: a leg shows on the day it departs.</p>{% endif %}
+          <div class="card-grid">{% for leg in stray_legs %}{% include "trips/partials/_leg_row.html" %}{% endfor %}</div>
+        {% endif %}
+
+        {% if stray_stays %}
+          {# Stays whose check-in is no day of this trip: shown here so their details aren't lost. #}
+          <p class="card-kicker mt-5 mb-2">Stays outside the trip's days</p>
+          <div class="card-grid">{% for stay in stray_stays %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
+        {% endif %}
+      </div>
+    {% endif %}
   {% for day in days %}
     <details class="day day-fold" id="day-{{ day.day_number }}"{% if day.pk == open_day_pk %} open{% endif %}>
       <summary class="day-summary">
@@ -163,7 +145,16 @@
         {% if day.date %}<span class="text-zinc-500">{{ day.date|date:"D M j" }}</span>{% endif %}
         {% if day.city %}<span class="text-zinc-700">{{ day.city.name }}</span>{% endif %}
         {% if day.theme %}<span class="min-w-0 truncate text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
-        {% if day.attention %}<span class="ml-auto shrink-0 text-amber-700" title="Not booked or still to do">⚠{{ day.attention }}</span>{% endif %}
+        {% comment %}Line 2, the day at a glance (itinerary.overview): only the parts it has. Links inside a summary follow without toggling it.{% endcomment %}
+        {% if day.stay or day.checking_out or day.overnight or day.travel_summary or day.ordered_activities or day.attention %}
+          <span class="day-glance" data-day-glance>
+            {% if day.stay %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay in day.checking_in %} (check in){% endif %}</span>{% elif day.checking_out %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.checking_out.0.pk }}">{{ day.checking_out.0.name }}</a> (check out)</span>{% endif %}
+            {% if day.overnight %}<span>✈ overnight</span>{% endif %}
+            {% if day.travel_summary %}<span class="whitespace-nowrap">{{ day.travel_icons }} {{ day.travel_summary }}</span>{% endif %}
+            {% if day.ordered_activities %}<span class="min-w-0 truncate">{{ day.highlights|join:" · " }}</span>{% endif %}
+            {% if day.attention %}<a class="font-medium text-amber-700" href="#needs-attention" title="Not booked or still to do">⚠{{ day.attention }}</a>{% endif %}
+          </span>
+        {% endif %}
       </summary>
       <div class="day-body">
       {% if can_edit %}<p class="mb-2 text-right text-sm"><a class="btn-quiet px-3 py-1" href="{% url 'trips:day_edit' trip.pk day.pk %}?next={{ request.path|urlencode }}%23day-{{ day.day_number }}">Edit this day</a></p>{% endif %}
@@ -396,7 +387,9 @@
     (function () {
       function openFor(hash) {
         if (!hash || hash.length < 2) return;
-        var target = document.getElementById(decodeURIComponent(hash.slice(1)));
+        var id = decodeURIComponent(hash.slice(1));
+        if (id === "overview") id = "days";  // the old Overview section: bookmarks and emails land on the days
+        var target = document.getElementById(id);
         for (var node = target; node; node = node.parentElement) {
           if (node.tagName === "DETAILS") node.open = true;
         }

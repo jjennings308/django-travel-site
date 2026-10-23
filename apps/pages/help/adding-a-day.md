@@ -3,7 +3,7 @@ summary: Add a day, fill in its details, then add legs, activities and meals to 
 audience: editors
 section: Trips
 order: 20
-updated: 2026-10-19
+updated: 2026-10-23
 
 # How to add a day to your trip
 
@@ -74,10 +74,9 @@ When a meal's name or a section's title is the name of one catalogue place or ac
 
 ## Check it on the trip page and in the booklet
 
-Open the trip page. Your day appears in three places:
+Open the trip page. Your day appears in two places:
 
-- **Overview:** a row with its date, city, where you sleep, travel and highlights. Click the day's number to jump to it.
-- **Days:** the day itself, folded. Click its title to open it and check the timeline, write-up and food ideas.
+- **Days:** the day itself, folded to its summary: its date, city and theme, then where you sleep, travel and highlights. Click it to open it and check the timeline, write-up and food ideas.
 - **Download PDF:** the printed booklet gives the day its own section, with its stay, legs, activities and meals.
 
 ## Tips and troubleshooting

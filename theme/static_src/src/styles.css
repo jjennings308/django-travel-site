@@ -362,14 +362,24 @@
     @apply shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium whitespace-nowrap text-zinc-600 transition hover:border-accent-200 hover:bg-accent-50 hover:text-accent-700;
   }
   /* Collapsible days on the web trip page (trip-page UX plan, U2): a <details> per day. */
-  .trips-ui details.day-fold {
+  .trips-ui details.day-fold,
+  .trips-ui details.about-fold {
     @apply mb-3 rounded-lg border border-zinc-200 bg-white;
   }
-  .trips-ui details.day-fold[open] {
+  .trips-ui details.day-fold[open],
+  .trips-ui details.about-fold[open] {
     @apply mb-8;
   }
   .trips-ui .day-summary {
-    @apply flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 select-none;
+    @apply flex min-h-11 cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 select-none;
+  }
+  /* Line 2 of a day's summary, the day at a glance (days-as-overview plan): stay, travel, highlights, ⚠.
+     Its own row; wraps on a phone, highlights truncate first; links get a little height to tap. */
+  .trips-ui .day-glance {
+    @apply flex w-full min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 pl-5 text-sm text-zinc-500;
+  }
+  .trips-ui .day-glance a {
+    @apply inline-block py-1;
   }
   .trips-ui .day-summary::-webkit-details-marker {
     display: none;

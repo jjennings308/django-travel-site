@@ -1,9 +1,9 @@
 title: Reading your trip
-summary: Find your way around a trip page: the overview, each day's plan, and where the confirmation numbers and phone numbers are.
+summary: Find your way around a trip page: the days at a glance, each day's plan, and where the confirmation numbers and phone numbers are.
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-19
+updated: 2026-10-23
 
 # Reading your trip
 
@@ -18,35 +18,34 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | **Edit trip** | Change the trip. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). |
 | **Download PDF** | The printable booklet ([see below](#booklet)). |
 | **Map** · **Budget** · **Photos** | The trip's map, its shared costs, and the shared photo album. |
-| **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). |
+| **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
-The bar under the title jumps to the three parts of the page: **Overview**, **Days** and **Reference**. It stays at the top as you scroll.
+When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions**, **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
 
-## Overview
+The bar under the title jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
 
-One row per day. Click a day's number to jump to that day; it opens.
+## Days at a glance
 
-| Column | Shows |
+The folded days are the trip at a glance. Each day's first line has its number, date, city and theme. The second line has what's set for the day:
+
+| Part | Shows |
 | --- | --- |
-| **Day** | The day's number and date. |
-| **Where** | The city you spend the day in. |
-| **Sleeping** | Where you sleep that night; **(in)** on the night you check in. **✈ overnight** means a flight that arrives the next day. |
-| **Travel** | The day's journeys, such as "Frankfurt → Augsburg", or "2 legs · ~3 h 15 min". |
-| **Highlights** | The day's main activities, or its theme. |
-| ⚠ | How many things on that day are not booked yet or still to do. |
+| 🛏 | Where you sleep that night, with **(check in)** on the night you arrive, or **(check out)** on a last morning with nowhere booked that night. It links to the stay's card. |
+| **✈ overnight** | A flight that arrives the next day. |
+| Travel | The day's journeys, such as "🚆 Frankfurt → Augsburg", or "🚆 2 legs · ~3 h 15 min". |
+| Highlights | Up to two of the day's activities. |
+| ⚠ | How many things on that day are not booked yet or still to do. It links to the banner. |
 
-Below the table:
+A day shows only the parts it has. Click a day to open it.
 
-- **Needs attention** counts what's **not booked**, what's still **to do**, open **decisions**, and journeys **not on any day**. Each one links to the list in Reference.
-- **Journeys not on any day** and **Stays outside the trip's days** show bookings whose dates fall outside the trip's days, so nothing is hidden.
-- **Estimated trip cost**, when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)).
-- **Travelling**, **Cities** and **Destination**, then the trip's notes.
-- Once the trip is over, **Rate the places from this trip** ([rating a finished trip](/help/places-and-events/#rating-a-finished-trip)).
-- Editors also see **Tidy suggestions**: places where the text repeats a booking or contact recorded elsewhere.
+Above the days:
+
+- **About this trip**, folded: **Travelling**, **Cities** and **Destination**, your goals for the trip, the trip's notes, and the **Estimated trip cost** when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)). Once the trip is over it also has **Rate the places from this trip** ([rating a finished trip](/help/places-and-events/#rating-a-finished-trip)).
+- **Journeys not on any day** and **Stays outside the trip's days**, when there are any: bookings whose dates fall outside the trip's days, shown in full so nothing is hidden.
 
 ## Days
 
-Each day is folded to one line: its number, date, city, theme and a ⚠ count. Click a day to open it. The page opens today's day while the trip is on, Day 1 before it starts, and none once it's over. **Expand all** and **Collapse all** open or fold every day.
+Each day is folded to its summary ([see above](#days-at-a-glance)). Click a day to open it. The page opens today's day while the trip is on, Day 1 before it starts, and none once it's over. **Expand all** and **Collapse all** open or fold every day.
 
 An open day reads from top to bottom:
 
