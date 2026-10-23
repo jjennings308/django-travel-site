@@ -921,10 +921,11 @@ class TransportLegFormsetTests(TripSubsectionFormsetTests):
         body = self.client.get(
             reverse("trips:trip_edit", args=[self.trip.pk])
         ).content.decode()
-        # 23:00 UTC is 6:00 PM in New York.
-        self.assertIn('value="2026-01-15 18:00"', body)
+        # 23:00 UTC is 6:00 PM in New York, in the datetime-local picker's format.
+        self.assertIn('value="2026-01-15T18:00"', body)
         # 02:30 UTC the next day is 7:30 PM the previous day in Denver.
-        self.assertIn('value="2026-01-15 19:30"', body)
+        self.assertIn('value="2026-01-15T19:30"', body)
+        self.assertIn('type="datetime-local"', body)
 
     def test_the_zone_control_is_not_a_full_dropdown(self):
         # 486 zone <option>s per control, one per row, made this page 358kb.

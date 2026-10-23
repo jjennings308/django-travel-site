@@ -23,6 +23,7 @@ from django.forms.formsets import formset_factory
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone as django_timezone
 
+from apps.core.widgets import DateInput, DateTimeLocalInput, TimeInput
 from apps.locations.models import POI, City
 
 from .models import (
@@ -87,16 +88,12 @@ class LocalDateTimeField(forms.Field):
     offset the user typed in.
     """
 
-    widget = forms.TextInput(
-        attrs={"placeholder": "2026-01-15 6:00 PM", "size": 24, "autocomplete": "off"}
-    )
+    # The browser's picker sends 2026-01-15T18:00; the lenient parsing below still takes
+    # typed text and an explicit offset (older forms, the admin, scripts).
+    widget = DateTimeLocalInput(styled=False)
     default_error_messages = {
         "invalid": "Enter a date and time, e.g. “2026-01-15 6:00 PM”.",
     }
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.widget.attrs.setdefault("placeholder", "2026-01-15 6:00 PM")
 
     def to_python(self, value):
         if value in self.empty_values:
@@ -130,7 +127,7 @@ class LocalDateTimeField(forms.Field):
         if value in self.empty_values or not isinstance(value, datetime):
             return value
         local = django_timezone.localtime(value, django_timezone.UTC)
-        return local.strftime("%Y-%m-%d %H:%M")
+        return local.strftime("%Y-%m-%dT%H:%M")
 
 
 class BlankOrderFallbackMixin:
@@ -341,7 +338,7 @@ class LocalLegTimeMixin:
         local = localize(value, zone_name)
         if local is None:
             return None
-        return local.strftime("%Y-%m-%d %H:%M")
+        return local.strftime("%Y-%m-%dT%H:%M")  # the datetime-local picker's value format
 
     def seed_local_time_initial(self):
         """Show an existing leg's times as local text, the way they are read.
@@ -614,6 +611,8 @@ class TripForm(forms.ModelForm):
             # count is small enough that it stays readable.
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
             "cities": forms.SelectMultiple(attrs={"size": 6}),
+            "start_date": DateInput(styled=False),
+            "end_date": DateInput(styled=False),
         }
 
     def clean(self):
@@ -707,6 +706,8 @@ class LodgingForm(LocatingStayMixin, forms.ModelForm):
         widgets = {
             "address": forms.Textarea(attrs={"rows": 2}),
             "notes": forms.Textarea(attrs={"rows": 2}),
+            "check_in": DateInput(styled=False),
+            "check_out": DateInput(styled=False),
         }
 
     def __init__(self, *args, **kwargs):
@@ -764,7 +765,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2}),
-                   "date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
+                   "date": DateInput(styled=False)}
         help_texts = {"date": "The day it happens. Filled in from the departure once there is one."}
 
     def __init__(self, *args, **kwargs):
@@ -793,7 +794,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             help_text="Wall-clock time back where this leg left from (the origin's zone).")
         self.fields["return_date"] = forms.DateField(
             required=False, label="Return day (if no times yet)",
-            widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            widget=DateInput(styled=False),
             help_text="For a planned return: just the day, without times.")
         self._return_times = None
         self.return_leg = None
@@ -1040,7 +1041,7 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             "order",
             "notes",
         ]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "due": DateInput(styled=False)}
         labels = {"leg": "About leg", "stay": "About stay", "activity": "About activity"}
 
     def clean_kind(self):
@@ -1230,6 +1231,7 @@ class DayForm(forms.ModelForm):
         fields = ["day_number", "date", "city", "theme", "meals_included", "travelers"]
         widgets = {
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
+            "date": DateInput(styled=False),
         }
 
     def __init__(self, *args, trip=None, **kwargs):
@@ -1347,7 +1349,7 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
         widgets = {
             "why_recommended": forms.Textarea(attrs={"rows": 2}),
             "reservation_notes": forms.Textarea(attrs={"rows": 2}),
-            "reserved_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "reserved_time": TimeInput(styled=False),
         }
         help_texts = {"reserved_time": "A booked table's time: the meal joins the day's timeline. Blank: a food idea."}
 
@@ -1904,7 +1906,7 @@ class CommentForm(forms.ModelForm):
 
 #: An ISO date input. ``format`` is what makes a stored value show up again:
 #: the browser's date control only accepts ``YYYY-MM-DD``.
-ISO_DATE_INPUT = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+ISO_DATE_INPUT = DateInput(styled=False)
 
 
 class TravelerProfileForm(forms.ModelForm):
@@ -2032,7 +2034,7 @@ class TripExpenseForm(forms.ModelForm):
         fields = ["description", "category", "amount", "currency", "spent_on", "day", "paid_by", "shared_with", "notes"]
         labels = {"spent_on": "Date", "paid_by": "Paid by", "shared_with": "Split between"}
         widgets = {
-            "spent_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "spent_on": DateInput(styled=False),
             "shared_with": forms.CheckboxSelectMultiple,
             "notes": forms.Textarea(attrs={"rows": 2}),
             "currency": forms.TextInput(attrs={"maxlength": 3, "size": 4}),
@@ -2061,7 +2063,7 @@ class LegProposalForm(forms.Form):
     include = forms.BooleanField(required=False, label="Make this leg")
     section = forms.IntegerField(widget=forms.HiddenInput)
     row = forms.IntegerField(widget=forms.HiddenInput)
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    date = forms.DateField(widget=DateInput(styled=False))
     mode = forms.ChoiceField(choices=TransportLeg.Mode.choices)
     origin = forms.CharField(max_length=120, label="From")
     origin_city = forms.ModelChoiceField(queryset=City.objects.none(), required=False, label="From city")
@@ -2152,7 +2154,7 @@ class ConfirmationEditForm(forms.ModelForm):
         help_texts = {"label": "Optional: blank shows what it covers, e.g. “BWI→ATL, ATL→ABQ · Sat Sep 12”.",
                       "travelers": "Leave empty when it covers everyone on these items."}
         widgets = {
-            "booked_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "booked_on": DateInput(styled=False),
             "notes": forms.Textarea(attrs={"rows": 2}),
             "travelers": forms.CheckboxSelectMultiple,
         }
@@ -2173,8 +2175,8 @@ class TripActivityForm(forms.ModelForm):
         fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "place_text", "travelers",
                   "est_cost", "currency", "notes", "order"]
         widgets = {
-            "start_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
-            "end_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "start_time": TimeInput(styled=False),
+            "end_time": TimeInput(styled=False),
             "travelers": forms.CheckboxSelectMultiple,
             "notes": forms.Textarea(attrs={"rows": 3}),
         }

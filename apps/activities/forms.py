@@ -2,6 +2,7 @@
 from django import forms
 from django.utils import timezone
 from .models import Activity, ActivityCategory, ActivityTag
+from apps.core.widgets import DateInput
 from apps.approval_system.models import ApprovalStatus
 from apps.locations.models import POI, City, Country, Region
 from apps.locations.widgets import CountryTaggedSelect
@@ -136,14 +137,8 @@ class ActivityCreateForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm)
                 'class': 'sbl-input',
                 'placeholder': 'E.g., "Summer 2026" or "Weekends in April"'
             }),
-            'suggested_date_range_start': forms.DateInput(attrs={
-                'class': 'sbl-input',
-                'type': 'date'
-            }),
-            'suggested_date_range_end': forms.DateInput(attrs={
-                'class': 'sbl-input',
-                'type': 'date'
-            }),
+            'suggested_date_range_start': DateInput(),
+            'suggested_date_range_end': DateInput(),
             'skill_level': forms.Select(attrs={
                 'class': 'sbl-input'
             }),
@@ -362,6 +357,8 @@ class ActivityEditForm(PictureFormMixin, PlaceAndTimingMixin, forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'sbl-input'}),
             'category': forms.Select(attrs={'class': 'sbl-input'}),
             'description': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 6}),
+            'suggested_date_range_start': DateInput(),
+            'suggested_date_range_end': DateInput(),
             'equipment_needed': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 3}),
             'safety_notes': forms.Textarea(attrs={'class': 'sbl-input', 'rows': 3}),
         }

@@ -3,7 +3,7 @@ summary: Add trains, flights and drives, from a rough plan to a booked journey w
 audience: editors
 section: Trips
 order: 30
-updated: 2026-10-17
+updated: 2026-10-23
 
 # Travel legs
 
@@ -37,7 +37,7 @@ Click **Save**. Below the form are the leg's **Confirmations** and **Contacts & 
 
 ## Times and time zones
 
-Times are typed as the clock shows them where the leg leaves (**Departure (local)**) and where it arrives (**Arrival (local)**), each with its place's time zone, such as Europe/Berlin. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
+Times are picked (date and time, with your browser's picker) as the clock shows them where the leg leaves (**Departure (local)**) and where it arrives (**Arrival (local)**), each with its place's time zone, such as Europe/Berlin. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
 
 Leave both times blank while a leg is only planned. Once you add them, the leg's date follows its departure.
 
