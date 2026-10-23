@@ -63,6 +63,22 @@ class PlannedLegTests(Fixture):
         self.assertEqual(leg.departure_at, datetime(2027, 9, 21, 5, 30, tzinfo=UTC))
         self.assertEqual(leg.date, date(2027, 9, 20))  # the local day, not the UTC one
 
+    def test_the_pickers_value_is_wall_clock_in_the_ends_zone(self):
+        """datetime-local sends 2027-09-20T23:30 with no zone; the zone selects still decide."""
+        form = self.form(date="", origin_timezone="America/Denver", destination_timezone="America/New_York",
+                         departure_local="2027-09-20T23:30", arrival_local="2027-09-21T05:00",
+                         add_return="on", return_departure_local="2027-09-24T08:00",
+                         return_arrival_local="2027-09-24T10:15")
+        self.assertTrue(form.is_valid(), form.errors)
+        leg = form.save()
+        self.assertEqual((leg.departure_at, leg.arrival_at),
+                         (datetime(2027, 9, 21, 5, 30, tzinfo=UTC), datetime(2027, 9, 21, 9, 0, tzinfo=UTC)))
+        back = form.return_leg  # departs in New York (EDT), arrives in Denver (MDT)
+        self.assertEqual((back.departure_at, back.arrival_at),
+                         (datetime(2027, 9, 24, 12, 0, tzinfo=UTC), datetime(2027, 9, 24, 16, 15, tzinfo=UTC)))
+        html = form["return_departure_local"].as_widget()
+        self.assertIn('type="datetime-local"', html)
+
     def test_planned_round_trip_needs_a_return_day(self):
         form = self.form(add_return="on")
         self.assertFalse(form.is_valid())

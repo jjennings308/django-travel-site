@@ -270,10 +270,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   in narrative). The Django admin keeps its own date widgets. `apps/core/tests/test_date_pickers.py` imports
   every `apps/*/forms.py`, builds each form (with the arguments its tests use, else from `base_fields`) and
   fails on any date / time / datetime field whose widget isn't one of these; a deliberate exception goes in
-  its allow-list with a one-line reason. **Not yet converted when the rule was written** (fix these first):
-  `TripForm` start/end date, `LodgingForm` check-in/check-out, `DayForm` date, `BookingTaskForm` due, the
-  leg's departure/arrival and return-trip times (`LocalDateTimeField`'s text widget), and the activity
-  forms that list `suggested_date_range_start/_end` without a widget (two of the three).
+  its allow-list with a one-line reason. Converted 2026-10-23: every form uses them (trip forms with `styled=False`, since `.trips-ui` styles inputs by type); `LocalDateTimeField` renders `datetime-local` and seeds `2026-01-15T18:00`; the admin's own forms (`DayAdminForm`, `LodgingAdminForm`, `TransportLegAdminForm` date fields) are the allow-list.
 - **Phones** (site roadmap R11 phone pass, checked at 390 px): every page fits without sideways scroll —
   tables scroll inside `.scroll-x` (which is `relative`, so absolutely positioned bits inside are clipped by
   it, and bleeds only 16 px into the gutter on a phone), `fieldset { min-width: 0 }` (a fieldset's default

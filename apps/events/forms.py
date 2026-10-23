@@ -1,6 +1,7 @@
 # events/forms.py
 from django import forms
 
+from apps.core.widgets import DateInput, TimeInput
 from apps.approval_system.models import ApprovalStatus
 from apps.locations.models import POI, City, Country
 from apps.media_app.forms import PictureFormMixin
@@ -33,10 +34,10 @@ class EventForm(PictureFormMixin, forms.ModelForm):
             "location_text": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. Hallstatt"}),
             "venue_name": forms.TextInput(attrs=INPUT),
             "venue_address": forms.TextInput(attrs=INPUT),
-            "start_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
-            "end_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
-            "start_time": forms.TimeInput(attrs={**INPUT, "type": "time"}, format="%H:%M"),
-            "end_time": forms.TimeInput(attrs={**INPUT, "type": "time"}, format="%H:%M"),
+            "start_date": DateInput(),
+            "end_date": DateInput(),
+            "start_time": TimeInput(),
+            "end_time": TimeInput(),
             "organizer": forms.TextInput(attrs=INPUT),
             "ticket_price_min": forms.NumberInput(attrs={**INPUT, "step": "0.01", "min": "0"}),
             "ticket_price_max": forms.NumberInput(attrs={**INPUT, "step": "0.01", "min": "0"}),

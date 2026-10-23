@@ -1,6 +1,8 @@
 # reviews/forms.py
 from django import forms
 
+from apps.core.widgets import DateInput
+
 from .models import Review, ReviewReport
 
 INPUT = {"class": "sbl-input"}
@@ -20,7 +22,7 @@ class ReviewForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(attrs=INPUT),
             "comment": forms.Textarea(attrs={**INPUT, "rows": 5}),
-            "visit_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
+            "visit_date": DateInput(),
         }
 
 

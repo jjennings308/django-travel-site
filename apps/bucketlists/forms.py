@@ -1,6 +1,7 @@
 # bucketlists/forms.py
 from django import forms
 
+from apps.core.widgets import DateInput
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI
@@ -42,8 +43,8 @@ class BucketListItemForm(forms.ModelForm):
             "custom_description": forms.Textarea(attrs={**INPUT, "rows": 3}),
             "event": forms.Select(attrs=INPUT),
             "pois": forms.CheckboxSelectMultiple(attrs={"class": "sbl-check"}),
-            "target_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
-            "target_end_date": forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"),
+            "target_date": DateInput(),
+            "target_end_date": DateInput(),
             "estimated_budget": forms.NumberInput(attrs={**INPUT, "step": "1", "min": "0"}),
             "budget_currency": forms.TextInput(attrs={**INPUT, "maxlength": 3}),
             "with_who": forms.TextInput(attrs=INPUT),
@@ -118,7 +119,7 @@ class BucketListItemForm(forms.ModelForm):
 
 
 class CompleteItemForm(forms.Form):
-    completed_date = forms.DateField(widget=forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"))
+    completed_date = forms.DateField(widget=DateInput())
     user_rating = forms.TypedChoiceField(
         choices=[("", "No rating")] + [(i, "★" * i) for i in range(5, 0, -1)],
         coerce=int, empty_value=None, required=False, label="Your rating",
@@ -187,8 +188,8 @@ class PlanTripForm(forms.Form):
 
     name = forms.CharField(max_length=200, widget=forms.TextInput(attrs=INPUT))
     destination = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs=INPUT))
-    start_date = forms.DateField(label="First day", widget=forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"))
-    end_date = forms.DateField(label="Last day", widget=forms.DateInput(attrs={**INPUT, "type": "date"}, format="%Y-%m-%d"))
+    start_date = forms.DateField(label="First day", widget=DateInput())
+    end_date = forms.DateField(label="Last day", widget=DateInput())
 
     def clean(self):
         cleaned = super().clean()
