@@ -166,7 +166,7 @@ class LinkedAnchorTests(SimpleTestCase):
     def test_reading_your_trip_keeps_its_sections(self):
         guide = helpdocs.guide("reading-your-trip")
         self.assertIsNotNone(guide)
-        self.assertLessEqual({"overview", "days", "reference", "booklet"}, guide.anchors)
+        self.assertLessEqual({"days-at-a-glance", "days", "reference", "booklet"}, guide.anchors)
 
     def test_sharing_and_access_keeps_its_sections(self):
         guide = helpdocs.guide("sharing-and-access")

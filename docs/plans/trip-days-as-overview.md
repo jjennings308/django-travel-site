@@ -1,6 +1,6 @@
 # Plan: the folded days are the overview (drop the Overview table on the web)
 
-Status: planning only (2026-10-23). One branch, `v1-days-as-overview`. Read with `CLAUDE.md` →
+Status: done (2026-10-23, branch `v1-days-as-overview`). The help-link "?" by Days points to the guide's new `#days-at-a-glance`; `#days` ("reading a day") stays in the guide. One branch, `v1-days-as-overview`. Read with `CLAUDE.md` →
 "The web trip page is laid out for the web" and `docs/plans/trip-page-ux.md` (U2/U3).
 
 ## Why

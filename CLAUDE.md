@@ -293,7 +293,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   `resolve`). Lower apps link to a guide only with `{% url 'pages:help_guide' 'slug' as help_url %}{% if
   help_url %}…{% endif %}` — in practice through the shell partial `partials/_help_link.html` (`with
   slug=… anchor=… label=…` gives a round "?"; add `text="How this works"` for a text link; never printed).
-  The trip page has "?" by Overview, Days, Reference and Download PDF (`reading-your-trip#…`); Edit trip,
+  The trip page has "?" by Days (`#days-at-a-glance`), Reference and Download PDF (`reading-your-trip#…`); Edit trip,
   the day page, the leg page, the Confirmations and Contacts & info boxes and the tidy page have "How this
   works"; the account menu has Help. `apps/pages/tests/test_help_links.py` renders those pages and checks
   every `/help/` link and anchor. **A change to a user-facing feature updates its guide in the same PR and
@@ -349,7 +349,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   notification to everyone with a grant on a trip that ended (up to 30 days ago), once ever
   (`reviews.TripRatingPrompt`); `save()` upserts reviews (`visit_date` = trip start; "Been there" only for
   people on `trip.travelers`). `reviews:trip_rate` (`/reviews/trip/<pk>/rate/`), linked from a finished trip's
-  Overview by URL name. The daily `send_trip_digests` fires `trips.signals.daily_run`, which reviews
+  About this trip by URL name. The daily `send_trip_digests` fires `trips.signals.daily_run`, which reviews
   answers by calling `ask()` (no extra cron); `manage.py ask_trip_ratings` runs it by hand.
 - **Trip items linked to the catalogue** (site roadmap R18; trips 0044, locations 0014/0015, activities 0014):
   `Meal.poi` (a notable restaurant: most meals stay typed text) and `Section.poi` / `Section.activity`, optional,
@@ -480,7 +480,7 @@ that matter most:
   currency (listed, never guessed). `trips.TripRate` (1 from = rate to) is the editor's override, both ways,
   edited in Edit trip's Exchange rates formset. Budget page: `?in=XXX` (default the reader's
   `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
-  "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. Overview:
+  "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. About this trip:
   `budget.estimate` = confirmation `cost` + activity `est_cost` in the reader's currency (two queries only when
   something is foreign). `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
@@ -517,7 +517,7 @@ that matter most:
   `ChecklistTick` (per-person: item + traveller, unique). `apps/trips/checklists.py`: `attach` (from the trip
   page's `checklists__items__ticks` + `travelers` prefetch, no query: `item.boxes`, `is_done`, list
   `done`/`total`), `attention` (empty boxes on documents lists from 14 days before the start to the end →
-  Overview "N documents not ticked"), `trips:checklist_tick` (`comment`; form POST, 204 for Alpine's
+  the Needs attention banner's "N documents not ticked"), `trips:checklist_tick` (`comment`; form POST, 204 for Alpine's
   background `X-Requested-With: fetch`), and editors' `checklist_new` / `_edit` (items formset) / `_delete` /
   `_from_template`, reached from Edit trip's Checklists section. Per-person items use `trip.travelers`
   (none → acts shared). Templates: `apps/trips/checklist_templates/*.md` (header `title` / `kind` /
@@ -664,16 +664,23 @@ that matter most:
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
   so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
-  Map · Budget · Photos links; a ⋯ menu, Alpine, with Share / the shared link / Stop sharing and
-  Delete, shown only when it has something for the reader), a sticky jump bar (Overview · Days ·
-  Reference), then:
-  - **Overview** (`#overview`): one row per day from `itinerary.overview` — where, sleeping (from
-    `attach_stays`; "✈ overnight" when a leg that day arrives a day later), travel (mode icons +
-    "A → B" or the travel total), up to two highlights (activity titles, else the theme), a ⚠ count
-    (not-booked items and open tasks on that day). Below: Needs attention (not booked, to do, legs
-    not on any day, tables to convert), "Journeys not on any day" (stray legs in full, for everyone),
-    "Stays outside the trip's days", travellers, cities, destination, goals, the bucket prompt and
-    trip notes.
+  Map · Budget · Photos links; a ⋯ menu, Alpine, with Add to calendar, Tidy suggestions (editors), Share /
+  the shared link / Stop sharing and Delete), the **Needs attention** banner (`#needs-attention`, only when
+  something does: not booked, to do, decisions, documents not ticked, not on any day, tables to convert,
+  each linking to its list), a sticky jump bar (Days · Reference), then:
+  - **The days are the overview** (`docs/plans/trip-days-as-overview.md`; the web Overview table is gone,
+    the booklet's "Days at a glance" page is unchanged). Each day's `<summary>` has line 1 (Day N · date ·
+    city — theme) and line 2, `.day-glance` (`data-day-glance`), from `itinerary.overview` and
+    `attach_stays`, each part only when it has something: 🛏 the stay (linked to `#stay-N`; "(check in)" on
+    its first night, "(check out)" on a last morning with no stay that night), "✈ overnight" (a leg that
+    day arrives a day later), travel (mode icons + "A → B" or the travel total), up to two highlights
+    (activity titles only: the theme is already on line 1), and ⚠N (not-booked items and open tasks that
+    day) linking to the banner. Links inside a `<summary>` follow without toggling it. Above the days:
+    **About this trip** (`<details class="about-fold" id="about">`, closed unless the trip has no days;
+    not touched by Expand all): travellers, cities, destination, goals, the bucket prompt, Rate the
+    places, trip notes and the estimated cost (`#cost-estimate`, with its Budget link); then "Journeys
+    not on any day" (`#stray-legs`) and "Stays outside the trip's days" in full, for everyone
+    (`#not-on-any-day`). The hash script maps `#overview` (old bookmarks and emails) to `#days`.
   - **Days** (`#days`): each a `<details class="day-fold" id="day-N">`, open on arrival only for
     `itinerary.open_day` (today's during the trip, Day 1 before it, none after; `localdate()`); an
     inline script opens the `<details>` holding any `#target` (on load, on hashchange and on a click
@@ -717,7 +724,7 @@ that matter most:
   meal type when missing — and delete the phase; review only). **High confidence** only for kinds 1–2 when the item *leads*
   the line (after an optional "Lunch:" label, followed by a dash/bracket/end — not "Borough Market →
   Tate Modern") or the callout's title says Book/Reserve/Critical. **Suggestions only**: the review page
-  `trips:trip_tidy` (`/trips/<pk>/tidy/`, editors; linked from the trip page's Overview) shows them by
+  `trips:trip_tidy` (`/trips/<pk>/tidy/`, editors; linked from the trip page's ⋯ menu) shows them by
   day, unticked, with before → after; `tidying.apply` runs the ticked ones in one transaction,
   re-checking each against the current text (a stale one is skipped and reported); "Not this" stores a
   `TidyDismissal` (the suggestion's stable key). `manage.py tidy_trip --trip <pk> [--apply]`: dry run
@@ -1123,7 +1130,7 @@ Status: R1 (editors invite people; the People page) done on branch `r1-trip-invi
 Plan: `docs/plans/trip-days-as-overview.md` (drop the web trip page's Overview table; each folded day's
 summary carries stay, travel, highlights and ⚠; Needs attention becomes a banner; travellers, cities,
 notes and cost move to an "About this trip" fold; the booklet is unchanged). One branch,
-`v1-days-as-overview`. Status: not started.
+`v1-days-as-overview`. Status: done (2026-10-23).
 
 ### Rules carried over from the itinerary project
 

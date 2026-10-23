@@ -98,7 +98,7 @@ ACTIVITY_ICONS = {"tour": "🧭", "entry": "🎟", "ticket": "🎫", "table": "�
 
 
 def overview(days, not_booked=(), tasks=()):
-    """The Overview row for each day (see the module docstring). ``not_booked`` is
+    """Each day at a glance — its summary line on the web (see the module docstring). ``not_booked`` is
     ``booking_tasks.not_booked``'s list and ``tasks`` the trip's tasks after
     ``booking_tasks.attach`` (``task.item_day``)."""
     attention = {}

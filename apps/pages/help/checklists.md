@@ -3,7 +3,7 @@ summary: Packing lists, travel documents and things to do before you go, ticked 
 audience: everyone
 section: Trips
 order: 35
-updated: 2026-10-18
+updated: 2026-10-23
 
 # Checklists
 
@@ -15,7 +15,7 @@ On the trip page, under **Reference** → **Checklists**, click a box to tick it
 
 Some items are for **each person**, such as a passport: they show one box per traveller ("Passport — ☑ James ☐ Regan"), and the item counts as done once everyone has ticked theirs. Other items are done once for the whole group, such as plug adapters.
 
-From two weeks before the trip until it ends, **Needs attention** in the Overview counts the boxes still empty on **Documents** checklists, such as "3 documents not ticked".
+From two weeks before the trip until it ends, the **Needs attention** banner at the top of the trip page counts the boxes still empty on **Documents** checklists, such as "3 documents not ticked".
 
 ## Making a checklist
 

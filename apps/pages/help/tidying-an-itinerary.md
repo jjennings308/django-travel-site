@@ -3,7 +3,7 @@ summary: Turn travel tables into real journeys, and use the clean-up suggestions
 audience: editors
 section: Trips
 order: 50
-updated: 2026-10-19
+updated: 2026-10-23
 
 # Tidying an itinerary
 
@@ -25,7 +25,7 @@ The table becomes a travel section: converted rows and "Total" rows go, other ro
 
 ## Clean-up suggestions
 
-On the trip page, editors see **Tidy suggestions** in the Overview. The page lists, day by day, text that repeats something recorded elsewhere:
+On the trip page, editors find **Tidy suggestions** in the **⋯** menu. The page lists, day by day, text that repeats something recorded elsewhere:
 
 | Suggestion | For example | What applying it does |
 | --- | --- | --- |

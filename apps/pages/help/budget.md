@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-18
+updated: 2026-10-23
 
 # The budget and splitting costs
 
@@ -40,7 +40,7 @@ If you changed money at a known rate and want the budget to use it: on **Edit tr
 
 ## Estimated trip cost
 
-The trip page's Overview shows **Estimated trip cost**: the costs entered on confirmations and the estimated costs of activities, added up in your currency (set under Settings). It's an estimate of what's booked, separate from the costs recorded in the budget.
+The trip page shows **Estimated trip cost** under **About this trip**, above the days: the costs entered on confirmations and the estimated costs of activities, added up in your currency (set under Settings). It's an estimate of what's booked, separate from the costs recorded in the budget.
 
 ## Problems
 
