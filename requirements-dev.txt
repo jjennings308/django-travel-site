@@ -1,7 +1,7 @@
 # Development-only tooling. Production installs requirements.txt alone.
 -r requirements.txt
-django-tailwind==4.4.2
-pytailwindcss==0.3.0
+django-tailwind==4.6.0
+pytailwindcss==0.4.2
 django-browser-reload==1.21.0
 # Lets the parallel test runner report a failing test's traceback (manage.py test --parallel).
 tblib==3.2.2
