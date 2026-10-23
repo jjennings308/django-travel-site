@@ -39,7 +39,7 @@
       <li>Categories, countries, regions, cities and activities are matched by name. An event city that isn't in the catalogue is kept as a typed town for staff to link later; a place's city must already exist.</li>
       <li>A cell that contains a comma (a description, “Sep, Oct”) is wrapped in double quotes in the CSV. Spreadsheets do this for you when saving; when writing a file by hand, add the quotes, or separate months with semicolons (“Sep;Oct”).</li>
       <li>“Export what's loaded now” downloads the published items in these same columns, ready to edit and import again.</li>
-      <li>Yes/no columns take yes, no, true, false, 1 or 0. Dates: 2027-09-18 (or 9/18/2027). Times: 20:00 or 8:00 PM. Months: “Sep, Oct” or “9, 10”.</li>
+      <li>Yes/no columns take yes, no, true, false, 1 or 0. Dates: month/day/year, 9/18/2027 (2027-09-18 also works). Times: 20:00 or 8:00 PM. Months: “Sep, Oct” or “9, 10”.</li>
       <li>Imported items are published straight away.</li>
     </ul>
     {% for kind, cols in help_columns.items %}

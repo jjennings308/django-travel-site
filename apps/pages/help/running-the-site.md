@@ -3,7 +3,7 @@ summary: The staff dashboard, approving submissions, giving people access to tri
 audience: staff
 section: Staff
 order: 10
-updated: 2026-10-19
+updated: 2026-10-23
 
 # Running the site
 
@@ -47,6 +47,8 @@ Staff see every trip, with no grant needed. See [sharing and access](/help/shari
 1. Pick **What are you importing?** and upload the **CSV file**. Import in this order, since each looks up the ones before it: countries, regions, cities, places, activities, events.
 2. Click **Preview import**. Each row shows **New**, **Update** or **Error**; "Nothing has been saved yet."
 3. Click **Import N rows** (rows with errors are skipped), or **Cancel**. When nothing can be imported, the page offers **Upload a corrected file** instead.
+
+Dates are month/day/year, like 9/18/2027 (how Excel shows them); 2027-09-18 works too, but day-first dates such as 18/9/2027 are refused. Times are 20:00 or 8:00 PM.
 
 A **blank template** shows the columns; **export what's loaded now** downloads the published items in the same columns, ready to edit and import again. Imported items are published straight away.
 

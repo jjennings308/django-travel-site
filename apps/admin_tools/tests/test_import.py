@@ -89,7 +89,7 @@ class ImportTests(ImportFixture):
         okto = Activity.objects.create(category=self.festival, name="Oktoberfest", description="d", created_by=self.staff,
                                        visibility="public", approval_status=ApprovalStatus.APPROVED)
         csv = ("name,start_date,end_date,start_time,activity,category,description,city,country,free\n"
-               "Oktoberfest 2027,2027-09-18,10/03/2027,10:00 AM,Oktoberfest,,Beer.,Munich,Germany,yes\n"
+               "Oktoberfest 2027,9/18/2027,10/3/2027,10:00 AM,Oktoberfest,,Beer.,Munich,Germany,yes\n"
                "Village Fair,2027-07-01,,,,Community,Fun.,Smallville,Germany,no\n"
                "No Category Gig,2027-07-02,,,,,Loud.,Munich,Germany,no\n")
         page = self.preview("event", csv)
@@ -118,7 +118,9 @@ class ImportTests(ImportFixture):
 
     def test_bad_dates_and_missing_columns(self):
         page = self.preview("event", "name,start_date,description,city\nGig,next tuesday,Loud.,Munich\n")
-        self.assertContains(page, "isn&#x27;t a date")
+        self.assertContains(page, "isn&#x27;t a date (use M/D/YYYY)")
+        page = self.preview("event", "name,start_date,description,city\nGig,18/9/2027,Loud.,Munich\n")
+        self.assertContains(page, "isn&#x27;t a date")  # day first is refused, never guessed
         page = self.preview("event", "name,description\nGig,Loud.\n")
         self.assertContains(page, "Missing required column(s): start_date")
 
@@ -200,6 +202,22 @@ class LocationImportTests(ImportFixture):
                 counts = page.context["counts"]
                 self.assertEqual((counts["create"], counts["error"]), (0, 0))
                 self.assertEqual([r.changes for r in page.context["importer"].rows], [[]] * counts["update"])
+
+
+    def test_event_export_writes_month_day_year_and_round_trips(self):
+        Event.objects.create(name="Oktoberfest 2027", start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
+                             category=self.festival, description="Beer.", city=self.munich,
+                             created_by=self.staff, approval_status=ApprovalStatus.APPROVED)
+        text = self.client.get(reverse("admin_tools:export", args=["event"])).content.decode("utf-8-sig")
+        self.assertIn(",9/18/2027,10/3/2027,", text)  # no leading zeros, month first
+        page = self.preview("event", text)
+        self.assertEqual((page.context["counts"]["update"], page.context["counts"]["error"]), (1, 0))
+        self.assertEqual(page.context["importer"].rows[0].changes, [])
+
+    def test_template_example_uses_month_day_year(self):
+        text = self.client.get(reverse("admin_tools:import_template", args=["event"])).content.decode("utf-8-sig")
+        self.assertIn("9/18/2027", text)
+        self.assertNotIn("2027-09-18", text)
 
 
 class SameNameCityTests(ImportFixture):
