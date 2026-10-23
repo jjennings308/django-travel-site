@@ -18,7 +18,7 @@ Markdown==3.11.1
 gunicorn==26.2.0
 # Trip booklet PDF (trips:trip_pdf). Needs the Pango/HarfBuzz system libraries on the server:
 #   sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
-brotli==1.2.0
+brotli==1.2.1
 cffi==2.1.1
 cssselect2==0.10.1
 fonttools==4.67.0
