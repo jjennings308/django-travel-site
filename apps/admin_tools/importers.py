@@ -38,7 +38,9 @@ MONTHS = {m.lower(): i for i, m in Activity.MONTHS} | {m.lower()[:3]: i for i, m
 MONTH_ABBR = {i: m[:3] for i, m in Activity.MONTHS}
 TRUE = {"yes", "y", "true", "t", "1", "x"}
 FALSE = {"no", "n", "false", "f", "0"}
-DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%d %b %Y", "%b %d %Y", "%B %d %Y", "%d %B %Y")
+# Dates are M/D/YYYY (9/18/2027: what Excel shows and opens as a date in a US locale); ISO and spelled-out
+# months still import, so older exports re-import. Never D/M/YYYY: 3/10 would silently mean October.
+DATE_FORMATS = ("%m/%d/%Y", "%Y-%m-%d", "%d %b %Y", "%b %d %Y", "%B %d %Y", "%d %B %Y")
 TIME_FORMATS = ("%H:%M", "%H:%M:%S", "%I:%M %p", "%I %p", "%I:%M%p", "%I%p")
 APPROVED = ApprovalStatus.APPROVED
 
@@ -170,7 +172,7 @@ KINDS = {
          "currency": ("currency", "text"), "ticket_url": ("ticket_url", "text"), "website": ("website", "text"),
          "what_to_bring": ("what_to_bring", "text")},
         ("name", "start_date", "description"),
-        {"name": "Oktoberfest 2027", "start_date": "2027-09-18", "end_date": "2027-10-03", "activity": "Oktoberfest",
+        {"name": "Oktoberfest 2027", "start_date": "9/18/2027", "end_date": "10/3/2027", "activity": "Oktoberfest",
          "description": "Oktoberfest 2027 on the Theresienwiese.", "country": "Germany", "city": "Munich",
          "venue": "Theresienwiese", "free": "yes"},
         "events:event_detail", ("start_date", "name")),
@@ -204,7 +206,7 @@ def _cell(obj, kind, column, form_field, how):
     if how == "bool":
         return "yes" if value else "no"
     if how == "date":
-        return value.isoformat()
+        return f"{value.month}/{value.day}/{value.year}"
     if how == "time":
         return value.strftime("%H:%M")
     if how == "months":
@@ -308,7 +310,7 @@ class Importer:
                     return datetime.strptime(value, fmt).date()
                 except ValueError:
                     pass
-            raise ValueError("isn't a date (use YYYY-MM-DD)")
+            raise ValueError("isn't a date (use M/D/YYYY)")
         if how == "time":
             for fmt in TIME_FORMATS:
                 try:
