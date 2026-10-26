@@ -3,7 +3,7 @@ summary: Keep phone numbers and trip know-how in one place, and link each to the
 audience: editors
 section: Bookings & contacts
 order: 20
-updated: 2026-10-17
+updated: 2026-10-26
 
 # Contacts and info notes
 
@@ -22,7 +22,7 @@ The booklet prints each one in full on the days it applies to, and again in its 
 
 ## Add one from the thing it's for
 
-On the item's page (a leg's or activity's **Edit** page), or from **Contacts & info** links on **Edit trip** and on a day's page, use the **Contacts & info** box:
+On the item's page (a stay's, leg's or activity's **Edit** page), or from the **Contacts & info** links on a day's page, use the **Contacts & info** box:
 
 - **Pick one this trip has** and click **Add**, to link one you've already made;
 - or fill in **New contact** (name, role, phone, email) and click **Add contact**;

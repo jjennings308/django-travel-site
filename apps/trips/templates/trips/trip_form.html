@@ -48,18 +48,6 @@ would mean two places to fix the next time a field is added.
     </fieldset>
   </section>
 
-  {% if formsets %}
-    {% comment %}Days are not here: a day owns its own meals and sections, so it gets its own page rather than five more tables on this one.{% endcomment %}
-    <h2 class="mt-10 text-lg font-semibold tracking-tight">Trip details</h2>
-    <p class="mt-1 mb-4 text-sm text-zinc-500">
-      Everything below saves together with the form above. If one row has a
-      mistake, nothing is written.
-    </p>
-    {% for key, label, formset in formsets %}
-      <div id="{{ key }}" class="scroll-mt-24">{% include "trips/_formset.html" with formset=formset label=label %}</div>
-    {% endfor %}
-  {% endif %}
-
   <div class="form-actions">
     <button type="submit" class="btn">{% if is_create %}Create trip{% else %}Save changes{% endif %}</button>
     <a
@@ -125,75 +113,53 @@ would mean two places to fix the next time a field is added.
   </section>
 
   {% url 'trips:trip_edit' trip.pk as edit_url %}
-  {% comment %}Travel by day: each day's legs and the add-a-leg form. The view page only shows legs; adding is here.{% endcomment %}
-  <section class="form-section mt-10" id="travel">
+  {% comment %}All stays & legs (edit-by-day plan E3): read-only, in date order; each is added and edited from its day or its own page.{% endcomment %}
+  <section class="form-section mt-10" id="stays-legs">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h2 class="form-section-title">Travel by day</h2>
-        <p class="form-section-lede">Add a leg to a day as you'd write a table row; it's planned until you give it times. Edit a leg for times, placement and its confirmations.</p>
+        <h2 class="form-section-title">All stays &amp; legs</h2>
+        <p class="form-section-lede">Add a stay or a leg from its day (Edit this day → Add to this day). Edit one here for its dates, times, confirmations and contacts.</p>
       </div>
       {% if travel_tables_pending %}<a class="btn-quiet" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn “A → B” table rows into legs</a>{% endif %}
     </div>
-    {% for d in travel_days %}
-      <div class="mt-5 border-t border-zinc-100 pt-4" id="travel-day-{{ d.pk }}">
-        <p class="font-medium text-zinc-900">Day {{ d.day_number }} <span class="font-normal text-zinc-500">· {{ d.date|date:"D, M j" }}{% if d.theme %} · {{ d.theme }}{% endif %}</span></p>
-        {% if d.edit_legs %}
-          <ul class="mt-2 divide-y divide-zinc-100 text-sm">
-            {% for leg in d.edit_legs %}
-              <li class="flex flex-wrap items-center gap-3 py-1.5">
-                <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
-                <span class="font-medium">{{ leg.origin }} → {{ leg.destination }}</span>
-                <span class="text-zinc-500">{% if leg.is_planned %}planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}{{ leg.departure_local_str }}{% endif %}</span>
-                <a class="link-quiet ml-auto font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ edit_url|urlencode }}%23travel-day-{{ d.pk }}">Edit</a>
-              </li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-        {% include "trips/partials/_leg_quick_add.html" with day=d section=None next=edit_url|add:"#travel" %}
-        {% if not d.has_travel %}<form method="post" action="{% url 'trips:day_add_travel' trip.pk d.pk %}" class="mt-1">{% csrf_token %}<input type="hidden" name="next" value="{{ edit_url }}#travel-day-{{ d.pk }}"><button type="submit" class="link-quiet text-xs">Add a travel section (to show this day's legs in its own order)</button></form>{% endif %}
-      </div>
-    {% empty %}
-      <p class="empty-state py-6">Add days first.</p>
-    {% endfor %}
-  </section>
-
-  {% comment %}Bookings and confirmations: what each leg, stay, plan and meal has attached. Stays have no page of their own, so their confirmations are reached here.{% endcomment %}
-  <section class="form-section mt-10" id="bookings">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h2 class="form-section-title">Bookings &amp; confirmations</h2>
-        <p class="form-section-lede">Confirmations are added on the thing they confirm. One number can cover several items (GCH7JS on four flights). A day's plan or a meal gets one from the day page.</p>
-      </div>
-      <a class="btn-quiet" href="{% url 'trips:confirmation_new' trip.pk %}?next={{ edit_url|urlencode }}%23bookings">Add a loose confirmation</a>
-    </div>
-    {% if booking_rows %}
+    {% if item_rows %}
       <div class="scroll-x">
-        <table class="data-grid">
-          <thead><tr><th>When</th><th>What</th><th>Item</th><th>Confirmations</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <table class="data-grid" data-stays-legs>
+          <thead><tr><th>When</th><th>Day</th><th>What</th><th>Item</th><th>Confirmations</th><th><span class="sr-only">Edit</span></th></tr></thead>
           <tbody>
-            {% for row in booking_rows %}
+            {% for row in item_rows %}
               <tr>
-                <td class="whitespace-nowrap">{{ row.when|date:"D, M j" }}</td>
+                <td class="whitespace-nowrap">{{ row.when|date:"D, M j"|default:"—" }}</td>
+                <td class="whitespace-nowrap">{% if row.day %}<a class="link-quiet" href="{% url 'trips:day_edit' trip.pk row.day.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Day {{ row.day.day_number }}</a>{% else %}<span class="text-amber-700" data-not-on-a-day>{% if row.kind == "stay" %}Outside the trip's days{% else %}Not on any day{% endif %}</span>{% endif %}</td>
                 <td class="text-zinc-500">{{ row.what }}</td>
-                <td class="font-medium text-zinc-900">{{ row.label }}</td>
+                <td><span class="font-medium text-zinc-900">{{ row.label }}</span> <span class="text-zinc-500">{{ row.detail }}</span></td>
                 <td>{% for c in row.confirmations %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% empty %}<span class="text-zinc-400">—</span>{% endfor %}</td>
-                <td class="text-right whitespace-nowrap"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Confirmations</a>
-                  <a class="link-quiet ml-3 font-medium" href="{% url 'trips:item_links' trip.pk row.kind row.item.pk %}?next={{ edit_url|urlencode }}%23bookings">Contacts &amp; info</a></td>
+                <td class="text-right whitespace-nowrap">{% if row.kind == "stay" %}<a class="link-quiet font-medium" href="{% url 'trips:stay_edit' trip.pk row.item.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Edit</a>{% else %}<a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk row.item.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Edit</a>{% endif %}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <p class="empty-state py-6">No legs or stays yet.</p>
-    {% endif %}
-    {% if loose_confirmations %}
-      <p class="card-kicker mt-6 mb-2">Not attached to anything</p>
-      <ul class="text-sm">{% for c in loose_confirmations %}<li class="py-1"><span class="chip">{{ c.confirmation_number }}</span> {{ c.label|default:c.provider }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:confirmation_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23bookings">Edit</a></li>{% endfor %}</ul>
+      <p class="empty-state py-6">No stays or legs yet. Add them from each day.</p>
     {% endif %}
   </section>
 
-  {% comment %}Contacts and info notes (U4): each has its own page with the items it's linked to. The Contacts formset above stays as the bulk view.{% endcomment %}
+  {% comment %}Loose confirmations: ones that cover no single item (insurance, a rail pass).{% endcomment %}
+  <section class="form-section mt-10" id="loose-confirmations">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="form-section-title">Loose confirmations</h2>
+        <p class="form-section-lede">Travel insurance, a rail pass: bookings that cover no single stay, leg or activity. A confirmation for one item is added on that item.</p>
+      </div>
+      <a class="btn-quiet" href="{% url 'trips:confirmation_new' trip.pk %}?next={{ edit_url|urlencode }}%23loose-confirmations">Add a loose confirmation</a>
+    </div>
+    {% if loose_confirmations %}
+      <ul class="text-sm">{% for c in loose_confirmations %}<li class="py-1"><span class="chip">{{ c.confirmation_number }}</span> {{ c.label|default:c.provider }} <a class="link-quiet ml-2 font-medium" href="{% url 'trips:confirmation_edit' trip.pk c.pk %}?next={{ edit_url|urlencode }}%23loose-confirmations">Edit</a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  {% comment %}Contacts and info notes (U4): each has its own page with the items it's linked to.{% endcomment %}
   <section class="form-section mt-10" id="contacts-info">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>

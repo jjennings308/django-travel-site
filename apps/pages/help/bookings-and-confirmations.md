@@ -52,7 +52,7 @@ Each train or flight shows its stage:
 
 ## Insurance and passes
 
-A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On **Edit trip**, in **Bookings & confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
+A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On **Edit trip**, under **Loose confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
 
 ## What's still to book
 

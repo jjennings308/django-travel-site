@@ -173,43 +173,12 @@ class FillDayCitiesTests(StayFixture):
         self.assertIn("2 day city(ies) filled", out.getvalue())
 
     @mock.patch("apps.core.geocoding.geocode", return_value=None)
-    def test_trip_edit_page_says_how_many(self, _geocode):
-        Lodging.objects.create(trip=self.trip, name="Hard Days Night Hotel", city=self.liverpool,
-                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
-        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
-        data = {}
-        for key, value in self._form_data(page).items():
-            data[key] = value
-        stay_prefix = "lodging-0-"
-        data[stay_prefix + "notes"] = "edited"
-        response = self.client.post(reverse("trips:trip_edit", args=[self.trip.pk]), data, follow=True)
-        self.assertContains(response, "Filled in the city for 1 day from your stays; change any day trips by hand.")
-
-    @staticmethod
-    def _form_data(page):
-        """Every field the edit page would submit, from its bound forms' initial values."""
-        context = page.context
-        data = {}
-        form = context["form"]
-        for name, field in form.fields.items():
-            value = form[name].value()
-            if value is None:
-                continue
-            data[form.add_prefix(name)] = [str(v) for v in value] if isinstance(value, (list, tuple)) else str(value)
-        traveler_form = context["traveler_form"]
-        for name in traveler_form.fields:
-            data[traveler_form.add_prefix(name)] = ""
-        for _key, _label, formset in context["formsets"]:
-            mf = formset.management_form
-            for name in mf.fields:
-                data[mf.add_prefix(name)] = str(mf[name].value())
-            for f in formset.forms:
-                for name in f.fields:
-                    value = f[name].value()
-                    if value is None or value is False:
-                        continue
-                    if isinstance(value, (list, tuple)):
-                        data[f.add_prefix(name)] = [str(v) for v in value]
-                    else:
-                        data[f.add_prefix(name)] = str(value)
-        return data
+    def test_the_stay_page_says_how_many(self, _geocode):
+        stay = Lodging.objects.create(trip=self.trip, name="Hard Days Night Hotel", city=self.liverpool,
+                                      check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        url = reverse("trips:stay_edit", args=[self.trip.pk, stay.pk])
+        form = self.client.get(url).context["form"]
+        data = {name: ("" if form[name].value() is None else str(form[name].value())) for name in form.fields}
+        data["notes"] = "edited"
+        response = self.client.post(url, data, follow=True)
+        self.assertContains(response, "Filled in the city for 1 day from this stay; change any day trips by hand.")

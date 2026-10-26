@@ -87,12 +87,51 @@ class BudgetPageTests(CurrencyFixture):
         self.assertIsNone(self.page(**{"in": "USD"}).context["one"])
 
 
-class TripRateFormTests(CurrencyFixture):
-    def test_rates_on_edit_trip(self):
-        self.client.force_login(self.ed)
-        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+class OwnRatesTests(CurrencyFixture):
+    """The trip's own rates live on the Budget page (edit-by-day plan E3), saved by trips:trip_rates."""
+
+    def rates_data(self, **row):
+        data = {"rates-TOTAL_FORMS": "1", "rates-INITIAL_FORMS": "0", "rates-MIN_NUM_FORMS": "0",
+                "rates-MAX_NUM_FORMS": "1000"}
+        data.update({f"rates-0-{name}": value for name, value in row.items()})
+        return data
+
+    def test_editors_save_them_and_the_totals_use_them(self):
+        self.cost("100", "EUR", date(2027, 9, 17), self.james)
+        page = self.page()
         self.assertContains(page, 'id="rates"')
-        self.assertContains(page, "Exchange rates")
+        self.assertContains(page, f'action="{reverse("trips:trip_rates", args=[self.trip.pk])}"')
+        response = self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
+                                    self.rates_data(from_currency="eur", to_currency="USD", rate="1.5"))
+        self.assertEqual(response["Location"], self.url + "#rates")
+        rate = TripRate.objects.get()
+        self.assertEqual((rate.from_currency, rate.rate), ("EUR", Decimal("1.5")))
+        self.assertEqual(self.page(**{"in": "USD"}).context["one"]["total"], Decimal("150.00"))
+
+    def test_a_mistake_shows_on_the_budget_page_and_saves_nothing(self):
+        self.client.force_login(self.ed)
+        response = self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
+                                    self.rates_data(from_currency="EUR", to_currency="EUR", rate="1"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pick a different currency.")
+        self.assertFalse(response.context["form"].is_bound)  # the add-a-cost form isn't shown with errors
+        self.assertFalse(TripRate.objects.exists())
+
+    def test_viewers_see_them_but_cannot_change_them(self):
+        TripRate.objects.create(trip=self.trip, from_currency="EUR", to_currency="USD", rate=Decimal("1.5"))
+        viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
+        TripGrant.objects.create(trip=self.trip, user=viewer, role=TripRole.VIEWER)
+        self.client.force_login(viewer)
+        page = self.client.get(self.url)
+        self.assertContains(page, "1 EUR = 1.5 USD")
+        self.assertNotContains(page, "rates-TOTAL_FORMS")
+        self.assertEqual(self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
+                                          self.rates_data(from_currency="GBP", to_currency="USD", rate="1")).status_code,
+                         403)
+
+    def test_edit_trip_no_longer_has_them(self):
+        self.client.force_login(self.ed)
+        self.assertNotContains(self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])), 'id="rates"')
 
 
 class EstimateTests(CurrencyFixture):

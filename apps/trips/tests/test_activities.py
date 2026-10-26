@@ -117,10 +117,10 @@ class ShowingTests(Fixture):
         self.trip.enable_public()
         self.assertNotIn("Neuschwanstein timed entry", str(public_trip(self.trip)))
 
-    def test_on_edit_trip_bookings(self):
+    def test_its_confirmations_are_reached_from_its_day(self):
         activity = self.tour()
         self.client.force_login(self.editor)
-        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+        page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]))  # E3: not Edit trip
         self.assertContains(page, reverse("trips:item_confirmations", args=[self.trip.pk, "activity", activity.pk]))
 
 

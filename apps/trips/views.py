@@ -47,7 +47,6 @@ from .forms import (
     TravelerProfileForm,
     TripForm,
     section_payload_form,
-    trip_subsection_formsets,
 )
 from . import budget, checklists, itinerary
 from .models import (
@@ -677,58 +676,32 @@ def trip_create(request):
 
 @login_required
 def trip_edit(request, pk):
-    """Change a trip and its trip-level lists in one submit.
-
-    Lodging, transport, confirmations, contacts and booking tasks are formsets
-    on this page rather than separate pages, because that is how they are
-    actually entered: a hotel and its confirmation number belong in the same
-    save, not two.
-
-    Nothing is written unless *everything* validates. A half-applied edit is
-    worse than a rejected one — the error message points at a form the reader
-    has already scrolled past, and the trip is left in a state neither the
-    person nor the app intended.
-    """
+    """Change what belongs to the whole trip (edit-by-day plan, E3): name, dates, status, cities,
+    notes and travellers, plus the days table and the trip-wide lists. Stays, legs, to-dos and
+    their confirmations and contacts are added from the day or the item's own page; this page
+    lists every stay and leg with an Edit link, read-only."""
     trip = _readable_trip(request, pk, "edit")
     form = TripForm(request.POST or None, instance=trip)
     traveler_form = AddTravelerForm(request.POST or None)
-    formsets = trip_subsection_formsets(trip, request.POST or None)
 
-    if request.method == "POST":
-        # Evaluate every one of these before deciding: `all()` short-circuits,
-        # and a formset left unvalidated loses its errors, so the reader fixes
-        # one problem, submits, and meets the next one.
-        trip_ok = form.is_valid()
-        formset_ok = [item[2].is_valid() for item in formsets]
-        if trip_ok and all(formset_ok):
-            with transaction.atomic():
-                # commit=True, so the travelers m2m is saved with it —
-                # save_m2m() only exists on a commit=False form.
-                form.save()
-                _add_new_traveler(trip, traveler_form)
-                for _key, _label, formset in formsets:
-                    formset.save()
-            messages.success(request, f"Saved “{trip.name}”.")
-            for _key, _label, fs in formsets:
-                for f in fs.forms:
-                    back = getattr(f, "return_leg", None)
-                    if back is not None:
-                        messages.info(request, f"Added the return: {back.origin or '?'} → {back.destination or '?'}.")
-            filled = sum(getattr(f, "days_filled", 0) for _key, _label, fs in formsets for f in fs.forms)
-            if filled:
-                messages.info(request, f"Filled in the city for {filled} day{'s' if filled != 1 else ''} from your stays; change any day trips by hand.")
-            _warn_if_ready_with_open_tasks(request, trip)
-            return redirect("trips:trip_detail", pk=trip.pk)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            # commit=True, so the travelers m2m is saved with it — save_m2m() only exists on a
+            # commit=False form.
+            form.save()
+            _add_new_traveler(trip, traveler_form)
+        messages.success(request, f"Saved “{trip.name}”.")
+        _warn_if_ready_with_open_tasks(request, trip)
+        return redirect("trips:trip_detail", pk=trip.pk)
 
     from .forms import share_choices
-    share_choices(form, *(formset for _key, _label, formset in formsets))  # one query per select list (R23)
+    share_choices(form)  # one query per select list (R23)
     return render(
         request,
         "trips/trip_form.html",
         {
             "form": form,
             "traveler_form": traveler_form,
-            "formsets": formsets,
             "trip": trip,
             "days": _days_with_counts(trip),
             "is_create": False,
@@ -737,56 +710,44 @@ def trip_edit(request, pk):
             "edit_contacts": trip.contacts.annotate(link_count=Count("item_links")),
             "edit_infos": trip.infos.annotate(link_count=Count("item_links")),
             "edit_checklists": trip.checklists.annotate(item_count=Count("items")),
-            **_edit_trip_travel_and_bookings(trip),
+            **_edit_trip_stays_and_legs(trip),
         },
     )
 
 
-def _edit_trip_travel_and_bookings(trip):
-    """Edit trip's "Travel by day" (each day's legs, the add-a-leg form, add a travel section)
-    and "Bookings & confirmations" (every leg, stay and activity, plus sections and meals that
-    have a confirmation, with what's attached; loose confirmations). The view page only shows
-    them: all adding happens here."""
-    from .models import CONFIRMABLE, item_label
+def _edit_trip_stays_and_legs(trip):
+    """Edit trip's read-only "All stays & legs" (E3): every stay and leg in date order with its
+    confirmation numbers and its day, flagged when no day of the trip has its date; and the loose
+    confirmations (insurance, a rail pass). A fixed handful of queries, whatever the trip's size."""
+    from django.contrib.contenttypes.models import ContentType
     from .travel_tables import logistics_sections
     from apps.trips.logistics import proposed_legs
-    days = list(trip.days.prefetch_related("sections").order_by("date", "day_number"))
-    legs = list(trip.transport.all())
-    stays = list(trip.lodging.all())
-    attached = {}
-    loose = []
-    for confirmation in trip.confirmations.prefetch_related("links__content_type"):
+    days_by_date = {day.date: day for day in trip.days.all() if day.date}
+    leg_type, stay_type = (ContentType.objects.get_for_model(TransportLeg).pk,
+                           ContentType.objects.get_for_model(Lodging).pk)
+    attached, loose = {}, []
+    for confirmation in trip.confirmations.prefetch_related("links"):
         if not confirmation.links.all():
             loose.append(confirmation)
         for link in confirmation.links.all():
-            attached.setdefault((link.content_type.model, link.object_id), []).append(confirmation)
-    for day in days:
-        day.edit_legs = [leg for leg in legs if leg.date == day.date]
-        day.has_travel = any(s.section_type == Section.Type.TRAVEL for s in day.sections.all())
+            attached.setdefault((link.content_type_id, link.object_id), []).append(confirmation)
     rows = []
-    for leg in legs:
-        rows.append({"kind": "leg", "item": leg, "label": item_label(leg), "when": leg.date,
-                     "what": leg.get_mode_display(), "confirmations": attached.get(("transportleg", leg.pk), [])})
-    for stay in stays:
-        rows.append({"kind": "stay", "item": stay, "label": stay.name, "when": stay.check_in, "what": "Stay",
-                     "confirmations": attached.get(("lodging", stay.pk), [])})
-    for activity in trip.activities.select_related("day"):
-        rows.append({"kind": "activity", "item": activity, "label": activity.title, "when": activity.day.date,
-                     "what": activity.get_kind_display(),
-                     "confirmations": attached.get(("tripactivity", activity.pk), [])})
-    model_names = {"section": "section", "meal": "meal"}
-    for kind, model_name in model_names.items():
-        ids = [pk for (name, pk) in attached if name == model_name]
-        for item in CONFIRMABLE[kind].objects.filter(pk__in=ids).select_related("day"):
-            rows.append({"kind": kind, "item": item, "label": item_label(item), "when": item.day.date,
-                         "what": "Meal" if kind == "meal" else "Plan",
-                         "confirmations": attached[(model_name, item.pk)]})
-    rows.sort(key=lambda r: (r["when"] is None, r["when"] or date.min))
+    for leg in trip.transport.all():
+        rows.append({"kind": "leg", "item": leg, "when": leg.date, "day": days_by_date.get(leg.date),
+                     "what": leg.get_mode_display(), "label": f"{leg.origin} → {leg.destination}",
+                     "detail": ("planned" + (f" · {leg.est_duration_str}" if leg.est_duration_str else ""))
+                     if leg.is_planned else leg.departure_local_str,
+                     "confirmations": attached.get((leg_type, leg.pk), [])})
+    for stay in trip.lodging.all():
+        rows.append({"kind": "stay", "item": stay, "when": stay.check_in, "day": days_by_date.get(stay.check_in),
+                     "what": "Stay", "label": stay.name,
+                     "detail": f"{stay.nights} night{'s' if stay.nights != 1 else ''}",
+                     "confirmations": attached.get((stay_type, stay.pk), [])})
+    rows.sort(key=lambda r: (r["when"] is None, r["when"] or date.min, r["kind"] != "stay"))
     pending = any(any(p["strength"] == "arrow" for p in proposed_legs((s.content or {}).get("columns"),
                                                                         (s.content or {}).get("rows")))
                   for s in logistics_sections(trip))
-    return {"travel_days": days, "booking_rows": rows, "loose_confirmations": loose,
-            "leg_modes": TransportLeg.Mode.choices, "travel_tables_pending": pending}
+    return {"item_rows": rows, "loose_confirmations": loose, "travel_tables_pending": pending}
 
 
 @login_required
@@ -1453,18 +1414,22 @@ def _default_currency(trip):
 
 
 @login_required
-def trip_budget(request, pk):
+def trip_budget(request, pk, rate_formset=None):
     """Costs on a trip, totals per currency, each traveller's share and who owes whom.
 
-    Anyone who can see the trip sees it; editors add costs here (POST). Separate
-    from the detail page, whose query count is pinned.
+    Anyone who can see the trip sees it; editors add costs here (POST) and keep the trip's own
+    exchange rates under "Your own rates" (``trip_rates``, E3: moved here from Edit trip).
+    Separate from the detail page, whose query count is pinned.
     """
     from .budget import summarize
+    from .forms import TripRateFormSet
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
+    if can_edit and rate_formset is None:
+        rate_formset = TripRateFormSet(instance=trip, prefix="rates")
     form = None
     if can_edit:
-        form = TripExpenseForm(request.POST or None, trip=trip,
+        form = TripExpenseForm(request.POST if request.method == "POST" else None, trip=trip,
                                initial={"currency": _default_currency(trip), "spent_on": trip.start_date})
         if request.method == "POST" and form.is_valid():
             expense = form.save(commit=False)
@@ -1475,6 +1440,9 @@ def trip_budget(request, pk):
             return redirect("trips:trip_budget", pk=trip.pk)
     elif request.method == "POST":
         raise PermissionDenied
+    own_rates = list(trip.rates.all())
+    for rate in own_rates:
+        rate.rate_text = f"{rate.rate.normalize():f}"  # 1.5 and 160, not 1.50000000 or 1.6E+2
     expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with")
                     .order_by("spent_on", "created_at"))
     everyone = list(trip.travelers.all())
@@ -1496,7 +1464,24 @@ def trip_budget(request, pk):
         "trip": trip, "expenses": expenses, "summary": summary, "form": form,
         "target": target, "currencies": currencies, "one": one, "settle_in_one": settle_in_one and one,
         "can_edit": can_edit, "everyone": everyone, "lodging_estimate": sorted(lodging_estimate.items()),
+        "own_rates": own_rates, "rate_formset": rate_formset,
     })
+
+
+@login_required
+@require_POST
+def trip_rates(request, pk):
+    """Save the trip's own exchange rates from the Budget page (editors). Errors show on the
+    Budget page with the rows as typed."""
+    from .forms import TripRateFormSet
+    trip = _readable_trip(request, pk, "edit")
+    formset = TripRateFormSet(request.POST, instance=trip, prefix="rates")
+    if formset.is_valid():
+        formset.save()
+        messages.success(request, "Saved your own rates.")
+        return redirect(reverse("trips:trip_budget", args=[trip.pk]) + "#rates")
+    request.method = "GET"  # show the budget page, not the add-a-cost form's POST handling
+    return trip_budget(request, pk, rate_formset=formset)
 
 
 @login_required
@@ -2307,7 +2292,7 @@ def confirmation_edit(request, pk, confirmation_pk=None):
     if confirmation_pk is not None:
         confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
     form = ConfirmationEditForm(request.POST or None, instance=confirmation or Confirmation(trip=trip), trip=trip)
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#bookings")
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#loose-confirmations")
     if request.method == "POST" and form.is_valid():
         saved = form.save()
         messages.success(request, f"Saved confirmation {saved.confirmation_number}.")
@@ -2362,7 +2347,7 @@ def item_confirmations(request, pk, kind, item_pk):
     if item_trip_id(item) != trip.pk:
         raise Http404
     here = request.get_full_path()
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#bookings")
+    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#stays-legs")
     if request.method == "POST":
         before = booking_tasks.confirmed_items(trip)
         action = request.POST.get("action")

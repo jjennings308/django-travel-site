@@ -122,14 +122,14 @@ class PageTests(Fixture):
         self.assertContains(self.page(), "a leg shows on the day it departs")
         self.assertNotContains(self.page(self.viewer), "a leg shows on the day it departs")
 
-    def test_editors_see_edit_viewers_dont_and_adding_is_on_edit_trip(self):
+    def test_editors_see_edit_viewers_dont_and_adding_is_on_the_day_page(self):
         leg = self.leg(section=self.travel)
         edit = reverse("trips:leg_edit", args=[self.trip.pk, leg.pk])
         add = reverse("trips:leg_quick_add", args=[self.trip.pk, self.day2.pk])
         page = self.page()
         self.assertContains(page, edit)
-        self.assertNotContains(page, add)  # the view page is for reading; legs are added on Edit trip
-        self.assertContains(self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])), add)
+        self.assertNotContains(page, add)  # the view page is for reading; legs are added from their day (E3)
+        self.assertContains(self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day2.pk])), add)
         page = self.page(self.viewer)
         self.assertNotContains(page, edit)
 

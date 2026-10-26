@@ -36,6 +36,7 @@ urlpatterns = [
     path("<int:pk>/calendar/reset/", calendar_views.trip_calendar_reset, name="trip_calendar_reset"),
     path("calendar/<str:token>.ics", calendar_views.trip_calendar_feed, name="trip_calendar_feed"),
     path("<int:pk>/budget/", views.trip_budget, name="trip_budget"),
+    path("<int:pk>/budget/rates/", views.trip_rates, name="trip_rates"),
     path("<int:pk>/photos/", views.trip_photos, name="trip_photos"),
     path("<int:pk>/map/", views.trip_map, name="trip_map"),
     path("<int:pk>/legs/<int:leg_pk>/", views.leg_edit, name="leg_edit"),

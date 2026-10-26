@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-23
+updated: 2026-10-26
 
 # The budget and splitting costs
 
@@ -36,7 +36,7 @@ The rates are the European Central Bank's daily reference rates. A cost dated af
 
 ## Your own exchange rate
 
-If you changed money at a known rate and want the budget to use it: on **Edit trip**, under **Exchange rates**, add a row such as "1 EUR is worth 1.09 USD" and save. That rate is used for this trip, both ways, instead of the bank's.
+If you changed money at a known rate and want the budget to use it: on the **Budget** page, under **Your own rates**, add a row such as "1 EUR is worth 1.09 USD" and click **Save rates**. Everyone on the trip sees the rates; editors change them. That rate is used for this trip, both ways, instead of the bank's.
 
 ## Estimated trip cost
 
@@ -46,6 +46,6 @@ The trip page shows **Estimated trip cost** under **About this trip**, above the
 
 | Problem | What to do |
 | --- | --- |
-| "Not converted (no rate)" | The currency has no ECB rate. Add your own on **Edit trip** under **Exchange rates**. |
+| "Not converted (no rate)" | The currency has no ECB rate. Add your own on the Budget page under **Your own rates**. |
 | A total looks off by a little | Each cost uses its own day's rate, so the same amount on different days converts differently. |
 | No **Add a cost** form | Only editors add costs. |

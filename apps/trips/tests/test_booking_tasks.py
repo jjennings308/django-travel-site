@@ -8,7 +8,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.forms import BookingTaskFormSet
+from apps.trips.forms import BookingTaskForm
 from apps.trips.models import BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripGrant, TripRole
 
 User = get_user_model()
@@ -41,20 +41,19 @@ class ModelAndFormTests(Fixture):
         with self.assertRaises(IntegrityError), transaction.atomic():
             BookingTask.objects.create(trip=self.trip, title="x", leg=self.ice, stay=self.hof)
 
-    def test_formset_refuses_both_and_another_trips_leg(self):
+    def test_form_refuses_both_and_another_trips_leg(self):
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         theirs = TransportLeg.objects.create(trip=other, origin="X", destination="Y", date=date(2027, 1, 1))
-        base = {"booking_tasks-TOTAL_FORMS": "1", "booking_tasks-INITIAL_FORMS": "0",
-                "booking_tasks-0-title": "Seats", "booking_tasks-0-priority": "2"}
-        both = BookingTaskFormSet({**base, "booking_tasks-0-leg": self.ice.pk, "booking_tasks-0-stay": self.hof.pk},
-                                  instance=self.trip, prefix="booking_tasks")
-        self.assertFalse(both.is_valid())
-        foreign = BookingTaskFormSet({**base, "booking_tasks-0-leg": theirs.pk}, instance=self.trip,
-                                     prefix="booking_tasks")
+        base = {"title": "Seats", "priority": "2"}
+
+        def form(**data):
+            return BookingTaskForm({**base, **data}, instance=BookingTask(trip=self.trip), trip=self.trip)
+
+        self.assertFalse(form(leg=self.ice.pk, stay=self.hof.pk).is_valid())
+        foreign = form(leg=theirs.pk)
         self.assertFalse(foreign.is_valid())
-        self.assertIn("leg", foreign.forms[0].errors)
-        ok = BookingTaskFormSet({**base, "booking_tasks-0-leg": self.ice.pk}, instance=self.trip,
-                                prefix="booking_tasks")
+        self.assertIn("leg", foreign.errors)
+        ok = form(leg=self.ice.pk)
         self.assertTrue(ok.is_valid(), ok.errors)
 
 
