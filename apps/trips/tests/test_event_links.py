@@ -11,6 +11,7 @@ from apps.approval_system.models import ApprovalStatus
 from apps.catalogue_notes.models import CatalogueNote
 from apps.events.models import Event
 from apps.locations.models import City, Country, POI
+from apps.trips import catalogue_counts
 from apps.trips.forms import SectionForm, TripActivityForm, catalogue_events
 from apps.trips.models import Day, Section, TidyDismissal, Trip, TripActivity, TripGrant, TripRole
 
@@ -105,3 +106,31 @@ class SuggestionTests(Fixture):
         self.assertTrue(TidyDismissal.objects.filter(trip=self.trip, key__contains="event").exists())
         self.assertNotContains(self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])),
                                "Looks like the catalogue event")
+
+
+class CountTests(Fixture):
+    def test_an_event_counts_its_trips_and_they_count_for_its_activity_and_venue(self):
+        Section.objects.create(day=self.day, section_type="free_text", event=self.okto27)
+        TripActivity.objects.create(trip=self.trip, day=self.day, kind="table", title="Tent", event=self.okto27)
+        other = Trip.objects.create(name="Second", start_date=date(2027, 9, 20), end_date=date(2027, 9, 21))
+        TripActivity.objects.create(trip=other, title="Tent", event=self.okto27,
+                                    day=Day.objects.create(trip=other, day_number=1, date=date(2027, 9, 20)))
+        gone = Trip.objects.create(name="Gone", start_date=date(2027, 9, 20), end_date=date(2027, 9, 21))
+        TripActivity.objects.create(trip=gone, title="Tent", event=self.okto27,
+                                    day=Day.objects.create(trip=gone, day_number=1, date=date(2027, 9, 20)))
+        gone.soft_delete()
+        catalogue_counts.recount()
+        for obj in (self.okto27, self.okto, self.wiesn):
+            obj.refresh_from_db()
+            with self.subTest(obj=str(obj)):
+                self.assertEqual((obj.trip_count, obj.shown_trip_count), (2, 2))  # each live trip once
+
+    def test_the_event_page_shows_it_only_from_two(self):
+        self.client.force_login(self.editor)
+        url = reverse("events:event_detail", args=[self.okto27.slug])
+        Event.objects.filter(pk=self.okto27.pk).update(trip_count=1)
+        self.assertNotContains(self.client.get(url), "On trips")
+        Event.objects.filter(pk=self.okto27.pk).update(trip_count=2)
+        page = self.client.get(url)
+        self.assertContains(page, "On trips")
+        self.assertNotContains(page, self.trip.name + "<")

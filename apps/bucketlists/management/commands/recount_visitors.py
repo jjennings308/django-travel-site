@@ -1,5 +1,5 @@
-"""Recompute visitor_count on places, cities, regions and countries, and trip_count on places and
-activities (site roadmap R18).
+"""Recompute visitor_count on places, cities, regions and countries, and trip_count on places,
+activities and events (site roadmap R18).
 
 Run nightly (trips count once their end date has passed, which no save marks):
     python manage.py recount_visitors
