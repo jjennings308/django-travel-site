@@ -14,7 +14,7 @@ from django.urls import reverse
 
 from apps.accounts.models import Role
 from apps.trips.models import TripRole
-from apps.trips.forms import TRIP_SUBSECTION_FORMSETS
+from apps.trips.forms import TransportLegForm
 from apps.trips.models import (
     BookingTask,
     Confirmation,
@@ -69,50 +69,8 @@ class TripEditingFixture(TestCase):
             "end_date": "2026-09-19",
             "status": Trip.Status.STARTING,
         }
-        # Management data first, then the caller's overrides, so a test that
-        # passes row counts or fields is not silently overwritten by the
-        # zero-row defaults.
-        data.update(self.formsets_payload())
         data.update(overrides)
         return data
-
-    def formsets_payload(self, counts=None, initial=None, **extra):
-        """Management-form data for the trip edit page's five formsets.
-
-        A real browser sends this; the edit view has nothing to work from
-        without it, so a payload that omits it is not a payload the page could
-        ever produce.
-
-        ``counts`` maps a formset prefix to TOTAL_FORMS — how many rows are
-        posted. ``initial`` maps a prefix to INITIAL_FORMS — how many of those
-        rows already exist in the database.
-
-        They are *not* the same number, and conflating them fails quietly: with
-        INITIAL_FORMS too high, Django looks up each row's ``id``, finds no
-        existing object, and skips the row as one that was already deleted. New
-        rows are posted with an empty id and INITIAL_FORMS of 0.
-
-        ``extra`` is merged in untouched, which is how row fields from
-        :meth:`row` get in.
-        """
-        counts = counts or {}
-        initial = initial or {}
-        data = dict(extra)
-        for key, _label, _cls in TRIP_SUBSECTION_FORMSETS:
-            data.update(
-                {
-                    f"{key}-TOTAL_FORMS": counts.get(key, 0),
-                    f"{key}-INITIAL_FORMS": initial.get(key, 0),
-                    f"{key}-MIN_NUM_FORMS": 0,
-                    f"{key}-MAX_NUM_FORMS": 1000,
-                }
-            )
-        return data
-
-    def row(self, key, index, **fields):
-        """One formset row's fields, prefixed the way the page posts them."""
-        return {f"{key}-{index}-{name}": value for name, value in fields.items()}
-
 
 class TripCreateTests(TripEditingFixture):
     def test_a_creator_may_open_the_form(self):
@@ -509,441 +467,137 @@ class CreateTripGuardTests(TripEditingFixture):
         self.assertTrue(can_create_trip(self.staff))
 
 
-class TripSubsectionFormsetTests(TripEditingFixture):
-    """The trip-level lists on the edit page."""
+class EditTripPageTests(TripEditingFixture):
+    """Edit trip holds trip-level things only (edit-by-day plan E3): stays and legs are listed,
+    read-only, with Edit links to their own pages."""
 
-    def edit(self, **overrides):
-        self.client.force_login(self.alice)
-        return self.client.post(
-            reverse("trips:trip_edit", args=[self.trip.pk]),
-            self.valid_trip_payload(**overrides),
-        )
-
-    def grant_editor(self):
+    def setUp(self):
+        super().setUp()
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
-        return self.alice
+        self.client.force_login(self.alice)
+        self.url = reverse("trips:trip_edit", args=[self.trip.pk])
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
 
-    def test_lodging_can_be_added(self):
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"lodging": 1},
-                **self.row(
-                    "lodging",
-                    0,
-                    name="El Rancho",
-                    check_in="2026-09-12",
-                    check_out="2026-09-15",
-                    currency="USD",
-                ),
-            )
-        )
-        lodging = Lodging.objects.get()
-        self.assertEqual(lodging.name, "El Rancho")
-        self.assertEqual(lodging.trip, self.trip)
-        self.assertEqual(lodging.nights, 3)
+    def test_the_bulk_formsets_are_gone(self):
+        body = self.client.get(self.url).content.decode()
+        for prefix in ("lodging", "transport", "confirmations", "contacts", "booking_tasks", "rates"):
+            self.assertNotIn(f"{prefix}-TOTAL_FORMS", body, prefix)
+        for heading in ("Travel by day", "Bookings &amp; confirmations", "Exchange rates"):
+            self.assertNotIn(heading, body)
+        self.assertIn('id="stays-legs"', body)
+        self.assertIn('id="loose-confirmations"', body)
+
+    def test_all_stays_and_legs_link_to_their_pages_and_flag_strays(self):
+        stay = Lodging.objects.create(trip=self.trip, name="El Rancho", check_in=self.day.date,
+                                      check_out=date(2026, 9, 15))
+        leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Lamy", destination="Taos",
+                                          date=self.day.date)
+        stray = TransportLeg.objects.create(trip=self.trip, mode="pov", origin="A", destination="B",
+                                            date=date(2026, 10, 1))
+        Lodging.objects.create(trip=self.trip, name="Early Inn", check_in=date(2026, 9, 1), check_out=date(2026, 9, 2))
+        Confirmation.attach_number(self.trip, "RANCHO-1", stay)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="INS-9", label="Insurance")
+        body = self.client.get(self.url).content.decode()
+        table = body[body.index("data-stays-legs"):body.index("</table>", body.index("data-stays-legs"))]
+        for url in (reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]),
+                    reverse("trips:leg_edit", args=[self.trip.pk, leg.pk]),
+                    reverse("trips:leg_edit", args=[self.trip.pk, stray.pk])):
+            self.assertIn(f'href="{url}?next=', table)
+        self.assertIn("%23stays-legs", table)
+        self.assertLess(table.index("Early Inn"), table.index("El Rancho"))  # date order
+        self.assertIn("RANCHO-1", table)
+        self.assertEqual(table.count("data-not-on-a-day"), 2)
+        self.assertIn("Not on any day", table)
+        self.assertIn("Outside the trip's days", table)
+        loose = body[body.index('id="loose-confirmations"'):]
+        self.assertIn("INS-9", loose)
+
+    def test_saving_the_trip_leaves_its_stays_and_legs_alone(self):
+        stay = Lodging.objects.create(trip=self.trip, name="El Rancho", check_in=self.day.date,
+                                      check_out=date(2026, 9, 15))
+        TransportLeg.objects.create(trip=self.trip, mode="train", origin="Lamy", destination="Taos", date=self.day.date)
+        response = self.client.post(self.url, self.valid_trip_payload(name="Taos 2026"))
+        self.assertEqual(response.status_code, 302)
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.name, "Taos 2026")
+        self.assertEqual((Lodging.objects.get().name, TransportLeg.objects.count()), (stay.name, 1))
+
+    def test_a_viewer_may_not_reach_the_page_at_all(self):
+        viewer = make_user("bob")
+        self.give(viewer, TripRole.VIEWER, trip=self.trip)
+        self.client.force_login(viewer)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+
+class LegFormTests(TripEditingFixture):
+    """A leg's local times and zones (TransportLegForm, which the leg page's LegEditForm extends):
+    moved here from the Edit trip formset tests when that formset went (E3)."""
+
+    def form(self, **leg):
+        data = {"mode": "train", "date": "", "origin": "Munich", "origin_timezone": "Europe/Berlin",
+                "departure_local": "2027-09-25T10:00", "destination": "Berlin",
+                "destination_timezone": "Europe/Berlin", "arrival_local": "2027-09-25T14:00", "currency": "EUR"}
+        data.update(leg)
+        return TransportLegForm(data, instance=TransportLeg(trip=self.trip))
+
+    def saved(self, **leg):
+        form = self.form(**leg)
+        self.assertTrue(form.is_valid(), form.errors)
+        return form.save()
 
     def test_a_leg_is_stored_in_utc_from_local_times(self):
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"transport": 1},
-                **self.row(
-                    "transport",
-                    0,
-                    mode="train",
-                    origin="Munich",
-                    origin_timezone="Europe/Berlin",
-                    departure_local="2027-09-25 10:00",
-                    destination="Berlin",
-                    destination_timezone="Europe/Berlin",
-                    arrival_local="2027-09-25 14:00",
-                ),
-            )
-        )
-        leg = TransportLeg.objects.get()
-        # 10:00 CEST is 08:00 UTC. If the conversion were skipped the row would
-        # sit at 10:00 UTC and the detail page would show the wrong local time.
-        self.assertEqual(
-            leg.departure_at,
-            datetime(2027, 9, 25, 8, 0, tzinfo=timezone.utc),
-        )
+        leg = self.saved()
+        # 10:00 CEST is 08:00 UTC. If the conversion were skipped the row would sit at 10:00 UTC
+        # and the trip page would show the wrong local time.
+        self.assertEqual(leg.departure_at, datetime(2027, 9, 25, 8, 0, tzinfo=timezone.utc))
         self.assertEqual(leg.departure_local_str, "10:00 AM CEST")
 
     def test_a_leg_needs_a_timezone_to_convert_from(self):
-        self.grant_editor()
-        response = self.edit(
-            **self.formsets_payload(
-                {"transport": 1},
-                **self.row(
-                    "transport",
-                    0,
-                    mode="train",
-                    origin="Munich",
-                    departure_local="2027-09-25 10:00",
-                    destination="Berlin",
-                    arrival_local="2027-09-25 14:00",
-                ),
-            )
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(TransportLeg.objects.exists())
+        self.assertFalse(self.form(origin_timezone="", destination_timezone="").is_valid())
 
     def test_an_earlier_arrival_is_rejected(self):
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"transport": 1},
-                **self.row(
-                    "transport",
-                    0,
-                    mode="train",
-                    origin="Munich",
-                    origin_timezone="Europe/Berlin",
-                    departure_local="2027-09-25 14:00",
-                    destination="Berlin",
-                    destination_timezone="Europe/Berlin",
-                    arrival_local="2027-09-25 10:00",
-                ),
-            )
-        )
-        self.assertFalse(TransportLeg.objects.exists())
-
-    def test_a_confirmation_and_contact_can_be_added(self):
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"confirmations": 1, "contacts": 1},
-                **self.row(
-                    "confirmations",
-                    0,
-                    label="Hotel",
-                    confirmation_number="ABC123",
-                ),
-                **self.row("contacts", 0, name="Front desk", phone="555-0100"),
-            )
-        )
-        self.assertEqual(Confirmation.objects.get().confirmation_number, "ABC123")
-        self.assertEqual(Contact.objects.get().name, "Front desk")
-
-    def test_a_booking_task_can_be_added(self):
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"booking_tasks": 1},
-                **self.row(
-                    "booking_tasks",
-                    0,
-                    title="Book the Gulmarg flights",
-                    priority=BookingTask.Priority.CRITICAL,
-                    due_note="6+ months",
-                ),
-            )
-        )
-        task = BookingTask.objects.get()
-        self.assertEqual(task.title, "Book the Gulmarg flights")
-        # Both optional links stay empty rather than being required.
-        self.assertIsNone(task.day)
-        self.assertIsNone(task.confirmation)
-
-    def test_a_task_cannot_point_at_another_trip_s_day(self):
-        # The whole reason the choice querysets are narrowed.
-        self.grant_editor()
-        other = Trip.objects.create(
-            name="Bavaria",
-            start_date=date(2027, 9, 25),
-            end_date=date(2027, 10, 5),
-        )
-        other_day = Day.objects.create(
-            trip=other, day_number=1, date=date(2027, 9, 25)
-        )
-        self.edit(
-            **self.formsets_payload(
-                {"booking_tasks": 1},
-                **self.row(
-                    "booking_tasks",
-                    0,
-                    title="Book something",
-                    priority=BookingTask.Priority.MEDIUM,
-                    day=other_day.pk,
-                ),
-            )
-        )
-        self.assertFalse(BookingTask.objects.exists())
-
-    def test_a_task_can_point_at_this_trip_s_day(self):
-        self.grant_editor()
-        day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
-        self.edit(
-            **self.formsets_payload(
-                {"booking_tasks": 1},
-                **self.row(
-                    "booking_tasks",
-                    0,
-                    title="Decide on the day trip",
-                    priority=BookingTask.Priority.HIGH,
-                    day=day.pk,
-                ),
-            )
-        )
-        self.assertEqual(BookingTask.objects.get().day, day)
-
-    def test_a_row_can_be_removed(self):
-        self.grant_editor()
-        lodging = Lodging.objects.create(
-            trip=self.trip,
-            name="El Rancho",
-            check_in=date(2026, 9, 12),
-            check_out=date(2026, 9, 15),
-        )
-        # The row has to be *valid* as well as deleted: a formset that fails
-        # validation saves nothing at all, delete checkbox included. That is
-        # the same all-or-nothing rule the view applies to the whole page.
-        self.edit(
-            **self.formsets_payload(
-                {"lodging": 1},
-                initial={"lodging": 1},
-                **self.row(
-                    "lodging",
-                    0,
-                    id=lodging.pk,
-                    name=lodging.name,
-                    check_in="2026-09-12",
-                    check_out="2026-09-15",
-                    DELETE="on",
-                ),
-            )
-        )
-        self.assertFalse(Lodging.objects.exists())
-
-    def test_a_blank_extra_row_is_not_saved(self):
-        # extra=1 always renders an empty row. Saving it untouched must not
-        # create a row of NULLs, and must not error either.
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {
-                    "lodging": 1,
-                    "contacts": 1,
-                    "confirmations": 1,
-                    "transport": 1,
-                    "booking_tasks": 1,
-                },
-            )
-        )
-        self.assertEqual(Lodging.objects.count(), 0)
-        self.assertEqual(TransportLeg.objects.count(), 0)
-        self.assertEqual(Confirmation.objects.count(), 0)
-        self.assertEqual(Contact.objects.count(), 0)
-        self.assertEqual(BookingTask.objects.count(), 0)
-
-    def test_one_bad_row_writes_nothing_at_all(self):
-        # The all-or-nothing rule. A lodging row that fails validation must not
-        # let the confirmation beside it through, or the trip ends up half
-        # edited and the error message describes a form already scrolled past.
-        self.grant_editor()
-        self.edit(
-            **self.formsets_payload(
-                {"confirmations": 1, "lodging": 1},
-                **self.row(
-                    "confirmations", 0, label="Hotel", confirmation_number="X1"
-                ),
-                # check_out before check_in.
-                **self.row(
-                    "lodging",
-                    0,
-                    name="El Rancho",
-                    check_in="2026-09-15",
-                    check_out="2026-09-12",
-                ),
-            )
-        )
-        self.assertFalse(Confirmation.objects.exists())
-        self.assertFalse(Lodging.objects.exists())
-
-    def test_every_formset_reports_its_own_errors_in_one_pass(self):
-        # all() short-circuits, which would hide the second error until the
-        # first was fixed. Both must show at once.
-        self.grant_editor()
-        response = self.edit(
-            **self.formsets_payload(
-                {"lodging": 1, "confirmations": 1},
-                **self.row(
-                    "lodging",
-                    0,
-                    name="El Rancho",
-                    check_in="2026-09-15",
-                    check_out="2026-09-12",
-                ),
-                # A confirmation with no number at all.
-                **self.row("confirmations", 0, label="Hotel"),
-            )
-        )
-        self.assertEqual(response.status_code, 200)
-        body = response.content.decode()
-        self.assertIn("Check-out cannot be before check-in.", body)
-        self.assertIn("This field is required.", body)
-
-    def test_the_trip_itself_is_not_saved_when_a_row_fails(self):
-        self.grant_editor()
-        self.edit(
-            name="Renamed anyway",
-            **self.formsets_payload(
-                {"lodging": 1},
-                **self.row(
-                    "lodging",
-                    0,
-                    name="El Rancho",
-                    check_in="2026-09-15",
-                    check_out="2026-09-12",
-                ),
-            )
-        )
-        self.trip.refresh_from_db()
-        self.assertEqual(self.trip.name, "Taos")
-
-    def test_an_editor_may_not_reach_the_page_at_all(self):
-        self.give(self.alice, TripRole.VIEWER, trip=self.trip)
-        self.client.force_login(self.alice)
-        self.assertEqual(
-            self.client.get(
-                reverse("trips:trip_edit", args=[self.trip.pk])
-            ).status_code,
-            403,
-        )
-
-    def test_the_page_renders_every_formset(self):
-        self.grant_editor()
-        self.client.force_login(self.alice)
-        response = self.client.get(
-            reverse("trips:trip_edit", args=[self.trip.pk])
-        )
-        body = response.content.decode()
-        for key, _label, _cls in TRIP_SUBSECTION_FORMSETS:
-            self.assertIn(f"{key}-TOTAL_FORMS", body)
-
-
-class TransportLegFormsetTests(TripSubsectionFormsetTests):
-    """The transport formset specifically: zones, and local-time round trips."""
-
-    def edit_leg(self, **leg):
-        self.grant_editor()
-        return self.edit(
-            **self.formsets_payload(
-                {"transport": 1},
-                **self.row("transport", 0, **leg),
-            )
-        )
+        self.assertFalse(self.form(departure_local="2027-09-25T14:00", arrival_local="2027-09-25T10:00").is_valid())
 
     def test_an_invalid_zone_name_is_rejected(self):
-        # The app's zone input is free text rather than a dropdown of all 486
-        # names, so the check cannot be "is this one of the listed options" any
-        # more. It has to actually resolve the name, or a typo would silently
-        # render in UTC.
-        self.edit_leg(
-            mode="train",
-            origin="Munich",
-            origin_timezone="Europe/Munchen",
-            departure_local="2027-09-25 10:00",
-            destination="Berlin",
-            destination_timezone="Europe/Berlin",
-            arrival_local="2027-09-25 14:00",
-        )
-        self.assertFalse(TransportLeg.objects.exists())
+        # The zone input is free text rather than a dropdown of all 486 names, so the check has to
+        # resolve the name, or a typo would silently render in UTC.
+        self.assertFalse(self.form(origin_timezone="Europe/Munchen").is_valid())
 
     def test_a_lowercase_zone_name_is_rejected(self):
-        # ZoneInfo is case-sensitive, so "europe/berlin" is not a valid IANA
-        # name. The admin's dropdown rejects it too, and it should: quietly
-        # case-folding here would make the app and the admin disagree about
-        # which names exist, which is the one thing the shared mixin exists to
-        # prevent.
-        self.edit_leg(
-            mode="train",
-            origin="Munich",
-            origin_timezone="europe/berlin",
-            departure_local="2027-09-25 10:00",
-            destination="Berlin",
-            destination_timezone="Europe/Berlin",
-            arrival_local="2027-09-25 14:00",
-        )
-        self.assertFalse(TransportLeg.objects.exists())
+        # ZoneInfo is case-sensitive and the admin's dropdown rejects it too; case-folding here
+        # would make the app and the admin disagree about which names exist.
+        self.assertFalse(self.form(origin_timezone="europe/berlin").is_valid())
 
     def test_surrounding_whitespace_in_a_zone_is_ignored(self):
-        self.edit_leg(
-            mode="train",
-            origin="Munich",
-            origin_timezone="  Europe/Berlin  ",
-            departure_local="2027-09-25 10:00",
-            destination="Berlin",
-            destination_timezone="Europe/Berlin",
-            arrival_local="2027-09-25 14:00",
-        )
-        self.assertEqual(
-            TransportLeg.objects.get().origin_timezone, "Europe/Berlin"
-        )
+        self.assertEqual(self.saved(origin_timezone="  Europe/Berlin  ").origin_timezone, "Europe/Berlin")
 
     def test_a_time_carrying_its_own_offset_is_trusted(self):
-        # The same rule the admin form has: an explicit offset wins over the
-        # zone, so it is never re-converted.
-        self.edit_leg(
-            mode="plane",
-            origin="JFK",
-            origin_timezone="America/New_York",
-            departure_local="2026-01-15T18:00:00+00:00",
-            destination="DEN",
-            destination_timezone="America/Denver",
-            arrival_local="2026-01-15T21:00:00+00:00",
-        )
-        self.assertEqual(
-            TransportLeg.objects.get().departure_at,
-            datetime(2026, 1, 15, 18, 0, tzinfo=timezone.utc),
-        )
+        # An explicit offset wins over the zone, so it is never re-converted.
+        leg = self.saved(mode="plane", origin="JFK", origin_timezone="America/New_York",
+                         departure_local="2026-01-15T18:00:00+00:00", destination="DEN",
+                         destination_timezone="America/Denver", arrival_local="2026-01-15T21:00:00+00:00")
+        self.assertEqual(leg.departure_at, datetime(2026, 1, 15, 18, 0, tzinfo=timezone.utc))
+
+    def leg_page(self):
+        self.give(self.alice, TripRole.EDITOR, trip=self.trip)
+        leg = TransportLeg.objects.create(
+            trip=self.trip, mode=TransportLeg.Mode.PLANE, origin="JFK", destination="DEN",
+            origin_timezone="America/New_York", destination_timezone="America/Denver",
+            departure_at=datetime(2026, 1, 15, 23, 0, tzinfo=timezone.utc),
+            arrival_at=datetime(2026, 1, 16, 2, 30, tzinfo=timezone.utc))
+        self.client.force_login(self.alice)
+        return self.client.get(reverse("trips:leg_edit", args=[self.trip.pk, leg.pk])).content.decode()
 
     def test_an_existing_leg_reopens_with_its_local_times_filled_in(self):
-        # Regression guard. TransportLegForm grew a second __init__ while the
-        # datalist attrs were being added, and Python kept the last one — which
-        # silently dropped seed_local_time_initial. Every existing leg would
-        # have opened with blank times and re-saving would have failed.
-        self.grant_editor()
-        leg = TransportLeg.objects.create(
-            trip=self.trip,
-            mode=TransportLeg.Mode.PLANE,
-            origin="JFK",
-            destination="DEN",
-            origin_timezone="America/New_York",
-            destination_timezone="America/Denver",
-            departure_at=datetime(2026, 1, 15, 23, 0, tzinfo=timezone.utc),
-            arrival_at=datetime(2026, 1, 16, 2, 30, tzinfo=timezone.utc),
-        )
-        self.client.force_login(self.alice)
-        body = self.client.get(
-            reverse("trips:trip_edit", args=[self.trip.pk])
-        ).content.decode()
-        # 23:00 UTC is 6:00 PM in New York, in the datetime-local picker's format.
-        self.assertIn('value="2026-01-15T18:00"', body)
-        # 02:30 UTC the next day is 7:30 PM the previous day in Denver.
-        self.assertIn('value="2026-01-15T19:30"', body)
+        # Regression guard: a second __init__ once silently dropped seed_local_time_initial, so
+        # every existing leg opened with blank times and re-saving failed.
+        body = self.leg_page()
+        self.assertIn('value="2026-01-15T18:00"', body)  # 23:00 UTC is 6:00 PM in New York
+        self.assertIn('value="2026-01-15T19:30"', body)  # 02:30 UTC next day is 7:30 PM in Denver
         self.assertIn('type="datetime-local"', body)
 
     def test_the_zone_control_is_not_a_full_dropdown(self):
-        # 486 zone <option>s per control, one per row, made this page 358kb.
-        # Guard the size so a convenient-looking select does not come back.
-        self.grant_editor()
-        TransportLeg.objects.create(
-            trip=self.trip,
-            mode=TransportLeg.Mode.PLANE,
-            origin="A",
-            destination="B",
-            origin_timezone="UTC",
-            destination_timezone="UTC",
-            departure_at=datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc),
-            arrival_at=datetime(2026, 1, 15, 14, 0, tzinfo=timezone.utc),
-        )
-        self.client.force_login(self.alice)
-        body = self.client.get(
-            reverse("trips:trip_edit", args=[self.trip.pk])
-        ).content.decode()
+        # 486 zone <option>s per control made the old edit page 358kb; a suggestions datalist instead.
+        body = self.leg_page()
         self.assertNotIn("Antarctica/Troll", body)
         self.assertIn("<datalist", body)

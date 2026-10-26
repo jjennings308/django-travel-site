@@ -3,7 +3,7 @@ summary: Add trains, flights and drives, from a rough plan to a booked journey w
 audience: editors
 section: Trips
 order: 30
-updated: 2026-10-23
+updated: 2026-10-26
 
 # Travel legs
 
@@ -19,7 +19,7 @@ A leg is one journey: a flight, a train, a drive or a walk. It starts as a plan 
 
 ## Add a leg quickly
 
-On **Edit trip**, under **Travel by day**, or on a day's page with **+ Leg**, type the leg like a table row: **From**, **To**, **Mode**, **~Duration** (such as "45 min" or "2.5 hrs") and a **Note**, then click **Add leg**. It's planned, on that day. The site matches the places to the trip's cities by name where it can.
+On a day's page, click **+ Leg** and type the leg like a table row: **From**, **To**, **Mode**, **~Duration** (such as "45 min" or "2.5 hrs") and a **Note**, then click **Add leg**. It's planned, on that day. The site matches the places to the trip's cities by name where it can.
 
 ## Edit a leg
 
@@ -51,7 +51,7 @@ Tick **Also add the return trip** when you save a leg, and give the return's tim
 
 ## Travel sections
 
-By default a day's legs are on its timeline in time order. If you'd rather group them under a heading of the day's own, such as "Getting there", add a travel section ("Add a travel section" on **Edit trip**, or the **Travel** button on the day's page) and choose it under **Shown on its day under** on each leg. A travel section can also hold reference rows, such as a ticket's price.
+By default a day's legs are on its timeline in time order. If you'd rather group them under a heading of the day's own, such as "Getting there", add a travel section (the **Travel** button on the day's page) and choose it under **Shown on its day under** on each leg. A travel section can also hold reference rows, such as a ticket's price.
 
 ## Problems
 

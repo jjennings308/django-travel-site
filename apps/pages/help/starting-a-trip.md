@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, then add who's g
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-19
+updated: 2026-10-26
 
 # Starting a trip
 
@@ -36,14 +36,13 @@ Fill in **The trip** and click **Create trip**:
 
 ## What to do next
 
-On the trip page, click **Edit trip**. From there:
+On the trip page, click **Edit trip**, then:
 
 1. **Days**: click **Add a day** for each date ([adding a day](/help/adding-a-day/)).
-2. **Lodging**: a row per stay, with its name, address, city, check-in and check-out. A stay's city fills in the city of the days it covers that have none.
-3. **Travel by day**: the trains and flights for each day ([travel legs](/help/travel-legs/)).
-4. **Bookings & confirmations**: confirmation numbers, once things are booked ([bookings](/help/bookings-and-confirmations/)).
+2. Open each day (its **Edit** link in the Days table) and use **Add to this day**: **+ Stay** for where you sleep ([stays](/help/adding-a-day/#stays)), **+ Leg** for trains, flights and drives ([travel legs](/help/travel-legs/)), and activities, meals and plans.
+3. Add confirmation numbers on the thing they confirm, once it's booked ([bookings](/help/bookings-and-confirmations/)).
 
-Everything under **Trip details** saves together when you click **Save changes**; if one row has a mistake, nothing is written and the mistake is shown.
+Edit trip itself holds what belongs to the whole trip: its name, dates, status, cities, travellers and notes, the days, and lists of everything else. **All stays & legs** shows every stay and journey in date order with an **Edit** link, and flags any whose date is outside the trip's days. **Loose confirmations** is for bookings that cover no single item, such as travel insurance.
 
 To let others see or edit the trip, click **People** on the trip page and invite them ([inviting people](/help/sharing-and-access/#inviting-people)).
 

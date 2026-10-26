@@ -20,7 +20,7 @@ from django import forms
 from django.db import models
 from django.db.models import Case, Q, Value, When
 from django.forms.formsets import formset_factory
-from django.forms.models import BaseInlineFormSet, inlineformset_factory
+from django.forms.models import inlineformset_factory
 from django.utils import timezone as django_timezone
 
 from apps.core.widgets import DateInput, DateTimeLocalInput, TimeInput
@@ -773,7 +773,7 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
         # "USD" is the model default; don't make somebody retype it.
         self.fields["currency"].required = False
         # Point the zone inputs at the datalist the formset renders once. The
-        # id has to match `ZoneSuggestingFormSet`'s prefix.
+        # id is the datalist leg_form.html renders once (COMMON_ZONE_SUGGESTIONS).
         for name in ("origin_timezone", "destination_timezone"):
             self.fields[name].widget.attrs["list"] = "transport-zone-suggestions"
             self.fields[name].widget.attrs["placeholder"] = "America/Denver"
@@ -874,24 +874,6 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
             )  # Not copied: service number, confirmation, cost, notes (they differ on the way back).
             self._return_times = None
         return leg
-
-
-class ConfirmationForm(forms.ModelForm):
-    """One booking reference for the Quick Reference section."""
-
-    class Meta:
-        model = Confirmation
-        fields = ["label", "confirmation_number", "provider", "notes"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
-
-
-class ContactForm(forms.ModelForm):
-    """One person or business the travelers may need to reach."""
-
-    class Meta:
-        model = Contact
-        fields = ["name", "role", "phone", "email", "address", "url", "notes"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "address": forms.Textarea(attrs={"rows": 2})}
 
 
 def linkable_choices(trip):
@@ -1053,12 +1035,15 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             raise forms.ValidationError("A task is about one leg, stay or activity, not several.")
         return cleaned
 
+    #: Pickers narrowed to the task's own trip.
+    trip_scoped_fields = ("day", "leg", "stay", "activity", "confirmation")
+
     def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
         if trip is not None:
-            # On its own page (trips:task_new / task_edit, edit-by-day plan E2) the form narrows its
-            # own pickers to the trip, as ScopedBookingTaskFormSet does for the Edit trip rows.
-            for name in ScopedBookingTaskFormSet.trip_scoped_fields:
+            # On its own page (trips:task_new / task_edit, edit-by-day plan E2) the pickers offer only
+            # this trip's own things: a hand-written POST naming another trip's day or leg is refused.
+            for name in self.trip_scoped_fields:
                 self.fields[name].queryset = self.fields[name].queryset.filter(trip=trip)
         # Kind defaults to "book" when a post leaves it out (older forms, the admin inline, scripts).
         self.fields["kind"].required = False
@@ -1070,92 +1055,14 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         self.fields["order"].required = False
 
 
-class TripScopedFormSet(BaseInlineFormSet):
-    """An inline formset whose cross-trip choices are limited to its own trip.
-
-    ``BookingTask`` can point at a ``Day`` and a ``Confirmation``. Both of those
-    belong to a trip, and neither field can simply be trusted: a hand-written
-    POST naming another trip's day would otherwise attach this trip's booking
-    task to it, and the task would then show up in the *other* trip's list.
-
-    Narrowing the querysets here — rather than validating after the fact — means
-    the wrong value is not a selectable choice at all, so the browser and a curl
-    request are rejected the same way.
-
-    Note the ordering consequence: a confirmation created in the *same* submit
-    cannot be picked by a task in that submit, because the choice list is read
-    before anything is written. Link it on a second save. The reverse is fine —
-    an existing confirmation can be named immediately.
-    """
-
-    #: Form field names to narrow to the parent trip's own rows.
-    trip_scoped_fields = ()
-
-    def __init__(self, data=None, files=None, instance=None, **kwargs):
-        super().__init__(data, files, instance=instance, **kwargs)
-        if instance is None:
-            return
-        for form in self.forms:
-            for field_name in self.trip_scoped_fields:
-                field = form.fields.get(field_name)
-                if field is None:
-                    continue
-                field.queryset = field.queryset.filter(trip=instance)
-
-
-class ScopedBookingTaskFormSet(TripScopedFormSet):
-    """The one formset with cross-trip choices to narrow."""
-
-    trip_scoped_fields = ("day", "leg", "stay", "activity", "confirmation")
-
-
 class LodgingAdminForm(LocatingStayMixin, forms.ModelForm):
-    """Admin form for a stay: looks the address up on save, like the trip edit page."""
+    """Admin form for a stay: looks the address up on save, like the stay page."""
 
     class Meta:
         model = Lodging
         fields = "__all__"
 
 
-LodgingFormSet = inlineformset_factory(
-    Trip, Lodging, form=LodgingForm, extra=1, can_delete=True
-)
-class ZoneSuggestingFormSet(BaseInlineFormSet):
-    """A formset that ships a shared datalist of common zone names.
-
-    Rendered once per section rather than once per row, so the page does not
-    repeat the list for every leg. The inputs point at it by id.
-    """
-
-    zone_suggestions = COMMON_ZONE_SUGGESTIONS
-
-
-TransportLegFormSet = inlineformset_factory(
-    Trip,
-    TransportLeg,
-    form=TransportLegForm,
-    formset=ZoneSuggestingFormSet,
-    extra=1,
-    can_delete=True,
-)
-ConfirmationFormSet = inlineformset_factory(
-    Trip, Confirmation, form=ConfirmationForm, extra=1, can_delete=True
-)
-ContactFormSet = inlineformset_factory(
-    Trip, Contact, form=ContactForm, extra=1, can_delete=True
-)
-BookingTaskFormSet = inlineformset_factory(
-    Trip,
-    BookingTask,
-    form=BookingTaskForm,
-    formset=ScopedBookingTaskFormSet,
-    extra=1,
-    can_delete=True,
-)
-
-#: Formset prefixes, in the order the edit page renders them. The key is the
-#: ``prefix`` the formset is bound under, so it is also the POST key prefix —
-#: ``lodging-0-name`` and friends.
 class TripRateForm(forms.ModelForm):
     """An editor's own exchange rate for this trip (site roadmap R10): 1 <from> = <rate> <to>.
     It wins over the ECB rate on the budget page and the estimate, in both directions."""
@@ -1179,38 +1086,6 @@ class TripRateForm(forms.ModelForm):
 
 
 TripRateFormSet = inlineformset_factory(Trip, TripRate, form=TripRateForm, extra=1, can_delete=True)
-
-TRIP_SUBSECTION_FORMSETS = (
-    ("lodging", "Lodging", LodgingFormSet),
-    ("transport", "Transport", TransportLegFormSet),
-    ("confirmations", "Confirmations", ConfirmationFormSet),
-    ("contacts", "Contacts", ContactFormSet),
-    ("booking_tasks", "Booking tasks", BookingTaskFormSet),
-    ("rates", "Exchange rates", TripRateFormSet),
-)
-
-
-def trip_subsection_formsets(trip, data=None, initial=None):
-    """Build the trip-level formsets in page order.
-
-    Returns ``(key, label, formset)`` triples so the view and the template agree
-    on the names without either hardcoding the list.
-
-    ``extra=1`` gives one blank row to fill in. An untouched blank row is skipped
-    by Django rather than saved as a row of NULLs, so it costs the user nothing.
-    """
-    initial = initial or {}
-    formsets = [
-        (key, label, formset_cls(data=data, instance=trip, prefix=key, initial=initial.get(key)))
-        for key, label, formset_cls in TRIP_SUBSECTION_FORMSETS
-    ]
-    # Every row shares this trip object (rows are built lazily, after this), so ``row.trip`` costs
-    # no query and the trip's cached city choices are reused (R23: was a trip + cities query per row).
-    for _key, _label, formset in formsets:
-        for row in formset.get_queryset():
-            row.trip = trip
-    return formsets
-
 
 # ---------------------------------------------------------------------------
 # Per-day forms

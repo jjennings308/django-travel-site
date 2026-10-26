@@ -31,10 +31,28 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
           <p class="text-lg font-semibold">≈ {{ target }} {{ one.total }} <span class="text-sm font-normal text-zinc-500">all costs</span></p>
           {% if one.used %}<p class="text-xs text-zinc-500">Rates used: {{ one.used|join:" · " }}</p>{% endif %}
           {% if one.missing %}<p class="text-xs text-amber-700">Not converted (no rate): {% for e in one.missing %}{{ e.description }} ({{ e.currency }} {{ e.amount }}){% if not forloop.last %}, {% endif %}{% endfor %}. They're left out of this total.</p>{% endif %}
-          {% if can_edit %}<p class="text-xs text-zinc-500">To use your own rate, add it under Exchange rates on <a class="link-quiet" href="{% url 'trips:trip_edit' trip.pk %}#rates">Edit trip</a>.</p>{% endif %}
+          {% if can_edit %}<p class="text-xs text-zinc-500">To use your own rate, add it under <a class="link-quiet" href="#rates">Your own rates</a> below.</p>{% endif %}
         </div>
       {% endif %}
     </form>
+  {% endif %}
+
+  {% if own_rates or rate_formset %}
+    {# The trip's own exchange rates (R10; on this page since edit-by-day E3): they win over the ECB's, both ways. #}
+    <section class="card mb-6 p-6 scroll-mt-24" id="rates">
+      <h2 class="form-section-title">Your own rates</h2>
+      {% if rate_formset %}
+        <form method="post" action="{% url 'trips:trip_rates' trip.pk %}" novalidate>
+          {% csrf_token %}
+          <p class="note mb-2">A rate you got, such as 1 EUR = 1.09 USD, used for this trip in both directions instead of the ECB's daily rate. Leave the ECB's daily rates alone by adding none.</p>
+          {% include "trips/_formset.html" with formset=rate_formset label="Rates" %}
+          <button type="submit" class="btn-quiet">Save rates</button>
+        </form>
+      {% elif own_rates %}
+        <ul class="text-sm">{% for r in own_rates %}<li>1 {{ r.from_currency }} = {{ r.rate_text }} {{ r.to_currency }}</li>{% endfor %}</ul>
+        <p class="note mt-2">Used for this trip instead of the ECB's daily rates.</p>
+      {% endif %}
+    </section>
   {% endif %}
 
   {% for currency, s in summary.items %}

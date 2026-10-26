@@ -251,8 +251,9 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   and, since the offline worker caches CDN files, bump the cache name in `core/sw.js` **and**
   `trips/partials/_offline.html` (`sbl-offline-v2-` → `v3`; a test checks they match). Dependabot doesn't cover them.
 - **Edit trip's selects** load each option list once per page (`trips.forms.share_choices`, R23; a
-  ModelChoiceField re-queries on every render), and `trip_subsection_formsets` gives every row the parent trip
-  object, so the page's query count doesn't grow with rows (`test_upkeep.EditTripQueryTests`).
+  ModelChoiceField re-queries on every render), and its All stays & legs list is built in a fixed handful of
+  queries, so the page's count doesn't grow with rows (`test_upkeep.EditTripQueryTests`, pinned at 23; it was
+  60 with the formsets, before edit-by-day E3).
 - **Dates and times on forms always use the browser's pickers** (rule added 2026-10-23). Every form field
   that takes a date, a time or a date-and-time — model forms, plain forms, formsets, fields added in
   `__init__` — renders as a native picker, never a plain text box:
@@ -340,7 +341,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - **Visitor counts:** `visitor_count` on POI, City, Region (locations 0011) and Country = distinct members who ticked off a goal there or travelled (with an account) on a finished trip naming the city (`Trip.cities` / `Day.city`); regions/countries roll up their cities. `apps/bucketlists/visitors.recount()` recomputes everything (bucketlists may read trips; locations may not); `bucketlists/signals.py` queues one recount per transaction (on commit) when a completed goal or a finished trip changes, and `manage.py recount_visitors` runs nightly on production (James's crontab) because trips finish by date. Pages show "Members who've been" only when non-zero; top attractions / a city's places sort by it. The same pass keeps each member's **profile stats** (`accounts.Profile.countries_visited_count` / `trips_completed_count` / `bucket_list_completed_count`, shown on the profile page as Countries visited, Trips completed, Goals ticked off) by the same rule, creating a `Profile` for members who have something to show (`visitors._store_profiles`); before this fix nothing wrote them.
 - **Place types:** a POI's type is a `locations.PlaceType` row managed in the admin (Locations → Place types; locations 0012 seeded the 14 old `POI_TYPES`), deliberately separate from activity/event categories (a type is what a place *is*). `POI.poi_type` is a FK on `PlaceType.code` stored in the original `poi_type` column (locations 0013), so set it with `poi_type_id="sports"`; the code is read-only once saved, a type in use can't be deleted (PROTECT), and unticking Active retires it from choices while its places keep it (`forms.active_place_types`, `PlaceType.choices()`). The CSV `type` column takes a code or a name; export writes the name.
 - **Pictures first:** the location lists (countries, regions, cities, places) and the regions/cities/places on a detail page sort the ones with a picture first, then their usual order (`locations.views.pictures_first`). Dropdowns, forms and "recently added" stay as they were.
-- **Maps:** every map is `templates/partials/_map.html` (`with data_url=… height=… route=True`) fed by a GeoJSON view of ours and drawn by `apps/core/static/core/map.js` through the adapter named by `settings.MAP_PROVIDER` (`osm` = Leaflet 1.9.4 + markercluster from cdnjs with SRI, OpenStreetMap tiles; `MAP_TILE_URL` / `MAP_ATTRIBUTION`; `GOOGLE_MAPS_API_KEY` reserved). Never call a provider's API from a page: a new provider is one more adapter (`create`/`group`/`addPoints`/`addLegs`/`addRoute`/`toggle`/`fit`) in `map.js`. Popups are built with DOM methods (names are user-submitted). OSM tiles need a Referer: the site sends `Referrer-Policy: same-origin`, so the tile layer sets `referrerPolicy: "strict-origin-when-cross-origin"` (origin only); without it OpenStreetMap shows "Access blocked" tiles. Places map: `locations:poi_map` / `poi_map_data` (published places, same Search/Country/Type filters as the list via `views._place_filters`; List/Map switch `locations/partials/_list_map_switch.html`). Trip map: `trips:trip_map` / `trip_map_data` (`Day.city` = where you spend the day (Munich on Oktoberfest day even when staying in Augsburg; where you sleep is the stay): days' cities in date order, consecutive repeats merged, numbered; transport legs with both `origin_city` and `destination_city` (trips 0018; choices = the trip's cities, else all) drawn as lines styled by mode — flights arc, trains solid, road dashed — via the adapter's `addLegs`; without mapped legs the stops are joined by a plain line; leg cities and other `Trip.cities` are plain pins; never public; separate page so the detail query pin holds). A travel day (Augsburg → Munich → Manchester → Liverpool) is the main place you end up on the day plus one leg per hop. The trip map has switches (Cities / Places of interest / Travel legs): features carry `properties.layer`, the partial takes `extra_urls` (more GeoJSON merged in) and `controls` (id of the element with `<input data-layer=…>` switches), and the adapter draws each layer into its own `group()` that `toggle()` shows or hides. Places of interest come from `bucketlists:trip_map_places` (the viewer's *own* goals linked to the trip: goal POIs, activity venue, event venue; approved only), linked from the trip template with `{% url … as %}` so trips doesn't depend on bucketlists. **Stays** are `trips.Lodging` (a private booking, never a POI) with an optional `city` and `latitude`/`longitude` (trips 0019): `Lodging.locate()` fills the coordinates from the address via `apps/core/geocoding.geocode` (OpenStreetMap Nominatim, `GEOCODER_URL`, one request per save, identifying User-Agent; `GEOCODING_ENABLED`, off under `manage.py test`) — called by the stay forms (`LocatingStayMixin`: the stay page, the trip edit formset and the admin), never on a plain save, and not repeated for an address already tried (`geocoded_address`); hand-typed coordinates win. `manage.py geocode_stays [--trip] [--retry] [--fill-days]` backfills at one lookup a second. Saving a stay with a city through those forms also fills the city of the days it covers (check-in up to, not including, check-out) that have none (`Lodging.fill_day_cities`; never overwrites; adds the city to `Trip.cities`; the page that saved it says how many). A day's city is where you spend the day, so the stay fill is a best guess: a day trip is the destination on the day (set by hand) plus out-and-back legs from the stay's city; an overnight flight is a blank-city day plus the leg. The map's `stays` layer (house pin) shows name, city and dates only — never confirmation number, rate or notes — at the coordinates or else the city centre.
+- **Maps:** every map is `templates/partials/_map.html` (`with data_url=… height=… route=True`) fed by a GeoJSON view of ours and drawn by `apps/core/static/core/map.js` through the adapter named by `settings.MAP_PROVIDER` (`osm` = Leaflet 1.9.4 + markercluster from cdnjs with SRI, OpenStreetMap tiles; `MAP_TILE_URL` / `MAP_ATTRIBUTION`; `GOOGLE_MAPS_API_KEY` reserved). Never call a provider's API from a page: a new provider is one more adapter (`create`/`group`/`addPoints`/`addLegs`/`addRoute`/`toggle`/`fit`) in `map.js`. Popups are built with DOM methods (names are user-submitted). OSM tiles need a Referer: the site sends `Referrer-Policy: same-origin`, so the tile layer sets `referrerPolicy: "strict-origin-when-cross-origin"` (origin only); without it OpenStreetMap shows "Access blocked" tiles. Places map: `locations:poi_map` / `poi_map_data` (published places, same Search/Country/Type filters as the list via `views._place_filters`; List/Map switch `locations/partials/_list_map_switch.html`). Trip map: `trips:trip_map` / `trip_map_data` (`Day.city` = where you spend the day (Munich on Oktoberfest day even when staying in Augsburg; where you sleep is the stay): days' cities in date order, consecutive repeats merged, numbered; transport legs with both `origin_city` and `destination_city` (trips 0018; choices = the trip's cities, else all) drawn as lines styled by mode — flights arc, trains solid, road dashed — via the adapter's `addLegs`; without mapped legs the stops are joined by a plain line; leg cities and other `Trip.cities` are plain pins; never public; separate page so the detail query pin holds). A travel day (Augsburg → Munich → Manchester → Liverpool) is the main place you end up on the day plus one leg per hop. The trip map has switches (Cities / Places of interest / Travel legs): features carry `properties.layer`, the partial takes `extra_urls` (more GeoJSON merged in) and `controls` (id of the element with `<input data-layer=…>` switches), and the adapter draws each layer into its own `group()` that `toggle()` shows or hides. Places of interest come from `bucketlists:trip_map_places` (the viewer's *own* goals linked to the trip: goal POIs, activity venue, event venue; approved only), linked from the trip template with `{% url … as %}` so trips doesn't depend on bucketlists. **Stays** are `trips.Lodging` (a private booking, never a POI) with an optional `city` and `latitude`/`longitude` (trips 0019): `Lodging.locate()` fills the coordinates from the address via `apps/core/geocoding.geocode` (OpenStreetMap Nominatim, `GEOCODER_URL`, one request per save, identifying User-Agent; `GEOCODING_ENABLED`, off under `manage.py test`) — called by the stay forms (`LocatingStayMixin`: the stay page and the admin), never on a plain save, and not repeated for an address already tried (`geocoded_address`); hand-typed coordinates win. `manage.py geocode_stays [--trip] [--retry] [--fill-days]` backfills at one lookup a second. Saving a stay with a city through those forms also fills the city of the days it covers (check-in up to, not including, check-out) that have none (`Lodging.fill_day_cities`; never overwrites; adds the city to `Trip.cities`; the page that saved it says how many). A day's city is where you spend the day, so the stay fill is a best guess: a day trip is the destination on the day (set by hand) plus out-and-back legs from the stay's city; an overnight flight is a blank-city day plus the leg. The map's `stays` layer (house pin) shows name, city and dates only — never confirmation number, rate or notes — at the coordinates or else the city centre.
 - **Editing places:** country, region, city and place (POI) pages end their right-hand column with the same Actions card (`locations/partials/_actions.html`: Edit, shown to staff or the item's submitter, and Back to the list) (`locations.views.can_edit`, passed to the detail templates as `can_edit`). Region/city/POI use ModelForms in `apps/locations/forms.py` (with `PictureFormMixin`; the city's region select follows its country) and the shared `locations/location_edit.html`; the country edit page is older and hand-written. Edits keep the slug and the approval status.
 - **Reviews (`apps/reviews`):** members review published activities, events, cities and places (`apps/reviews/services.TARGETS`, kind → model / `Review` field / detail URL; a city is `Review.location`, a place `Review.poi` from reviews 0002), one per member per item, editable. Visible (`is_approved`) reviews set the item's stored `average_rating` / `review_count` (`services.recount`, from `reviews/signals.py`); the shared detail header and catalogue card show them as stars. The Reviews card is the shell partial `partials/_reviews.html` (`{% include … with kind="city" obj=city %}`, only on approved items), which loads `reviews:for_target` after the page, so catalogue apps never import reviews and pages pay no query. "Mark done" can share the goal's rating and notes as a review (`bucketlists` → `reviews` is allowed; never the reverse); `bucketlists/signals.py` marks a review "Been there" (`is_verified_visit`) when its author ticked that item off. Report (`reviews:report`) notifies staff (`review_reported`) and lists on the staff dashboard; 3 open reports hide a review until staff decide in the admin. The vendor and trip review types are unused (kept: `vendors` stays for a future vendor feature); R19 removed the site type and the response/helpful models (reviews 0005).
 - **Rating a finished trip** (site roadmap R17; reviews 0004, notifications 0005): lives in **reviews**
@@ -478,7 +479,7 @@ that matter most:
   dates, overrides)` loads what a page needs in one query and `convert()` returns a `Conversion` (amount,
   rate, source ECB / trip / same, rate date, `latest` when a dated rate wasn't there) or None for an unknown
   currency (listed, never guessed). `trips.TripRate` (1 from = rate to) is the editor's override, both ways,
-  edited in Edit trip's Exchange rates formset. Budget page: `?in=XXX` (default the reader's
+  edited on the Budget page under **Your own rates** (`trips:trip_rates`, POST, editors; everyone sees them; moved from Edit trip in E3). Budget page: `?in=XXX` (default the reader's
   `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
   "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. About this trip:
   `budget.estimate` = confirmation `cost` + activity `est_cost` in the reader's currency (two queries only when
@@ -593,9 +594,8 @@ that matter most:
   Editing: `trips:leg_edit` (grouped Route / Schedule / Details / Placement / Return, `next`
   checked with `url_has_allowed_host_and_scheme`), `trips:leg_delete`, `trips:leg_quick_add` (a
   planned leg typed like a table row on a day, cities matched by name), `trips:day_add_travel`.
-  The trip edit page's Transport formset stays the bulk view (with `est_duration`, without
-  placement).
-- **Round trips:** a leg on the trip edit page (`TransportLegForm`) has "Also add the return trip"
+  Edit trip lists every leg read-only under All stays & legs (E3; its Transport formset is gone).
+- **Round trips:** a leg's own page (`LegEditForm`, extending `TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
   mode/operator/currency copied, but not service number, confirmations, cost or notes. The fields are
@@ -634,17 +634,20 @@ that matter most:
   everyone), `est_cost` + `currency`, `notes`, `order`. Added and edited from the day page ("Activities",
   `trips:activity_new` / `activity_edit` / `activity_delete`); a new one lands on its own page so its
   confirmation can be added at once (it's a `CONFIRMABLE` kind, "activity"). Shown on its day (an
-  "Activities" block, `#activity-<pk>`), in the PDF and in Edit trip's bookings; never public. Booking
+  "Activities" block, `#activity-<pk>`), in the PDF; never public. Booking
   tasks may point at one (`BookingTask.activity`; `bookingtask_one_item` allows at most one of leg / stay
   / activity), suggestions match an activity whose title the task names, and "Not booked yet" includes
   bookable kinds (not "other") with no confirmation and no task.
-- **The view page is for reading; adding is on Edit trip.** The trip page has no add forms or "Add …"
-  links (items keep their small Edit link). Edit trip has **Travel by day** (each day's legs with Edit,
-  the add-a-leg form `partials/_leg_quick_add.html` with `next`, "Add a travel section", and the "Turn
-  “A → B” table rows into legs" link) and **Bookings & confirmations** (`#bookings`: every leg and stay,
-  plus sections and meals that have one, each with its chips and a Confirmations link; loose ones; "Add
-  a loose confirmation"). The day page links each section and meal to its confirmations; the section
-  page too.
+- **The view page is for reading; adding is on the day page or the item's own page; Edit trip holds
+  trip-level things** (edit-by-day plan E3). The trip page has no add forms or "Add …" links (items keep
+  their small Edit link). Stays, legs, activities, meals, sections and to-dos are added from **Add to this
+  day** on the day page (the leg quick add `partials/_leg_quick_add.html` is there) and edited on their own
+  pages, where their confirmations and contacts are added too. Edit trip (`views.trip_edit`, no formsets) has
+  The trip, Days, **All stays & legs** (`#stays-legs`, `views._edit_trip_stays_and_legs`: every stay and leg in
+  date order with its day, confirmation chips and Edit → `stay_edit` / `leg_edit`; strays flagged "Not on any
+  day" / "Outside the trip's days"; the "Turn “A → B” table rows into legs" link), **Loose confirmations**
+  (`#loose-confirmations`, "Add a loose confirmation"), Contacts & info and Checklists. The day page links each
+  section and meal to its confirmations; the section page too.
 - **Booking tasks point at their item** (trips 0025, Phase E): `BookingTask.leg` / `stay` (optional,
   SET_NULL, at most one — `bookingtask_one_item`; Phase F adds `booking`). `apps/trips/booking_tasks.py`
   works from the trip page's prefetches (no query): `attach` gives legs/stays `open_tasks` ("Still to
@@ -655,8 +658,8 @@ that matter most:
   "Not booked yet" list: flights, rental cars, trains with an operator or service number, and stays with
   no confirmation and no task. When a save gives a leg or stay its **first** confirmation
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
-  to tick them off — offered, never automatic. The trip edit formset has Leg/Stay pickers scoped to
-  the trip.
+  to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
+  day / leg / stay / activity / confirmation pickers to the trip.
 - **The detail page** holds a fixed query count (31 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
@@ -711,7 +714,7 @@ that matter most:
   link comes back to the day page), then the day details and meals form. Saving the day returns to
   `next` when it's on this site (Edit trip's days table passes its own address), else to
   `trip_detail#day-N`, which opens that day (`views._day_back`). Saving a section returns to the day
-  page's `#on-this-day`. Edit trip keeps its bulk views; both edit the same records.
+  page's `#on-this-day`.
 - **Tidy suggestions** (trip-page UX plan, U7; trips 0033 `TidyDismissal`): `apps/trips/tidy.py` is pure
   (no Django) and takes a plain snapshot (`tidying.snapshot(trip)`); it suggests where text repeats
   something that has a home: a narrative line naming the day's leg / stay / meal / activity
@@ -753,10 +756,10 @@ that matter most:
   them in full where they surface and in Reference (Contacts, Info). Editing: the **Contacts & info**
   block (`partials/_item_links.html`, `trips:item_links` `/trips/<pk>/links/<kind>/<id>/`: attach one
   the trip has, create a contact or note on the spot, or remove — never deletes) on the leg and
-  activity pages and reached from Edit trip's Bookings, the day page (sections, meals, the whole day)
+  stay and activity pages and reached from the day page (sections, meals, the whole day)
   and the section page; each contact/note has its own page with ticks for its items
   (`trips:contact_new/edit/delete`, `trips:info_new/edit/delete`, `forms.linkable_choices`); Edit trip
-  lists them under Contacts & info (the Contacts formset stays the bulk view). Never public;
+  lists them under Contacts & info. Never public;
   `trip_leak_finders` also forbids contact phones and emails.
 - **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
   the trip page's prefetch, used by both the web page and the booklet — `place_legs` (legs per day,
@@ -1145,7 +1148,10 @@ stay) done on branch `e1-stays-from-day`; E2 (the To do page `trips:trip_todo` �
 folded, for everyone who can see the trip — and `task_new` / `task_edit` / `task_delete` / `task_done` for editors;
 `BookingTaskForm(trip=…)` narrows its pickers like `ScopedBookingTaskFormSet`; `?leg=` / `?stay=` / `?activity=` pre-pick;
 the leg, stay and activity pages' `partials/_item_todos.html` with "Add a to-do for this"; the banner's to do / decisions
-and Reference's "All to-dos" link there) done on branch `e2-todo-page`; E3–E6 not started.
+and Reference's "All to-dos" link there) done on branch `e2-todo-page`; E3 (Edit trip without the Lodging, Transport,
+Confirmations, Contacts and Booking tasks formsets — they and their classes are deleted — plus All stays & legs and
+Loose confirmations; the trip's own rates on the Budget page; Edit trip 63 → 26 queries / 898 → 130 ms on Europe 2027)
+done on branch `e3-slim-edit-trip`; E4–E6 not started.
 
 ### Rules carried over from the itinerary project
 

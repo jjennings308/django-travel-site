@@ -260,13 +260,17 @@ class ViewPageIsForReadingTests(Fixture):
             self.assertNotIn(marker, html)
         self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)  # Edit links stay
 
-    def test_edit_trip_has_travel_by_day_and_bookings(self):
+    def test_edit_trip_lists_stays_and_legs_and_adds_loose_confirmations(self):
+        """E3: Edit trip links each stay and leg to its own page (where its confirmations are added)
+        and keeps "Add a loose confirmation"; legs are added from the day page."""
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])).content.decode()
-        self.assertIn(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), html)
-        self.assertIn(reverse("trips:item_confirmations", args=[self.trip.pk, "stay", self.stay.pk]), html)
-        self.assertIn(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.bwi.pk]), html)
+        self.assertIn(reverse("trips:stay_edit", args=[self.trip.pk, self.stay.pk]), html)
+        self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)
         self.assertIn(reverse("trips:confirmation_new", args=[self.trip.pk]), html)
+        self.assertNotIn(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), html)
+        day_page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])).content.decode()
+        self.assertIn(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), day_page)
 
 
 class AuditTests(Fixture):

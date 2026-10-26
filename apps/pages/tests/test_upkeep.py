@@ -77,7 +77,7 @@ class PerfReportTests(TestCase):
 
 
 class EditTripQueryTests(TestCase):
-    """Edit trip's formsets share their select options (R23): the query count doesn't grow with rows."""
+    """Edit trip's query count doesn't grow with rows (R23); since E3 it lists stays and legs read-only."""
 
     def setUp(self):
         self.editor = get_user_model().objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
@@ -106,5 +106,6 @@ class EditTripQueryTests(TestCase):
     def test_fixed_query_count(self):
         self.count()  # warm Django's content-type cache, as test_detail's QueryCountTests does
         before = self.count()
+        self.assertEqual(before, 23)  # 60 before edit-by-day E3 took the formsets off the page
         self.add(6)
         self.assertEqual(self.count(), before)
