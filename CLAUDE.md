@@ -1132,6 +1132,14 @@ summary carries stay, travel, highlights and ⚠; Needs attention becomes a bann
 notes and cost move to an "About this trip" fold; the booklet is unchanged). One branch,
 `v1-days-as-overview`. Status: done (2026-10-23).
 
+### Edit by day
+
+Plan: `docs/plans/edit-by-day.md` (Edit trip keeps only trip-level things; stays, legs, to-dos and their
+confirmations and contacts are added from the day or the item's own page; currency selects offer the trip's
+home currency plus the local one; leg time zones and city choices filled from the catalogue; logistics tables
+fold into travel notes). Decisions answered 2026-10-25. Phases E1–E6, one branch each, in order. Status:
+not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
