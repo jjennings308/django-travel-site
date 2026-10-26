@@ -97,6 +97,16 @@ def build_trip():
                                  reservation_notes="Call ahead", reserved_time=time(19, 30))
     Meal.objects.create(day=d3, name="Café Vetter", meal_type="lunch", order=1)
 
+    # Catalogue notes (catalogue-notes N2): printed under the linked section and meal; a hidden one isn't.
+    from apps.catalogue_notes.models import CatalogueNote
+    from apps.trips.models import TripHiddenNote
+    CatalogueNote.objects.create(poi=castle, tone="warning", text="Museum: cash only; no ATM near the castle.",
+                                 checked_on=date(2026, 10, 1), approval_status="approved")
+    CatalogueNote.objects.create(poi=franco, tone="tip", text="Book a table for six.", closed_weekdays=[0, 1],
+                                 checked_on=date(2026, 10, 1), approval_status="approved")
+    hidden = CatalogueNote.objects.create(poi=franco, text="Hidden on this trip.", checked_on=date(2026, 10, 1),
+                                          approval_status="approved")
+    TripHiddenNote.objects.create(trip=trip, note=hidden)
     guide = TripActivity.objects.create(trip=trip, day=d3, kind="tour", title="Student guide", provider="Uni Marburg",
                                         start_time=time(15, 0), end_time=time(16, 30), place_text="Marktplatz",
                                         est_cost=Decimal("40"), currency="EUR", notes="Meet at the fountain")

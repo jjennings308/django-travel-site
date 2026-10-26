@@ -48,7 +48,7 @@ from .forms import (
     TripForm,
     section_payload_form,
 )
-from . import budget, checklists, itinerary
+from . import budget, checklists, itinerary, trip_notes
 from .models import (
     TripExpense,
     BookingTask,
@@ -462,6 +462,7 @@ def trip_detail(request, pk):
     itinerary.overview(days, not_booked, open_tasks)
     itinerary.timeline(days)
     itinerary.attach_links(trip, days)
+    trip_notes.attach(trip, days)  # catalogue notes under linked items (catalogue-notes N2): one query
     opened = itinerary.open_day(days, django_timezone.localdate())
     checklist_lists = checklists.attach(trip)
     return render(
@@ -513,6 +514,7 @@ def trip_pdf(request, pk):
     _attach_confirmations(trip)
     booking_tasks.attach(trip)
     itinerary.attach_links(trip, list(trip.days.all()))
+    trip_notes.attach(trip, list(trip.days.all()))
     html = render_to_string("trips/pdf/booklet.html", {
         "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
         "printed": django_timezone.localdate(), "checklists": checklists.attach(trip), **booklet_context(trip),
@@ -1923,6 +1925,25 @@ def activity_delete(request, pk, day_pk, activity_pk):
         return redirect(back)
     return render(request, "trips/activity_confirm_delete.html",
                   {"trip": trip, "day": day, "activity": activity, "next": back})
+
+
+# ---- catalogue notes on a trip (catalogue-notes plan, N2) -------------------------------------
+@login_required
+@require_POST
+def trip_note_hide(request, pk, note_pk):
+    """"Not for this trip" (editors): hide a catalogue note on this trip's page and booklet, or show it
+    again (``show=1``). The note stays in the catalogue and on other trips."""
+    from apps.catalogue_notes.models import CatalogueNote
+    from .models import TripHiddenNote
+    trip = _readable_trip(request, pk, "edit")
+    note = get_object_or_404(CatalogueNote, pk=note_pk)
+    if request.POST.get("show"):
+        TripHiddenNote.objects.filter(trip=trip, note=note).delete()
+        messages.success(request, "That note shows on this trip again.")
+    else:
+        TripHiddenNote.objects.get_or_create(trip=trip, note=note)
+        messages.success(request, "Hidden on this trip. It's still in the catalogue.")
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk])))
 
 
 # ---- stays, added and edited from their day (edit-by-day plan, E1) ----------------------------

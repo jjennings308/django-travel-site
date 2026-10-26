@@ -58,6 +58,8 @@ An open day reads from top to bottom:
 
 Contacts and tips linked to a hotel, train or activity appear right under it: a **☎** line with a phone number you can tap to call, or an **ⓘ** line you tap to read.
 
+A meal, activity or plan that's linked to a place or activity in the catalogue also shows that place's **notes** under it, such as "Cash only" or "Closed Mon, Tue", marked "From <place> · checked Oct 2026" ([Good to know notes](/help/places-and-events/#good-to-know-notes)). They print in the PDF too. Editors can click **Not for this trip** to hide one on this trip only; it's listed under the item as hidden, with **show** to bring it back.
+
 Editors also see **Edit this day** at the top of each open day, and **Edit** beside each journey, activity and meal.
 
 ## Reference

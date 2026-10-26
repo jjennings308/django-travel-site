@@ -1952,6 +1952,19 @@ class TidyDismissal(models.Model):
         constraints = [models.UniqueConstraint(fields=["trip", "key"], name="tidydismissal_once")]
 
 
+class TripHiddenNote(models.Model):
+    """A catalogue note an editor marked "Not for this trip" (catalogue-notes plan, N2): hidden on this
+    trip's page and booklet, still in the catalogue and on other trips."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="hidden_notes")
+    note = models.ForeignKey("catalogue_notes.CatalogueNote", on_delete=models.CASCADE, related_name="hidden_on")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "trips_hiddennote"
+        constraints = [models.UniqueConstraint(fields=["trip", "note"], name="hiddennote_once")]
+
+
 # --------------------------------------------------------------------------
 # Comments
 # --------------------------------------------------------------------------
