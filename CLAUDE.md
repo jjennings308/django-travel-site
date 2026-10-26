@@ -585,7 +585,8 @@ that matter most:
   docstring). **New itineraries start as legs** (Phase D): `import_itinerary --apply` runs
   `travel_tables.convert_automatically` on the new trip in the same transaction (arrow rows only;
   a row naming one of the document's own flights links to it), `--keep-tables` skips it, and the dry
-  run lists the hops. The parsers stay pure and still emit `logistics_table` sections. The section
+  run lists the hops. The parsers stay pure and still emit `logistics_table` sections (the day page no longer offers
+  the type, E6; a table's page offers "Turn into legs" and "Make it travel notes"). The section
   editor lists a travel section's legs ("Legs shown here", Edit links that come back to it) with the
   quick add (`leg_quick_add` honours `next`), and a logistics table with arrow rows links to "Turn
   into legs".
@@ -720,9 +721,10 @@ that matter most:
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
-  editors to `trips:day_edit`, the day's workshop: **Add to this day** (a leg via the inline quick add,
-  a stay, an activity, a meal via the meal formset `#meals`, a section by type, a contact or note for the
-  whole day), **On this day** (`views._day_workshop`: the day's stays — Check out / Check in / Sleeping —
+  editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
+  plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
+  `#meals`, a section — Phase, Callout, Free text, Travel notes, Choose your adventure — and a contact or note for
+  the whole day; a to-do from its item's page), **On this day** (`views._day_workshop`: the day's stays — Check out / Check in / Sleeping —
   then the day's items in the trip page's order —
   `itinerary.timeline`, then sections, then food ideas — each with its confirmation numbers and linked
   contacts/notes and Edit / Confirmations / Contacts & info, via `partials/_workshop_row.html`; every
@@ -1168,7 +1170,9 @@ Confirmations, Contacts and Booking tasks formsets — they and their classes ar
 Loose confirmations; the trip's own rates on the Budget page; Edit trip 63 → 26 queries / 898 → 130 ms on Europe 2027)
 done on branch `e3-slim-edit-trip`; E4 (home currency + currency choices, see Trips → Currency choices) done on
 branch `e4-currency-choices`; E5 (leg zones and names from cities, This trip / Everywhere else city selects, a city
-from elsewhere joins the trip) done on branch `e5-catalogue-fill`; E6 not started.
+from elsewhere joins the trip) done on branch `e5-catalogue-fill`; E6 (Add to this day offers Phase, Callout, Free text,
+Travel notes, Choose your adventure — `views._add_section_types`, no Logistics table; an old table's page has "Make it
+travel notes", `trips:section_to_travel_notes`, which only changes its type) done on branch `e6-travel-notes`. Complete.
 
 ### Rules carried over from the itinerary project
 

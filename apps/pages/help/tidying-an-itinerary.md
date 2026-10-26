@@ -23,6 +23,8 @@ A table on a day with rows like "Butzbach → Frankfurt Hbf" can become real jou
 
 The table becomes a travel section: converted rows and "Total" rows go, other rows stay for reference. No times are guessed; add them once booked.
 
+A table whose rows aren't journeys (ticket prices, who to ask for what) can stay as it is, or become travel notes: open it from the day's page and click **Make it travel notes**. Every row is kept, and the day's journeys can then be shown under it. New tables are added as **+ Travel notes**.
+
 ## Clean-up suggestions
 
 On the trip page, editors find **Tidy suggestions** in the **⋯** menu. The page lists, day by day, text that repeats something recorded elsewhere:

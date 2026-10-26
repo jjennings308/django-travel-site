@@ -126,8 +126,16 @@
         <p class="form-section-lede mt-4">Add a planned leg to this section (times come later, once booked):</p>
         {% include "trips/partials/_leg_quick_add.html" with section=section next=here %}
       </section>
-    {% elif turn_into_legs %}
-      <p class="note mt-6">This table has “A → B” rows. <a class="link-quiet font-medium" href="{% url 'trips:section_to_legs' trip.pk day.pk section.pk %}">Turn them into legs</a> — each becomes a planned leg (or links to the day's existing one) and the table becomes a travel section.</p>
+    {% elif is_logistics_table %}
+      {# A logistics table (no longer offered on the day page, E6): turn its rows into legs, or keep them as travel notes. #}
+      <div class="note mt-6 space-y-2" data-logistics-table>
+        {% if turn_into_legs %}<p>This table has “A → B” rows. <a class="link-quiet font-medium" href="{% url 'trips:section_to_legs' trip.pk day.pk section.pk %}">Turn them into legs</a> — each becomes a planned leg (or links to the day's existing one) and the table becomes a travel section.</p>{% endif %}
+        <form method="post" action="{% url 'trips:section_to_travel_notes' trip.pk day.pk section.pk %}" class="flex flex-wrap items-baseline gap-2">
+          {% csrf_token %}
+          <button type="submit" class="btn-quiet" data-make-travel-notes>Make it travel notes</button>
+          <span>Keeps every row as a reference row, and lets this day's legs be shown under it.</span>
+        </form>
+      </div>
     {% endif %}
   {% endif %}
 {% endblock %}

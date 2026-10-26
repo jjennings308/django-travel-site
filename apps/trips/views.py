@@ -137,6 +137,16 @@ def _days_with_counts(trip):
     )
 
 
+def _add_section_types():
+    """The day page's section buttons (E6): Phase, Callout, Free text, Travel notes, Choose your
+    adventure. A logistics table is no longer offered; an old one still renders and edits, and its
+    page turns it into legs or travel notes."""
+    labels = {Section.Type.TRAVEL: "Travel notes"}
+    order = (Section.Type.PHASE, Section.Type.CALLOUT, Section.Type.FREE_TEXT, Section.Type.TRAVEL,
+             Section.Type.CHOOSE_YOUR_ADVENTURE)
+    return [{"value": value, "label": labels.get(value, Section.Type(value).label)} for value in order]
+
+
 def _day_back(request, trip, day):
     """Where the day page returns: ``next`` when it's on this site (Edit trip passes its own
     address), else the day on the trip page, which opens it (trip-page UX plan, U5)."""
@@ -932,10 +942,7 @@ def day_edit(request, trip_pk, pk):
             # dicts, not the raw (value, label) tuples from `choices`, so the
             # template can say `st.value` rather than `st.0` — and so an empty
             # value can never reach `{% url %}` and fail to reverse.
-            "section_types": [
-                {"value": value, "label": label}
-                for value, label in Section.Type.choices
-            ],
+            "section_types": _add_section_types(),
             "is_create": False,
         },
     )
@@ -1076,8 +1083,23 @@ def _section_legs_context(section):
     if section.section_type == Section.Type.LOGISTICS_TABLE:
         from .logistics import proposed_legs
         content = section.content or {}
-        return {"turn_into_legs": bool(proposed_legs(content.get("columns"), content.get("rows")))}
+        return {"turn_into_legs": bool(proposed_legs(content.get("columns"), content.get("rows"))),
+                "is_logistics_table": True}
     return {}
+
+
+@login_required
+@require_POST
+def section_to_travel_notes(request, trip_pk, day_pk, pk):
+    """Make a logistics table a travel section (edit-by-day plan E6): the same payload (columns and
+    rows; the rows become its reference rows), so nothing is lost and its day's legs can be placed in
+    it. Editors; "Turn into legs" stays the way to make rows into legs."""
+    trip, day = _editable_day(request, trip_pk, day_pk)
+    section = get_object_or_404(day.sections.filter(section_type=Section.Type.LOGISTICS_TABLE), pk=pk)
+    section.section_type = Section.Type.TRAVEL
+    section.save(update_fields=["section_type"])
+    messages.success(request, f"“{section.title or 'The table'}” is now travel notes; its rows are kept as reference rows.")
+    return redirect("trips:section_edit", trip_pk=trip.pk, day_pk=day.pk, pk=section.pk)
 
 
 def _save_section(request, trip, day, section, section_type):
