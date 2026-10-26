@@ -3,7 +3,7 @@ summary: Add confirmation numbers, tickets and booking documents to journeys, st
 audience: editors
 section: Bookings & contacts
 order: 10
-updated: 2026-10-19
+updated: 2026-10-26
 
 # Bookings and confirmations
 
@@ -14,7 +14,7 @@ A confirmation number belongs to the thing it confirms: a train or flight, a sta
 1. Open the thing it confirms:
     - a train or flight: click **Edit** beside it on the trip page;
     - an activity: click **Edit** beside it, or open it from its day's page;
-    - a stay: on **Edit trip**, in **Bookings & confirmations**, click its **Confirmations** link;
+    - a stay: click **Edit** on its card on the trip page, or on its row on its day's page; the stay's page has the **Confirmations** box (and **Contacts & info** for the hotel's phone);
     - a meal or one of the day's plans: open the day with **Edit this day**, then click **Confirmations** on its row.
 2. In the **Confirmations** box, type the **Confirmation number**, and the **Provider** if it's new (for example Delta).
 3. Click **Add confirmation**.
@@ -71,7 +71,7 @@ Some tasks are a choice, such as which hotel to book. Make the task a decision b
 2. For each option, fill in its title, and if you like a detail, a link and an estimated cost.
 3. Tick **Chosen** on the one you pick, or **Not decided yet**, and click **Save**.
 
-The task now reads **Decide:** with its options, the chosen one ticked. Choosing doesn't book or add anything. To add the choice to the trip, use **Add as a stay** (opens **Edit trip** with a new stay filled in) or **Add as an activity** (pick a day; opens a new activity filled in). Nothing is saved until you save that page.
+The task now reads **Decide:** with its options, the chosen one ticked. Choosing doesn't book or add anything. To add the choice to the trip, use **Add as a stay** (opens a new stay filled in, on the task's day or else Day 1; change its dates there) or **Add as an activity** (pick a day; opens a new activity filled in). Nothing is saved until you save that page.
 
 ## Problems
 

@@ -99,14 +99,15 @@ class OptionsPageTests(Fixture):
 
 
 class AddAsTests(Fixture):
-    def test_add_as_a_stay_prefills_edit_trip_and_saves_nothing(self):
+    def test_add_as_a_stay_prefills_the_days_new_stay_and_saves_nothing(self):
+        """No day on the task: the new-stay page of Day 1 (here the only day), pre-filled (E1)."""
         self.client.force_login(self.editor)
         response = self.client.get(reverse("trips:option_add", args=[self.trip.pk, self.augusta.pk]) + "?as=stay")
-        page = self.client.get(response["Location"])
-        lodging = dict((key, fs) for key, _label, fs in page.context["formsets"])["lodging"]
-        blank = lodging.forms[-1]
-        self.assertEqual(blank.initial["name"], "Hotel Augusta")
-        self.assertIn("https://example.com/a", blank.initial["notes"])
+        self.assertIn(reverse("trips:stay_new", args=[self.trip.pk, self.day.pk]), response["Location"])
+        form = self.client.get(response["Location"]).context["form"]
+        self.assertEqual((form.initial["name"], form.initial["currency"]), ("Hotel Augusta", "EUR"))
+        self.assertIn("https://example.com/a", form.initial["notes"])
+        self.assertEqual(form.initial["check_in"], self.day.date)
         self.assertFalse(Lodging.objects.exists())
 
     def test_add_as_an_activity_prefills_the_days_new_activity(self):
@@ -122,6 +123,5 @@ class AddAsTests(Fixture):
         theirs = TaskOption.objects.create(task=BookingTask.objects.create(trip=other, title="x"), title="y")
         self.client.force_login(self.editor)
         self.assertEqual(self.client.get(reverse("trips:option_add", args=[self.trip.pk, theirs.pk])).status_code, 404)
-        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]) + f"?stay_from_option={theirs.pk}")
-        lodging = dict((key, fs) for key, _label, fs in page.context["formsets"])["lodging"]
-        self.assertNotEqual(lodging.forms[-1].initial.get("name"), "y")
+        page = self.client.get(reverse("trips:stay_new", args=[self.trip.pk, self.day.pk]) + f"?from_option={theirs.pk}")
+        self.assertNotEqual(page.context["form"].initial.get("name"), "y")

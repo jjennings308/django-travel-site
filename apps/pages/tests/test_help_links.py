@@ -29,7 +29,7 @@ class HelpLinkTests(TestCase):
         self.activity = TripActivity.objects.create(trip=self.trip, day=self.day, title="Fuggerei")
         self.section = Section.objects.create(day=self.day, section_type="logistics_table", title="Trains",
                                               content={"columns": ["Leg"], "rows": [["A → B"]]})
-        Lodging.objects.create(trip=self.trip, name="Hotel Augusta", check_in=self.day.date,
+        self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Augusta", check_in=self.day.date,
                                check_out=date(2027, 9, 21))
         self.client.force_login(self.editor)
 
@@ -48,6 +48,8 @@ class HelpLinkTests(TestCase):
                 "/help/reading-your-trip/#reference", "/help/reading-your-trip/#booklet"},
             reverse("trips:trip_edit", args=[trip]): {"/help/starting-a-trip/"},
             reverse("trips:day_edit", args=[trip, self.day.pk]): {"/help/adding-a-day/"},
+            reverse("trips:stay_edit", args=[trip, self.stay.pk]): {
+                "/help/adding-a-day/#stays", "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
             reverse("trips:leg_edit", args=[trip, self.leg.pk]): {
                 "/help/travel-legs/", "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
             reverse("trips:activity_edit", args=[trip, self.day.pk, self.activity.pk]): {

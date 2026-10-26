@@ -29,6 +29,7 @@
       <h2 class="form-section-title">Add to this day</h2>
       <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ leg: false }">
         <button type="button" class="btn-quiet px-3 py-1.5" @click="leg = !leg" :aria-expanded="leg">+ Leg</button>
+        <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:stay_new' trip.pk day.pk %}?next={{ request.path|urlencode }}%23on-this-day" data-add-stay>+ Stay</a>
         <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:activity_new' trip.pk day.pk %}?next={{ request.path|urlencode }}">+ Activity</a>
         <a class="btn-quiet px-3 py-1.5" href="#meals">+ Meal</a>
         <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:item_links' trip.pk 'day' day.pk %}?next={{ request.path|urlencode }}">+ Contact or note</a>
@@ -40,8 +41,12 @@
 
     <section class="form-section mt-8" id="on-this-day">
       <h2 class="form-section-title">On this day</h2>
-      {% if timeline or any_time or sections or food_ideas %}
+      {% if day_stays or timeline or any_time or sections or food_ideas %}
         <ul class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 text-sm">
+          {% for stay in day_stays %}
+            {% url 'trips:stay_edit' trip.pk stay.pk as edit_url %}{% url 'trips:stay_delete' trip.pk stay.pk as delete_base %}
+            {% include "trips/partials/_workshop_row.html" with kind="stay" item=stay time=stay.workshop_label badge="Stay" title=stay.name detail=stay.city.name|default:stay.address delete_url=delete_base|add:"?next="|add:request.path %}
+          {% endfor %}
           {% for entry in timeline %}{% with item=entry.item %}
             {% if entry.kind == "leg" %}{% url 'trips:leg_edit' trip.pk item.pk as edit_url %}{% include "trips/partials/_workshop_row.html" with kind="leg" time=entry.label badge=item.get_mode_display title=item.origin|add:" → "|add:item.destination detail=item.operator %}
             {% elif entry.kind == "activity" %}{% url 'trips:activity_edit' trip.pk day.pk item.pk as edit_url %}{% url 'trips:activity_delete' trip.pk day.pk item.pk as delete_url %}{% include "trips/partials/_workshop_row.html" with kind="activity" time=entry.label badge=item.get_kind_display title=item.title detail=item.place_name %}
