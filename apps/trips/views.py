@@ -2051,7 +2051,7 @@ def trip_tidy(request, pk):
             return redirect(reverse("trips:trip_tidy", args=[trip.pk]))
         chosen = {key[len("pick-"):]: request.POST.get(f"act-{key[len('pick-'):]}", "")
                   for key in request.POST if key.startswith("pick-")}
-        applied, skipped = tidying.apply(trip, found, chosen)
+        applied, skipped = tidying.apply(trip, found, chosen, request.user)
         if applied:
             messages.success(request, f"Applied {len(applied)} suggestion{'s' if len(applied) != 1 else ''}.")
         for suggestion, why in skipped:

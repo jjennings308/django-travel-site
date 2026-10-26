@@ -770,7 +770,11 @@ that matter most:
   a logistics table titled like an activity (`table_activity` → an info note on it), "Day N" written
   on another day (`day_slip`, flag only) and an empty phase that is only "<time> — Dinner" next to the day's
   one meal of that type (`meal_phase`: give the meal that `reserved_time` — `tidy.clock_time`, am/pm from the
-  meal type when missing — and delete the phase; review only). **High confidence** only for kinds 1–2 when the item *leads*
+  meal type when missing — and delete the phase; review only) and a callout naming a place / activity / event linked on
+  that day — the items' own links plus an event's activity and venue and an activity's venue (`catalogue_note`,
+  catalogue-notes N5: "Move it to the catalogue" creates a `CatalogueNote` on it — pending and submitted for review,
+  published when staff apply it; tone from the callout — and deletes the section; `tidying.apply(…, user)`; review
+  only). **High confidence** only for kinds 1–2 when the item *leads*
   the line (after an optional "Lunch:" label, followed by a dash/bracket/end — not "Borough Market →
   Tate Modern") or the callout's title says Book/Reserve/Critical. **Suggestions only**: the review page
   `trips:trip_tidy` (`/trips/<pk>/tidy/`, editors; linked from the trip page's ⋯ menu) shows them by
@@ -1211,7 +1215,8 @@ trip items; a tidy suggestion to move a trip's place-specific callouts to the ca
 2026-10-26. Phases N1–N5, one branch each, in order. Status: N1 (notes on catalogue pages) done on branch
 `n1-catalogue-notes`; N2 (notes on the trip page and in the PDF, Not for this trip) done on branch `n2-notes-on-trips`;
 N3 (closed-day and book-by warnings, Add as a to-do) done on branch `n3-note-warnings`; N4 (trip sections and activities link to events, whose notes — and their activity's and venue's — come through)
-done on branch `n4-events-on-trips`; N5 not started.
+done on branch `n4-events-on-trips`; N5 (the tidy suggestion to move a trip's callouts to the catalogue) done on
+branch `n5-tidy-to-catalogue`. Complete.
 
 ### Rules carried over from the itinerary project
 

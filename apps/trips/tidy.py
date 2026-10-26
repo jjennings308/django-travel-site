@@ -14,7 +14,8 @@ Snapshot shape (plain dicts and lists)::
                "legs": [{"id", "origin", "destination"}],
                "stays": [{"id", "name"}],              # checking in or out that day
                "meals": [{"id", "name", "notes", "type", "time"}],   # time "HH:MM" or None
-               "activities": [{"id", "title"}]}],
+               "activities": [{"id", "title"}],
+               "catalogue": [{"kind": "poi" | "activity" | "event", "id", "name"}]}],  # linked that day
      "trip_legs": [...], "trip_stays": [...],
      "tasks": [{"id", "title", "item": {"kind", "id", "label"} | None}],
      "known_numbers": [str],                          # confirmation numbers (never phones)
@@ -32,12 +33,16 @@ Kinds (``Suggestion.kind``):
 7. ``meal_phase`` — an empty phase that is only a time and a meal ("~7pm — Dinner") on a day with one
    such meal: give the meal that reservation time (it then shows in the day's timeline) and remove the
    phase. Review only (never applied by ``tidy_trip --apply``).
+8. ``catalogue_note`` — a callout naming a place, activity or event that one of the day's items is linked
+   to (catalogue-notes plan, N5): move it to the catalogue as a note on it (pending until staff approve
+   it; staff's are published), so every trip going there gets it. Review only.
 
 Confidence is ``high`` only for exact name matches of kinds 1–2; ``manage.py tidy_trip --apply``
 applies those and nothing else.
 """
 import hashlib
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 STOPWORDS = {"book", "booking", "booked", "reserve", "reservations", "advance", "ahead", "people", "group",
@@ -314,6 +319,40 @@ def _meal_phase(day, section):
                 "time": time})
 
 
+# ---- 8. a callout about a place, activity or event linked that day ----------------------------
+CALLOUT_TONES = {"info": "tip", "tip": "tip", "warning": "warning", "critical": "critical"}
+
+
+def _fold(text):
+    text = unicodedata.normalize("NFKD", (text or "").casefold())
+    return " ".join("".join(c for c in text if not unicodedata.combining(c)).split())
+
+
+def _catalogue_note(day, section):
+    if section["type"] != "callout" or not (section.get("text") or "").strip():
+        return
+    said = _fold(f"{section.get('title') or ''} {section.get('text') or ''}")
+    named = [t for t in day.get("catalogue", []) if len(_fold(t["name"])) >= 4
+             and re.search(r"(?<!\w)" + re.escape(_fold(t["name"])) + r"(?!\w)", said)]
+    if not named:
+        return
+    target = max(named, key=lambda t: len(t["name"]))  # "Marburg Castle Museum" over "Marburg Castle"
+    title = re.sub(r"^[^\w]+", "", section.get("title") or "").strip()
+    text = section["text"].strip()
+    if title and _fold(title) not in _fold(text) and _fold(title) != _fold(target["name"]) \
+            and not BOOK_TITLE.fullmatch(title):  # the title adds something ("Cash only: …")
+        text = f"{title}: {text}"
+    yield Suggestion(
+        key=_key("catalogue_note", section["id"], target["kind"], target["id"], section["text"]),
+        kind="catalogue_note", day=day["number"], where=section.get("title") or "Callout",
+        before=section["text"].strip(),
+        after=f"This looks like a note about {target['name']}: a catalogue note on it, shown on every trip "
+              "that goes there (once staff approve it)",
+        actions=[("to_catalogue", f"Move it to the catalogue as a note on {target['name']}")],
+        change={"op": "to_catalogue", "section": section["id"], "target": target, "text": section["text"],
+                "note": text, "tone": CALLOUT_TONES.get(section.get("tone") or "", "tip")})
+
+
 # ---- 6. "Day N" written on another day -------------------------------------------------------
 def _day_slips(day, section):
     texts = [line for _f, _i, line in _narrative_lines(section)]
@@ -344,6 +383,7 @@ def suggest(snapshot, dismissed=()):
             out += list(_table_activity(day, section))
             out += list(_day_slips(day, section))
             out += list(_meal_phase(day, section))
+            out += list(_catalogue_note(day, section))
             for field_name, index, line in list(_narrative_lines(section)) + (
                     [("text", None, section.get("text") or "")] if section["type"] == "callout" else []):
                 for number in _phones(line, known):

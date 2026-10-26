@@ -17,9 +17,10 @@ def snapshot(trip):
     days = list(trip.days.order_by("date", "day_number"))
     legs = list(trip.transport.all())
     stays = list(trip.lodging.all())
-    activities = list(trip.activities.all())
-    meals = list(Meal.objects.filter(day__trip=trip).order_by("order", "id"))
-    sections = list(Section.objects.filter(day__trip=trip).order_by("order", "id"))
+    activities = list(trip.activities.select_related("poi", *EVENT))
+    meals = list(Meal.objects.filter(day__trip=trip).select_related("poi").order_by("order", "id"))
+    sections = list(Section.objects.filter(day__trip=trip).select_related("poi", "activity__venue", *EVENT)
+                    .order_by("order", "id"))
     plain_days = []
     for day in days:
         plain_sections = []
@@ -29,7 +30,8 @@ def snapshot(trip):
                 "id": s.pk, "type": s.section_type, "title": s.title, "heading": c.get("heading") or "",
                 "summary": c.get("summary") or "", "highlights": list(c.get("highlights") or []),
                 "paragraphs": list(c.get("paragraphs") or []), "text": c.get("text") or "",
-                "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []]})
+                "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []],
+                "tone": c.get("tone") or ""})
         plain_days.append({
             "id": day.pk, "number": day.day_number, "date": day.date, "sections": plain_sections,
             "legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination}
@@ -38,7 +40,10 @@ def snapshot(trip):
             "meals": [{"id": m.pk, "name": m.name, "notes": m.reservation_notes, "type": m.meal_type,
                        "time": m.reserved_time.strftime("%H:%M") if m.reserved_time else None}
                       for m in meals if m.day_id == day.pk],
-            "activities": [{"id": a.pk, "title": a.title} for a in activities if a.day_id == day.pk]})
+            "activities": [{"id": a.pk, "title": a.title} for a in activities if a.day_id == day.pk],
+            "catalogue": _catalogue_targets([*(m for m in meals if m.day_id == day.pk),
+                                             *(a for a in activities if a.day_id == day.pk),
+                                             *(s for s in sections if s.day_id == day.pk)])})
     tasks = []
     for task in trip.booking_tasks.filter(done=False).select_related("leg", "stay", "activity"):
         item = None
@@ -58,6 +63,32 @@ def snapshot(trip):
         "known_numbers": list(Confirmation.objects.filter(trip=trip).values_list("confirmation_number", flat=True)),
         "contact_phones": list(trip.contacts.values_list("phone", flat=True)),
     }
+
+
+EVENT = ("event__related_activity", "event__poi")
+
+
+def _catalogue_targets(items):
+    """The catalogue places, activities and events a day's items are linked to — each item's own and
+    what it brings (an event's activity and venue, an activity's venue), as on the trip page (N5)."""
+    found = {}
+
+    def add(kind, obj):
+        if obj is not None:
+            found.setdefault((kind, obj.pk), {"kind": kind, "id": obj.pk, "name": obj.name})
+
+    for item in items:
+        event = getattr(item, "event", None)
+        if event is not None:
+            add("event", event)
+            add("activity", event.related_activity)
+            add("poi", event.poi)
+        activity = getattr(item, "activity", None) if isinstance(item, Section) else None
+        if activity is not None:
+            add("activity", activity)
+            add("poi", activity.venue)
+        add("poi", item.poi)
+    return list(found.values())
 
 
 def suggestions(trip):
@@ -118,7 +149,34 @@ def _append_notes(item, text):
         item.save(update_fields=[attr])
 
 
-def _apply_one(trip, s, action):
+def _to_catalogue(trip, c, user):
+    """The callout becomes a catalogue note on its target (pending, or published when staff move it) and
+    leaves the trip; the note comes back under the item once approved (N5)."""
+    from apps.approval_system.models import ApprovalStatus
+    from apps.catalogue_notes.models import CatalogueNote
+    from apps.catalogue_notes.services import KINDS
+
+    if user is None:
+        raise Stale("moving a note to the catalogue needs a person to submit it")
+    section = _section(trip, c["section"])
+    if section.section_type != "callout" or (section.content or {}).get("text", "") != c["text"]:
+        raise Stale("the callout changed")
+    target = c["target"]
+    model, field = KINDS[target["kind"]]
+    obj = model.objects.filter(pk=target["id"]).first()
+    if obj is None:
+        raise Stale(f"{target['name']} is no longer in the catalogue")
+    note = CatalogueNote(tone=c["tone"], text=c["note"], created_by=user, **{field: obj})
+    if user.is_staff or getattr(user, "can_access_staff", False):
+        note.approval_status = ApprovalStatus.APPROVED
+        note.save()
+    else:
+        note.save()
+        note.submit_for_review(user)
+    section.delete()
+
+
+def _apply_one(trip, s, action, user=None):
     c = s.change
     op = c["op"]
     if op == "remove_line":
@@ -208,6 +266,8 @@ def _apply_one(trip, s, action):
             meal.reserved_time = clock(hours, minutes)
             meal.save(update_fields=["reserved_time"])
         section.delete()
+    elif op == "to_catalogue":
+        _to_catalogue(trip, c, user)
     elif op == "table_to_info":
         section = _section(trip, c["section"])
         columns = c["columns"]
@@ -220,9 +280,9 @@ def _apply_one(trip, s, action):
         raise Stale("nothing to do")
 
 
-def apply(trip, found, chosen):
+def apply(trip, found, chosen, user=None):
     """Carry out ``chosen`` ({key: action}) from ``found`` (this trip's suggestions) in one
-    transaction. Returns (applied, skipped) as lists of (suggestion, note). Any error other than
+    transaction, as ``user`` (who submits any catalogue notes). Returns (applied, skipped) as lists of (suggestion, note). Any error other than
     a stale suggestion rolls the whole batch back."""
     by_key = {s.key: s for s in found}
     from .changes import batch
@@ -234,7 +294,7 @@ def apply(trip, found, chosen):
                 continue
             try:
                 with transaction.atomic():
-                    _apply_one(trip, s, action)
+                    _apply_one(trip, s, action, user)
                 applied.append((s, action))
             except Stale as exc:
                 skipped.append((s, str(exc)))
