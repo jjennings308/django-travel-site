@@ -31,7 +31,9 @@ class TripPlacesTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(list(self.trip.cities.all()), [self.munich])
-        self.assertEqual(list(DayForm(trip=self.trip).fields["city"].queryset), [self.munich])
+        groups = dict(DayForm(trip=self.trip).fields["city"].choices[1:])  # E5: this trip's first
+        self.assertEqual([pk for pk, _label in groups["This trip"]], [self.munich.pk])
+        self.assertEqual([pk for pk, _label in groups["Everywhere else"]], [self.berlin.pk])
         empty = Trip.objects.create(name="Open", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         self.assertEqual(set(DayForm(trip=empty).fields["city"].queryset), {self.munich, self.berlin})
 

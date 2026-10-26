@@ -107,10 +107,13 @@ class TravelDayLegTests(TestCase):
         from apps.trips.forms import TransportLegForm
         from apps.trips.models import TransportLeg
         form = TransportLegForm(instance=TransportLeg(trip=self.trip))
-        self.assertEqual({c.name for c in form.fields["origin_city"].queryset}, {"Augsburg", "Liverpool"})
+        groups = dict(form.fields["origin_city"].choices[1:])  # E5: the trip's cities first, then the rest
+        self.assertEqual(list(groups), ["This trip", "Everywhere else"])
+        self.assertEqual({label.split(",")[0] for _pk, label in groups["This trip"]}, {"Augsburg", "Liverpool"})
+        self.assertEqual(form.fields["destination_city"].queryset.count(), 4)  # any approved city is valid
         self.trip.cities.clear()
         form = TransportLegForm(instance=TransportLeg(trip=Trip.objects.get(pk=self.trip.pk)))
-        self.assertEqual(form.fields["destination_city"].queryset.count(), 4)  # none named: every approved city
+        self.assertEqual(len(form.fields["destination_city"].choices), 5)  # none named: one flat list, blank first
 
     def test_detail_query_count_unchanged_by_legs(self):
         # The printed detail page doesn't touch the new city links.

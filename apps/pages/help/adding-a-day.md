@@ -46,7 +46,7 @@ Only the date and day number are required; leave the rest blank if you don't kno
 | Meals included | Tick only if meals are already covered by the trip price, such as on a tour. | Unticked |
 | Travelers | Leave blank when the whole group is together. Pick names only on days the group splits. | Debbie, James, John, Regan |
 
-If the city you need isn't in the list, add it to the trip first under **Edit trip**. A day covered by a stay picks up the stay's city automatically when the city is left blank.
+The **City** list starts with the trip's own cities (**This trip**), then every other city in the catalogue (**Everywhere else**). Picking one from Everywhere else adds it to the trip. The same goes for a stay's city and a journey's From and To cities. A day covered by a stay picks up the stay's city automatically when the city is left blank.
 
 ## Add what happens that day
 
@@ -96,7 +96,7 @@ Open the trip page. Your day appears in two places:
 | --- | --- |
 | "Day N already exists on this trip." | Pick an unused day number. Each day of a trip needs its own number. |
 | No **Edit trip** button | You have view-only access. Ask the trip's owner to make you an editor. |
-| The city you want isn't in the list | Add the city to the trip on Edit trip first, then come back to the day. |
+| The city you want isn't in the list | It isn't in the catalogue yet: add it under Places, or leave the city blank. |
 | A train or flight shows on the wrong day | Edit the leg and correct its date. A leg appears on the day whose date matches its departure. |
 | Need to change a day | Edit trip → Days → **Edit**, change the fields, then click **Save day**. |
 | Need to remove a day | On **Edit trip**, in the Days table, click the day's **Delete** link and confirm. This permanently removes the day with its meals and sections; booking tasks that pointed at it are kept. |

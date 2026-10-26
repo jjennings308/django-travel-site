@@ -37,7 +37,7 @@ Click **Save**. Below the form are the leg's **Confirmations** and **Contacts & 
 
 ## Times and time zones
 
-Times are picked (date and time, with your browser's picker) as the clock shows them where the leg leaves (**Departure (local)**) and where it arrives (**Arrival (local)**), each with its place's time zone, such as Europe/Berlin. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
+Times are picked (date and time, with your browser's picker) as the clock shows them where the leg leaves (**Departure (local)**) and where it arrives (**Arrival (local)**), each with its place's time zone, such as Europe/Berlin. Pick the **From city** and **To city** and their zones fill in by themselves (and so do Origin and Destination, when left blank); change a zone only for an airport in another zone than its city. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
 
 Leave both times blank while a leg is only planned. Once you add them, the leg's date follows its departure.
 
@@ -58,6 +58,6 @@ By default a day's legs are on its timeline in time order. If you'd rather group
 | Problem | What to do |
 | --- | --- |
 | A leg is on the wrong day | Check its **Date**, or its departure time and time zone. |
-| The times look hours off | Check each end's time zone. A blank zone means UTC. |
+| The times look hours off | Check each end's time zone. A zone left blank with no city means UTC. |
 | A leg isn't drawn on the map | Pick its **From city** and **To city**. |
 | "Turn into legs" rows came out as the wrong places | Edit each leg's ends; see [tidying an itinerary](/help/tidying-an-itinerary/). |
