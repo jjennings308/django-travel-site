@@ -1,6 +1,6 @@
 """Rating a finished trip's places (site roadmap R17)."""
 import io
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -54,7 +54,7 @@ class AskTests(Fixture):
         self.assertEqual(trip_ratings.ask(today=date(2027, 8, 1)), 0)  # more than 30 days ago
         User.objects.filter(pk=self.vi.pk).update(is_active=False)
         self.assertEqual(trip_ratings.ask(today=TODAY), 1)
-        Trip.objects.filter(pk=self.trip.pk).update(deleted_at=date(2027, 6, 9))
+        Trip.objects.filter(pk=self.trip.pk).update(deleted_at=datetime(2027, 6, 9, tzinfo=dt_timezone.utc))
         TripRatingPrompt.objects.all().delete()
         self.assertEqual(trip_ratings.ask(today=TODAY), 0)
 
