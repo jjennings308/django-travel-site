@@ -160,7 +160,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
           {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
         </div>
       {% endif %}
-      {% if section.poi_id or section.activity_id %}<p class="small muted">{% include "trips/pdf/_catalogue.html" with item=section %}</p>{% include "trips/pdf/_notes.html" with item=section %}{% endif %}
+      {% if section.poi_id or section.activity_id or section.event_id %}<p class="small muted">{% include "trips/pdf/_catalogue.html" with item=section %}</p>{% include "trips/pdf/_notes.html" with item=section %}{% endif %}
       {% if section.confirmation_list %}<p class="small">Confirmation: {% for c in section.confirmation_list %}<span class="code">{{ c.confirmation_number }}</span>{% if c.provider %} ({{ c.provider }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     {% endfor %}
 
