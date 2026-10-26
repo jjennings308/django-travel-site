@@ -51,7 +51,7 @@ Tick **Also add the return trip** when you save a leg, and give the return's tim
 
 ## Travel sections
 
-By default a day's legs are on its timeline in time order. If you'd rather group them under a heading of the day's own, such as "Getting there", add a travel section (the **Travel** button on the day's page) and choose it under **Shown on its day under** on each leg. A travel section can also hold reference rows, such as a ticket's price.
+By default a day's legs are on its timeline in time order. If you'd rather group them under a heading of the day's own, such as "Getting there", add travel notes (**+ Travel notes** on the day's page) and choose it under **Shown on its day under** on each leg. A travel section can also hold reference rows, such as a ticket's price.
 
 ## Problems
 

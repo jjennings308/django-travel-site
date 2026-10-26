@@ -111,6 +111,11 @@ urlpatterns = [
         name="section_to_legs",
     ),
     path(
+        "<int:trip_pk>/days/<int:day_pk>/sections/<int:pk>/travel-notes/",
+        views.section_to_travel_notes,
+        name="section_to_travel_notes",
+    ),
+    path(
         "<int:trip_pk>/days/<int:day_pk>/sections/<int:pk>/delete/",
         views.section_delete,
         name="section_delete",
