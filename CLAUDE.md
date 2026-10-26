@@ -371,7 +371,13 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   trip + note; `trips:trip_note_hide`, POST, `show=1` to bring one back). Shown under the item
   (`partials/_trip_notes.html`, "From <place> · checked Mon YYYY", Not for this trip for editors) and printed in the
   booklet (`pdf/_notes.html`, hidden ones skipped; the snapshot fixture has two notes and a hidden one). Never in the
-  public view.
+  public view. **Warnings** (N3): `itinerary.note_warnings(days, tasks, today)` (no queries, after `trip_notes.attach`
+  and `overview`) sets `item.closed_warning` ("Moab Diner is closed on Mondays", the item's day is one of its
+  note's `closed_weekdays`) and `item.book_ahead` (per note with a lead time: book-by = the day minus it via
+  `relativedelta`, `overdue`, `soon` within `BOOK_AHEAD_SOON_DAYS` = 30, `covered` when a to-do carries the note's
+  hidden `BookingTask.FROM_NOTE` line), adds pressing ones to `day.attention` and returns the banner's lists ("N closed
+  on their days", "N to book ahead"). "Add as a to-do" opens `trips:task_new?from_note=…&due=…` pre-filled; saving
+  appends the hidden line (`task_edit`, `note_ids()`, hidden by `visible_notes`). The booklet prints both warnings.
 - **Trip items linked to the catalogue** (site roadmap R18; trips 0044, locations 0014/0015, activities 0014):
   `Meal.poi` (a notable restaurant: most meals stay typed text) and `Section.poi` / `Section.activity`, optional,
   SET_NULL; choices are the trip's cities (`forms.catalogue_places` — Food & drink first for meals — and
@@ -1202,7 +1208,7 @@ every trip item linked to them, web and PDF; warnings for closed days and book-b
 trip items; a tidy suggestion to move a trip's place-specific callouts to the catalogue). Decisions answered
 2026-10-26. Phases N1–N5, one branch each, in order. Status: N1 (notes on catalogue pages) done on branch
 `n1-catalogue-notes`; N2 (notes on the trip page and in the PDF, Not for this trip) done on branch `n2-notes-on-trips`;
-N3–N5 not started.
+N3 (closed-day and book-by warnings, Add as a to-do) done on branch `n3-note-warnings`; N4–N5 not started.
 
 ### Rules carried over from the itinerary project
 

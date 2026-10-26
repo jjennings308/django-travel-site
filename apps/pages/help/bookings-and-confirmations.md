@@ -69,6 +69,10 @@ When you add the first confirmation to something that has open tasks, the site a
 
 Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**), **Options** and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
 
+## To-dos from catalogue notes
+
+When a place's note says to book ahead, such as Arches' timed entry 3 months ahead, the trip shows **Book by <date>** under the item. Click **Add as a to-do**: a to-do opens filled in with "Book ahead: <place>", the book-by date as its due date, and the booking link. Save it, and the trip page says "a to-do covers it" instead of warning you.
+
 ## Decisions with options
 
 Some tasks are a choice, such as which hotel to book. Make the task a decision by giving it options:
