@@ -1294,6 +1294,25 @@ def catalogue_activities(trip):
             .select_related("city", "country").order_by("name"))
 
 
+def catalogue_events(trip):
+    """Published events whose dates overlap the trip (catalogue-notes N4), the ones in its cities first."""
+    from apps.approval_system.models import ApprovalStatus
+    from apps.events.models import Event
+    if trip is None or not trip.start_date or not trip.end_date:
+        return Event.objects.none()
+    cities = list(trip.cities.values_list("pk", flat=True))
+    events = (Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__lte=trip.end_date)
+              .filter(Q(end_date__gte=trip.start_date) | Q(end_date__isnull=True, start_date__gte=trip.start_date))
+              .select_related("city"))
+    return (events.annotate(elsewhere=Case(When(city_id__in=cities, then=Value(0)), default=Value(1)))
+            .order_by("elsewhere", "start_date", "name"))
+
+
+def _event_label(event):
+    when = event.start_date.strftime("%b %-d")
+    return f"{event.name} · {when}" + (f" · {event.city.name}" if event.city_id else "")
+
+
 def _place_label(poi):
     return f"{poi.name} · {poi.city.name}" if poi.city_id else poi.name
 
@@ -1310,6 +1329,10 @@ def _setup_catalogue_fields(form, trip, food_first=False):
         form.fields["activity"].label_from_instance = (
             lambda a: f"{a.name} · {a.city.name if a.city_id else a.country.name}" if (a.city_id or a.country_id) else a.name)
         form.fields["activity"].help_text = "Optional: the catalogue activity this is about."
+    if "event" in form.fields:
+        form.fields["event"].queryset = catalogue_events(trip)
+        form.fields["event"].label_from_instance = _event_label
+        form.fields["event"].help_text = "Optional: the dated event this is about (events during the trip)."
 
 
 class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
@@ -1805,7 +1828,7 @@ class SectionForm(BlankOrderFallbackMixin, forms.ModelForm):
 
     class Meta:
         model = Section
-        fields = ["title", "icon", "poi", "activity", "order"]
+        fields = ["title", "icon", "poi", "activity", "event", "order"]
         widgets = {
             "icon": forms.TextInput(
                 attrs={"placeholder": "emoji or short label", "autocomplete": "off"}
@@ -2151,7 +2174,7 @@ class TripActivityForm(forms.ModelForm):
 
     class Meta:
         model = TripActivity
-        fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "place_text", "travelers",
+        fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "event", "place_text", "travelers",
                   "est_cost", "currency", "notes", "order"]
         widgets = {
             "start_time": TimeInput(styled=False),
@@ -2174,6 +2197,9 @@ class TripActivityForm(forms.ModelForm):
                                         else "Add cities to the trip to pick a catalogue place; or type it below.")
         self.fields["travelers"].queryset = trip.travelers.all()
         self.fields["order"].required = False
+        self.fields["event"].queryset = catalogue_events(trip)  # N4: a booking for a dated event
+        self.fields["event"].label_from_instance = _event_label
+        self.fields["event"].help_text = "Optional: the catalogue event this is for, e.g. Oktoberfest 2027."
         # Home + the place's (else the day's) local currency (E4).
         currencies.setup(self, "currency", trip, currencies.activity_city_ids(self.instance),
                          given_initial="currency" in (kwargs.get("initial") or {}))

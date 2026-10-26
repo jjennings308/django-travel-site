@@ -9,6 +9,7 @@ An activity as a timeline row on its day (U3). Pass activity= and time=. Its chi
       {% for c in activity.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}
       {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a>{% endif %}
     </p>
+    {% if activity.event_id %}<p class="text-sm text-zinc-600"><span aria-hidden="true">📅</span> <a class="link-quiet" href="{% url 'events:event_detail' activity.event.slug %}">{{ activity.event.name }}</a></p>{% endif %}
     {% if activity.travelers.all %}<p class="text-sm text-zinc-500">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     {% if activity.est_cost is not None %}<p class="text-sm text-zinc-500">~{{ activity.est_cost }} {{ activity.currency }}</p>{% endif %}
     {% if activity.notes %}<p class="text-sm text-zinc-500">{{ activity.notes|linebreaksbr }}</p>{% endif %}

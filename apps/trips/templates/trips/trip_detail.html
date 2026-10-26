@@ -311,7 +311,7 @@
             <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
           </div>
         {% endif %}
-        {% if section.poi_id or section.activity_id %}<div class="-mt-2 mb-4">{% include "trips/partials/_catalogue_link.html" with item=section %}{% include "trips/partials/_trip_notes.html" with item=section %}</div>{% endif %}
+        {% if section.poi_id or section.activity_id or section.event_id %}<div class="-mt-2 mb-4">{% include "trips/partials/_catalogue_link.html" with item=section %}{% include "trips/partials/_trip_notes.html" with item=section %}</div>{% endif %}
         {% if can_comment and not comments_by_target.section|dictkey:section.pk %}<p class="no-print -mt-3 mb-4 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'section' section.pk %}#body">Add a note</a></p>{% endif %}
         {% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
       {% endfor %}

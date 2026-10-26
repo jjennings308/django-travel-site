@@ -1274,6 +1274,9 @@ class Section(models.Model):
                             verbose_name="place")
     activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name="trip_sections")
+    # A dated catalogue event (Oktoberfest 2027; catalogue-notes N4): its notes, its activity's and its venue's.
+    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="trip_sections")
 
     class Meta:
         ordering = ["day", "order", "id"]
@@ -1408,6 +1411,9 @@ class TripActivity(models.Model):
     end_time = models.TimeField(null=True, blank=True)
     poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_activities",
                             verbose_name="place")
+    # A dated catalogue event this is a booking for (catalogue-notes N4).
+    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="trip_activities")
     place_text = models.CharField(max_length=200, blank=True, verbose_name="place (typed)",
                                   help_text="When the place isn't in the catalogue.")
     # Who's going; blank = everyone on the day.

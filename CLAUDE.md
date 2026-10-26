@@ -379,7 +379,9 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   on their days", "N to book ahead"). "Add as a to-do" opens `trips:task_new?from_note=…&due=…` pre-filled; saving
   appends the hidden line (`task_edit`, `note_ids()`, hidden by `visible_notes`). The booklet prints both warnings.
 - **Trip items linked to the catalogue** (site roadmap R18; trips 0044, locations 0014/0015, activities 0014):
-  `Meal.poi` (a notable restaurant: most meals stay typed text) and `Section.poi` / `Section.activity`, optional,
+  `Meal.poi` (a notable restaurant: most meals stay typed text), `Section.poi` / `Section.activity` and (catalogue-notes N4,
+  trips 0047) `Section.event` / `TripActivity.event` (`forms.catalogue_events`: approved events overlapping the trip, its
+  cities first; a section named like an activity on a day its event runs is offered the event), optional,
   SET_NULL; choices are the trip's cities (`forms.catalogue_places` — Food & drink first for meals — and
   `catalogue_activities`: published activities in those cities or country-wide in their countries), on the day
   page's meal formset and the section page. `apps/trips/catalogue_links.py`: on "On this day" an unlinked meal /
@@ -1208,7 +1210,8 @@ every trip item linked to them, web and PDF; warnings for closed days and book-b
 trip items; a tidy suggestion to move a trip's place-specific callouts to the catalogue). Decisions answered
 2026-10-26. Phases N1–N5, one branch each, in order. Status: N1 (notes on catalogue pages) done on branch
 `n1-catalogue-notes`; N2 (notes on the trip page and in the PDF, Not for this trip) done on branch `n2-notes-on-trips`;
-N3 (closed-day and book-by warnings, Add as a to-do) done on branch `n3-note-warnings`; N4–N5 not started.
+N3 (closed-day and book-by warnings, Add as a to-do) done on branch `n3-note-warnings`; N4 (trip sections and activities link to events, whose notes — and their activity's and venue's — come through)
+done on branch `n4-events-on-trips`; N5 not started.
 
 ### Rules carried over from the itinerary project
 

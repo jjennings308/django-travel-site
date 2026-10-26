@@ -164,7 +164,7 @@ def _day_workshop(trip, day):
         leg.order_label = f"order {leg.order}"  # untimed legs run in this order
     day.ordered_activities = list(day.activities.select_related("poi"))
     day.ordered_meals = list(day.meals.select_related("poi").order_by("order", "id"))
-    sections = list(_day_sections(day).select_related("poi", "activity"))
+    sections = list(_day_sections(day).select_related("poi", "activity", "event"))
     from . import catalogue_links
     catalogue_links.attach_suggestions(trip, day.ordered_meals, sections)
     itinerary.timeline([day])
@@ -208,7 +208,7 @@ def catalogue_link(request, trip_pk, day_pk, kind, item_pk):
         raise Http404
     item = get_object_or_404(model.objects.filter(day=day), pk=item_pk)
     target_kind, target_pk = request.POST.get("target_kind", ""), request.POST.get("target", "")
-    if not target_pk.isdigit() or target_kind not in ("poi", "activity"):
+    if not target_pk.isdigit() or target_kind not in ("poi", "activity", "event"):
         return HttpResponseBadRequest("Missing target.")
     if request.POST.get("dismiss"):
         TidyDismissal.objects.get_or_create(
@@ -375,7 +375,8 @@ def _trip_page_queryset(user):
             Prefetch(
                 "days__sections",
                 # Their catalogue place (with city) and activity ride along (R18; no extra query).
-                queryset=Section.objects.select_related("poi__city", "activity").order_by("order", "id"),
+                queryset=Section.objects.select_related("poi__city", "activity", "event__related_activity",
+                                                        "event__poi").order_by("order", "id"),
                 to_attr="ordered_sections",
             ),
             Prefetch(
@@ -387,7 +388,8 @@ def _trip_page_queryset(user):
             # going: two fixed queries.
             Prefetch(
                 "days__activities",
-                queryset=TripActivity.objects.select_related("poi").prefetch_related("travelers"),
+                queryset=TripActivity.objects.select_related("poi", "event__related_activity", "event__poi")
+                .prefetch_related("travelers"),
                 to_attr="ordered_activities",
             ),
             # The template calls day.is_split and day.roster_summary per day, and

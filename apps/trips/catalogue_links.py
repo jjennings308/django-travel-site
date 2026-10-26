@@ -1,8 +1,10 @@
 """Link a trip's meals and sections to the catalogue (site roadmap R18).
 
 A meal may name its catalogue place (a notable restaurant, market or bakery: most meals stay typed
-text); a section a place or a catalogue activity. Choices are limited to the trip's cities
-(``forms.catalogue_places`` / ``catalogue_activities``). On the day page, an unlinked meal or section
+text); a section a place, a catalogue activity or a dated event (catalogue-notes N4). Choices are limited
+to the trip's cities (``forms.catalogue_places`` / ``catalogue_activities``) and, for events, to those during
+the trip (``catalogue_events``); a section whose name matches an activity with an event on that section's
+day is offered the event (Oktoberfest on Sep 21, 2027 → Oktoberfest 2027). On the day page, an unlinked meal or section
 whose name matches exactly one of those (ignoring capitals, spacing, punctuation and accents, with
 German ö/ä/ü written either way: "Zur Höll" = "Zur Hoell" = "Zur Holl") gets a
 suggestion — offered, never linked automatically; "Not this one" stores a ``TidyDismissal``.
@@ -12,7 +14,7 @@ import unicodedata
 
 from django.db.models import Q
 
-from .forms import catalogue_activities, catalogue_places
+from .forms import catalogue_activities, catalogue_events, catalogue_places
 from .models import Meal, Section, TidyDismissal
 
 KINDS = {"meal": Meal, "section": Section}
@@ -60,20 +62,32 @@ def _lookup(index, keys):
 
 
 class Candidates:
-    """The trip's catalogue places and activities by normalised name (two queries)."""
+    """The trip's catalogue places, activities and events by normalised name (three queries)."""
 
     def __init__(self, trip):
         self.places = _index(catalogue_places(trip))
         self.activities = _index(catalogue_activities(trip))
+        self.event_list = list(catalogue_events(trip))
+        self.events = _index(self.event_list)
 
-    def match(self, name, activities=True):
-        """The one (target_kind, obj) whose name is ``name``, else None (none, or more than one)."""
+    def event_on(self, activity, day_date):
+        """The one event of ``activity`` running on ``day_date``, else None."""
+        found = [e for e in self.event_list if e.related_activity_id == activity.pk and day_date
+                 and e.start_date <= day_date <= (e.end_date or e.start_date)]
+        return found[0] if len(found) == 1 else None
+
+    def match(self, name, activities=True, day_date=None):
+        """The one (target_kind, obj) whose name is ``name``, else None (none, or more than one). With
+        activities, an activity that has an event on ``day_date`` is offered as that event."""
         keys = match_keys(name)
         if not keys:
             return None
         found = [("poi", p) for p in _lookup(self.places, keys)]
         if activities:
-            found += [("activity", a) for a in _lookup(self.activities, keys)]
+            for activity in _lookup(self.activities, keys):
+                event = self.event_on(activity, day_date)
+                found.append(("event", event) if event is not None else ("activity", activity))
+            found += [("event", e) for e in _lookup(self.events, keys) if ("event", e) not in found]
         return found[0] if len(found) == 1 else None
 
 
@@ -84,10 +98,10 @@ def attach_suggestions(trip, meals, sections):
     for kind, items in (("meal", meals), ("section", sections)):
         for item in items:
             item.catalogue_suggestion = None
-            if item.poi_id or getattr(item, "activity_id", None):
+            if item.poi_id or getattr(item, "activity_id", None) or getattr(item, "event_id", None):
                 continue
             name = item.name if kind == "meal" else (item.content or {}).get("heading") or item.title
-            found = candidates.match(name, activities=kind == "section")
+            found = candidates.match(name, activities=kind == "section", day_date=item.day.date)
             if found:
                 target_kind, target = found
                 key = dismissal_key(kind, item.pk, target_kind, target.pk)
@@ -96,11 +110,13 @@ def attach_suggestions(trip, meals, sections):
 
 
 def link(trip, item, target_kind, target_pk):
-    """Set ``item.poi`` / ``item.activity`` to a target in the trip's catalogue choices; False if it isn't one."""
+    """Set ``item.poi`` / ``.activity`` / ``.event`` to a target in the trip's catalogue choices; False if it isn't one."""
     if target_kind == "poi":
         target = catalogue_places(trip).filter(pk=target_pk).first()
     elif target_kind == "activity" and isinstance(item, Section):
         target = catalogue_activities(trip).filter(pk=target_pk).first()
+    elif target_kind == "event" and isinstance(item, Section):
+        target = catalogue_events(trip).filter(pk=target_pk).first()
     else:
         target = None
     if target is None:
