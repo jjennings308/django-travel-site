@@ -26,7 +26,7 @@ LAYERS = {
     "core": 0,
     "accounts": 1,
     "notifications": 2, "media_app": 2, "approval_system": 2, "rewards": 2,
-    "locations": 3, "activities": 3, "vendors": 3, "events": 3,
+    "locations": 3, "activities": 3, "vendors": 3, "events": 3, "catalogue_notes": 3,
     "bucketlists": 4, "trips": 4, "reviews": 4, "recommendations": 4,
     "pages": 5, "admin_tools": 5,
 }
@@ -38,6 +38,9 @@ SAME_LAYER_ALLOWED = {
     ("vendors", "locations"),
     ("events", "locations"),
     ("events", "activities"),
+    ("catalogue_notes", "locations"),
+    ("catalogue_notes", "activities"),
+    ("catalogue_notes", "events"),
     ("bucketlists", "trips"),
     ("bucketlists", "reviews"),
     ("reviews", "trips"),

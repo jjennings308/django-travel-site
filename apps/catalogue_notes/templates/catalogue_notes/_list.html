@@ -1,0 +1,39 @@
+{# catalogue_notes/_list.html — fragment loaded into partials/_catalogue_notes.html: the item's notes (its own, then what it inherits), add, edit and report. #}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h2 class="text-xl font-semibold text-warm-900"><i class="bi bi-info-circle"></i> Good to know</h2>
+  {% if user.is_authenticated %}
+    <a href="{% url 'catalogue_notes:add' kind target.slug %}" class="sbl-btn sbl-btn-outline" data-add-note><i class="bi bi-plus-lg"></i> Add a note</a>
+  {% else %}
+    <a href="{% url 'login' %}?next={{ target_url|urlencode }}%23good-to-know" class="sbl-link text-sm">Log in to add a note</a>
+  {% endif %}
+</div>
+{% if notes %}
+  <ul class="mt-4 space-y-3">
+    {% for note in notes %}
+      <li class="{% if note.tone == 'critical' %}sbl-alert-danger{% elif note.tone == 'warning' %}sbl-alert-warning{% else %}sbl-alert-info{% endif %}" x-data="{ reporting: false }" data-note="{{ note.pk }}">
+        <p class="whitespace-pre-line">{{ note.text }}</p>
+        {% if note.closed_label or note.book_ahead_label or note.booking_url %}
+          <p class="mt-1 flex flex-wrap gap-x-3 text-sm font-medium">
+            {% if note.closed_label %}<span><i class="bi bi-calendar-x"></i> {{ note.closed_label }}</span>{% endif %}
+            {% if note.book_ahead_label %}<span><i class="bi bi-alarm"></i> {{ note.book_ahead_label }}</span>{% endif %}
+            {% if note.booking_url %}<a class="sbl-link" href="{{ note.booking_url }}" target="_blank" rel="noopener noreferrer">Book ↗</a>{% endif %}
+          </p>
+        {% endif %}
+        <p class="mt-1 text-xs opacity-75">
+          {% if note.from_name %}From {{ note.from_name }} · {% endif %}checked {{ note.checked_on|date:"M Y" }}
+          {% if note.approval_status != 'approved' %}· <span class="font-semibold">waiting for review</span>{% endif %}
+          {% if note.editable %}· <a class="hover:underline" href="{% url 'catalogue_notes:edit' note.pk %}">Edit</a> · <a class="hover:underline" href="{% url 'catalogue_notes:delete' note.pk %}">Delete</a>{% endif %}
+          {% if user.is_authenticated and note.approval_status == 'approved' and note.created_by_id != user.pk %}· <button type="button" class="hover:underline" @click="reporting = !reporting">Out of date?</button>{% endif %}
+        </p>
+        {% if user.is_authenticated and note.approval_status == 'approved' and note.created_by_id != user.pk %}
+          <form method="post" action="{% url 'catalogue_notes:report' note.pk %}" x-show="reporting" x-cloak class="mt-2 flex flex-wrap gap-2 text-sm">{% csrf_token %}
+            <input type="text" name="reason" class="sbl-input max-w-sm" maxlength="500" placeholder="What's changed?" aria-label="What's changed?">
+            <button type="submit" class="sbl-btn sbl-btn-secondary">Tell staff</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="mt-2 text-sm text-warm-500">Nothing yet. Know something a traveller should — opening days, booking ahead, cash only? Add a note; trips that include it will show it.</p>
+{% endif %}

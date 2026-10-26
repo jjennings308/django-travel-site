@@ -1,6 +1,6 @@
 # Plan: notes on catalogue places, activities and events that flow into trips
 
-Status: planning only (2026-10-26). Decisions answered by James 2026-10-26 (below). Phases N1–N5, one branch
+Status: N1 done (2026-10-26, branch `n1-catalogue-notes`; reports reuse the `content_reported` notification rather than a report model); N2–N5 not started. Decisions answered by James 2026-10-26 (below). Phases N1–N5, one branch
 each, in order. Read with `CLAUDE.md` → Dependency layers, "Approval / moderation", "Trip items linked to the
 catalogue" (R18), "The booklet is snapshot-guarded", "The detail page holds a fixed query count" and "Tidy
 suggestions" (U7).

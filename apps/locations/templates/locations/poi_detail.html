@@ -118,7 +118,7 @@
                     </div>
                 </div>
             </div>
-            {% if poi.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_whats_on.html" with kind="place" obj=poi %}</div><div class="mt-6">{% include "partials/_reviews.html" with kind="poi" obj=poi %}</div>{% endif %}
+            {% if poi.approval_status == 'approved' %}<div class="mt-6">{% include "partials/_whats_on.html" with kind="place" obj=poi %}</div><div class="mt-6">{% include "partials/_catalogue_notes.html" with kind="poi" obj=poi %}</div><div class="mt-6">{% include "partials/_reviews.html" with kind="poi" obj=poi %}</div>{% endif %}
         </div>
 
         <!-- Sidebar -->

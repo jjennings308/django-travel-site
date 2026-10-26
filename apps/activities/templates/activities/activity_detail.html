@@ -82,7 +82,7 @@
                     <div class="flex flex-wrap gap-2">{% for tag in tags %}<span class="sbl-badge sbl-badge-neutral">{{ tag.name }}</span>{% endfor %}</div>
                 </section>
             {% endif %}{% endwith %}
-            {% if activity.approval_status == 'approved' and activity.visibility == 'public' %}{% include "partials/_reviews.html" with kind="activity" obj=activity %}{% endif %}
+            {% if activity.approval_status == 'approved' and activity.visibility == 'public' %}{% include "partials/_catalogue_notes.html" with kind="activity" obj=activity %}{% include "partials/_reviews.html" with kind="activity" obj=activity %}{% endif %}
         </div>
 
         <aside class="space-y-6">

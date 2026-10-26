@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'apps.activities',
     'apps.vendors',
     'apps.events',
+    'apps.catalogue_notes',  # notes on places, activities and events that flow into trips
     'apps.media_app',
     'apps.bucketlists',
     'apps.trips',

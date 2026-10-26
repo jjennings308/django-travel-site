@@ -9,8 +9,10 @@ from django.db.migrations.executor import MigrationExecutor
 
 # trips 0044 (R18) needs today's activities, so trips is pinned below it.
 TRIPS = ("trips", "0043_alter_comment_author")
-BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS]
-AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS]
+# catalogue_notes 0001 needs today's locations, activities and events, so it is unapplied while they step back.
+NOTES = ("catalogue_notes", None)
+BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS, NOTES]
+AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS, NOTES]
 
 
 class SharedCategoryMigrationTests(RestoringTransactionTestCase):
@@ -23,7 +25,7 @@ class SharedCategoryMigrationTests(RestoringTransactionTestCase):
         nodes = [(app, pinned.get(app, name)) for app, name in executor.loader.graph.leaf_nodes()]
         executor.migrate(nodes)
         executor.loader.build_graph()
-        return executor.loader.project_state(nodes).apps
+        return executor.loader.project_state([n for n in nodes if n[1] is not None]).apps  # (app, None): not applied
 
     def tearDown(self):
         self.migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())

@@ -46,7 +46,7 @@
           <p class="whitespace-pre-line text-warm-700">{{ event.what_to_bring }}</p>
         </section>
       {% endif %}
-      {% if event.approval_status == 'approved' %}{% include "partials/_reviews.html" with kind="event" obj=event %}{% endif %}
+      {% if event.approval_status == 'approved' %}{% include "partials/_catalogue_notes.html" with kind="event" obj=event %}{% include "partials/_reviews.html" with kind="event" obj=event %}{% endif %}
     </div>
 
     <aside class="space-y-6">

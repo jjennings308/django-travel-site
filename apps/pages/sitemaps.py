@@ -119,7 +119,7 @@ SITEMAPS = {"pages": PagesSitemap, "help": HelpSitemap, "countries": CountrySite
 
 #: Never crawled: private or per-person areas, fragments and search results.
 DISALLOW = ["/trips/", "/public/", "/accounts/", "/staff/", "/admin/", "/approval/", "/notifications/",
-            "/bucketlists/", "/search/", "/events/whats-on/", "/report/", "/reviews/"]
+            "/bucketlists/", "/search/", "/events/whats-on/", "/report/", "/reviews/", "/notes/"]
 
 
 def robots_txt(request):
