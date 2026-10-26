@@ -1174,6 +1174,14 @@ from elsewhere joins the trip) done on branch `e5-catalogue-fill`; E6 (Add to th
 Travel notes, Choose your adventure — `views._add_section_types`, no Logistics table; an old table's page has "Make it
 travel notes", `trips:section_to_travel_notes`, which only changes its type) done on branch `e6-travel-notes`. Complete.
 
+### Catalogue notes
+
+Plan: `docs/plans/catalogue-notes.md` (notes on catalogue places, activities and events — tone, text, closed
+weekdays, how far ahead to book — added by members and approved by staff, shown on the catalogue pages and under
+every trip item linked to them, web and PDF; warnings for closed days and book-by dates; hide per trip; events on
+trip items; a tidy suggestion to move a trip's place-specific callouts to the catalogue). Decisions answered
+2026-10-26. Phases N1–N5, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
