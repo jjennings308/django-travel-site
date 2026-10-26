@@ -23,9 +23,10 @@ from django.forms.formsets import formset_factory
 from django.forms.models import inlineformset_factory
 from django.utils import timezone as django_timezone
 
-from apps.core.widgets import DateInput, DateTimeLocalInput, TimeInput
+from apps.core.widgets import CurrencySelect, DateInput, DateTimeLocalInput, TimeInput
 from apps.locations.models import POI, City
 
+from . import currencies
 from .models import (
     TripExpense,
     TripRate,
@@ -566,6 +567,10 @@ def _leg_city_fields(form, trip, names=("origin_city", "destination_city")):
         form.fields[name].label_from_instance = str
 
 
+#: Offered for a trip's home currency besides its own and its creator's (Other… covers the rest).
+HOME_CURRENCY_CHOICES = ("USD", "EUR", "GBP", "CAD", "AUD", "CHF", "JPY")
+
+
 class TripForm(forms.ModelForm):
     """Create or edit a trip.
 
@@ -582,10 +587,21 @@ class TripForm(forms.ModelForm):
         # passed through the constructor instead, or the status select opens on
         # its first blank choice and the reader has to choose a planning stage
         # before a new trip can be saved.
+        user = kwargs.pop("user", None)
         initial = {"status": Trip.Status.STARTING}
+        settings_obj = getattr(user, "settings", None) if user is not None else None
+        preferred = (getattr(settings_obj, "preferred_currency", "") or "USD").upper()
+        if not (kwargs.get("instance") and kwargs["instance"].pk):
+            initial["home_currency"] = preferred  # a new trip starts in its creator's currency (E4)
         initial.update(kwargs.get("initial") or {})
         kwargs["initial"] = initial
         super().__init__(*args, **kwargs)
+        # Home currency (E4): no lookups, so Edit trip's query count holds. The current one, the
+        # creator's, the common ones, and Other… for the rest.
+        self.fields["home_currency"] = currencies.CurrencyField(
+            required=False,  # blank: Trip.save() takes the creator's preferred currency
+            label="Home currency", help_text=Trip._meta.get_field("home_currency").help_text,
+            widget=CurrencySelect([self.instance.home_currency, preferred, *HOME_CURRENCY_CHOICES], styled=False))
         if "cities" in self.fields:
             self.fields["cities"].queryset = _city_choices()
             self.fields["cities"].label_from_instance = str  # "Kansas City, KS, US" tells same names apart
@@ -602,6 +618,7 @@ class TripForm(forms.ModelForm):
             "budget",
             "structure",
             "status",
+            "home_currency",
             "notes",
         )
         widgets = {
@@ -711,10 +728,13 @@ class LodgingForm(LocatingStayMixin, forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        given = "currency" in (kwargs.get("initial") or {})
         super().__init__(*args, **kwargs)
-        # "USD" is the model default; make the admin-type-please not type it.
-        self.fields["currency"].required = False
-        _leg_city_fields(self, self.instance.trip if self.instance.trip_id else None, names=("city",))
+        trip = self.instance.trip if self.instance.trip_id else None
+        _leg_city_fields(self, trip, names=("city",))
+        if trip is not None:  # home + the city's local currency (E4)
+            currencies.setup(self, "currency", trip, [self.initial.get("city") or self.instance.city_id],
+                             given_initial=given)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -770,8 +790,9 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # "USD" is the model default; don't make somebody retype it.
-        self.fields["currency"].required = False
+        if self.instance.trip_id:  # home + both ends' local currencies (E4)
+            currencies.setup(self, "currency", self.instance.trip,
+                             [self.instance.origin_city_id, self.instance.destination_city_id])
         # Point the zone inputs at the datalist the formset renders once. The
         # id is the datalist leg_form.html renders once (COMMON_ZONE_SUGGESTIONS).
         for name in ("origin_timezone", "destination_timezone"):
@@ -972,10 +993,13 @@ class TaskOptionForm(forms.ModelForm):
         fields = ["title", "detail", "url", "est_cost", "currency", "order"]
         widgets = {"detail": forms.Textarea(attrs={"rows": 2})}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, task=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["order"].required = False
-        self.fields["currency"].required = False
+        if task is not None:  # home + the task's item's local currency (E4); task_options passes it
+            currencies.setup(self, "currency", task.trip, currencies.task_city_ids(task))
+        else:
+            self.fields["currency"].required = False
 
     def clean_order(self):
         return self.cleaned_data.get("order") or 0
@@ -1072,6 +1096,14 @@ class TripRateForm(forms.ModelForm):
         fields = ["from_currency", "to_currency", "rate"]
         labels = {"from_currency": "1 of (currency)", "to_currency": "Is worth (currency)", "rate": "Rate"}
         help_texts = {"rate": "e.g. 1 EUR = 1.09 USD. Leave the ECB's daily rates alone by adding none."}
+
+    def __init__(self, *args, trip=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if trip is not None:  # every currency the trip uses, home first (E4); the budget page passes it
+            codes = currencies.used_codes(trip) if not hasattr(trip, "_used_codes") else trip._used_codes
+            trip._used_codes = codes  # one lookup for the whole formset
+            for name in ("from_currency", "to_currency"):
+                currencies.setup(self, name, trip, codes=codes)
 
     def clean(self):
         data = super().clean()
@@ -1917,7 +1949,6 @@ class TripExpenseForm(forms.ModelForm):
             "spent_on": DateInput(styled=False),
             "shared_with": forms.CheckboxSelectMultiple,
             "notes": forms.Textarea(attrs={"rows": 2}),
-            "currency": forms.TextInput(attrs={"maxlength": 3, "size": 4}),
         }
 
     def __init__(self, *args, trip, **kwargs):
@@ -1929,12 +1960,9 @@ class TripExpenseForm(forms.ModelForm):
         self.fields["shared_with"].help_text = "Leave all unticked to split it among everyone on the trip."
         self.fields["day"].queryset = trip.days.order_by("day_number")
         self.fields["day"].required = False
-
-    def clean_currency(self):
-        currency = (self.cleaned_data.get("currency") or "USD").strip().upper()
-        if len(currency) != 3 or not currency.isalpha():
-            raise forms.ValidationError("Use a three-letter currency code, e.g. USD or EUR.")
-        return currency
+        # Home + the day's local currency, else the trip's (E4).
+        currencies.setup(self, "currency", trip, [self.instance.day.city_id] if self.instance.day_id else [],
+                         given_initial="currency" in (kwargs.get("initial") or {}))
 
 
 class LegProposalForm(forms.Form):
@@ -2042,7 +2070,8 @@ class ConfirmationEditForm(forms.ModelForm):
     def __init__(self, *args, trip, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["travelers"].queryset = trip.travelers.all()
-        self.fields["currency"].required = False
+        # Home + the local currencies of what it covers, else the trip's (E4).
+        currencies.setup(self, "currency", trip, currencies.confirmation_city_ids(self.instance))
 
 
 class TripActivityForm(forms.ModelForm):
@@ -2075,7 +2104,9 @@ class TripActivityForm(forms.ModelForm):
                                         else "Add cities to the trip to pick a catalogue place; or type it below.")
         self.fields["travelers"].queryset = trip.travelers.all()
         self.fields["order"].required = False
-        self.fields["currency"].required = False
+        # Home + the place's (else the day's) local currency (E4).
+        currencies.setup(self, "currency", trip, currencies.activity_city_ids(self.instance),
+                         given_initial="currency" in (kwargs.get("initial") or {}))
 
     def clean_order(self):
         return self.cleaned_data.get("order") or 0

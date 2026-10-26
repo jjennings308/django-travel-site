@@ -487,6 +487,17 @@ that matter most:
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
   → `Rates`; unknown currency → None); the site makes no live exchange-rate calls and `requests` is gone from
   `requirements.txt`.
+- **Currency choices** (edit-by-day plan E4; trips 0045): `Trip.home_currency` (Edit trip → The trip, `TripForm`'s
+  select of the current one, the creator's, `HOME_CURRENCY_CHOICES` and Other…, no queries; `Trip.save()` fills a blank
+  one from the creator's `AccountSettings.preferred_currency`, else USD; 0045 set existing trips from their creators).
+  Every currency field on the trip's forms (stay, leg — also `LegEditForm` —, trip activity, task option, confirmation,
+  cost, the Budget page's own rates) is `apps/trips/currencies.setup()`: a `CurrencyField` (three letters, uppercased;
+  blank only where the model allows) with `apps.core.widgets.CurrencySelect` (the trip's home currency, then the local
+  ones from `Country.currency_code` of the item's places — table in `currencies.py`'s docstring — then Other…, a typed
+  box that Alpine hides until picked and that wins whenever it has text, so it works without JavaScript; a stored code
+  outside the list is added and shown, never changed). Country codes and the trip's cities are cached on the trip
+  object (`_currency_cache`), so formsets don't query per row. A new item starts on its one local currency, else home
+  (`currencies.default_for`; also the leg quick add). The admin's own forms are unchanged.
 - **Budget:** `TripExpense` (who paid, `shared_with` travellers; empty = everyone on the trip). `trips:trip_budget` (`/trips/<pk>/budget/`, linked from the trip header) shows totals per currency (no conversion), each traveller's paid/share/balance and a settle-up (`apps/trips/budget.py`: cents, payer absorbs odd cents, largest debtor pays largest creditor). Anyone who can see the trip sees it; editors add/edit/remove costs. Never in the public view; a separate page so the detail page's query count is unaffected.
 - **Change digest** (site roadmap R7, trips 0037, notifications 0003): `apps/trips/changes.py` records a
   `TripChange` (trip, actor, kind added/changed/removed, item, `summary`, `digest_sent_at`) from
@@ -1151,7 +1162,8 @@ the leg, stay and activity pages' `partials/_item_todos.html` with "Add a to-do 
 and Reference's "All to-dos" link there) done on branch `e2-todo-page`; E3 (Edit trip without the Lodging, Transport,
 Confirmations, Contacts and Booking tasks formsets — they and their classes are deleted — plus All stays & legs and
 Loose confirmations; the trip's own rates on the Budget page; Edit trip 63 → 26 queries / 898 → 130 ms on Europe 2027)
-done on branch `e3-slim-edit-trip`; E4–E6 not started.
+done on branch `e3-slim-edit-trip`; E4 (home currency + currency choices, see Trips → Currency choices) done on
+branch `e4-currency-choices`; E5–E6 not started.
 
 ### Rules carried over from the itinerary project
 

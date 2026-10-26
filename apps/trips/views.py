@@ -641,7 +641,7 @@ def trip_create(request):
     if not can_create_trip(request.user):
         raise PermissionDenied
 
-    form = TripForm(request.POST or None)
+    form = TripForm(request.POST or None, user=request.user)
     traveler_form = AddTravelerForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -681,7 +681,7 @@ def trip_edit(request, pk):
     their confirmations and contacts are added from the day or the item's own page; this page
     lists every stay and leg with an Edit link, read-only."""
     trip = _readable_trip(request, pk, "edit")
-    form = TripForm(request.POST or None, instance=trip)
+    form = TripForm(request.POST or None, instance=trip, user=request.user)
     traveler_form = AddTravelerForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -1403,16 +1403,6 @@ def _reader_currency(request):
     return (getattr(settings_obj, "preferred_currency", "") or "USD").upper()
 
 
-def _default_currency(trip):
-    """The trip's most-used expense currency, else its lodging's, else USD."""
-    from django.db.models import Count as _Count
-    used = trip.expenses.values("currency").annotate(n=_Count("id")).order_by("-n").first()
-    if used:
-        return used["currency"]
-    lodging = trip.lodging.exclude(currency="").first()
-    return lodging.currency if lodging else "USD"
-
-
 @login_required
 def trip_budget(request, pk, rate_formset=None):
     """Costs on a trip, totals per currency, each traveller's share and who owes whom.
@@ -1426,11 +1416,11 @@ def trip_budget(request, pk, rate_formset=None):
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
     if can_edit and rate_formset is None:
-        rate_formset = TripRateFormSet(instance=trip, prefix="rates")
+        rate_formset = TripRateFormSet(instance=trip, prefix="rates", form_kwargs={"trip": trip})
     form = None
     if can_edit:
         form = TripExpenseForm(request.POST if request.method == "POST" else None, trip=trip,
-                               initial={"currency": _default_currency(trip), "spent_on": trip.start_date})
+                               instance=TripExpense(trip=trip), initial={"spent_on": trip.start_date})
         if request.method == "POST" and form.is_valid():
             expense = form.save(commit=False)
             expense.trip, expense.created_by = trip, request.user
@@ -1475,7 +1465,7 @@ def trip_rates(request, pk):
     Budget page with the rows as typed."""
     from .forms import TripRateFormSet
     trip = _readable_trip(request, pk, "edit")
-    formset = TripRateFormSet(request.POST, instance=trip, prefix="rates")
+    formset = TripRateFormSet(request.POST, instance=trip, prefix="rates", form_kwargs={"trip": trip})
     if formset.is_valid():
         formset.save()
         messages.success(request, "Saved your own rates.")
@@ -1835,7 +1825,9 @@ def leg_quick_add(request, pk, day_pk):
     origin_city = match_city(data["origin"], trip_cities) or match_city(data["origin"], catalogue)
     destination_city = match_city(data["destination"], trip_cities) or match_city(data["destination"], catalogue)
     last = trip.transport.filter(date=day.date).aggregate(m=Max("order"))["m"]
+    from . import currencies
     leg = TransportLeg.objects.create(
+        currency=currencies.default_for(trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]),
         trip=trip, date=day.date, section=section, mode=data["mode"], origin=data["origin"],
         destination=data["destination"], origin_city=origin_city, destination_city=destination_city,
         est_duration=data["est_duration"], notes=data["notes"], order=(last or 0) + 1)
@@ -2095,7 +2087,7 @@ def task_options(request, pk, task_pk):
     from .forms import TaskOptionFormSet
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
-    formset = TaskOptionFormSet(request.POST or None, instance=task, prefix="options")
+    formset = TaskOptionFormSet(request.POST or None, instance=task, prefix="options", form_kwargs={"task": task})
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
     if request.method == "POST" and formset.is_valid():
         with transaction.atomic():

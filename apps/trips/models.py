@@ -477,6 +477,10 @@ class Trip(models.Model):
         default=Status.STARTING,
     )
     notes = models.TextField(blank=True)
+    # The currency the trip's costs are thought of in (edit-by-day plan E4): first in every currency
+    # choice on the trip's forms, beside the places' local ones. Filled from the creator's preferred
+    # currency when a trip is created without one (``save``).
+    home_currency = models.CharField(max_length=3, help_text="The currency you think in for this trip, e.g. USD.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -509,6 +513,19 @@ class Trip(models.Model):
     class Meta:
         ordering = ["-start_date", "name"]
         indexes = [models.Index(fields=["start_date"])]
+
+    def save(self, *args, **kwargs):
+        if not self.home_currency:
+            preferred = ""
+            if self.created_by_id:
+                from django.apps import apps
+                AccountSettings = apps.get_model("accounts", "AccountSettings")
+                preferred = (AccountSettings.objects.filter(user_id=self.created_by_id)
+                             .values_list("preferred_currency", flat=True).first() or "")
+            self.home_currency = (preferred or "USD").upper()
+        else:
+            self.home_currency = self.home_currency.upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
