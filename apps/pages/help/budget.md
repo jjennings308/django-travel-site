@@ -19,6 +19,12 @@ You need [editor access](/help/sharing-and-access/#who-can-do-what).
 
 Costs are split equally. If a cost doesn't divide exactly, the odd cents go to whoever paid.
 
+## Currency choices
+
+Every **Currency** on a trip (costs, stays, journeys, activities, confirmations and a decision's options) offers a short list: the trip's **home currency** first, then the local currency of the place involved, such as EUR for a hotel in Munich, or both ends of a flight from Pittsburgh to Frankfurt. Something new starts on the local currency when there's only one, otherwise on the home currency. For anything else, pick **Other…** and type the three-letter code, such as CHF.
+
+The home currency is set on **Edit trip** under The trip. A new trip starts with the currency in your Settings.
+
 ## Who owes whom
 
 For each currency, the budget shows the total, what each person paid, their share and their balance (green: they're owed; red: they owe), and **Settle up**: the fewest payments that square everyone.

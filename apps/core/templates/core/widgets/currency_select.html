@@ -1,0 +1,8 @@
+<span class="inline-flex flex-wrap items-center gap-2" x-data="{ other: false }">
+  <select name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %} @change="other = $event.target.value === '{{ widget.other_value }}'">
+    {% if widget.allow_blank %}<option value=""{% if not widget.current %} selected{% endif %}>—</option>{% endif %}
+    {% for code in widget.codes %}<option value="{{ code }}"{% if code == widget.current %} selected{% endif %}>{{ code }}</option>{% endfor %}
+    <option value="{{ widget.other_value }}">Other…</option>
+  </select>
+  <input type="text" name="{{ widget.other_name }}" maxlength="3" size="4" autocomplete="off" placeholder="CHF" aria-label="Other currency (three letters)" x-show="other" data-currency-other>
+</span>

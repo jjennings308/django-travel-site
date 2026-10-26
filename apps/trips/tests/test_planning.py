@@ -318,6 +318,7 @@ class TripAdminTests(TestCase):
             "start_date": str(self.trip.start_date),
             "end_date": str(self.trip.end_date),
             "status": status,
+            "home_currency": "USD",  # E4: the admin shows every model field
             "notes": self.trip.notes,
             "travelers": [],
             "_save": "Save",
