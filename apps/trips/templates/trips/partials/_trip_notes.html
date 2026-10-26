@@ -3,6 +3,13 @@ An item's catalogue notes on the trip page (catalogue-notes plan, N2). Pass item
 {% endcomment %}
 {% if item.trip_notes or can_edit and item.hidden_trip_notes %}
   <div class="mt-2 space-y-2" data-trip-notes>
+    {% if item.closed_warning %}<p class="text-sm font-medium text-amber-700" data-closed-warning>⚠ {{ item.closed_warning }}</p>{% endif %}
+    {% for entry in item.book_ahead %}
+      <p class="flex flex-wrap items-baseline gap-x-2 text-sm {% if entry.covered %}text-zinc-500{% elif entry.soon %}font-medium text-amber-700{% else %}text-zinc-700{% endif %}" data-book-by>
+        <span>{% if not entry.covered and entry.soon %}⚠ {% endif %}Book by {{ entry.by|date:"D M j, Y" }}{% if entry.overdue and not entry.covered %} — overdue{% endif %} <span class="text-zinc-500">({{ entry.note.book_ahead_label|lower }}{% if entry.note.from_name %}, {{ entry.note.from_name }}{% endif %})</span></span>
+        {% if entry.covered %}<span>· a to-do covers it</span>{% elif can_edit %}<a class="link-quiet font-medium print:hidden" href="{% url 'trips:task_new' trip.pk %}?from_note={{ entry.note.pk }}&amp;due={{ entry.by|date:'Y-m-d' }}&amp;day={{ entry.day.pk }}{% if entry.activity_pk %}&amp;activity={{ entry.activity_pk }}{% endif %}&amp;next={{ request.path|urlencode }}" data-note-todo>Add as a to-do</a>{% endif %}
+      </p>
+    {% endfor %}
     {% for note in item.trip_notes %}
       <div class="callout callout-{% if note.tone == 'critical' %}critical{% elif note.tone == 'warning' %}warning{% else %}info{% endif %} mb-0" data-trip-note="{{ note.pk }}">
         <p>{{ note.text|linebreaksbr }}</p>

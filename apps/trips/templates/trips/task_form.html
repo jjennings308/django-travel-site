@@ -14,6 +14,7 @@ One to-do (trips:task_new / task_edit, edit-by-day plan E2). Its About leg / sta
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
+    {% if from_note %}<input type="hidden" name="from_note" value="{{ from_note.pk }}">{% endif %}
     <h1 class="page-title mb-1">{% if task %}{{ task.title }}{% else %}New to-do{% endif %}</h1>
     <p class="mb-4 text-zinc-500">Pick at most one leg, stay or activity it's about; it then shows on that item as "Still to book". {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" text="How this works" %}</p>
     {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}

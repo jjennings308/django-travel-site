@@ -1,6 +1,6 @@
 # Plan: notes on catalogue places, activities and events that flow into trips
 
-Status: N1 done (2026-10-26, branch `n1-catalogue-notes`; reports reuse the `content_reported` notification rather than a report model); N2 done (2026-10-26, branch `n2-notes-on-trips`; the trip page shows "From <place>" as text, not a link, so the query count only grows by one; a trip with no catalogue links makes no extra query); N3–N5 not started. Decisions answered by James 2026-10-26 (below). Phases N1–N5, one branch
+Status: N1 done (2026-10-26, branch `n1-catalogue-notes`; reports reuse the `content_reported` notification rather than a report model); N2 done (2026-10-26, branch `n2-notes-on-trips`; the trip page shows "From <place>" as text, not a link, so the query count only grows by one; a trip with no catalogue links makes no extra query); N3 done (2026-10-26, branch `n3-note-warnings`; "Add as a to-do" opens the to-do page pre-filled rather than creating it, and the booklet prints the warnings too); N4–N5 not started. Decisions answered by James 2026-10-26 (below). Phases N1–N5, one branch
 each, in order. Read with `CLAUDE.md` → Dependency layers, "Approval / moderation", "Trip items linked to the
 catalogue" (R18), "The booklet is snapshot-guarded", "The detail page holds a fixed query count" and "Tidy
 suggestions" (U7).

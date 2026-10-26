@@ -463,6 +463,10 @@ def trip_detail(request, pk):
     itinerary.timeline(days)
     itinerary.attach_links(trip, days)
     trip_notes.attach(trip, days)  # catalogue notes under linked items (catalogue-notes N2): one query
+    # Their closed days and book-by dates (N3): no queries, counted in the days' ⚠ and the banner.
+    note_warnings = itinerary.note_warnings(days, list(trip.booking_tasks.all()), django_timezone.localdate())
+    for item in note_warnings["closed"] + note_warnings["book_ahead"]:
+        item.anchor = itinerary.anchor(item)
     opened = itinerary.open_day(days, django_timezone.localdate())
     checklist_lists = checklists.attach(trip)
     return render(
@@ -476,6 +480,8 @@ def trip_detail(request, pk):
             "stray_stays": stray_stays,
             "open_tasks": open_tasks,
             "open_decisions": open_decisions,
+            "closed_items": note_warnings["closed"],
+            "book_ahead_items": note_warnings["book_ahead"],
             "travel_tables_pending": travel_tables_pending,
             "not_booked": not_booked,
             "confirmation_groups": confirmation_groups(trip),
@@ -515,6 +521,7 @@ def trip_pdf(request, pk):
     booking_tasks.attach(trip)
     itinerary.attach_links(trip, list(trip.days.all()))
     trip_notes.attach(trip, list(trip.days.all()))
+    itinerary.note_warnings(list(trip.days.all()), list(trip.booking_tasks.all()), django_timezone.localdate())
     html = render_to_string("trips/pdf/booklet.html", {
         "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
         "printed": django_timezone.localdate(), "checklists": checklists.attach(trip), **booklet_context(trip),
@@ -2092,13 +2099,38 @@ def task_edit(request, pk, task_pk=None):
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk) if task_pk is not None else None
     initial = {name: request.GET[name] for name in ("leg", "stay", "activity", "day")
                if task is None and request.GET.get(name, "").isdigit()}
+    note = _note_for_todo(request) if task is None else None
+    if note is not None:  # "Add as a to-do" from a catalogue note's lead time (catalogue-notes N3)
+        initial.update({"title": f"Book ahead: {note.target_name}", "kind": BookingTask.Kind.BOOK,
+                        "priority": BookingTask.Priority.HIGH,
+                        "notes": "\n".join(part for part in (note.booking_url, note.text) if part)})
+        try:
+            initial["due"] = date.fromisoformat(request.GET.get("due", ""))
+        except ValueError:
+            pass
     form = BookingTaskForm(request.POST or None, instance=task or BookingTask(trip=trip), initial=initial, trip=trip)
     back = _back(request, _todo_url(trip))
     if request.method == "POST" and form.is_valid():
         saved = form.save()
+        if note is not None and note.pk not in saved.note_ids():
+            # Remembered on a hidden line, so the note's "Book by" warning goes quiet on the trip page.
+            saved.notes = (saved.notes.rstrip() + f"\n{BookingTask.FROM_NOTE}{note.pk}").strip()
+            saved.save(update_fields=["notes"])
         messages.success(request, f"{'Saved' if task else 'Added'} “{saved.title}”.")
         return redirect(back)
-    return render(request, "trips/task_form.html", {"trip": trip, "task": task, "form": form, "next": back})
+    return render(request, "trips/task_form.html", {"trip": trip, "task": task, "form": form, "next": back,
+                                                    "from_note": note})
+
+
+def _note_for_todo(request):
+    """The approved catalogue note a new to-do is being made from (``from_note``), else None."""
+    from apps.approval_system.models import ApprovalStatus
+    from apps.catalogue_notes.models import CatalogueNote
+    pk = request.POST.get("from_note") or request.GET.get("from_note") or ""
+    if not pk.isdigit():
+        return None
+    return (CatalogueNote.objects.filter(pk=pk, approval_status=ApprovalStatus.APPROVED)
+            .select_related("poi", "activity", "event").first())
 
 
 @login_required

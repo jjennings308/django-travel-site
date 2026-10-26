@@ -1901,11 +1901,20 @@ class BookingTask(models.Model):
 
     #: Written into ``notes`` by "Not this one", so the suggestion for that item doesn't return.
     NOT_ABOUT = "Not about: "
+    #: A to-do made from a catalogue note's lead time (catalogue-notes N3) remembers the note in its notes
+    #: on a line like this; the line is hidden, and the note's "Book by" warning goes quiet.
+    FROM_NOTE = "Catalogue note: "
 
     @property
     def visible_notes(self):
         """The notes without the "Not about: …" lines (those are for the suggestion only)."""
-        return "\n".join(line for line in self.notes.splitlines() if not line.startswith(self.NOT_ABOUT)).strip()
+        return "\n".join(line for line in self.notes.splitlines()
+                         if not line.startswith((self.NOT_ABOUT, self.FROM_NOTE))).strip()
+
+    def note_ids(self):
+        """The catalogue notes this to-do was made from (``FROM_NOTE`` lines)."""
+        return {int(line[len(self.FROM_NOTE):].strip()) for line in self.notes.splitlines()
+                if line.startswith(self.FROM_NOTE) and line[len(self.FROM_NOTE):].strip().isdigit()}
 
     def dismissed(self):
         """Names of items this task was marked as not being about (lower case)."""

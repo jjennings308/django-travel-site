@@ -13,6 +13,11 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
 - ``overview(days, not_booked, tasks)``: the web page's Overview row and day summary (U2) —
   ``day.overnight``, ``day.travel_icons``, ``day.travel_summary``, ``day.highlights``,
   ``day.attention``. Run after ``place_legs`` and ``attach_stays``.
+- ``note_warnings(days, tasks, today)``: what the items' catalogue notes (``trip_notes.attach``) warn about
+  (catalogue-notes N3) — ``item.closed_warning`` when the item's day is a weekday its place is closed,
+  ``item.book_ahead`` (one per note with a lead time: the book-by date, whether it's overdue or due within
+  ``BOOK_AHEAD_SOON_DAYS``, and whether a to-do made from the note covers it); adds them to
+  ``day.attention`` and returns the banner's counts. Run after ``overview``.
 - ``open_day(days, today)``: which day the page opens on — today's during the trip, Day 1 before
   it, none after it.
 - ``attach_links(trip, days)``: contacts and info notes linked to items (U4) — each item's
@@ -23,6 +28,8 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
   time order), ``day.any_time`` (untimed legs in their order, then untimed activities) and
   ``day.food_ideas`` (meals with no reservation time) (U3). Run after ``place_legs``.
 """
+from datetime import timedelta
+
 from .models import Contact, Day, Lodging, Meal, Section, TransportLeg, TripActivity, item_label
 
 
@@ -246,3 +253,46 @@ def attach_links(trip, days):
             day.good_to_know.append(source)
     for source in sources.values():
         source.on.sort(key=lambda on: (on["day_number"] is None, on["day_number"] or 0))
+
+
+BOOK_AHEAD_SOON_DAYS = 30
+WEEKDAY_NAMES = ("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
+
+
+def _book_by(day_date, note):
+    from dateutil.relativedelta import relativedelta
+    unit = note.book_ahead_unit or "months"
+    return day_date - relativedelta(**{unit: note.book_ahead})
+
+
+def note_warnings(days, tasks, today):
+    """Closed-day and book-ahead warnings from catalogue notes (see the module docstring). Returns
+    ``{"closed": [items], "book_ahead": [items]}`` for the Needs attention banner: items on a closed day,
+    and items with an uncovered lead time that's overdue or due within ``BOOK_AHEAD_SOON_DAYS``."""
+    covered = {pk for task in tasks for pk in task.note_ids()}
+    closed, due = [], []
+    for day in days:
+        if not day.date:
+            continue
+        items = [*getattr(day, "ordered_meals", []), *getattr(day, "ordered_activities", []),
+                 *getattr(day, "ordered_sections", [])]
+        for item in items:
+            item.closed_warning, item.book_ahead = "", []
+            for note in getattr(item, "trip_notes", []):
+                if day.date.weekday() in (note.closed_weekdays or []) and not item.closed_warning:
+                    item.closed_warning = f"{note.from_name or 'It'} is closed on {WEEKDAY_NAMES[day.date.weekday()]}"
+                if note.book_ahead:
+                    book_by = _book_by(day.date, note)
+                    entry = {"note": note, "by": book_by, "overdue": book_by < today,
+                             "soon": book_by <= today + timedelta(days=BOOK_AHEAD_SOON_DAYS),
+                             "covered": note.pk in covered, "day": day,
+                             "activity_pk": item.pk if isinstance(item, TripActivity) else None}
+                    item.book_ahead.append(entry)
+            pressing = [e for e in item.book_ahead if e["soon"] and not e["covered"]]
+            if item.closed_warning:
+                closed.append(item)
+                day.attention = getattr(day, "attention", 0) + 1
+            if pressing:
+                due.append(item)
+                day.attention = getattr(day, "attention", 0) + 1
+    return {"closed": closed, "book_ahead": due}
