@@ -36,6 +36,21 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
       {% endif %}
     {% endfor %}
     <datalist id="transport-zone-suggestions">{% for zone in zone_suggestions %}<option value="{{ zone }}"></option>{% endfor %}</datalist>
+    <script>
+      // Picking a From / To city fills that end's zone from the city (data-tz, E5), only while the
+      // zone is blank. Saving does the same on the server, so this is a convenience.
+      (function () {
+        [["origin_city", "origin_timezone"], ["destination_city", "destination_timezone"]].forEach(function (pair) {
+          var city = document.querySelector('select[name="' + pair[0] + '"]');
+          var zone = document.querySelector('input[name="' + pair[1] + '"]');
+          if (!city || !zone) return;
+          city.addEventListener("change", function () {
+            var picked = city.options[city.selectedIndex];
+            if (picked && picked.dataset.tz && !zone.value.trim()) zone.value = picked.dataset.tz;
+          });
+        });
+      })();
+    </script>
     <div class="flex flex-wrap items-center gap-3">
       <button type="submit" class="btn">Save</button>
       <a class="btn-quiet" href="{{ next }}">Cancel</a>

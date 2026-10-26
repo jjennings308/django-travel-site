@@ -548,23 +548,72 @@ def _city_choices():
             .select_related("region", "country").order_by("country__name", "name"))
 
 
+class CitySelect(forms.Select):
+    """A city select whose options carry ``data-tz`` (the city's IANA zone), so the leg page can
+    fill a blank zone as a city is picked (edit-by-day plan E5)."""
+
+    def __init__(self, *args, zones=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.zones = zones or {}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        zone = self.zones.get(str(getattr(value, "value", value)))
+        if zone:
+            option["attrs"]["data-tz"] = zone
+        return option
+
+
+def _trip_city_choices(trip):
+    """(grouped choices, {pk: zone}) for a trip's city selects: **This trip** (its cities) first, then
+    **Everywhere else** — the same list on every row and page (E5; before, a blank row listed every
+    city and a filled one only the trip's). Two queries, cached on the trip object."""
+    cached = getattr(trip, "_city_select", None) if trip is not None else None
+    if cached is not None:
+        return cached
+    cities = list(_city_choices())
+    zones = {str(city.pk): city.timezone for city in cities if city.timezone}
+    own = set(trip.cities.values_list("pk", flat=True)) if trip is not None and trip.pk else set()
+    if own:
+        choices = [("", "---------"),
+                   ("This trip", [(city.pk, str(city)) for city in cities if city.pk in own]),
+                   ("Everywhere else", [(city.pk, str(city)) for city in cities if city.pk not in own])]
+    else:
+        choices = [("", "---------"), *((city.pk, str(city)) for city in cities)]
+    if trip is not None:
+        trip._city_select = (choices, zones)
+    return choices, zones
+
+
 def _leg_city_fields(form, trip, names=("origin_city", "destination_city")):
-    """Limit city fields (a leg's from/to, a stay's city) to the trip's cities when it names
-    any (as the day form does), else any approved city. The trip's cities are cached on the
-    trip so a formset asks once."""
+    """A leg's from / to, a stay's city or a day's city: any approved catalogue city, grouped as the
+    trip's own first, then everywhere else (``_trip_city_choices``). Picking one from everywhere else
+    adds it to the trip's cities when the form saves (``JoinsTripCitiesMixin``)."""
     if names[0] not in form.fields:
         return
-    if trip is None or not trip.pk:
-        choices = _city_choices()
-    else:
-        cached = getattr(trip, "_leg_city_choices", None)
-        if cached is None:
-            ids = list(trip.cities.values_list("pk", flat=True))
-            cached = trip._leg_city_choices = _city_choices().filter(pk__in=ids) if ids else _city_choices()
-        choices = cached
+    choices, zones = _trip_city_choices(trip)
     for name in names:
-        form.fields[name].queryset = choices
-        form.fields[name].label_from_instance = str
+        field = form.fields[name]
+        field.queryset = _city_choices()
+        field.widget = CitySelect(zones=zones, attrs=field.widget.attrs)
+        field.choices = choices
+
+
+class JoinsTripCitiesMixin:
+    """After saving, add the form's chosen cities to its trip's cities (E5): a city picked from
+    "Everywhere else" becomes one of the trip's."""
+
+    trip_city_fields = ()
+
+    def save(self, commit=True):
+        obj = super().save(commit)
+        trip = getattr(self, "trip", None) or getattr(obj, "trip", None)
+        if commit and trip is not None:
+            chosen = [self.cleaned_data.get(name) for name in self.trip_city_fields]
+            chosen = [city for city in chosen if city is not None]
+            if chosen:
+                trip.cities.add(*chosen)
+        return obj
 
 
 #: Offered for a trip's home currency besides its own and its creator's (Other… covers the rest).
@@ -703,8 +752,10 @@ class LocatingStayMixin:
         return stay
 
 
-class LodgingForm(LocatingStayMixin, forms.ModelForm):
+class LodgingForm(JoinsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
     """One place to stay. Check-out has to follow check-in."""
+
+    trip_city_fields = ("city",)
 
     class Meta:
         model = Lodging
@@ -745,7 +796,7 @@ class LodgingForm(LocatingStayMixin, forms.ModelForm):
         return cleaned_data
 
 
-class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
+class TransportLegForm(JoinsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm):
     """One transport leg, entered by local times like the admin inline.
 
     Same conversion as the admin — see ``LocalLegTimeMixin``. Two deliberate
@@ -762,7 +813,11 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
 
     @staticmethod
     def zone_field(label_example):
-        return ZoneNameField(label_example=label_example)
+        return ZoneNameField(label_example=label_example,
+                             help_text=f"Filled in from the city; change it for an airport in another zone. "
+                                       f"An IANA zone name, e.g. {label_example}.")
+
+    trip_city_fields = ("origin_city", "destination_city")
 
     class Meta:
         model = TransportLeg
@@ -822,10 +877,24 @@ class TransportLegForm(LocalLegTimeMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        self.fill_from_cities(cleaned_data)
         self.clean_local_leg_times()
         if cleaned_data.get("add_return"):
             self._clean_return(cleaned_data)
         return cleaned_data
+
+    @staticmethod
+    def fill_from_cities(cleaned_data):
+        """A blank zone takes its city's zone, and a blank From / To its city's name (E5), before the
+        local times are converted, so it works without JavaScript; a zone typed in is kept."""
+        for end in ("origin", "destination"):
+            city = cleaned_data.get(f"{end}_city")
+            if city is None:
+                continue
+            if not cleaned_data.get(f"{end}_timezone") and city.timezone:
+                cleaned_data[f"{end}_timezone"] = city.timezone
+            if not (cleaned_data.get(end) or "").strip():
+                cleaned_data[end] = city.name
 
     def _return_utc(self, raw, zone_name, field):
         """A return time as aware UTC: typed with an offset is trusted, else converted
@@ -1129,7 +1198,7 @@ TripRateFormSet = inlineformset_factory(Trip, TripRate, form=TripRateForm, extra
 # ---------------------------------------------------------------------------
 
 
-class DayForm(forms.ModelForm):
+class DayForm(JoinsTripCitiesMixin, forms.ModelForm):
     """One day of a trip.
 
     Blank ``travelers`` means the whole group is together, which is the common
@@ -1137,6 +1206,8 @@ class DayForm(forms.ModelForm):
     list is narrowed to the trip's own travelers so a roster naming a stranger
     is not selectable at all.
     """
+
+    trip_city_fields = ("city",)
 
     class Meta:
         model = Day
@@ -1154,14 +1225,13 @@ class DayForm(forms.ModelForm):
         if "travelers" in self.fields:
             self.fields["travelers"].queryset = trip.travelers.all()
         if "city" in self.fields:
-            # The trip's own cities when it names any, else any catalogue city.
-            trip_cities = trip.cities.all() if trip.pk else City.objects.none()
-            self.fields["city"].queryset = trip_cities if trip_cities.exists() else _city_choices()
-            self.fields["city"].label_from_instance = str
+            # The trip's own cities first, then every other catalogue city (E5); one from
+            # elsewhere joins the trip's cities on save.
+            _leg_city_fields(self, trip, names=("city",))
             self.fields["city"].help_text = (
                 "Where you spend the day (Munich for Oktoberfest, even if you sleep in Augsburg). "
                 "Days a stay covers are filled in from its city when blank; change day trips here. "
-                "Add the trains, flights or drives under Edit trip → Transport.")
+                "Add the trains, flights or drives with + Leg above.")
         # Prefill the next free day number: a new day is nearly always the next
         # one, and the unique constraint on (trip, day_number) would otherwise
         # make the first thing to do a guess. `date` is deliberately left alone —

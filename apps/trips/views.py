@@ -1830,6 +1830,9 @@ def leg_quick_add(request, pk, day_pk):
         currency=currencies.default_for(trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]),
         trip=trip, date=day.date, section=section, mode=data["mode"], origin=data["origin"],
         destination=data["destination"], origin_city=origin_city, destination_city=destination_city,
+        # Each end's zone from its matched city (E5), so adding times later needs no zones typed.
+        origin_timezone=getattr(origin_city, "timezone", "") or "",
+        destination_timezone=getattr(destination_city, "timezone", "") or "",
         est_duration=data["est_duration"], notes=data["notes"], order=(last or 0) + 1)
     for city in (origin_city, destination_city):
         if city is not None:
