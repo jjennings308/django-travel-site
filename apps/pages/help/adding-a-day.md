@@ -3,7 +3,7 @@ summary: Add a day, fill in its details, then add legs, activities and meals to 
 audience: editors
 section: Trips
 order: 20
-updated: 2026-10-23
+updated: 2026-10-26
 
 # How to add a day to your trip
 
@@ -57,6 +57,7 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 | Button | Use it for | What you enter |
 | --- | --- | --- |
 | + Leg | A train, flight, drive or walk | From, To, Mode, a rough time ("45 min") and a note. Add exact times later, once booked. |
+| + Stay | A hotel, flat or campsite you check in to that day | Name, address, city, check-in and check-out, rate, notes ([more below](#stays)). |
 | + Activity | A tour, timed entry, ticket, table booking or car hire | Kind, title, provider, start and end time, place, cost, notes. |
 | + Meal | A restaurant or food stop | Name, meal type, cuisine, price range, why it's recommended. Give it a **Reservation time** only if a table is booked. |
 | + Contact or note | A phone number or tip for the whole day | A contact (name, phone, email) or an info note (title and text). |
@@ -65,6 +66,16 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 Everything you add appears under **On this day**, in the same order as on the trip page. Each item has its own **Confirmations** and **Contacts & info** links for booking numbers and phone numbers.
 
 Items with a time (legs, activities, booked meals) go on the day's timeline in time order. Meals without a reservation time appear under **Food ideas**.
+
+## Stays
+
+Add a stay from the day you check in: **+ Stay** opens a new stay with check-in on that day and check-out the next morning. Change the check-out date for a longer stay; one stay covers all its nights.
+
+- **Address** finds the stay's pin on the trip map. Without an address the map uses the city's centre. To move the pin by hand, open **Adjust the pin**.
+- **City**: the days the stay covers that have no city yet get this one (change a day trip by hand on its day).
+- After **Add stay** you stay on the stay's page: add its confirmation number in **Confirmations** and the front desk's phone in **Contacts & info** there ([bookings and confirmations](/help/bookings-and-confirmations/)).
+
+The stay then shows on every day it covers under **On this day**: **Check in** on the first day, **Sleeping** on the nights in between and **Check out** on the last morning, each with **Edit**. On the trip page, editors find **Edit** on the stay's card.
 
 ## Link a meal or section to the catalogue
 

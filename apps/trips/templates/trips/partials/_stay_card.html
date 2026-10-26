@@ -1,5 +1,5 @@
 {% comment %}
-A stay in full, on its check-in day (trips:trip_detail; U2 of docs/plans/trip-page-ux.md). Pass stay=. Its confirmation chips link to their row in Reference.
+A stay in full, on its check-in day (trips:trip_detail; U2 of docs/plans/trip-page-ux.md). Pass stay=. Its confirmation chips link to their row in Reference; can_edit adds the Edit link to the stay's own page (edit-by-day plan E1).
 {% endcomment %}
 <div class="card" id="stay-{{ stay.pk }}">
   <p class="card-title">{{ stay.name }}</p>
@@ -33,4 +33,5 @@ A stay in full, on its check-in day (trips:trip_detail; U2 of docs/plans/trip-pa
   {% if stay.notes %}<p class="mt-2 text-sm text-zinc-600">{{ stay.notes|linebreaksbr }}</p>{% endif %}
   {% if stay.refs %}<div class="mt-2">{% include "trips/partials/_refs.html" with refs=stay.refs %}</div>{% endif %}
 {% if stay.open_tasks %}<p class="mt-2 text-sm text-amber-700">Still to book: {% for task in stay.open_tasks %}{{ task.title }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+  {% if can_edit %}<p class="mt-2 flex gap-3 text-xs print:hidden"><a class="link-quiet font-medium" href="{% url 'trips:stay_edit' trip.pk stay.pk %}?next={{ request.path|urlencode }}%23stay-{{ stay.pk }}" data-stay-edit>Edit</a></p>{% endif %}
 </div>

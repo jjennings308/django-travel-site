@@ -159,9 +159,15 @@ def _day_workshop(trip, day):
     from . import catalogue_links
     catalogue_links.attach_suggestions(trip, day.ordered_meals, sections)
     itinerary.timeline([day])
+    # Stays (E1): checking out, checking in, or the night you're sleeping there — as on the trip page.
+    stays = list(trip.lodging.filter(check_in__lte=day.date, check_out__gte=day.date).select_related("city")) if day.date else []
+    for stay in stays:
+        stay.workshop_label = ("Check in" if stay.check_in == day.date
+                               else "Check out" if stay.check_out == day.date else "Sleeping")
+    stays.sort(key=lambda stay: ("Check out", "Check in", "Sleeping").index(stay.workshop_label))
     items = {}
     for model, objs in ((TransportLeg, day.day_legs), (TripActivity, day.ordered_activities),
-                        (Meal, day.ordered_meals), (Section, sections)):
+                        (Meal, day.ordered_meals), (Section, sections), (Lodging, stays)):
         type_id = ContentType.objects.get_for_model(model).pk
         for obj in objs:
             obj.confirmation_list, obj.refs = [], []
@@ -178,7 +184,7 @@ def _day_workshop(trip, day):
         if item is not None and source is not None:
             item.refs.append(source)
     return {"sections": sections, "timeline": day.timeline, "any_time": day.any_time,
-            "food_ideas": day.food_ideas}
+            "food_ideas": day.food_ideas, "day_stays": stays}
 
 
 @login_required
@@ -686,7 +692,7 @@ def trip_edit(request, pk):
     trip = _readable_trip(request, pk, "edit")
     form = TripForm(request.POST or None, instance=trip)
     traveler_form = AddTravelerForm(request.POST or None)
-    formsets = trip_subsection_formsets(trip, request.POST or None, initial=_stay_from_option(request, trip))
+    formsets = trip_subsection_formsets(trip, request.POST or None)
 
     if request.method == "POST":
         # Evaluate every one of these before deciding: `all()` short-circuits,
@@ -734,21 +740,6 @@ def trip_edit(request, pk):
             **_edit_trip_travel_and_bookings(trip),
         },
     )
-
-
-def _stay_from_option(request, trip):
-    """Edit trip's blank stay row pre-filled from a decision's chosen option
-    (``?stay_from_option=<pk>``, U6): name from its title, notes from its detail and link.
-    Nothing is saved until the editor saves the page."""
-    from .models import TaskOption
-    pk = request.GET.get("stay_from_option", "")
-    if request.method != "GET" or not pk.isdigit():
-        return None
-    option = TaskOption.objects.filter(task__trip=trip, pk=pk).first()
-    if option is None:
-        return None
-    notes = "\n".join(part for part in (option.detail, option.url) if part)
-    return {"lodging": [{"name": option.title[:200], "notes": notes, "currency": option.currency or "USD"}]}
 
 
 def _edit_trip_travel_and_bookings(trip):
@@ -1931,6 +1922,87 @@ def activity_delete(request, pk, day_pk, activity_pk):
                   {"trip": trip, "day": day, "activity": activity, "next": back})
 
 
+# ---- stays, added and edited from their day (edit-by-day plan, E1) ----------------------------
+def _stay_back(trip, stay):
+    """A stay's page returns to its check-in day's "On this day", else to it on the trip page."""
+    day = trip.days.filter(date=stay.check_in).first()
+    if day is not None:
+        return reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day"
+    return reverse("trips:trip_detail", args=[trip.pk]) + "#not-on-any-day"
+
+
+def _stay_from_option(trip, option_pk):
+    """A new stay's starting values from a decision's option (``?from_option=<pk>``, U6): name from
+    its title, notes from its detail and link. Nothing is saved until the editor saves the page."""
+    from .models import TaskOption
+    option = TaskOption.objects.filter(task__trip=trip, pk=option_pk).first() if option_pk.isdigit() else None
+    if option is None:
+        return {}
+    notes = "\n".join(part for part in (option.detail, option.url) if part)
+    return {"name": option.title[:200], "notes": notes, "currency": option.currency or "USD"}
+
+
+def _days_filled_message(request, form):
+    if form.days_filled:
+        messages.info(request, f"Filled in the city for {form.days_filled} day{'s' if form.days_filled != 1 else ''} "
+                               "from this stay; change any day trips by hand.")
+
+
+@login_required
+def stay_new(request, pk, day_pk):
+    """Add a stay from its check-in day (editors): check-in is that day, check-out the next by
+    default. Once saved it lands on its own page, so the confirmation and the hotel's phone can be
+    added at once, like an activity's."""
+    from datetime import timedelta
+    from .forms import LodgingForm
+    trip, day = _editable_day(request, pk, day_pk)
+    initial = {"check_in": day.date, "check_out": day.date + timedelta(days=1) if day.date else None,
+               "city": day.city_id, **_stay_from_option(trip, request.GET.get("from_option", ""))}
+    form = LodgingForm(request.POST or None, instance=Lodging(trip=trip), initial=initial)
+    back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day")
+    if request.method == "POST" and form.is_valid():
+        stay = form.save()
+        messages.success(request, f"Added {stay.name}.")
+        _days_filled_message(request, form)
+        return redirect(reverse("trips:stay_edit", args=[trip.pk, stay.pk]) + "?next=" + quote(back))
+    return render(request, "trips/stay_form.html", {"trip": trip, "day": day, "stay": None, "form": form, "next": back})
+
+
+@login_required
+def stay_edit(request, pk, stay_pk):
+    """One stay on its own page (editors): its details, the pin, its confirmations and its
+    contacts & info. Reached from its day's "On this day" and its card on the trip page."""
+    from .forms import LodgingForm
+    trip = _readable_trip(request, pk, "edit")
+    stay = get_object_or_404(trip.lodging.all(), pk=stay_pk)
+    form = LodgingForm(request.POST or None, instance=stay)
+    if request.method == "POST" and form.is_valid():
+        stay = form.save()
+        messages.success(request, f"Saved {stay.name}.")
+        _days_filled_message(request, form)
+        return redirect(_back(request, _stay_back(trip, stay)))
+    return render(request, "trips/stay_form.html", {
+        "trip": trip, "day": trip.days.filter(date=stay.check_in).first(), "stay": stay, "form": form,
+        "next": _back(request, _stay_back(trip, stay)),
+        **_item_confirmations_context(request, trip, "stay", stay),
+        **_item_links_context(trip, "stay", stay),
+        "open_tasks": list(stay.booking_tasks.filter(done=False)),
+    })
+
+
+@login_required
+def stay_delete(request, pk, stay_pk):
+    trip = _readable_trip(request, pk, "edit")
+    stay = get_object_or_404(trip.lodging.all(), pk=stay_pk)
+    back = _back(request, _stay_back(trip, stay))
+    if request.method == "POST":
+        name = stay.name
+        stay.delete()
+        messages.success(request, f"Deleted {name}. Its confirmations are kept.")
+        return redirect(back)
+    return render(request, "trips/stay_confirm_delete.html", {"trip": trip, "stay": stay, "next": back})
+
+
 # ---- content clean-up review (trip-page UX plan, U7) -----------------------------------------
 @login_required
 def trip_tidy(request, pk):
@@ -1997,16 +2069,22 @@ def task_options(request, pk, task_pk):
 
 @login_required
 def option_add(request, pk, option_pk):
-    """Add a decision's option as a stay or an activity (U6): redirects to Edit trip with the
-    blank stay row pre-filled, or to the new-activity page of the task's day (or ``?day=``),
-    pre-filled. Saves nothing itself."""
+    """Add a decision's option as a stay or an activity (U6): redirects to the new-stay or
+    new-activity page of the task's day (or ``?day=``), pre-filled; a stay with no day starts on
+    Day 1 (its dates are editable). Saves nothing itself."""
     from .models import TaskOption
     trip = _readable_trip(request, pk, "edit")
     option = get_object_or_404(TaskOption.objects.filter(task__trip=trip).select_related("task"), pk=option_pk)
-    if request.GET.get("as") == "stay":
-        return redirect(reverse("trips:trip_edit", args=[trip.pk]) + f"?stay_from_option={option.pk}#lodging")
     day_pk = request.GET.get("day") or option.task.day_id
     day = get_object_or_404(trip.days.all(), pk=day_pk) if day_pk else None
+    if request.GET.get("as") == "stay":
+        day = day or trip.days.order_by("day_number").first()
+        if day is None:
+            messages.info(request, "Add the trip's days first, then the stay on its check-in day.")
+            return redirect(reverse("trips:task_options", args=[trip.pk, option.task_id]))
+        back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+        return redirect(reverse("trips:stay_new", args=[trip.pk, day.pk])
+                        + f"?from_option={option.pk}&next={quote(back)}")
     if day is None:
         messages.info(request, "Pick the day it happens on.")
         return redirect(reverse("trips:task_options", args=[trip.pk, option.task_id]))

@@ -1,0 +1,54 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+A stay on its own page (trips:stay_new from its check-in day, trips:stay_edit; edit-by-day plan E1). Once saved, its confirmations and contacts & info are added here, like a leg's. The pin's coordinates sit in a closed fold: they're found from the address.
+{% endcomment %}
+{% block title %}{% if stay %}{{ stay.name }}{% else %}New stay{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    {% if day %}<a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>{% endif %}
+    <span>{% if stay %}{{ stay.name }}{% else %}New stay{% endif %}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">{% if stay %}{{ stay.name }}{% else %}New stay{% endif %}</h1>
+    <p class="mb-4 text-zinc-500">{% if stay %}{{ stay.check_in|date:"D M j" }} – {{ stay.check_out|date:"D M j" }} · {{ stay.nights }} night{{ stay.nights|pluralize }}.{% elif day %}Checking in on Day {{ day.day_number }}, {{ day.date|date:"l, F j" }}. Change the dates for a longer stay.{% endif %} {% include "partials/_help_link.html" with slug="adding-a-day" anchor="stays" label="stays" text="How this works" %}</p>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% include "trips/_form_fields.html" with form=form hide_fields="latitude longitude" %}
+    <details class="mb-4" data-adjust-pin{% if form.latitude.errors or form.longitude.errors %} open{% endif %}>
+      <summary class="cursor-pointer text-sm font-medium text-zinc-700">Adjust the pin</summary>
+      <p class="note mt-2">Found from the address. Without an address the map uses the city's centre.</p>
+      <div class="field-grid mt-2">
+        {% for field in form %}{% if field.name == "latitude" or field.name == "longitude" %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {{ field.errors }}
+          </div>
+        {% endif %}{% endfor %}
+      </div>
+    </details>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">{% if stay %}Save{% else %}Add stay{% endif %}</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      {% if stay %}<a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:stay_delete' trip.pk stay.pk %}?next={{ next|urlencode }}">Delete this stay</a>{% endif %}
+    </div>
+  </form>
+  {% if stay %}
+    {% if open_tasks %}
+      {# Open booking tasks about this stay (Phase E). #}
+      <section class="card mt-6 p-5">
+        <h2 class="form-section-title mb-2">Still to book</h2>
+        <ul class="list-disc pl-5 text-sm">{% for task in open_tasks %}<li>{{ task.title }}{% if task.due_note %} <span class="text-zinc-500">· {{ task.due_note }}</span>{% endif %}</li>{% endfor %}</ul>
+        <p class="note mt-2">Adding a confirmation offers to tick these off.</p>
+      </section>
+    {% endif %}
+    {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
+    {% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}
+  {% else %}
+    <p class="note mt-4">Save it first, then add its confirmation number and the hotel's phone here.</p>
+  {% endif %}
+{% endblock %}
