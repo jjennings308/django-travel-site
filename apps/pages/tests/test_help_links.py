@@ -48,6 +48,8 @@ class HelpLinkTests(TestCase):
                 "/help/reading-your-trip/#reference", "/help/reading-your-trip/#booklet"},
             reverse("trips:trip_edit", args=[trip]): {"/help/starting-a-trip/"},
             reverse("trips:day_edit", args=[trip, self.day.pk]): {"/help/adding-a-day/"},
+            reverse("trips:trip_todo", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},
+            reverse("trips:task_new", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},
             reverse("trips:stay_edit", args=[trip, self.stay.pk]): {
                 "/help/adding-a-day/#stays", "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
             reverse("trips:leg_edit", args=[trip, self.leg.pk]): {

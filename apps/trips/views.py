@@ -1905,6 +1905,7 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     if activity is not None:
         context.update(_item_confirmations_context(request, trip, "activity", activity))
         context.update(_item_links_context(trip, "activity", activity))
+        context["open_tasks"] = list(activity.booking_tasks.filter(done=False))
     return render(request, "trips/activity_form.html", context)
 
 
@@ -2034,6 +2035,74 @@ def trip_tidy(request, pk):
 
 
 # ---- decisions: tasks with options (trip-page UX plan, U6) ----------------------------------
+# ---- the trip's to-dos (edit-by-day plan, E2) -----------------------------------------------
+def _todo_url(trip):
+    return reverse("trips:trip_todo", args=[trip.pk])
+
+
+@login_required
+def trip_todo(request, pk):
+    """Every booking task and decision on the trip (anyone who can see it): open ones by priority
+    and due date, then the done ones folded away; each with what it's about and its options.
+    Editors add, edit and tick them off here."""
+    from django.db.models import prefetch_related_objects
+    from . import booking_tasks
+    trip = _readable_trip(request, pk, "view")
+    can_edit = trip.can(request.user, "edit")
+    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related(
+        "day").prefetch_related("options")), "days")
+    booking_tasks.attach(trip)  # item / item_day / item_info; "Looks like" suggestions stay on the trip page
+    tasks = sorted(trip.booking_tasks.all(),
+                   key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk))
+    return render(request, "trips/trip_todo.html", {
+        "trip": trip, "can_edit": can_edit,
+        "open_tasks": [t for t in tasks if not t.done], "done_tasks": [t for t in tasks if t.done],
+    })
+
+
+@login_required
+def task_edit(request, pk, task_pk=None):
+    """Add or edit one to-do (editors). ``?leg=`` / ``?stay=`` / ``?activity=`` pre-pick what a new
+    one is about (from that item's page); the pickers only offer this trip's own things."""
+    from .forms import BookingTaskForm
+    trip = _readable_trip(request, pk, "edit")
+    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk) if task_pk is not None else None
+    initial = {name: request.GET[name] for name in ("leg", "stay", "activity", "day")
+               if task is None and request.GET.get(name, "").isdigit()}
+    form = BookingTaskForm(request.POST or None, instance=task or BookingTask(trip=trip), initial=initial, trip=trip)
+    back = _back(request, _todo_url(trip))
+    if request.method == "POST" and form.is_valid():
+        saved = form.save()
+        messages.success(request, f"{'Saved' if task else 'Added'} “{saved.title}”.")
+        return redirect(back)
+    return render(request, "trips/task_form.html", {"trip": trip, "task": task, "form": form, "next": back})
+
+
+@login_required
+def task_delete(request, pk, task_pk):
+    trip = _readable_trip(request, pk, "edit")
+    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
+    back = _back(request, _todo_url(trip))
+    if request.method == "POST":
+        title = task.title
+        task.delete()
+        messages.success(request, f"Deleted “{title}”.")
+        return redirect(back)
+    return render(request, "trips/task_confirm_delete.html", {"trip": trip, "task": task, "next": back})
+
+
+@login_required
+@require_POST
+def task_done(request, pk, task_pk):
+    """Tick a to-do off, or back on (``done=0``), from the To do page (editors)."""
+    trip = _readable_trip(request, pk, "edit")
+    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
+    task.done = request.POST.get("done", "1") != "0"
+    task.save(update_fields=["done"])
+    messages.success(request, f"{'Done' if task.done else 'Back on the list'}: “{task.title}”.")
+    return redirect(_back(request, _todo_url(trip)))
+
+
 @login_required
 def task_options(request, pk, task_pk):
     """A decision's options (editors): add, edit, reorder and delete them, and choose one (or

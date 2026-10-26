@@ -73,8 +73,8 @@
     <p class="callout-warning mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm scroll-mt-32" id="needs-attention">
       <span class="card-kicker">Needs attention</span>
       {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
-      {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_tasks|length }} to do</a>{% endif %}
-      {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="#still-to-book">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
+      {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="{% url 'trips:trip_todo' trip.pk %}">{{ open_tasks|length }} to do</a>{% endif %}
+      {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="{% url 'trips:trip_todo' trip.pk %}">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
       {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
       {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
       {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
@@ -443,7 +443,7 @@
     {% endif %}
 
     {% if open_tasks %}
-      <h3 class="grid-label mt-8" id="still-to-book">Still to book</h3>
+      <h3 class="grid-label mt-8 flex items-baseline justify-between gap-3" id="still-to-book">Still to book <a class="link-quiet text-xs font-medium normal-case" href="{% url 'trips:trip_todo' trip.pk %}" data-all-todos>All to-dos</a></h3>
       <ul class="card divide-y divide-zinc-100 p-0 text-sm">
         {% for task in open_tasks %}
           <li class="px-4 py-2.5">

@@ -64,7 +64,7 @@ class PageTests(Fixture):
         self.assertIn("Decide: Augsburg accommodation", html)
         self.assertLess(html.index("Drei Mohren"), html.index("Hotel Augusta"))  # option order
         self.assertIn("~140.00 EUR", html)
-        self.assertIn('href="#still-to-book">1 decision</a>', html)
+        self.assertIn(f'href="{reverse("trips:trip_todo", args=[self.trip.pk])}">1 decision</a>', html)  # E2
         self.assertNotIn(self.options_url, html)  # viewers can't edit options
         self.assertIn(self.options_url, self.page(self.editor).content.decode())
 

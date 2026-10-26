@@ -1141,7 +1141,11 @@ home currency plus the local one; leg time zones and city choices filled from th
 fold into travel notes). Decisions answered 2026-10-25. Phases E1–E6, one branch each, in order. Status:
 E1 (stays added and edited from the day: `trips:stay_new` / `stay_edit` / `stay_delete`, `stay_form.html` with the
 Confirmations and Contacts & info blocks and an "Adjust the pin" fold; the stay card's Edit link; option → new
-stay) done on branch `e1-stays-from-day`; E2–E6 not started.
+stay) done on branch `e1-stays-from-day`; E2 (the To do page `trips:trip_todo` — open by priority then due date, done
+folded, for everyone who can see the trip — and `task_new` / `task_edit` / `task_delete` / `task_done` for editors;
+`BookingTaskForm(trip=…)` narrows its pickers like `ScopedBookingTaskFormSet`; `?leg=` / `?stay=` / `?activity=` pre-pick;
+the leg, stay and activity pages' `partials/_item_todos.html` with "Add a to-do for this"; the banner's to do / decisions
+and Reference's "All to-dos" link there) done on branch `e2-todo-page`; E3–E6 not started.
 
 ### Rules carried over from the itinerary project
 

@@ -1,6 +1,6 @@
 # Plan: edit by day (Edit trip keeps only trip-level things)
 
-Status: E1 done (2026-10-26, branch `e1-stays-from-day`; the new stay starts in its day's city, editable); E2–E6 not started. Decisions answered by James 2026-10-25 ("recommended for all"; listed
+Status: E1 done (2026-10-26, branch `e1-stays-from-day`; the new stay starts in its day's city, editable); E2 done (2026-10-26, branch `e2-todo-page`; the To do page skips the "Looks like" suggestions, which stay on the trip page); E3–E6 not started. Decisions answered by James 2026-10-25 ("recommended for all"; listed
 below). Phases E1–E6, one branch each, in order. Read with `CLAUDE.md` → Trips, especially "Edit this day",
 "The view page is for reading; adding is on Edit trip", "Confirmations attach like comments", "Booking tasks
 point at their item", "Budget in one currency" and "Maps" (stays).

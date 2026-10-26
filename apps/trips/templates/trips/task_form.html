@@ -1,0 +1,30 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+One to-do (trips:task_new / task_edit, edit-by-day plan E2). Its About leg / stay / activity, day and confirmation pickers offer only this trip's own things; ?leg= / ?stay= / ?activity= pre-pick one for a new to-do.
+{% endcomment %}
+{% block title %}{% if task %}{{ task.title }}{% else %}New to-do{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_todo' trip.pk %}">To do</a><span>/</span>
+    <span>{% if task %}{{ task.title }}{% else %}New to-do{% endif %}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">{% if task %}{{ task.title }}{% else %}New to-do{% endif %}</h1>
+    <p class="mb-4 text-zinc-500">Pick at most one leg, stay or activity it's about; it then shows on that item as "Still to book". {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" text="How this works" %}</p>
+    {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% include "trips/_form_fields.html" with form=form %}
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">{% if task %}Save{% else %}Add to-do{% endif %}</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      {% if task %}
+        <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}">{% if task.kind == "decide" %}Options{% else %}Make it a decision…{% endif %}</a>
+        <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ next|urlencode }}">Delete</a>
+      {% endif %}
+    </div>
+  </form>
+{% endblock %}
