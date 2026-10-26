@@ -390,8 +390,9 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   — Link / Not this one" (`trips:catalogue_link`, editors; a dismissal is a `TidyDismissal` keyed `catalogue:…`);
   never automatic. The trip page shows the links (`partials/_catalogue_link.html`, select_related in the
   prefetch, so the pin holds), the booklet plain text (`pdf/_catalogue.html`). `import_itinerary`'s dry run lists
-  exact matches (`import_matches`), never links. **Counts:** `POI.trip_count` / `Activity.trip_count` = distinct
-  live trips using it (`apps/trips/catalogue_counts.recount()`, run by the nightly `recount_visitors`); pages show
+  exact matches (`import_matches`), never links. **Counts:** `POI.trip_count` / `Activity.trip_count` /
+  `Event.trip_count` (events 0008) = distinct live trips using it (a trip linked to an event also counts for the event's
+  activity and venue) (`apps/trips/catalogue_counts.recount()`, run by the nightly `recount_visitors`); pages show
   "On trips" only via `shown_trip_count` (≥ `locations.models.TRIP_COUNT_MIN` = 2), never which trips. The
   `food` place type (Food & drink) was seeded by locations 0015.
 - **Catalogue search** (site roadmap R20; core 0002 enables `pg_trgm` + `unaccent`, trusted extensions the

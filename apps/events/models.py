@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models import Q
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
-from apps.locations.models import City, Country, POI
+from apps.locations.models import TRIP_COUNT_MIN, City, Country, POI
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import Approvable, ApprovalStatus
 from django.utils import timezone
@@ -313,6 +313,9 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         default=0,
         help_text="How many times added to bucket lists"
     )
+    # Live trips with a section or day activity linked to this event (catalogue-notes N4 follow-up);
+    # recounted nightly by recount_visitors (apps.trips.catalogue_counts). Shown only from TRIP_COUNT_MIN.
+    trip_count = models.IntegerField(default=0, help_text="Live trips that include this event (recounted nightly)")
     attendance_count = models.IntegerField(
         default=0,
         help_text="How many users marked as attending"
@@ -391,6 +394,11 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     @property
     def needs_city_link(self):
         return not self.city_id
+
+    @property
+    def shown_trip_count(self):
+        """``trip_count`` when it's at least TRIP_COUNT_MIN, else 0."""
+        return self.trip_count if self.trip_count >= TRIP_COUNT_MIN else 0
 
     def is_visible_to(self, user):
         if user is not None and user.is_authenticated and (user.is_staff or user == self.created_by):

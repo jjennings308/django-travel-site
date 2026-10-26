@@ -68,6 +68,7 @@
           {% if event.organizer %}<div><dt class="text-sm text-warm-500">Organiser</dt><dd>{{ event.organizer }}</dd></div>{% endif %}
           {% if event.website %}<div><dt class="text-sm text-warm-500">Website</dt><dd><a class="sbl-link break-all" href="{{ event.website }}" target="_blank" rel="noopener noreferrer">{{ event.website }}</a></dd></div>{% endif %}
           <div><dt class="text-sm text-warm-500">On bucket lists</dt><dd>{{ event.bucket_list_count }}</dd></div>
+          {% if event.shown_trip_count %}<div><dt class="text-sm text-warm-500" title="Members' trips that include this event">On trips</dt><dd>{{ event.shown_trip_count }}</dd></div>{% endif %}
           {% if event.created_by %}<div><dt class="text-sm text-warm-500">Added by</dt><dd>@{{ event.created_by.username }}</dd></div>{% endif %}
         </dl>
       </section>
