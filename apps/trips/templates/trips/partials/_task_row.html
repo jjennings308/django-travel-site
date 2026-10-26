@@ -1,0 +1,32 @@
+{% comment %}
+One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, task and can_edit. "For:" links to the item on the trip page; a decision lists its options as Reference does. Editors get Edit · Mark done · Options · Delete, all coming back here.
+{% endcomment %}
+<li class="px-4 py-3" id="task-{{ task.pk }}">
+  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    {% if task.priority == 1 %}<span class="badge badge-critical">{{ task.get_priority_display }}</span>{% elif task.priority == 2 %}<span class="badge badge-high">{{ task.get_priority_display }}</span>{% elif task.priority == 3 %}<span class="badge badge-medium">{{ task.get_priority_display }}</span>{% else %}<span class="badge badge-low">{{ task.get_priority_display }}</span>{% endif %}
+    <span class="font-medium {% if task.done %}text-zinc-500 line-through{% else %}text-zinc-900{% endif %}">{% if task.kind == "decide" %}Decide: {% endif %}{{ task.title }}</span>
+    {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}#{{ task.item_info.anchor }}">{% if task.item_day %}Day {{ task.item_day.day_number }} · {% endif %}{{ task.item_info.label }}</a></span>
+    {% elif task.day %}<a class="link-quiet text-zinc-500" href="{% url 'trips:trip_detail' trip.pk %}#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
+    {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
+  </div>
+  {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
+  {% if task.options.all %}
+    <ul class="mt-1.5 space-y-1 border-l-2 border-zinc-200 pl-3">
+      {% for option in task.options.all %}
+        <li class="{% if option.chosen %}font-medium text-zinc-900{% else %}text-zinc-600{% endif %}">
+          {% if option.chosen %}✓ {% endif %}{{ option.title }}{% if option.est_cost is not None %} <span class="text-zinc-500">~{{ option.est_cost }} {{ option.currency }}</span>{% endif %}{% if option.url %} <a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">↗</a>{% endif %}
+          {% if option.detail %}<span class="block text-xs text-zinc-500">{{ option.detail }}</span>{% endif %}
+          {% if option.chosen and can_edit and not task.done %}<span class="block text-xs"><a class="link-quiet font-medium" href="{% url 'trips:option_add' trip.pk option.pk %}?as=stay">Add as a stay</a> · <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}">Add as an activity…</a></span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if can_edit %}
+    <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">Edit</a>
+      <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% else %}Mark done{% endif %}</button></form>
+      {% if not task.done %}<a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a>{% endif %}
+      <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ request.path|urlencode }}">Delete</a>
+    </div>
+  {% endif %}
+</li>

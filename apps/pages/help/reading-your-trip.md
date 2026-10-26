@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the days at a glance, each day's plan
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-23
+updated: 2026-10-26
 
 # Reading your trip
 
@@ -65,7 +65,7 @@ Editors also see **Edit this day** at the top of each open day, and **Edit** bes
 The home of the trip's confirmations, contacts and to-dos. Everything elsewhere on the page links here.
 
 - **Confirmations**, grouped as Flights, Trains, Stays, Activities, Meals and Other. Each shows the number in large type (easy to read out at a desk), who it's with, what it covers (click to jump to it), who it's for, and **Manage booking ↗** when there's a link. Insurance and passes are under Other.
-- **Still to book**: tasks, most urgent first, each saying what it's for and on which day. A decision reads **Decide:** with its options, the chosen one ticked.
+- **Still to book**: tasks, most urgent first, each saying what it's for and on which day. A decision reads **Decide:** with its options, the chosen one ticked. **All to-dos** opens the trip's [To do page](/help/bookings-and-confirmations/#the-to-do-page), where editors add and tick them off.
 - **Not booked yet**: flights, trains, stays and bookable activities that have no confirmation and no task yet.
 - **Contacts**: name, role, phone (tap to call), email, website and address, with **On:** links to the days they matter.
 - **Info**: the trip's know-how, such as ticket rules or a tent guide, with **On:** links.

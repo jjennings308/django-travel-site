@@ -63,6 +63,12 @@ Reference keeps two lists:
 
 When you add the first confirmation to something that has open tasks, the site asks **Mark these done?** Tick the tasks that are finished and click **Mark ticked done**, or click **Not yet**.
 
+## The To do page
+
+**To do** lists every task on the trip: open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg") and a decision shows its options. Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
+
+Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**), **Options** and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
+
 ## Decisions with options
 
 Some tasks are a choice, such as which hotel to book. Make the task a decision by giving it options:

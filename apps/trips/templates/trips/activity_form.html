@@ -25,12 +25,7 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
     </div>
   </form>
   {% if activity %}
-    {% if activity.booking_tasks.all %}
-      <section class="card mt-6 p-5">
-        <h2 class="form-section-title mb-2">Booking tasks</h2>
-        <ul class="list-disc pl-5 text-sm">{% for task in activity.booking_tasks.all %}<li>{% if task.done %}<s>{{ task.title }}</s>{% else %}{{ task.title }}{% endif %}</li>{% endfor %}</ul>
-      </section>
-    {% endif %}
+    {% include "trips/partials/_item_todos.html" with kind="activity" item=activity open_tasks=open_tasks %}
     {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
     {% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}
   {% else %}

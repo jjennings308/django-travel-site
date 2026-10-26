@@ -1,0 +1,33 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+The trip's to-dos (trips:trip_todo, edit-by-day plan E2): open ones by priority and due date, then the done ones folded away. Anyone who can see the trip reads it; editors add, edit and tick off here. Linked from the Needs attention banner and Reference.
+{% endcomment %}
+{% block title %}To do — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-4xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>To do</span>
+  </nav>
+  <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+    <h1 class="page-title">To do {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" %}</h1>
+    {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}
+  </div>
+  <p class="mb-4 text-sm text-zinc-500">Things still to book or decide for this trip, most urgent first. One that's about a journey, stay or activity also shows on it.</p>
+  {% if open_tasks %}
+    <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-open-tasks>
+      {% for task in open_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">Nothing to do.{% if can_edit %} Add a to-do for anything still to book or decide.{% endif %}</p>
+  {% endif %}
+  {% if done_tasks %}
+    <details class="mt-6" data-done-tasks>
+      <summary class="cursor-pointer text-sm font-medium text-zinc-700">Done ({{ done_tasks|length }})</summary>
+      <ul class="card mt-2 divide-y divide-zinc-100 p-0 text-sm">
+        {% for task in done_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+{% endblock %}

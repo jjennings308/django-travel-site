@@ -1053,8 +1053,13 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             raise forms.ValidationError("A task is about one leg, stay or activity, not several.")
         return cleaned
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if trip is not None:
+            # On its own page (trips:task_new / task_edit, edit-by-day plan E2) the form narrows its
+            # own pickers to the trip, as ScopedBookingTaskFormSet does for the Edit trip rows.
+            for name in ScopedBookingTaskFormSet.trip_scoped_fields:
+                self.fields[name].queryset = self.fields[name].queryset.filter(trip=trip)
         # Kind defaults to "book" when a post leaves it out (older forms, the admin inline, scripts).
         self.fields["kind"].required = False
         # `order` has a model default of 0 but is not blank, so a ModelForm
