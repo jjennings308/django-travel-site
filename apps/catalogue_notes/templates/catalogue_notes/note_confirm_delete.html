@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Delete note — {{ note.target_name }}{% endblock %}
+{% block content %}
+  <div class="mx-auto max-w-xl">
+    <form method="post" class="sbl-card p-6">
+      {% csrf_token %}
+      <h1 class="sbl-page-title">Delete this note?</h1>
+      <p class="mt-2 text-warm-700">“{{ note.text|truncatechars:160 }}” on {{ note.target_name }}. Trips stop showing it.</p>
+      <div class="mt-4 flex gap-3">
+        <button type="submit" class="sbl-btn sbl-btn-danger">Delete</button>
+        <a class="sbl-btn sbl-btn-secondary" href="{{ back }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

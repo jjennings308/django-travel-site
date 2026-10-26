@@ -5,8 +5,10 @@ from django.db.migrations.executor import MigrationExecutor
 
 # trips 0044 (R18) needs today's activities, so trips is pinned below it.
 TRIPS = ("trips", "0043_alter_comment_author")
-BEFORE = [("activities", "0009_activity_location_recurrence"), TRIPS]
-AFTER = [("activities", "0010_link_suggested_locations"), TRIPS]
+# catalogue_notes 0001 needs today's locations, activities and events, so it is unapplied while they step back.
+NOTES = ("catalogue_notes", None)
+BEFORE = [("activities", "0009_activity_location_recurrence"), TRIPS, NOTES]
+AFTER = [("activities", "0010_link_suggested_locations"), TRIPS, NOTES]
 
 
 class LinkLocationsMigrationTests(RestoringTransactionTestCase):
@@ -18,7 +20,7 @@ class LinkLocationsMigrationTests(RestoringTransactionTestCase):
         nodes = [(app, pinned.get(app, name)) for app, name in executor.loader.graph.leaf_nodes()]
         executor.migrate(nodes)
         executor.loader.build_graph()
-        return executor.loader.project_state(nodes).apps
+        return executor.loader.project_state([n for n in nodes if n[1] is not None]).apps  # (app, None): not applied
 
     def tearDown(self):
         self.migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())

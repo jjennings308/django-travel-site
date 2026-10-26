@@ -1,0 +1,6 @@
+{# templates/partials/_catalogue_notes.html — the Good to know card on place, activity and event pages (docs/plans/catalogue-notes.md). Pass kind ("poi", "activity", "event") and obj. The notes load after the page from catalogue_notes:for_target, so the page pays no query and the catalogue apps don't depend on catalogue_notes. #}
+{% url 'catalogue_notes:for_target' kind obj.slug as notes_url %}{% if notes_url %}
+<section id="good-to-know" class="sbl-card scroll-mt-20 p-6" x-data="{ html: '', async load() { try { const r = await fetch('{{ notes_url }}'); if (r.ok) this.html = await r.text(); } catch (e) {} } }" x-init="load()">
+  <div x-html="html"><h2 class="text-xl font-semibold text-warm-900"><i class="bi bi-info-circle"></i> Good to know</h2><p class="mt-2 text-sm text-warm-500">Loading…</p></div>
+</section>
+{% endif %}

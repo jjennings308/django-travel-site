@@ -21,6 +21,7 @@ from django.utils import timezone
 from apps.accounts.models import RoleRequest
 from apps.activities.models import Activity
 from apps.approval_system.models import ApprovalLog, ApprovalSettings, ApprovalStatus
+from apps.catalogue_notes.models import CatalogueNote
 from apps.bucketlists.models import BucketListItem
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
@@ -33,7 +34,7 @@ LIST_LIMIT = 5
 
 # Content that goes through approval, in the order it is shown.
 APPROVABLE = [
-    ("Activities", Activity), ("Events", Event), ("Places (POIs)", POI),
+    ("Activities", Activity), ("Events", Event), ("Places (POIs)", POI), ("Catalogue notes", CatalogueNote),
     ("Cities", City), ("Regions", Region), ("Countries", Country),
 ]
 

@@ -29,6 +29,7 @@ graph TD
         activities
         vendors
         events
+        catalogue_notes
     end
 
     subgraph L2["2 · Platform services"]
@@ -79,6 +80,11 @@ graph TD
     vendors --> locations
     events --> locations
     events --> activities
+    catalogue_notes --> locations
+    catalogue_notes --> activities
+    catalogue_notes --> events
+    catalogue_notes --> approval_system
+    catalogue_notes --> notifications
 
     approval_system --> notifications
 

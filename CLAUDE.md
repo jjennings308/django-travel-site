@@ -112,7 +112,8 @@ python manage.py migrate
 - A migration test that steps an app back (e.g. `trips` to 0022) must also pin every *other* app whose
   newer migrations need that app's newer state — today `rewards` (0003 runs after trips 0042) and `reviews`
   (0004 depends on today's trips); and one that steps `activities` back must pin `trips` (0043: trips 0044 needs
-  today's activities and locations) — or the old state can't be reached and the test errors (and a failed
+  today's activities and locations), and one that steps `locations`, `activities` or `events` back must pin
+  `catalogue_notes` to zero (`("catalogue_notes", None)`: its 0001 needs today's catalogue) — or the old state can't be reached and the test errors (and a failed
   migration test can leave the parallel copies half-migrated, which hangs the next parallel run: drop
   every `test_travel_site*` database and rerun).
 - `tblib` (in `requirements-dev.txt`) lets the parallel runner report a failing test's traceback;
@@ -212,6 +213,17 @@ App models are built from abstract mixins: `TimeStampedModel`, `UUIDModel`, `Slu
 User-submitted content inherits the `apps.approval_system.models.Approvable` mixin. It adds `approval_status`, priority, submitted/reviewed-by fields and an `ApprovalLog` audit trail. Admin classes add `ApprovableAdminMixin`. When filtering for public visibility, use `approval_status=ApprovalStatus.APPROVED`.
 - `locations` models (Country, Region, City, POI) still carry the old `ReviewableMixin` (`status` field) next to `Approvable`. A migration from the old system is in progress (see `apps/approval_system/MIGRATION_GUIDE.md`). New code should use the `Approvable` fields. Both mixins define `approve()` / `reject()` / `request_changes()` and `ReviewableMixin` comes first in the MRO, so its versions set the legacy `status` and then call `super()` to reach `Approvable` (which owns `approval_status` and `ApprovalLog`). Keep that `super()` call, or approvals silently stop moving locations out of the pending queue.
 - `Activity` also uses `Approvable`. App-level docs are in `apps/approval_system/*.md` and `apps/accounts/docs/`.
+- **Catalogue notes** (`apps/catalogue_notes`, layer 3 after `events`; plan `docs/plans/catalogue-notes.md`): a
+  `CatalogueNote` (`Approvable`; exactly one of `poi` / `activity` / `event`, `catalogue_note_one_target`; tone tip /
+  warning / critical, text, `closed_weekdays` (0 = Monday), `book_ahead` + `book_ahead_unit`, `booking_url`,
+  `checked_on`) is a fact a traveller should know about a place, activity or event. Members' notes are pending until
+  approved in the "Catalogue notes" queue (catalogue_notes 0002); staff's are published. `services.notes_for(target,
+  user)`: own, then inherited — an event's activity and venue (`Event.poi`), an activity's venue — each inherited one
+  marked `from_name`; approved for everyone, plus a member's own pending ones, everything for staff. The **Good to
+  know** card on place / activity / event pages is the shell partial `partials/_catalogue_notes.html` (loads
+  `catalogue_notes:for_target` after the page, as reviews do, so the catalogue apps never import it); add / edit /
+  delete (writer until approved, staff always) and report ("Out of date?", `content_reported` to staff). Listed in the
+  staff dashboard's approvals; `/notes/` is disallowed in robots.txt.
 - **Lifecycle:** an *activity* is an undated idea ("Go to Oktoberfest") with an optional catalogue place (`country` / `region` / `city`; a city fills in the other two on save; `suggested_location` is free text for unlisted places, `place_name` renders either) and `recurrence` (anytime / yearly / seasonal / once) plus `usual_months`. A recurring activity has **one event per occurrence** (Oktoberfest 2026, Oktoberfest 2027), never one repeating event: each year has its own dates, prices, approval, bucket items and trips (`Event.is_recurring` is unused). On an event of a yearly activity, "Add <next year> dates" opens `/events/add/?copy=<pk>` with the dates moved a year on (or links next year's event if it exists); for a several-times-a-year (`seasonal`) activity such as a team's home games it is "Add another date" (`?copy=<pk>&another=1`: same details, date blank) — `events.views._next_date_link`. An activity may name a `venue` (a POI; fills in its city), events have `poi` as their venue (on `EventForm`, pre-filled from the activity), and the CSV import has activity `venue` / event `place` columns. The activity page's Dates card groups events by season (`Activity.dates_by_season` / `season_label`: when `usual_months` wraps New Year a January game belongs to the season that started the autumn before, "2026–27") with past dates folded away. The region/city selects are filtered by country in the browser by `locations/country_filter.js` + `apps.locations.widgets.CountryTaggedSelect` (also used by the city admin). An *event* is a dated occurrence of it (`Event.related_activity`, e.g. Oktoberfest 2027; `/events/?activity=<slug>` lists an activity's dates and `/events/add/?activity=<pk>` pre-fills one); a *trip* is the plan for going. Activities and events share ONE category list (`activities.ActivityCategory`; `EventCategory` was removed in events 0005/0006, which copied categories across by name). An event with no category takes its activity's. The activity page links to its dates via the shell partial `partials/_activity_dates_links.html` (`url … as`), so activities doesn't depend on events.
 - **One look for activities and events:** detail pages use the shared `partials/_detail_header.html` (banner with picture or clay background, category, title, date/recurrence and place, approval badge with a one-line explanation) and the same layout (sections left; Quick Info and Actions cards right); list pages (`activity_list`, `my_activities`, `event_list`, `my_events`) use the shared `partials/_catalogue_card.html`. Change both through those partials. (`my_activities.html` used to be a symlink to `activity_list.html`; it is a real template now.)
 - **Pictures:** activities and events have an optional `featured_media` (FK to `media_app.Media`, like places). Their forms use `apps.media_app.forms.PictureFormMixin` (`setup_picture()` in `__init__`, `save_picture(user)` after save; views pass `request.FILES`, templates use `enctype="multipart/form-data"` and `partials/_picture_field.html`): an upload becomes a `Media` row attached to the object, scaled to at most 2400 px (`apps.core.utils.images.shrink_image`), max 20 MB (nginx allows 25). A new event of an activity starts with the activity's picture (`Event.save()` on create, so the form, CSV import and admin all do it; the same `Media` row), and an event copied to next year keeps last year's picture instead; either is replaced for that event only by uploading one (or removed with "Remove the current picture"). **Shown picture:** templates use `display_media`, never `featured_media`, for activities and events: their own picture, else (events) the activity's, else the place's — venue, city, region, country (`PICTURE_PATHS`, walked by `apps.media_app.pictures.first_media`, images only). List views `select_related(*Model.PICTURE_RELATED)` so cards cost no extra query; edit forms still show only the object's own picture.
@@ -819,7 +831,7 @@ in the table are app labels; the code is at `apps/<label>/`.
 | 0. Base | `core` | nothing local — Django and third-party only |
 | 1. Identity | `accounts` | `core` |
 | 2. Platform services | `notifications`, `media_app`, `approval_system`, `rewards` | layers 0–1 (`approval_system` → `notifications` is allowed) |
-| 3. Catalog | `locations`, `activities`, `vendors`, `events` | layers 0–2; within the layer: `activities` → `locations`; `vendors` → `locations`; `events` → `locations`, `activities` |
+| 3. Catalog | `locations`, `activities`, `vendors`, `events`, `catalogue_notes` | layers 0–2; within the layer: `activities` → `locations`; `vendors` → `locations`; `events` → `locations`, `activities`; `catalogue_notes` → `locations`, `activities`, `events` |
 | 4. User content | `bucketlists`, `trips`, `reviews`, `recommendations` | layers 0–3; within the layer: `bucketlists`, `reviews` and `recommendations` → `trips`; `bucketlists` → `reviews` |
 | 5. Site | `pages`, `admin_tools` | anything |
 
@@ -1180,7 +1192,8 @@ Plan: `docs/plans/catalogue-notes.md` (notes on catalogue places, activities and
 weekdays, how far ahead to book — added by members and approved by staff, shown on the catalogue pages and under
 every trip item linked to them, web and PDF; warnings for closed days and book-by dates; hide per trip; events on
 trip items; a tidy suggestion to move a trip's place-specific callouts to the catalogue). Decisions answered
-2026-10-26. Phases N1–N5, one branch each, in order. Status: not started.
+2026-10-26. Phases N1–N5, one branch each, in order. Status: N1 (notes on catalogue pages) done on branch
+`n1-catalogue-notes`; N2–N5 not started.
 
 ### Rules carried over from the itinerary project
 

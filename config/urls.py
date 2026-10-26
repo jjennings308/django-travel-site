@@ -51,6 +51,7 @@ urlpatterns = [
     path('approval/', include('apps.approval_system.urls')),
     path('notifications/', include('apps.notifications.urls')),
     path('reviews/', include('apps.reviews.urls')),
+    path('notes/', include('apps.catalogue_notes.urls')),
 ]
 
 if settings.DEBUG:
