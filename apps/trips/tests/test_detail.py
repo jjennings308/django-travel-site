@@ -545,7 +545,7 @@ class QueryCountTests(DetailFixture):
         # - the rewards context processor's query on every page (removed in R11)
         # - UserTimezoneMiddleware's own query: since R21 it reads the same AccountSettings row as
         #   UserThemeMiddleware (it used to read the deprecated UserPreferences) = 31.
-        with self.assertNumQueries(31):
+        with self.assertNumQueries(32):  # 31 + the catalogue notes of its linked items (catalogue-notes N2)
             response = self.get()
         self.assertEqual(response.status_code, 200)
 

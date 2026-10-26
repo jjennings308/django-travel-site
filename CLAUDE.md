@@ -364,6 +364,14 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   people on `trip.travelers`). `reviews:trip_rate` (`/reviews/trip/<pk>/rate/`), linked from a finished trip's
   About this trip by URL name. The daily `send_trip_digests` fires `trips.signals.daily_run`, which reviews
   answers by calling `ask()` (no extra cron); `manage.py ask_trip_ratings` runs it by hand.
+- **Catalogue notes on a trip** (catalogue-notes plan N2; trips 0046): `apps/trips/trip_notes.attach(trip, days)`
+  (trip page and booklet, after the prefetch) gives each meal / trip activity / section linked to the catalogue its
+  approved notes in one query — a section's activity first, then that activity's venue, then its place — as
+  `item.trip_notes`, and `item.hidden_trip_notes` for those an editor hid on this trip (`trips.TripHiddenNote`, unique
+  trip + note; `trips:trip_note_hide`, POST, `show=1` to bring one back). Shown under the item
+  (`partials/_trip_notes.html`, "From <place> · checked Mon YYYY", Not for this trip for editors) and printed in the
+  booklet (`pdf/_notes.html`, hidden ones skipped; the snapshot fixture has two notes and a hidden one). Never in the
+  public view.
 - **Trip items linked to the catalogue** (site roadmap R18; trips 0044, locations 0014/0015, activities 0014):
   `Meal.poi` (a notable restaurant: most meals stay typed text) and `Section.poi` / `Section.activity`, optional,
   SET_NULL; choices are the trip's cities (`forms.catalogue_places` — Food & drink first for meals — and
@@ -688,7 +696,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
   day / leg / stay / activity / confirmation pickers to the trip.
-- **The detail page** holds a fixed query count (31 here — R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
+- **The detail page** holds a fixed query count (32 here — N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -1193,7 +1201,8 @@ weekdays, how far ahead to book — added by members and approved by staff, show
 every trip item linked to them, web and PDF; warnings for closed days and book-by dates; hide per trip; events on
 trip items; a tidy suggestion to move a trip's place-specific callouts to the catalogue). Decisions answered
 2026-10-26. Phases N1–N5, one branch each, in order. Status: N1 (notes on catalogue pages) done on branch
-`n1-catalogue-notes`; N2–N5 not started.
+`n1-catalogue-notes`; N2 (notes on the trip page and in the PDF, Not for this trip) done on branch `n2-notes-on-trips`;
+N3–N5 not started.
 
 ### Rules carried over from the itinerary project
 

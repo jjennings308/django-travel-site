@@ -103,6 +103,7 @@ urlpatterns = [
     path("<int:pk>/days/<int:day_pk>/stays/new/", views.stay_new, name="stay_new"),
     path("<int:pk>/stays/<int:stay_pk>/", views.stay_edit, name="stay_edit"),
     path("<int:pk>/stays/<int:stay_pk>/delete/", views.stay_delete, name="stay_delete"),
+    path("<int:pk>/notes/<int:note_pk>/hide/", views.trip_note_hide, name="trip_note_hide"),
     path("<int:pk>/confirmations/<str:kind>/<int:item_pk>/", views.item_confirmations, name="item_confirmations"),
     path("<int:pk>/tasks/<int:task_pk>/link/", views.task_link, name="task_link"),
     path(
