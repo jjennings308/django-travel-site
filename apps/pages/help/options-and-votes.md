@@ -28,7 +28,7 @@ Anyone who can comment on the trip can vote: click **👍** on the option you'd 
 
 ## Picking
 
-Editors click **Pick** on an option. Its items then count as the day's own: they join the timeline, Not booked yet, the cost estimate, the map and the calendar. The other options aren't deleted: the day shows **Chosen from: Afternoon (2 options) — Castle**, which opens the options **Considered**, with their votes. **Reopen the choice** there makes it undecided again.
+Editors click **Pick** on an option. Its items then count as the day's own: they join the timeline, Not booked yet, the cost estimate, the map and the calendar. The other options aren't deleted: the day shows **Chosen from: Afternoon (2 options) — Castle**, which opens the options **Considered**, with their votes. **Reopen the choice** there makes it undecided again. **Save for someday** beside a considered option adds it to your own bucket list ([ideas and goals](/help/ideas-and-goals/#save-for-someday)).
 
 Picking and reopening are in the trip's [history](/help/trip-history/); **Undo** on a pick reopens the choice.
 
@@ -50,6 +50,7 @@ Editors make a choice on a day in either of two ways:
 
 - **+ Add** at the end of the day: type what's being decided ("Afternoon") and click **Options** ([adding a day](/help/adding-a-day/#add-to-a-day)).
 - The day's page: **+ Choose one** under **Add to this day**.
+- An idea on the trip's Ideas shelf: **Add as an option** ([ideas and goals](/help/ideas-and-goals/#making-an-idea-an-option)).
 
 Either opens the choice's page: what's being decided, an optional time (it then sits in the timeline), notes, and its **Options** (title, notes, a link, an estimated cost). Save, and each saved option gets a box to add things straight into it: type a line such as "Train Munich → Füssen 9:15" or "Dinner Augustiner 7pm", as in + Add.
 

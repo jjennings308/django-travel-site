@@ -415,9 +415,10 @@ class QueryCountTests(DetailFixture):
         #   UserThemeMiddleware (it used to read the deprecated UserPreferences) = 31.
         # 32 = 31 + the catalogue notes of its linked items (catalogue-notes N2); 35 = 32 + the "choose one"
         # groups, their options and the options' votes with who voted (day-first plan P4), however many;
-        # 36 = 35 + who takes each option when a group is split (P5).
+        # 36 = 35 + who takes each option when a group is split (P5); 38 = 36 + the Ideas shelf and its
+        # votes (P6; the day fragment doesn't load the shelf, so it stays at 36).
         # (An option mixing currencies adds the two rate queries once, as the cost estimate does.)
-        with self.assertNumQueries(36):
+        with self.assertNumQueries(38):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 
@@ -564,6 +565,12 @@ class QueryCountTests(DetailFixture):
                 option = Option.objects.create(group=group, title=f"Option {n}", est_cost=10, currency="EUR")
                 TripActivity.objects.create(trip=self.trip, day=day, title=f"In option {n}", option=option)
                 Vote.objects.create(user=self.reader, option=option)
+        # Ideas on the shelf (P6), typed and from the catalogue, with votes.
+        from apps.trips.models import TripIdea
+        for n in range(5):
+            idea = TripIdea.objects.create(trip=self.trip, title=f"Idea {n}", added_by=self.reader,
+                                           city=self.trip.days.first().city)
+            Vote.objects.create(user=self.reader, idea=idea)
 
 
 class DayFragmentQueryTests(QueryCountTests):

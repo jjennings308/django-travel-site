@@ -1,0 +1,20 @@
+{% comment %}
+templates/partials/_idea_goals.html — on a trip's Ideas shelf (day-first plan P6): whose bucket-list goals each idea is. Loads bucketlists:idea_goals (JSON {"ideas": {"<idea id>": "Debbie's goal"}}) after the page and fills each [data-idea-goal="<id>"]. url … as, no query, so trips doesn't depend on bucketlists. Pass trip=.
+{% endcomment %}
+{% url 'bucketlists:idea_goals' trip.pk as idea_goals_url %}{% if idea_goals_url %}
+<span hidden data-idea-goals-url="{{ idea_goals_url }}"></span>
+<script>
+  (function () {
+    var source = document.querySelector("[data-idea-goals-url]");
+    if (!source) return;
+    fetch(source.dataset.ideaGoalsUrl, {headers: {"X-Requested-With": "fetch"}, credentials: "same-origin"})
+      .then(function (r) { return r.ok ? r.json() : {ideas: {}}; })
+      .then(function (data) {
+        Object.keys(data.ideas || {}).forEach(function (id) {
+          document.querySelectorAll('[data-idea-goal="' + id + '"]').forEach(function (el) { el.textContent = "🎯 " + data.ideas[id]; });
+        });
+      })
+      .catch(function () {});
+  })();
+</script>
+{% endif %}

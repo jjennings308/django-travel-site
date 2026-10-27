@@ -450,7 +450,13 @@ def trip_detail(request, pk):
     screen and a hundred.
     """
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
-    return render(request, "trips/trip_detail.html", _trip_page_context(request, trip))
+    context = _trip_page_context(request, trip)
+    # The Ideas shelf (day-first plan P6): two queries, the whole page only (not a day's fragment).
+    from . import ideas
+    all_ideas = ideas.load(trip, request.user)
+    context.update({"ideas": [idea for idea in all_ideas if idea.on_shelf], "idea_count": len(all_ideas),
+                    "idea_kinds": ideas.KINDS})
+    return render(request, "trips/trip_detail.html", context)
 
 
 def _trip_page_context(request, trip):
@@ -1834,6 +1840,8 @@ def trip_map_data(request, pk):
                     else f"{leg.departure_local_date} {leg.departure_local_str}"), leg.notes[:80] if leg.is_planned else "") if p),
             },
         })
+    from .ideas import map_features
+    features += map_features(trip)  # the Ideas layer (P6): faint pins, off by default
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
@@ -2205,44 +2213,15 @@ def group_delete(request, pk, group_pk):
 
 
 # ---- + Add: one line on a day (day-first plan, P3) --------------------------------------------
-@login_required
-@require_POST
-def quick_add(request, pk, day_pk):
-    """Make a rough item on a day from one typed line (``apps/trips/quick_add.py``; a kind button
-    forces the kind), then send the editor to its page: as JSON for the trip page's panel (``{"url",
-    "anchor"}``), else a redirect to the page, which comes back to the day."""
+def _make_on_day(trip, day, found):
+    """Make the item ``quick_add.parse`` found (``found``) on ``day``; returns (item, its page, its anchor
+    on the trip page, a label). Shared by + Add (P3) and putting an idea on a day (P6)."""
     from datetime import timedelta
     from django.db.models import Max
-    from django.http import JsonResponse
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import City
-    from . import currencies, quick_add as parser
+    from . import currencies
     from .logistics import match_city
-    trip, day = _editable_day(request, pk, day_pk)
-    # JSON for the trip page's + Add; from inside the panel (?panel=1) the usual redirects.
-    wants_json = request.headers.get("X-Requested-With") == "fetch" and not _is_panel(request)
-    from .models import Option
-    in_option = None
-    if request.POST.get("option", "").isdigit():  # added straight into an option (the group's page, P4)
-        in_option = get_object_or_404(Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"])
-    text = " ".join(request.POST.get("text", "").split())[:300]
-    kind = request.POST.get("kind", "")
-    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
-    if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
-        from .models import OptionGroup
-        group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
-                                           order=day.option_groups.count())
-        url = reverse("trips:group_edit", args=[trip.pk, group.pk])
-        messages.success(request, f"Added “{group.prompt}” to Day {day.day_number}: add its options.")
-        if wants_json:
-            return JsonResponse({"url": url, "anchor": f"group-{group.pk}"})
-        return redirect(f"{url}?next={quote(back)}")
-    if not text and kind not in parser.KINDS:
-        if wants_json:
-            return JsonResponse({"error": "Type what to add, or pick a kind."}, status=400)
-        messages.error(request, "Type what to add, or pick a kind.")
-        return redirect(back)
-    found = parser.parse(text, kind=kind or None)
 
     def next_order(queryset):
         return (queryset.aggregate(m=Max("order"))["m"] or 0) + 1
@@ -2284,6 +2263,43 @@ def quick_add(request, pk, day_pk):
         item = Section.objects.create(day=day, section_type=Section.Type.NOTE, order=next_order(day.sections.all()),
                                       content={"tone": "", "paragraphs": [found["text"]] if found["text"] else []})
         url, anchor, label = reverse("trips:section_edit", args=[trip.pk, day.pk, item.pk]), f"section-{item.pk}", "a note"
+    return item, url, anchor, label
+
+
+@login_required
+@require_POST
+def quick_add(request, pk, day_pk):
+    """Make a rough item on a day from one typed line (``apps/trips/quick_add.py``; a kind button
+    forces the kind), then send the editor to its page: as JSON for the trip page's panel (``{"url",
+    "anchor"}``), else a redirect to the page, which comes back to the day."""
+    from django.http import JsonResponse
+    from . import quick_add as parser
+    trip, day = _editable_day(request, pk, day_pk)
+    # JSON for the trip page's + Add; from inside the panel (?panel=1) the usual redirects.
+    wants_json = request.headers.get("X-Requested-With") == "fetch" and not _is_panel(request)
+    from .models import Option
+    in_option = None
+    if request.POST.get("option", "").isdigit():  # added straight into an option (the group's page, P4)
+        in_option = get_object_or_404(Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"])
+    text = " ".join(request.POST.get("text", "").split())[:300]
+    kind = request.POST.get("kind", "")
+    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
+        from .models import OptionGroup
+        group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
+                                           order=day.option_groups.count())
+        url = reverse("trips:group_edit", args=[trip.pk, group.pk])
+        messages.success(request, f"Added “{group.prompt}” to Day {day.day_number}: add its options.")
+        if wants_json:
+            return JsonResponse({"url": url, "anchor": f"group-{group.pk}"})
+        return redirect(f"{url}?next={quote(back)}")
+    if not text and kind not in parser.KINDS:
+        if wants_json:
+            return JsonResponse({"error": "Type what to add, or pick a kind."}, status=400)
+        messages.error(request, "Type what to add, or pick a kind.")
+        return redirect(back)
+    found = parser.parse(text, kind=kind or None)
+    item, url, anchor, label = _make_on_day(trip, day, found)
     if in_option is not None:
         item.option = in_option
         item.save(update_fields=["option"])

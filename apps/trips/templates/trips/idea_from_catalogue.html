@@ -1,0 +1,32 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+"Add to a trip" from a catalogue place, activity, event or city (trips:idea_from_catalogue, day-first plan P6): the member's trips that aren't over and that they may add ideas to; the chosen trip's Ideas shelf gets it.
+{% endcomment %}
+{% block title %}Add {{ target.name }} to a trip{% endblock %}
+{% block wrap_class %}max-w-2xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <span>Add to a trip</span>
+  </nav>
+  <div class="card p-6">
+    <h1 class="page-title mb-1">Add “{{ target.name }}” to a trip</h1>
+    <p class="mb-4 text-zinc-500">It goes on the trip's Ideas shelf, where everyone on the trip can see it and vote, and an editor can put it on a day. {% include "partials/_help_link.html" with slug="ideas-and-goals" label="ideas" text="How this works" %}</p>
+    {% if trips %}
+      <ul class="space-y-2" data-trip-choices>
+        {% for trip in trips %}
+          <li>
+            <form method="post" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 px-4 py-3">
+              {% csrf_token %}<input type="hidden" name="trip" value="{{ trip.pk }}">
+              <span><span class="font-medium">{{ trip.name }}</span> <span class="text-sm text-zinc-500">{{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}</span></span>
+              <button type="submit" class="btn-quiet px-3 py-1">Add to this trip</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="note">You have no trips coming up that you can add ideas to. <a class="link-quiet font-medium" href="{% url 'trips:trip_create' %}">Start a trip</a> first.</p>
+    {% endif %}
+    {% if back %}<p class="mt-4"><a class="btn-quiet" href="{{ back }}">Back</a></p>{% endif %}
+  </div>
+{% endblock %}

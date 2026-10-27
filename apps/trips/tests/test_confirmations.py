@@ -26,8 +26,10 @@ class MoveNumbersMigrationTests(RestoringTransactionTestCase):
     REWARDS = ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more")
     # reviews 0004 (R17) needs today's trips too, so it's pinned below it as well.
     REVIEWS = ("reviews", "0003_alter_review_user")
-    BEFORE = [("trips", "0022_confirmation_links"), REWARDS, REVIEWS]
-    AFTER = [("trips", "0023_move_confirmation_numbers"), REWARDS, REVIEWS]
+    # bucketlists 0007 (P6) needs today's trips.
+    GOALS = ("bucketlists", "0006_badge_code")
+    BEFORE = [("trips", "0022_confirmation_links"), REWARDS, REVIEWS, GOALS]
+    AFTER = [("trips", "0023_move_confirmation_numbers"), REWARDS, REVIEWS, GOALS]
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)

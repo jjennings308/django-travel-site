@@ -11,8 +11,10 @@ from django.db.migrations.executor import MigrationExecutor
 TRIPS = ("trips", "0043_alter_comment_author")
 # catalogue_notes 0001 needs today's locations, activities and events, so it is unapplied while they step back.
 NOTES = ("catalogue_notes", None)
-BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS, NOTES]
-AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS, NOTES]
+# bucketlists 0007 (P6) needs today's trips, so it steps back with them.
+GOALS = ("bucketlists", "0006_badge_code")
+BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS, NOTES, GOALS]
+AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS, NOTES, GOALS]
 
 
 class SharedCategoryMigrationTests(RestoringTransactionTestCase):

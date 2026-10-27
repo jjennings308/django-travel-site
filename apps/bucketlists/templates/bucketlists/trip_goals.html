@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{# bucketlists/trip_goals.html — the user's goals on one trip, and their open goals to add (bucketlists:trip_goals) #}
+{# bucketlists/trip_goals.html — the user's goals on one trip, and their open goals to add (bucketlists:trip_goals); adding puts them on the trip's Ideas shelf (P6) #}
 
 {% block title %}Goals for {{ trip.name }}{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
@@ -7,7 +7,7 @@
 {% block content %}
 <div class="mx-auto max-w-3xl space-y-6">
   <header>
-    <h1 class="sbl-page-title">Bucket-list goals for this trip</h1>
+    <h1 class="sbl-page-title">Your bucket-list goals on this trip</h1>
     <p class="sbl-page-subtitle"><a class="sbl-link" href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a> · {{ trip.start_date|date:"M j" }} – {{ trip.end_date|date:"M j, Y" }}{% if trip.destination %} · {{ trip.destination }}{% endif %}</p>
   </header>
 
@@ -35,7 +35,7 @@
 
   <section class="sbl-card p-6">
     <h2 class="mb-1 text-lg font-semibold text-warm-900">Add goals</h2>
-    <p class="sbl-help mb-3">Your open goals. Ones whose dates fall on this trip come first; a goal already on another trip moves to this one.</p>
+    <p class="sbl-help mb-3">Your open goals. Ones whose dates fall on this trip come first; a goal already on another trip moves to this one. Each goes on the trip's <a class="sbl-link" href="{{ shelf }}">Ideas shelf</a>, where everyone on the trip sees it and an editor can put it on a day.</p>
     {% if available %}
       <form method="post">
         {% csrf_token %}

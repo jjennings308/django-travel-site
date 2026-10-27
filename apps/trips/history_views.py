@@ -15,7 +15,7 @@ from . import changes
 from .models import Trip, TripChange
 
 ANCHORS = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity", "meal": "meal",
-           "confirmation": "confirmation"}
+           "confirmation": "confirmation", "tripidea": "idea"}
 
 
 def _anchor(change):

@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`); P5 done (2026-10-27, branch `p5-split`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`); P5 done (2026-10-27, branch `p5-split`). P6 done (2026-10-27, branch `p6-ideas`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -220,6 +220,16 @@ nights say "Sleeping (who): …"); undo on a split reopens it.
 - Help: `options-and-votes` (split); bump `updated`.
 
 ### P6 — Ideas shelf and the bucket-list link
+
+Done (branch `p6-ideas`). As built: `kind_hint` is optional — an idea's kind otherwise comes from its catalogue link (a
+Food & drink place is somewhere to eat; an event, activity or place something to do; else a note) and "Put on a day"
+lets the editor pick another; "Add as an option" makes the option and, for a catalogue-linked idea, its item inside it;
+a goal becomes an idea only when its owner may comment on the trip (a viewer's goal is just linked, as before); a goal
+counts as its owner's vote (a `Vote` is made); goals about the same catalogue item share one idea; "whose goal" reads
+"Debbie's goal" / "Debbie's and your goals"; the `trip_goals` page is kept (your goals on the trip, remove, add others)
+and returns to the shelf instead of redirecting; Add to a trip is on city pages too; the shelf loads on the trip page
+only (38 queries; the day fragment stays 36); ideas are in the change history and the Your data export, not in the
+booklet or calendar.
 
 - **`TripIdea`** (trips): trip, `title`, `notes`, optional catalogue link (`city` / `poi` / `activity` / `event`, at
   most one), `added_by`, `kind_hint` (travel / stay / do / eat), `placed_type` + `placed_id` (generic link to the

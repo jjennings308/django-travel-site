@@ -65,6 +65,17 @@ class BucketListItem(TimeStampedModel):
         help_text="Trip planned for this item"
     )
 
+    # The idea this goal became on its trip's Ideas shelf (day-first plan P6): the precise link.
+    # ``trip`` stays, filled in from the idea on save. Ideas live in trips, which never reads this.
+    trip_idea = models.ForeignKey(
+        'trips.TripIdea',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='goals',
+        help_text="Idea on the trip's shelf this goal became"
+    )
+
     categories = models.ManyToManyField(
         'BucketListCategory',
         through='BucketListItemCategory',
@@ -225,6 +236,23 @@ class BucketListItem(TimeStampedModel):
     
     def __str__(self):
         return f"{self.user.username}'s: {self.title}"
+
+    def save(self, *args, **kwargs):
+        # The trip follows the idea (P6): a goal on a trip's shelf is on that trip.
+        if self.trip_idea_id:
+            self.trip_id = self.trip_idea.trip_id
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = set(kwargs["update_fields"]) | {"trip"}
+        super().save(*args, **kwargs)
+
+    def idea_target(self):
+        """(field, catalogue object) for the trip idea made from this goal: its dated event, else its
+        activity, city or first place; (None, None) for a custom goal."""
+        for field in ("event", "activity", "city"):
+            if getattr(self, f"{field}_id"):
+                return field, getattr(self, field)
+        pois = self._poi_list()
+        return ("poi", pois[0]) if pois else (None, None)
 
     def _poi_list(self):
         """The item's POIs (uses a prefetch when there is one; [] before the first save)."""

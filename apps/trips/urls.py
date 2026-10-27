@@ -8,7 +8,7 @@ sibling of it.
 
 from django.urls import path
 
-from . import calendar_views, checklists, files, history_views, people_views, views
+from . import calendar_views, checklists, files, history_views, idea_views, people_views, views
 
 app_name = "trips"
 
@@ -105,6 +105,14 @@ urlpatterns = [
     path("<int:pk>/choices/<int:group_pk>/delete/", views.group_delete, name="group_delete"),
     path("<int:pk>/choices/<int:group_pk>/reopen/", views.group_reopen, name="group_reopen"),
     path("<int:pk>/choices/<int:group_pk>/split/", views.group_split, name="group_split"),
+    # The Ideas shelf (day-first plan, P6).
+    path("<int:pk>/ideas/add/", idea_views.idea_add, name="idea_add"),
+    path("<int:pk>/ideas/<int:idea_pk>/", idea_views.idea_edit, name="idea_edit"),
+    path("<int:pk>/ideas/<int:idea_pk>/delete/", idea_views.idea_delete, name="idea_delete"),
+    path("<int:pk>/ideas/<int:idea_pk>/vote/", idea_views.idea_vote, name="idea_vote"),
+    path("<int:pk>/ideas/<int:idea_pk>/place/", idea_views.idea_place, name="idea_place"),
+    path("<int:pk>/ideas/<int:idea_pk>/option/", idea_views.idea_option, name="idea_option"),
+    path("ideas/from/<str:kind>/<int:obj_pk>/", idea_views.idea_from_catalogue, name="idea_from_catalogue"),
     path("<int:pk>/choices/options/<int:option_pk>/vote/", views.option_vote, name="option_vote"),
     path("<int:pk>/choices/options/<int:option_pk>/pick/", views.option_pick, name="option_pick"),
     path("<int:pk>/panel/<str:kind>/<int:item_pk>/", views.item_panel, name="item_panel"),

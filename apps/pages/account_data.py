@@ -46,7 +46,7 @@ from apps.notifications.models import Notification
 from apps.reviews.models import Review
 from apps.trips.models import (
     Checklist, ChecklistItem, Comment, Confirmation, ConfirmationFile, Day, Lodging, Meal, RewardsMembership,
-    Section, TransportLeg, Traveler, Trip, TripActivity, TripGrant,
+    Section, TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripIdea,
 )
 
 log = logging.getLogger(__name__)
@@ -85,6 +85,7 @@ def _trip_rows(trip):
         "confirmations": _rows(Confirmation.objects.filter(trip=trip), exclude=("travelers",)),
         "checklists": _rows(Checklist.objects.filter(trip=trip)),
         "checklist_items": _rows(ChecklistItem.objects.filter(checklist__trip=trip), exclude=("done_by",)),
+        "ideas": _rows(TripIdea.objects.filter(trip=trip), exclude=("added_by",)),
     }
 
 

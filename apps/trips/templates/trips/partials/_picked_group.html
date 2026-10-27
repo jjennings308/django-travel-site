@@ -6,7 +6,7 @@ A decided group on its day (P4): its chosen option's items are the day's own now
   <div class="mt-2 rounded-lg border border-zinc-200 p-3">
     <p class="card-kicker mb-1">Considered</p>
     <ul class="space-y-1">
-      {% for option in group.considered %}<li id="option-{{ option.pk }}"><span class="font-medium">{{ option.title }}</span>{% if option.notes %} <span class="text-zinc-500">— {{ option.notes|truncatechars:120 }}</span>{% endif %}{% if option.vote_count %} <span class="chip">👍 {{ option.vote_count }}</span>{% endif %}</li>{% empty %}<li class="text-zinc-500">Nothing else.</li>{% endfor %}
+      {% for option in group.considered %}<li id="option-{{ option.pk }}"><span class="font-medium">{{ option.title }}</span>{% if option.notes %} <span class="text-zinc-500">— {{ option.notes|truncatechars:120 }}</span>{% endif %}{% if option.vote_count %} <span class="chip">👍 {{ option.vote_count }}</span>{% endif %} {% include "partials/_save_idea.html" with option=option idea=None %}</li>{% empty %}<li class="text-zinc-500">Nothing else.</li>{% endfor %}
     </ul>
     {% if group.decided_by %}<p class="mt-2 text-xs text-zinc-500">Picked by {{ group.decided_by.get_full_name|default:group.decided_by.username }}{% if group.decided_at %} · {{ group.decided_at|date:"M j" }}{% endif %}</p>{% endif %}
     {% if can_edit %}<form method="post" action="{% url 'trips:group_reopen' trip.pk group.pk %}" class="mt-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#group-{{ group.pk }}"><button type="submit" class="link-quiet font-medium" data-reopen>Reopen the choice</button></form>{% endif %}
