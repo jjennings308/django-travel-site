@@ -168,6 +168,12 @@ def build_trip():
     TripActivity.objects.create(trip=trip, day=d4, title="Fuggerei walk", kind="tour", start_time=time(14, 30),
                                 option=walk)
     afternoon.split({puppets: [ada], walk: [bo]})
+    # Typed choices T1: an undecided stay choice prints each option's line (nightly price × nights, place).
+    where = OptionGroup.objects.create(trip=trip, day=d3, prompt="Where to stay in Marburg", kind="stay", nights=2)
+    Option.objects.create(group=where, title="Hotel Rosenpark", est_cost=Decimal("95"), currency="EUR",
+                          place_text="Anneliese-Pohl-Allee 7", order=0)
+    Option.objects.create(group=where, title="Old town flat", est_cost=Decimal("80"), currency="EUR", nights=3,
+                          place_text="Markt 12", notes="3-night minimum", order=1)
     # Its decision to-dos as "choose one" groups (P4).
     day_first.apply(trip)
     return trip

@@ -1,9 +1,9 @@
 {% comment %}
-An undecided "choose one" group on its day (day-first plan P4; apps/trips/options.py): each option with its items, estimated cost and time, 👍 and who voted. Editors pick one (its items then count as the day's), split it between travellers (P5), add or edit options. Pass group=.
+An undecided "choose one" group on its day (day-first plan P4; apps/trips/options.py): each option with its kind's line (typed-choices T1: a stay's nightly price × nights and place, a meal's place, an activity's place and times, a journey's mode and route), its items, estimated cost and time, 👍 and who voted. Editors pick one (its items then count as the day's), split it between travellers (P5), add or edit options. Pass group=.
 {% endcomment %}
 <div class="option-group section card border-amber-200 scroll-mt-32" id="group-{{ group.pk }}" data-option-group>
   <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-    <p class="card-title"><span aria-hidden="true">🔀</span> {{ group.prompt }} <span class="badge badge-medium">Undecided</span></p>
+    <p class="card-title"><span aria-hidden="true">🔀</span> {{ group.prompt }} <span class="badge badge-medium">Undecided</span>{% if group.kind != "any" %} <span class="chip" data-choice-kind>{{ group.get_kind_display }}{% if group.kind == "stay" and group.nights %} · {{ group.nights }} night{{ group.nights|pluralize }}{% elif group.kind == "eat" and group.meal_type %} · {{ group.get_meal_type_display }}{% endif %}</span>{% endif %}</p>
     {% if can_edit %}<span class="text-xs font-medium"><a class="link-quiet" href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link>Edit · + Option</a>{% if group.option_list|length > 1 %} · <a class="link-quiet" href="{% url 'trips:group_split' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link data-split>Split</a>{% endif %}</span>{% endif %}
   </div>
   {% if group.notes %}<p class="mt-1 text-sm text-zinc-600">{{ group.notes|linebreaksbr }}</p>{% endif %}
@@ -11,6 +11,7 @@ An undecided "choose one" group on its day (day-first plan P4; apps/trips/option
     {% for option in group.option_list %}
       <div class="rounded-lg border border-zinc-200 p-3 scroll-mt-32" id="option-{{ option.pk }}" data-option>
         <p class="font-medium text-zinc-900">{{ option.title }}</p>
+        {% with line=option.kind_line %}{% if line %}<p class="mt-0.5 text-sm text-zinc-700" data-option-line>{% if option.poi_id %}<a class="link-quiet" href="{% url 'locations:poi_detail' option.poi.slug %}">{{ line }}</a>{% else %}{{ line }}{% endif %}</p>{% endif %}{% endwith %}
         {% if option.notes %}<p class="mt-1 text-sm text-zinc-600">{{ option.notes|linebreaksbr }}</p>{% endif %}
         {% if option.url %}<p class="mt-1 text-sm"><a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">More ↗</a></p>{% endif %}
         {% with items=option.items %}

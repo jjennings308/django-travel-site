@@ -527,8 +527,8 @@ def _trip_page_context(request, trip):
         "checklists": checklist_lists,
         # An option's own estimate counts once chosen, and for every track of a split (P5).
         "cost_estimate": budget.estimate(trip, _reader_currency(request), extra=[
-            (o.est_cost, o.currency) for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks
-            if o.est_cost is not None]),
+            (o.own_cost, o.currency) for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks
+            if o.own_cost is not None]),
         "checklist_attention": checklists.attention(trip, checklist_lists),
         "leg_modes": TransportLeg.Mode.choices,
         "trip_comments": comments.get(("trip", trip.pk), []),
@@ -2205,21 +2205,30 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
         day = group.day
     else:
         day = get_object_or_404(trip.days.all(), pk=day_pk)
-        group = OptionGroup(trip=trip, day=day, prompt=request.GET.get("prompt", "")[:200],
-                            order=day.option_groups.count())
+        from .quick_add import CHOICE_KINDS, choice_kind
+        prompt = request.GET.get("prompt", "")[:200]
+        guess = choice_kind(prompt) if prompt else {}
+        if request.GET.get("kind") in CHOICE_KINDS:
+            guess = {"kind": request.GET["kind"]}
+        group = OptionGroup(trip=trip, day=day, prompt=prompt, order=day.option_groups.count(), **guess)
     form = OptionGroupForm(request.POST or None, instance=group)
+    # The options ask for what the choice's kind needs (typed-choices T1): the kind posted, else saved.
+    kind = request.POST.get("kind") if request.method == "POST" and request.POST.get("kind") else group.kind
     formset = OptionFormSet(request.POST or None, instance=group, prefix="options",
-                            form_kwargs={"trip": trip, "city_ids": [day.city_id]})
+                            form_kwargs={"trip": trip, "city_ids": [day.city_id], "kind": kind})
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     if request.method == "POST" and form.is_valid() and formset.is_valid():
+        kind_changed = group.pk is not None and form.initial.get("kind") != form.cleaned_data["kind"]
         with transaction.atomic():
             group = form.save()
             formset.instance = group
             formset.save()
         messages.success(request, f"Saved {group.prompt}.")
-        if group_pk is None:  # stay on its page: options and their items come next
+        if group_pk is None or kind_changed:  # stay on its page: options (now asking for the kind's fields) come next
             return redirect(reverse("trips:group_edit", args=[trip.pk, group.pk]) + "?next=" + quote(back))
         return redirect(back)
+    from .forms import share_choices
+    share_choices(formset)  # the catalogue pickers load once for every option row
     options = []
     if group.pk:
         options = list(group.options.prefetch_related("legs", "stays", "activities", "meals", "sections"))
@@ -2339,8 +2348,9 @@ def quick_add(request, pk, day_pk):
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
         from .models import OptionGroup
+        # What it's about, guessed from the line (typed-choices T1); its page can change it.
         group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
-                                           order=day.option_groups.count())
+                                           order=day.option_groups.count(), **parser.choice_kind(text))
         url = reverse("trips:group_edit", args=[trip.pk, group.pk])
         messages.success(request, f"Added “{group.prompt}” to Day {day.day_number}: add its options.")
         if wants_json:

@@ -56,9 +56,11 @@ def on_it(own, option_travelers, day_travelers):
 def load(trip):
     """The trip's groups with their options, who takes them (P5) and votes (and who voted): four queries."""
     from django.db.models import Prefetch
-    from .models import Vote
+    from .models import Option, Vote
+    # An option's catalogue link (typed-choices T1) comes with it, so its line costs no query.
+    options = Option.objects.select_related("poi", "activity", "event", "city")
     return list(OptionGroup.objects.filter(trip=trip)
-                .prefetch_related("options", "options__travelers",
+                .prefetch_related(Prefetch("options", queryset=options), "options__travelers",
                                   Prefetch("options__votes", queryset=Vote.objects.select_related("user"))))
 
 
@@ -99,7 +101,8 @@ def _duration(option):
 
 
 def _costs(trip, groups):
-    """Each option's estimated cost: its own estimate, its activities' and its legs' costs — in their
+    """Each option's estimated cost: its own estimate (``Option.own_cost``: per night × nights for a stay), its
+    activities' and its legs' costs — in their
     currency when they share one, else in the trip's home currency (``budget``'s rates, loaded once when
     some option mixes currencies; an option with a cost there's no rate for shows none)."""
     from .budget import _cents, _money, rates_for
@@ -107,7 +110,7 @@ def _costs(trip, groups):
     wanted = []
     for group in groups:
         for option in group.options.all():
-            parts = [(option.est_cost, option.currency)]
+            parts = [(option.own_cost, option.currency)]  # a stay's nightly price × its nights (T1)
             parts += [(a.est_cost, a.currency) for a in option.items["activities"]]
             parts += [(leg.cost, leg.currency) for leg in option.items["legs"]]
             wanted.append((option, [(amount, (currency or home).upper()) for amount, currency in parts

@@ -1967,6 +1967,14 @@ class OptionGroup(models.Model):
         PICKED = "picked", "Picked"
         SPLIT = "split", "Split"
 
+    class Kind(models.TextChoices):
+        """What the choice is about (typed-choices T1): its options ask only for what's needed to compare."""
+        ANY = "any", "Anything"
+        STAY = "stay", "Stay"
+        EAT = "eat", "Eat"
+        DO = "do", "Do"
+        TRAVEL = "travel", "Travel"
+
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="option_groups")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="option_groups")
     prompt = models.CharField(max_length=200, help_text="What's being decided: “Afternoon”, “Where to stay in Munich”.")
@@ -1974,6 +1982,15 @@ class OptionGroup(models.Model):
     start_time = models.TimeField(null=True, blank=True, help_text="Places it in the day's timeline.")
     order = models.PositiveSmallIntegerField(default=0)
     state = models.CharField(max_length=8, choices=State.choices, default=State.OPEN)
+    # What it's about and the fields its options share (typed-choices T1); all optional.
+    kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.ANY,
+                            verbose_name="what is this choice about?")
+    nights = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                              help_text="A stay: how many nights, from this day.")
+    meal_type = models.CharField(max_length=16, blank=True, choices=[("", "---------")] + list(Meal.MealType.choices),
+                                 verbose_name="meal")
+    end_time = models.TimeField(null=True, blank=True)
+    mode = models.CharField(max_length=10, blank=True, choices=[("", "---------")] + list(TransportLeg.Mode.choices))
     decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                    related_name="+")
     decided_at = models.DateTimeField(null=True, blank=True)
@@ -2038,7 +2055,12 @@ class OptionGroup(models.Model):
 class Option(models.Model):
     """One choice in an ``OptionGroup``: a title, notes and an estimated cost, and the items made for it
     (legs, stays, activities, meals, notes with ``option`` set to it), which count only once it's
-    chosen. ``travelers`` is who takes it when a group is split (P5)."""
+    chosen. ``travelers`` is who takes it when a group is split (P5).
+
+    Typed choices (T1): the fields its group's ``kind`` asks for — a catalogue link (at most one of
+    ``poi`` / ``activity`` / ``event`` / ``city``) or a typed ``place_text`` (stay, eat, do), a ``nights``
+    override (stay; blank = the group's), ``from_text`` / ``to_text`` (travel). For a stay ``est_cost`` is
+    per night (``own_cost`` multiplies); otherwise the total. ``made`` is the item Pick created (T2)."""
 
     group = models.ForeignKey(OptionGroup, on_delete=models.CASCADE, related_name="options")
     title = models.CharField(max_length=200)
@@ -2050,16 +2072,87 @@ class Option(models.Model):
     order = models.PositiveSmallIntegerField(default=0)
     chosen = models.BooleanField(default=False)
     travelers = models.ManyToManyField(Traveler, blank=True, related_name="options")
+    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options",
+                            verbose_name="place")
+    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="trip_options")
+    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="trip_options")
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options")
+    place_text = models.CharField(max_length=200, blank=True, verbose_name="place or address (typed)")
+    nights = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                              help_text="Only if it differs from the choice's (a 3-night minimum).")
+    from_text = models.CharField(max_length=120, blank=True, verbose_name="from")
+    to_text = models.CharField(max_length=120, blank=True, verbose_name="to")
+    made_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    made_id = models.PositiveBigIntegerField(null=True, blank=True)
+    made = GenericForeignKey("made_type", "made_id")
 
     class Meta:
         db_table = "trips_option"
         ordering = ["order", "id"]
         constraints = [
             models.UniqueConstraint(fields=["group"], condition=Q(chosen=True), name="option_one_chosen"),
+            models.CheckConstraint(
+                condition=(Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
+                           | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
+                           | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
+                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)),
+                name="option_one_target"),
         ]
 
     def __str__(self):
         return self.title
+
+    @property
+    def target(self):
+        """The catalogue place, activity, event or city it's about, if any."""
+        return self.poi or self.event or self.activity or self.city
+
+    @property
+    def place(self):
+        """Where it is, as text: the catalogue item's name, else the typed place."""
+        target = self.target
+        return target.name if target is not None else self.place_text
+
+    @property
+    def stay_nights(self):
+        """A stay option's nights: its own, else its choice's (None when neither says)."""
+        return self.nights or self.group.nights
+
+    @property
+    def own_cost(self):
+        """Its own estimate as a total: a stay's nightly price × its nights (× 1 while nights are unknown)."""
+        if self.est_cost is None:
+            return None
+        if self.group.kind == OptionGroup.Kind.STAY:
+            return self.est_cost * (self.stay_nights or 1)
+        return self.est_cost
+
+    def kind_line(self):
+        """The one-line summary the choice's box and the booklet show for its kind (typed-choices T1):
+        stay "EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße"; eat "Augustiner Bräustuben · EUR 40.00";
+        do "Hacker-Festzelt · 11:00–16:00 · EUR 20.00"; travel "Train · Augsburg → Munich · EUR 12.00"."""
+        group, parts = self.group, []
+        money = (lambda amount: f"{self.currency or ''} {amount:.2f}".strip())
+        if group.kind == OptionGroup.Kind.STAY:
+            if self.est_cost is not None:
+                nights = self.stay_nights
+                parts.append(f"{money(self.est_cost)}/night" + (f" × {nights} = {money(self.own_cost)}" if nights else ""))
+            elif self.stay_nights:
+                parts.append(f"{self.stay_nights} night{'s' if self.stay_nights != 1 else ''}")
+            if self.place:
+                parts.append(self.place)
+        elif group.kind == OptionGroup.Kind.EAT:
+            parts += [p for p in (self.place, money(self.est_cost) if self.est_cost is not None else "") if p]
+        elif group.kind == OptionGroup.Kind.DO:
+            when = "–".join(t.strftime("%H:%M") for t in (group.start_time, group.end_time) if t)
+            parts += [p for p in (self.place, when, money(self.est_cost) if self.est_cost is not None else "") if p]
+        elif group.kind == OptionGroup.Kind.TRAVEL:
+            route = " → ".join(p for p in (self.from_text, self.to_text) if p)
+            parts += [p for p in (group.get_mode_display() if group.mode else "", route,
+                                  money(self.est_cost) if self.est_cost is not None else "") if p]
+        return " · ".join(parts)
 
 
 class TripIdea(models.Model):
