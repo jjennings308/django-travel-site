@@ -1,0 +1,28 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+One idea on the trip's Ideas shelf (trips:idea_edit, day-first plan P6): its title, notes and kind. Whoever added it (while they may comment) and editors change or remove it.
+{% endcomment %}
+{% block title %}{{ idea.title }} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-2xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}#ideas">Ideas</a><span>/</span>
+    <span>{{ idea.title }}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate data-panel-tab="details">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">Idea</h1>
+    <p class="mb-4 text-zinc-500">{% if idea.target %}About <a class="link-quiet" href="{{ idea.target_url }}">{{ idea.target.name }}</a>. {% endif %}{% if idea.is_placed %}It's on the trip now; removing what it became brings it back to the shelf.{% else %}On the shelf until an editor puts it on a day.{% endif %} {% include "partials/_help_link.html" with slug="ideas-and-goals" label="ideas" text="How this works" %}</p>
+    {% include "trips/_form_fields.html" with form=form %}
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+    </div>
+  </form>
+  <form method="post" action="{% url 'trips:idea_delete' trip.pk idea.pk %}" class="mt-4">
+    {% csrf_token %}
+    <button type="submit" class="btn-quiet text-red-700" data-delete-idea>Remove this idea</button>
+  </form>
+{% endblock %}

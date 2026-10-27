@@ -17,7 +17,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | --- | --- |
 | **Edit trip** | Change the trip. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). |
 | **Download PDF** | The printable booklet ([see below](#booklet)). |
-| **Map** · **Budget** · **Photos** | The trip's map, its shared costs, and the shared photo album. |
+| **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
 When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions** (undecided [choices](/help/options-and-votes/) and decision to-dos), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
@@ -40,7 +40,8 @@ A day shows only the parts it has. Click a day to open it.
 
 Above the days:
 
-- **About this trip**, folded: **Travelling**, **Cities** and **Destination**, your goals for the trip, the trip's notes, and the **Estimated trip cost** when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)). Once the trip is over it also has **Rate the places from this trip** ([rating a finished trip](/help/places-and-events/#rating-a-finished-trip)).
+- **About this trip**, folded: **Travelling**, **Cities** and **Destination**, the trip's notes, and the **Estimated trip cost** when bookings or activities have costs: their total in your currency ([the budget](/help/budget/#estimated-trip-cost)). Once the trip is over it also has **Rate the places from this trip** ([rating a finished trip](/help/places-and-events/#rating-a-finished-trip)).
+- **Ideas**, folded: things to fit in with no day yet, with votes, and whose bucket-list goals they are ([ideas and goals](/help/ideas-and-goals/)).
 - **Journeys not on any day** and **Stays outside the trip's days**, when there are any: bookings whose dates fall outside the trip's days, shown in full so nothing is hidden.
 
 ## Days

@@ -2100,16 +2100,114 @@ class Option(models.Model):
         return self.title
 
 
+class TripIdea(models.Model):
+    """Something someone would like to do on the trip, with no day yet (day-first plan, P6): on the
+    trip's **Ideas shelf**, shared, with votes. Typed on the shelf, added from a catalogue page ("Add
+    to a trip") or from a bucket-list goal (``BucketListItem.trip_idea`` points here; trips never
+    reads bucket lists). An editor puts it on a day (an item of its kind, filled in from its catalogue
+    link) or adds it as an option of a "choose one"; ``placed`` is that item or option, and while it
+    is set the idea is off the shelf. Deleting what it became brings it back (``signals``)."""
+
+    class Kind(models.TextChoices):
+        TRAVEL = "travel", "Travel"
+        STAY = "stay", "Stay"
+        DO = "do", "Do"
+        EAT = "eat", "Eat"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="ideas")
+    title = models.CharField(max_length=200)
+    notes = models.TextField(blank=True)
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas")
+    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas",
+                            verbose_name="place")
+    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="trip_ideas")
+    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="trip_ideas")
+    kind_hint = models.CharField(max_length=8, choices=Kind.choices, blank=True, verbose_name="kind")
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="+")
+    placed_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    placed_id = models.PositiveBigIntegerField(null=True, blank=True)
+    placed = GenericForeignKey("placed_type", "placed_id")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "trips_tripidea"
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
+                           | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
+                           | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
+                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)),
+                name="tripidea_one_target"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    TARGETS = ("event", "activity", "poi", "city")
+
+    @property
+    def target(self):
+        """The catalogue city, place, activity or event it's about, if any."""
+        return next((getattr(self, name) for name in self.TARGETS if getattr(self, f"{name}_id")), None)
+
+    @property
+    def target_kind(self):
+        return next((name for name in self.TARGETS if getattr(self, f"{name}_id")), "")
+
+    @property
+    def target_url(self):
+        """The catalogue page of what it's about ("" when it's only typed)."""
+        from django.urls import reverse
+        names = {"event": "events:event_detail", "activity": "activities:activity_detail",
+                 "poi": "locations:poi_detail", "city": "locations:city_detail"}
+        target = self.target
+        return reverse(names[self.target_kind], args=[target.slug]) if target is not None else ""
+
+    @property
+    def is_placed(self):
+        return self.placed_id is not None
+
+    @property
+    def kind(self):
+        """What it becomes on a day: its own kind, else from its catalogue link (an event, activity or
+        place is something to do — a Food & drink place somewhere to eat), else a note."""
+        if self.kind_hint:
+            return self.kind_hint
+        if self.poi_id and self.poi.poi_type_id == "food":
+            return self.Kind.EAT
+        if self.event_id or self.activity_id or self.poi_id:
+            return self.Kind.DO
+        return "note"
+
+    def place_on(self, item):
+        self.placed_type = ContentType.objects.get_for_model(item)
+        self.placed_id = item.pk
+        self.save(update_fields=["placed_type", "placed_id"])
+
+    def unplace(self):
+        self.placed_type, self.placed_id = None, None
+        self.save(update_fields=["placed_type", "placed_id"])
+
+
 class Vote(models.Model):
-    """👍 on an option (P4; ideas join in P6): one per person, seen by everyone on the trip."""
+    """👍 on an option (P4) or an idea (P6): one per person, seen by everyone on the trip."""
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trip_votes")
-    option = models.ForeignKey(Option, on_delete=models.CASCADE, related_name="votes")
+    option = models.ForeignKey(Option, on_delete=models.CASCADE, null=True, blank=True, related_name="votes")
+    idea = models.ForeignKey(TripIdea, on_delete=models.CASCADE, null=True, blank=True, related_name="votes")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "trips_vote"
-        constraints = [models.UniqueConstraint(fields=["user", "option"], name="vote_once_per_option")]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "option"], name="vote_once_per_option"),
+            models.UniqueConstraint(fields=["user", "idea"], name="vote_once_per_idea"),
+            models.CheckConstraint(condition=Q(option__isnull=True) ^ Q(idea__isnull=True), name="vote_one_target"),
+        ]
 
 
 def counts_q():

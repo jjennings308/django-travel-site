@@ -31,6 +31,7 @@ from . import currencies
 from .models import (
     Option,
     OptionGroup,
+    TripIdea,
     TripExpense,
     TripRate,
     BookingTask,
@@ -2418,3 +2419,17 @@ class MealPageForm(InOptionMixin, MealForm):
         super().__init__(*args, trip=trip, **kwargs)
         self.setup_option(trip or (self.instance.day.trip if self.instance.day_id else None),
                           self.instance.day if self.instance.day_id else None)
+
+
+class IdeaForm(forms.ModelForm):
+    """An idea on the trip's shelf (day-first plan P6): what, why, and what kind of thing it is."""
+
+    class Meta:
+        model = TripIdea
+        fields = ["title", "notes", "kind_hint"]
+        labels = {"title": "Idea", "kind_hint": "What kind of thing"}
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["kind_hint"].choices = [("", "Not sure yet")] + list(TripIdea.Kind.choices)

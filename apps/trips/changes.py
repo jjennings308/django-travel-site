@@ -26,7 +26,7 @@ from apps.core.current import get_user
 
 from .models import (
     BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, OptionGroup, Section,
-    TransportLeg, Trip, TripActivity, TripChange, TripGrant, item_label,
+    TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripIdea, item_label,
 )
 
 URGENT_DAYS = 7
@@ -108,6 +108,11 @@ TRACKED = {
         ("prompt", "question", lambda o: _text(o.prompt)),
         ("state", "decision", lambda o: o.summary()),
         ("start_time", "time", lambda o: _time(o.start_time)),
+    ]),
+    # An idea on the shelf (P6): added, renamed, removed. Putting it on a day records the item made.
+    TripIdea: ("idea", lambda o: f"idea “{o.title}”", lambda o: o.trip_id, [
+        ("title", "title", lambda o: _text(o.title)),
+        ("notes", "notes", None),
     ]),
     Confirmation: ("confirmation", lambda o: f"confirmation {o.confirmation_number}", lambda o: o.trip_id, [
         ("confirmation_number", "number", lambda o: _text(o.confirmation_number)),

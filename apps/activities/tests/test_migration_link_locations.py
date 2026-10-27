@@ -7,8 +7,10 @@ from django.db.migrations.executor import MigrationExecutor
 TRIPS = ("trips", "0043_alter_comment_author")
 # catalogue_notes 0001 needs today's locations, activities and events, so it is unapplied while they step back.
 NOTES = ("catalogue_notes", None)
-BEFORE = [("activities", "0009_activity_location_recurrence"), TRIPS, NOTES]
-AFTER = [("activities", "0010_link_suggested_locations"), TRIPS, NOTES]
+# bucketlists 0007 (P6) needs today's trips, so it steps back with them.
+GOALS = ("bucketlists", "0006_badge_code")
+BEFORE = [("activities", "0009_activity_location_recurrence"), TRIPS, NOTES, GOALS]
+AFTER = [("activities", "0010_link_suggested_locations"), TRIPS, NOTES, GOALS]
 
 
 class LinkLocationsMigrationTests(RestoringTransactionTestCase):

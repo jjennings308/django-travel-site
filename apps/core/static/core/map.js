@@ -13,7 +13,8 @@
 //   toggle(map, group, visible)     -> show or hide a layer
 //   fit(map, features)              -> zoom to show them all (points and lines)
 // Feature properties: name, subtitle, url, image, order (route stops), mode and planned (legs: fainter),
-// layer (which switch it belongs to, default "places"), marker ("poi": small dot, "stay": house).
+// layer (which switch it belongs to, default "places"), marker ("poi": small dot, "stay": house,
+// "idea": faint dashed dot for the trip's Ideas shelf).
 // Layer switches: <input type="checkbox" data-layer="cities"> inside the element named by
 // data-controls; a layer with nothing to show disables its switch.
 // Text from the catalogue is user-submitted, so popups are built with DOM methods only.
@@ -113,6 +114,11 @@
           marker = L.marker(ll, { icon: L.divIcon({
             className: "", iconSize: [16, 16], iconAnchor: [8, 8],
             html: '<span style="display:block;width:16px;height:16px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></span>'
+          }) });
+        } else if (f.properties.marker === "idea") {
+          marker = L.marker(ll, { opacity: 0.75, icon: L.divIcon({
+            className: "", iconSize: [14, 14], iconAnchor: [7, 7],
+            html: '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:#fbbf24;border:2px dashed #b45309"></span>'
           }) });
         } else {
           marker = L.marker(ll);

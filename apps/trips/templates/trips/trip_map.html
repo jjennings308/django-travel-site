@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Trip map: the days' cities in date order (numbered, joined by a line or by the transport legs), the trip's other cities, and your own goals' places of interest (bucketlists:trip_map_places), with switches per layer; drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
+Trip map: the days' cities in date order (numbered, joined by a line or by the transport legs), the trip's other cities, your own goals' places of interest (bucketlists:trip_map_places) and the Ideas shelf's places (faint, off until switched on; P6), with switches per layer; drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
 {% endcomment %}
 {% block title %}Map — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
@@ -27,6 +27,7 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
     {% if places_url %}<label class="flex items-center gap-2" title="Places on your bucket-list goals linked to this trip"><input type="checkbox" data-layer="pois" checked> <span class="inline-block size-3 rounded-full bg-green-600"></span> Places of interest</label>{% endif %}
     <label class="flex items-center gap-2"><input type="checkbox" data-layer="legs" checked> <span class="inline-block h-0.5 w-4 bg-blue-600"></span> Travel legs</label>
     <label class="flex items-center gap-2" title="Where you're staying"><input type="checkbox" data-layer="stays" checked> <i class="bi bi-house-door-fill text-violet-600"></i> Stays</label>
+    <label class="flex items-center gap-2" title="Ideas on the shelf that have a place (no day yet)"><input type="checkbox" data-layer="ideas"> <span class="inline-block size-3 rounded-full bg-amber-400 opacity-70"></span> Ideas</label>
   </div>
   {% include "partials/_map.html" with data_url=data_url extra_urls=places_url height="34rem" route=True controls="trip-map-layers" %}
   {% if stops or others or legs %}

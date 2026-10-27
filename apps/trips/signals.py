@@ -100,3 +100,13 @@ def delete_confirmation_file(sender, instance, **kwargs):
     file behind in private storage (site roadmap R5)."""
     if instance.file:
         instance.file.storage.delete(instance.file.name)
+
+
+def _connect_idea_return():
+    """An idea goes back on the Ideas shelf when what it became is deleted (day-first plan P6)."""
+    from .ideas import PLACEABLE, return_to_shelf
+    for model in PLACEABLE:
+        post_delete.connect(return_to_shelf, sender=model, dispatch_uid=f"idea_return_{model.__name__}")
+
+
+_connect_idea_return()

@@ -3,7 +3,7 @@
 ``Trip.cities`` is the list the city boxes offer first ("This trip"), the trip map's pins and the
 visitor counts' source. ``sync(trip)`` adds every city something on the trip uses: a day's city, a
 stay's, either end of a leg, and the city of the catalogue place or event linked to a trip activity,
-a meal or a section. It never removes one on its own; Edit trip removes a city only when nothing uses
+a meal or a section, and the place of an idea on the shelf (P6). It never removes one on its own; Edit trip removes a city only when nothing uses
 it (``used_by`` says what does: "Day 3, Hotel Laimer Hof"). Called after the trip's forms save, and by
 the leg quick add, the table conversion, the stays' day fill and the route builder.
 """
@@ -35,6 +35,9 @@ def _uses(trip):
             for city_id in city_ids:
                 if city_id:
                     yield city_id, name or "An item"
+    from .ideas import city_ids
+    for city_id, title in city_ids(trip):
+        yield city_id, f"the idea “{title}”"
 
 
 def used_by(trip):

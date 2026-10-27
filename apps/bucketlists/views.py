@@ -17,7 +17,8 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
 from apps.locations.models import POI, City
-from apps.trips.models import Traveler, Trip, TripGrant, TripRole
+from apps.trips import ideas as trip_ideas, trip_cities
+from apps.trips.models import Option, Traveler, Trip, TripGrant, TripIdea, TripRole, Vote
 
 from .forms import BucketListItemForm, CategoryForm, CompleteItemForm, PlanTripForm
 from .models import BucketListCategory, BucketListItem
@@ -200,16 +201,30 @@ def item_edit(request, pk):
     })
 
 
+def _idea_for(item, trip, user):
+    """The idea on ``trip``'s shelf for this goal (day-first plan P6): one about the same catalogue
+    item if the trip has it, else a new one copying the goal's target and title (never its notes)."""
+    field, target = item.idea_target()
+    idea = TripIdea.objects.filter(trip=trip, **{field: target}).first() if field else None
+    if idea is None:
+        idea = TripIdea.objects.create(trip=trip, title=item.title[:200], added_by=user,
+                                       **({field: target} if field else {}))
+    return idea
+
+
 def _attach(item, trip, user):
     """Put ``item`` on ``trip``; a goal still being dreamt about moves to planning.
-    Its cities are added to the trip only when ``user`` may edit the trip: a viewer
-    attaching their own goal changes the goal, never the trip."""
-    if trip.can(user, "edit"):
-        trip.cities.add(*item.catalogue_cities())
-    item.trip = trip
+    When ``user`` may comment on the trip the goal becomes an idea on its shelf (P6), which
+    counts as their vote and brings its city onto the trip; a viewer attaching their own goal
+    changes the goal, never the trip."""
+    item.trip, item.trip_idea = trip, None
+    if trip.can(user, "comment"):
+        item.trip_idea = _idea_for(item, trip, user)
+        Vote.objects.get_or_create(user=item.user, idea=item.trip_idea)
+        trip_cities.sync(trip)
     if item.status in ("wishlist", "researching"):
         item.status = "planning"
-    item.save(update_fields=["trip", "status", "updated_at"])
+    item.save(update_fields=["trip", "trip_idea", "status", "updated_at"])
 
 
 def _open_trips(user, item=None):
@@ -275,22 +290,21 @@ def remove_from_trip(request, pk):
     item = _own_item(request, pk)
     if item.trip_id:
         name = item.trip.name
-        item.trip = None
-        item.save(update_fields=["trip", "updated_at"])
-        messages.success(request, f"“{item.title}” is no longer part of “{name}”.")
+        item.trip, item.trip_idea = None, None
+        item.save(update_fields=["trip", "trip_idea", "updated_at"])
+        messages.success(request, f"“{item.title}” is no longer part of “{name}”. Its idea stays on the trip's shelf.")
     return redirect(request.POST.get("next") if request.POST.get("next", "").startswith("/bucketlists/") else
                     reverse("bucketlists:item_edit", args=[item.pk]))
 
 
 @login_required
 def trip_goals(request, trip_pk):
-    """The user's goals on one trip, and their other open goals to add to it.
-
-    Reached from the trip page. Any trip the user can see will do: putting your
-    own goal on a family trip changes your bucket list, not the trip.
-    """
+    """Your goals on a trip, and your other open goals to add to it (linked from its Ideas shelf). Any
+    trip the user can see will do: putting your own goal on a family trip changes your bucket list; if
+    you may comment, it also becomes an idea on the trip's shelf (P6), and adding returns there."""
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
     mine = _items().filter(user=request.user)
+    shelf = reverse("trips:trip_detail", args=[trip.pk]) + "#ideas"
     if request.method == "POST":
         chosen = mine.filter(pk__in=request.POST.getlist("items")).exclude(status__in=OPEN_STATUSES_EXCLUDED)
         added = 0
@@ -300,8 +314,7 @@ def trip_goals(request, trip_pk):
                 added += 1
         if added:
             messages.success(request, f"Added {added} goal{'s' if added != 1 else ''} to “{trip.name}”.")
-        return redirect("bucketlists:trip_goals", trip_pk=trip.pk)
-    on_trip = list(mine.filter(trip=trip).order_by("status", "-priority", "created_at"))
+        return redirect(shelf)
     available = [i for i in mine.exclude(trip=trip).exclude(status__in=OPEN_STATUSES_EXCLUDED)
                  .order_by("-priority", "created_at")]
     for item in available:
@@ -310,11 +323,84 @@ def trip_goals(request, trip_pk):
         item.elsewhere = item.live_trip
     available.sort(key=lambda i: (not i.overlaps, i.elsewhere is not None))
     return render(request, "bucketlists/trip_goals.html", {
-        "trip": trip, "on_trip": on_trip, "available": available,
+        "trip": trip, "available": available, "shelf": shelf,
+        "on_trip": list(mine.filter(trip=trip).order_by("status", "-priority", "created_at")),
         "breadcrumb_list": build_breadcrumbs([("Trips", "trips:trip_list"),
                                               (trip.name, reverse("trips:trip_detail", args=[trip.pk])),
-                                              ("Bucket-list goals", None)]),
+                                              ("Your goals", None)]),
     })
+
+
+@login_required
+def idea_goals(request, trip_pk):
+    """Whose goals the trip's ideas are, as JSON for its Ideas shelf (``{"ideas": {id: "Debbie's goal"}}``,
+    P6). Anyone who can see the trip; goals are private, so this says only whose they are."""
+    trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
+    owners = {}
+    for idea_id, first, username in (BucketListItem.objects.filter(trip_idea__trip=trip)
+                                     .values_list("trip_idea_id", "user__first_name", "user__username")
+                                     .order_by("user__first_name", "user__username")):
+        name = "your" if username == request.user.username else f"{first or username}'s"
+        names = owners.setdefault(idea_id, [])
+        if name not in names:
+            names.append(name)
+
+    def phrase(names):  # "Debbie's goal", "Your goal", "Debbie's, John's and your goals"
+        names = sorted(names, key=lambda n: n == "your")
+        text = f"{names[0]} goal" if len(names) == 1 else ", ".join(names[:-1]) + f" and {names[-1]} goals"
+        return text[0].upper() + text[1:]
+    return JsonResponse({"ideas": {str(idea_id): phrase(names) for idea_id, names in owners.items()}})
+
+
+def _saved_target(idea=None, option=None):
+    """(kind, catalogue object, title) to save for later from a trip's idea or a considered option."""
+    if option is not None:
+        from django.contrib.contenttypes.models import ContentType
+        idea = TripIdea.objects.filter(placed_type=ContentType.objects.get_for_model(Option),
+                                       placed_id=option.pk).first()
+        if idea is None:
+            activity = option.activities.select_related("event", "poi").filter(
+                Q(event__isnull=False) | Q(poi__isnull=False)).first()
+            if activity is not None:
+                return ("event", activity.event, option.title) if activity.event_id else ("poi", activity.poi, option.title)
+            return None, None, option.title
+    if idea.target is not None:
+        return idea.target_kind, idea.target, idea.title
+    return None, None, idea.title
+
+
+@login_required
+@require_POST
+def save_idea(request):
+    """"Save for someday" on a trip's idea or on an option not chosen (P6): a goal on the reader's own
+    bucket list — the catalogue item it's about, else its title. Refused when it's already there."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    visible = Trip.objects.visible_to(request.user)
+    if request.POST.get("idea"):
+        idea = get_object_or_404(TripIdea.objects.filter(trip__in=visible), pk=request.POST["idea"])
+        kind, target, title = _saved_target(idea=idea)
+    else:
+        option = get_object_or_404(Option.objects.filter(group__trip__in=visible), pk=request.POST.get("option") or 0)
+        kind, target, title = _saved_target(option=option)
+    if target is not None and kind == "activity" and not target.is_visible_to(request.user):
+        target = None
+    if target is not None:
+        item, exists = _find_or_start(request.user, kind, target)
+    else:
+        item = BucketListItem.objects.filter(user=request.user, custom_title__iexact=title).first()
+        exists = item is not None
+        item = item or BucketListItem(user=request.user, custom_title=title[:200])
+    if exists:
+        messages.info(request, f"“{item.title}” is already on your bucket list.")
+    else:
+        item.save()
+        if kind == "poi":
+            item.pois.add(target)
+        messages.success(request, f"Saved “{item.title}” to your bucket list for someday.")
+    back = request.POST.get("next", "")
+    if back and url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(back)
+    return redirect("bucketlists:item_edit", pk=item.pk)
 
 
 SUGGEST_LIMIT = 4
@@ -439,12 +525,16 @@ def trip_done(request, trip_pk):
     """From a finished trip's page: tick off the goal(s) it was for.
 
     One open goal -> its "mark done" page. Several -> My dates, where they are
-    listed. None (a trip not started from a goal) -> a goal is created for it
-    with the trip's dates, then its "mark done" page.
+    listed. None (a trip not started from a goal, or whose goals' ideas never got a
+    day) -> a goal is created for it with the trip's dates, then its "mark done" page.
     """
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
     linked = BucketListItem.objects.filter(user=request.user, trip=trip)
-    open_items = list(linked.exclude(status__in=OPEN_STATUSES_EXCLUDED))
+    # Only goals whose idea made it onto the trip (P6): placed on something that counted. A goal
+    # linked before ideas, with none, still counts; one left on the shelf or in an option not taken doesn't.
+    counted = trip_ideas.counted(trip)
+    open_items = [item for item in linked.exclude(status__in=OPEN_STATUSES_EXCLUDED)
+                  if item.trip_idea_id is None or item.trip_idea_id in counted]
     if len(open_items) == 1:
         return redirect("bucketlists:item_complete", pk=open_items[0].pk)
     if open_items:

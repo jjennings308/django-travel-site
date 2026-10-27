@@ -3,7 +3,7 @@ summary: Collect the things you want to do, give them dates, plan trips for them
 audience: everyone
 section: Bucket list
 order: 10
-updated: 2026-10-19
+updated: 2026-10-27
 
 # Your bucket list
 
@@ -28,13 +28,15 @@ You can give a goal a priority, categories, a budget, who it's with and what ins
 
 On a goal, click **Plan a trip**. Check the trip's name, place, **First day** and **Last day**, and click **Start the trip**. You become the trip's editor ([starting a trip](/help/starting-a-trip/)).
 
-Several goals can share a trip: under **Or add it to a trip you already have**, click **Add to this trip**. On the trip, a link lists your goals on it.
+Several goals can share a trip: under **Or add it to a trip you already have**, click **Add to this trip**. On the trip, the goal becomes an idea on the **Ideas** shelf, where everyone on the trip sees whose goal it is and an editor can put it on a day ([ideas and goals](/help/ideas-and-goals/#bucket-list-goals)). Your personal notes stay private. **Add one of your bucket-list goals** on the shelf lists your goals on the trip and adds more.
 
 ## Tick it off
 
 Click **Done** on a goal. Give it **Your rating**, write **How was it?**, add up to 10 **Photos (optional)**, and click **Mark as done**. For a goal from the catalogue, tick **Share as a public review** to post your rating and notes as a review, marked **Been there**.
 
-A trip that's over shows **Trip over: tick it off** on its goal, and a prompt on the trip page.
+A trip that's over shows **Trip over: tick it off** on its goal, and a prompt on the trip page. The prompt offers the goals whose idea made it onto the trip (on a day, or in an option that was picked or taken); one still on the shelf isn't offered.
+
+On a trip, **Save for someday** on an idea or on an option nobody chose adds it to your bucket list for another time.
 
 **My adventures** keeps everything you've done, by year, with its photos.
 
@@ -58,4 +60,4 @@ Your bucket list is private. A goal marked **Show on my public bucket list** app
 | --- | --- |
 | No dates offered under **Needs a date** | The activity has no upcoming dates listed. Set your own, or add one ([places and events](/help/places-and-events/)). |
 | My public page is empty | Set your profile to public, and mark the goals you want to show. |
-| A goal is on the wrong trip | On the trip's goals page, remove it, then add it to the right trip. |
+| A goal is on the wrong trip | On the trip's Ideas shelf, click **Add one of your bucket-list goals**, remove it there, then add it to the right trip. Its idea stays on the first trip's shelf for the others. |

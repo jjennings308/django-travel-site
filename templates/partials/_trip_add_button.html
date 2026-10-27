@@ -1,0 +1,4 @@
+{# templates/partials/_trip_add_button.html — "Add to a trip" for a place / activity / event / city page (day-first plan P6): opens trips:idea_from_catalogue, which lists your trips and puts it on the chosen one's Ideas shelf. Pass kind= and obj=. Renders nothing for anonymous users or without the trips app (url … as), so catalogue apps don't depend on trips; no query. #}
+{% if user.is_authenticated %}{% url 'trips:idea_from_catalogue' kind obj.pk as trip_add_url %}{% if trip_add_url %}
+<a href="{{ trip_add_url }}?next={{ request.path|urlencode }}" class="sbl-btn sbl-btn-outline {{ button_class|default:'' }} {{ link_class|default:'' }}" data-trip-add><i class="bi bi-suitcase"></i>Add to a trip</a>
+{% endif %}{% endif %}

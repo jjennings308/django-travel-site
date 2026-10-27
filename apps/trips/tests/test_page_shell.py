@@ -157,8 +157,11 @@ class AboutThisTripTests(Fixture):
         self.assertIn("About this trip", about)
         self.assertIn("Regan", about)
         self.assertIn("Bring the rail passes.", about)
+        # The goals link moved to the Ideas shelf (P6), the fold after this one.
         goals = reverse("bucketlists:trip_goals", args=[self.trip.pk])
-        self.assertIn(goals, about)
+        self.assertNotIn(goals, about)
+        shelf = html[html.index('id="ideas"'):html.index("</details>", html.index('id="ideas"'))]
+        self.assertIn(goals, shelf)
 
     def test_open_when_the_trip_has_no_days(self):
         Day.objects.filter(trip=self.trip).delete()

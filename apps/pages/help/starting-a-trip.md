@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, set its route (c
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Starting a trip
 
@@ -16,7 +16,7 @@ The quickest way. On a goal in **My bucket list** or **My dates**, click **Plan 
 1. The trip's name, dates and place are filled in from the goal; change them if you like. "Trip dates can change later."
 2. Click **Start the trip**.
 
-To put the goal on a trip you already have instead, pick it under **Or add it to a trip you already have** and click **Add to this trip**. One trip can cover several goals. See [your bucket list](/help/bucket-list/#plan-a-trip).
+To put the goal on a trip you already have instead, pick it under **Or add it to a trip you already have** and click **Add to this trip**. One trip can cover several goals, each an idea on the trip's Ideas shelf ([ideas and goals](/help/ideas-and-goals/)). See [your bucket list](/help/bucket-list/#plan-a-trip).
 
 ## From scratch
 

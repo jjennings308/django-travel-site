@@ -1,0 +1,72 @@
+{% comment %}
+The Ideas shelf (day-first plan P6; apps/trips/ideas.py): ideas with no day yet, shared by everyone on the trip. Anyone who may comment adds and votes; editors put one on a day or add it as an option of a "choose one". Bucket-list goals behind an idea and "Save for someday" come from bucketlists through shell partials (url … as), so trips doesn't depend on it. Pass ideas= (on the shelf), idea_count=, days=, open_groups=.
+{% endcomment %}
+<details class="about-fold scroll-mt-32" id="ideas"{% if ideas and not days %} open{% endif %} data-ideas>
+  <summary class="day-summary"><span class="font-semibold text-zinc-900">Ideas</span>{% if ideas %} <span class="text-zinc-500">· {{ ideas|length }}</span>{% endif %}</summary>
+  <div class="day-body">
+    <p class="note mb-3">Things to fit in somewhere, with no day yet.{% if can_edit %} Put one on a day, or make it an option to vote on.{% elif can_comment %} Add yours and 👍 the ones you like.{% endif %} {% include "partials/_help_link.html" with slug="ideas-and-goals" label="ideas" %}</p>
+    {% include "partials/_idea_goals.html" %}
+    <div class="space-y-3">
+      {% for idea in ideas %}
+        <div class="rounded-lg border border-zinc-200 p-3 scroll-mt-32" id="idea-{{ idea.pk }}" data-idea>
+          <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p class="font-medium text-zinc-900">💡 {{ idea.title }}{% if idea.kind_hint %} <span class="chip">{{ idea.get_kind_hint_display }}</span>{% endif %}</p>
+            {% if can_edit or can_comment and idea.added_by_id == request.user.pk %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:idea_edit' trip.pk idea.pk %}?next={{ request.path|urlencode }}%23idea-{{ idea.pk }}">Edit</a>{% endif %}
+          </div>
+          {% if idea.target %}<p class="mt-1 text-sm"><a class="link-quiet" href="{{ idea.target_url }}">{{ idea.target.name }}</a>{% if idea.target_kind != "city" and idea.target.city %} <span class="text-zinc-500">· {{ idea.target.city.name }}</span>{% endif %}</p>{% endif %}
+          {% if idea.notes %}<p class="mt-1 text-sm text-zinc-600">{{ idea.notes|linebreaksbr }}</p>{% endif %}
+          <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {% if can_comment %}
+              <form method="post" action="{% url 'trips:idea_vote' trip.pk idea.pk %}" class="inline" data-vote>
+                {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#idea-{{ idea.pk }}">
+                <button type="submit" class="chip {% if idea.voted %}border-accent-600 text-accent-700{% endif %}" aria-pressed="{% if idea.voted %}true{% else %}false{% endif %}" title="{% if idea.voted %}Take back your 👍{% else %}Vote for this{% endif %}">👍 {{ idea.vote_count }}</button>
+              </form>
+            {% elif idea.vote_count %}<span class="chip">👍 {{ idea.vote_count }}</span>{% endif %}
+            {% if idea.voters %}<span class="text-xs text-zinc-500">{{ idea.voters|join:", " }}</span>{% endif %}
+            <span class="text-xs text-zinc-500">Added by {% if idea.added_by %}{{ idea.added_by.get_full_name|default:idea.added_by.username }}{% else %}a former member{% endif %}</span>
+            <span class="text-xs text-zinc-500" data-idea-goal="{{ idea.pk }}"></span>
+            {% include "partials/_save_idea.html" with idea=idea %}
+          </p>
+          {% if can_edit and days %}
+            <div class="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2 border-t border-zinc-100 pt-2 text-sm">
+              <form method="post" action="{% url 'trips:idea_place' trip.pk idea.pk %}" class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-idea-place>
+                {% csrf_token %}
+                <label class="sr-only" for="idea-{{ idea.pk }}-day">Day</label>
+                <select name="day" id="idea-{{ idea.pk }}-day" class="w-auto min-w-0 max-w-full">
+                  {% for day in days %}<option value="{{ day.pk }}"{% if day.pk == open_day_pk %} selected{% endif %}>Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"D M j" }}{% endif %}{% if day.city %} · {{ day.city.name }}{% endif %}</option>{% endfor %}
+                </select>
+                <label class="sr-only" for="idea-{{ idea.pk }}-kind">As</label>
+                <select name="kind" id="idea-{{ idea.pk }}-kind" class="w-auto min-w-0 max-w-full">
+                  {% for value, label in idea_kinds %}<option value="{{ value }}"{% if value == idea.kind %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-quiet px-3 py-1">Put on this day</button>
+              </form>
+              <form method="post" action="{% url 'trips:idea_option' trip.pk idea.pk %}" class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-idea-option>
+                {% csrf_token %}
+                <label class="sr-only" for="idea-{{ idea.pk }}-target">Option of</label>
+                <select name="target" id="idea-{{ idea.pk }}-target" class="w-auto min-w-0 max-w-full">
+                  {% for group in open_groups %}<option value="group-{{ group.pk }}">Option of “{{ group.prompt }}” (Day {{ group.day.day_number }})</option>{% endfor %}
+                  {% for day in days %}<option value="day-{{ day.pk }}">New choice on Day {{ day.day_number }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-quiet px-3 py-1">Add as an option</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="text-sm text-zinc-500">No ideas yet.{% if can_comment %} Add one below, or use “Add to a trip” on a place, activity or event.{% endif %}</p>
+      {% endfor %}
+    </div>
+    {% if can_comment %}
+      <form method="post" action="{% url 'trips:idea_add' trip.pk %}" class="mt-3 flex flex-wrap items-center gap-2" data-idea-add>
+        {% csrf_token %}
+        <label class="sr-only" for="new-idea">New idea</label>
+        <input type="text" name="title" id="new-idea" maxlength="200" required placeholder="An idea: “Day trip to Salzburg”" class="min-w-0 grow">
+        <label class="sr-only" for="new-idea-kind">What kind of thing</label>
+        <select name="kind_hint" id="new-idea-kind" class="w-auto min-w-0 max-w-full"><option value="">Not sure yet</option>{% for value, label in idea_kinds %}{% if value != "note" %}<option value="{{ value }}">{{ label }}</option>{% endif %}{% endfor %}</select>
+        <button type="submit" class="btn">Add idea</button>
+      </form>
+    {% endif %}
+    {% include "partials/_trip_goals_link.html" %}
+  </div>
+</details>

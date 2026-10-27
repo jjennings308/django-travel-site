@@ -3,7 +3,7 @@ summary: Browse what there is to do, suggest new places, activities and events, 
 audience: everyone
 section: Places & events
 order: 10
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Places, activities and events
 
@@ -11,7 +11,7 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 ## Browse
 
-Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)).
+Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)), or **Add to a trip** to put it on one of your trips' Ideas shelves ([ideas and goals](/help/ideas-and-goals/#adding-ideas)).
 
 ## Searching
 

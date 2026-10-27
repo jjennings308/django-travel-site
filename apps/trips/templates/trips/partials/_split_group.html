@@ -37,7 +37,7 @@ A split "choose one" on its day (day-first plan P5; apps/trips/options.py): each
   {% if group.considered %}
     <details class="mt-3 text-sm">
       <summary class="cursor-pointer text-zinc-600">Considered ({{ group.considered|length }})</summary>
-      <ul class="mt-1 space-y-1">{% for option in group.considered %}<li id="option-{{ option.pk }}"><span class="font-medium">{{ option.title }}</span>{% if option.notes %} <span class="text-zinc-500">— {{ option.notes|truncatechars:120 }}</span>{% endif %}</li>{% endfor %}</ul>
+      <ul class="mt-1 space-y-1">{% for option in group.considered %}<li id="option-{{ option.pk }}"><span class="font-medium">{{ option.title }}</span>{% if option.notes %} <span class="text-zinc-500">— {{ option.notes|truncatechars:120 }}</span>{% endif %} {% include "partials/_save_idea.html" with option=option idea=None %}</li>{% endfor %}</ul>
     </details>
   {% endif %}
   {% if can_edit %}<form method="post" action="{% url 'trips:group_reopen' trip.pk group.pk %}" class="mt-2 text-sm">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#group-{{ group.pk }}"><button type="submit" class="link-quiet font-medium" data-reopen>Reopen the choice</button>{% if group.decided_by %} <span class="text-xs text-zinc-500">· split by {{ group.decided_by.get_full_name|default:group.decided_by.username }}{% if group.decided_at %} · {{ group.decided_at|date:"M j" }}{% endif %}</span>{% endif %}</form>{% endif %}
