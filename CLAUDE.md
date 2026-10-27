@@ -1383,6 +1383,13 @@ confirmation case as a note) done on branch `s1-convert-all`; S2 (types removed,
 `retire-section-types` — merge only after S1 has run on production (0051 refuses to migrate while a
 choose-your-adventure section is left). The decision-to-do conversion stays (page, command, banner).
 
+### Typed choices
+
+Plan: `docs/plans/typed-choices.md` (a "choose one" gets a kind — stay, eat, do, travel or any — so each option asks
+only for what's needed to compare, and Pick turns the chosen option into the real stay / meal / activity / journey;
+then ideas and map pins for options). Decisions 2026-10-27. Phases T1–T3, one branch each, in order. Status: not
+started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
