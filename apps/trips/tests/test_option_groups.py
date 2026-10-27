@@ -253,14 +253,31 @@ class ConvertTests(Fixture):
         comment = Comment.objects.get(body="Lake!")
         self.assertEqual((comment.content_type, comment.object_id), (ContentType.objects.get_for_model(Day), self.day.pk))
 
-    def test_one_with_a_confirmation_is_left_alone(self):
-        section = Section.objects.create(day=self.day, section_type="choose_your_adventure", title="Tour",
-                                         content={"options": [{"title": "A"}]})
-        Confirmation.objects.create(trip=self.trip, confirmation_number="X1").link(section)
+    def test_one_with_a_confirmation_becomes_a_note_with_its_links(self):
+        """Retire-old-section-types S1: a confirmation can't cover a whole choice, so the section becomes a
+        note on the same row, keeping its confirmation, comments and contacts; nothing is left over."""
+        from apps.trips.models import Contact, ItemLink
+        section = Section.objects.create(day=self.day, section_type="choose_your_adventure", title="Tour", order=2,
+                                         content={"prompt": "Which tour?", "summary": "Booked as one.", "source": "docx",
+                                                  "options": [{"title": "A", "description": "Boat", "duration": "2 h",
+                                                               "cost": "€30"}, {"title": "B"}, "junk"]})
+        confirmation = Confirmation.objects.create(trip=self.trip, confirmation_number="X1")
+        confirmation.link(section)
+        Comment.objects.create(content_object=section, author=self.commentor, body="Boat!")
+        ItemLink.link(Contact.objects.create(trip=self.trip, name="Captain"), section)
         (day, items), = day_first.plan(self.trip)
-        self.assertEqual(items[0].blocked, "it has a confirmation")
-        self.assertEqual(day_first.apply(self.trip), 0)
-        self.assertTrue(Section.objects.filter(pk=section.pk).exists())
+        self.assertEqual(items[0].before, ("Choose your adventure", ["Which tour?", "• A", "• B"]))
+        self.assertEqual(items[0].after, ("Note", ["Which tour?", "Booked as one.", "• A — Boat (2 h · €30)", "• B"]))
+        self.assertEqual(day_first.apply(self.trip), 1)
+        section.refresh_from_db()
+        self.assertEqual((section.section_type, section.title, section.order), ("note", "Which tour?", 2))
+        self.assertEqual(section.content, {"source": "docx", "tone": "",
+                                           "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]})
+        self.assertEqual(list(confirmation.links.values_list("object_id", flat=True)), [section.pk])
+        self.assertTrue(Comment.objects.filter(body="Boat!", object_id=section.pk).exists())
+        self.assertTrue(ItemLink.objects.filter(target_id=section.pk).exists())
+        self.assertFalse(OptionGroup.objects.filter(prompt="Which tour?").exists())
+        self.assertEqual(day_first.plan(self.trip), [])
 
     def test_a_decision_todo_becomes_a_picked_group_on_its_day(self):
         stay_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19))

@@ -94,6 +94,51 @@ class ConvertTests(Fixture):
         self.assertEqual(Section.objects.filter(section_type="note").count(), 3)
 
 
+    def test_every_trip_with_all(self):
+        """Retire-old-section-types S1: --all goes through every live trip; dry run, then apply."""
+        other = Trip.objects.create(name="Coast", start_date=date(2027, 10, 1), end_date=date(2027, 10, 2),
+                                    created_by=self.editor)
+        other_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 10, 1))
+        Section.objects.create(day=other_day, section_type="callout", title="Tip", content={"text": "Tides"})
+        Section.objects.create(day=other_day, section_type="choose_your_adventure", title="Afternoon",
+                               content={"prompt": "Beach or boat?", "options": [{"title": "Beach"}, {"title": "Boat"}]})
+        gone = Trip.objects.create(name="Deleted", start_date=date(2027, 1, 1), end_date=date(2027, 1, 1))
+        gone_day = Day.objects.create(trip=gone, day_number=1, date=date(2027, 1, 1))
+        Section.objects.create(day=gone_day, section_type="phase", title="Old", content={"heading": "Old"})
+        gone.soft_delete()
+        out = StringIO()
+        call_command("convert_day_first", "--all", stdout=out)
+        self.assertIn("Alps (trip", out.getvalue())
+        self.assertIn("Coast (trip", out.getvalue())
+        self.assertNotIn("Deleted", out.getvalue())
+        self.assertIn("2 trips, 2 with something to convert, 5 items.", out.getvalue())
+        self.assertIn("Dry run", out.getvalue())
+        self.assertEqual(Section.objects.filter(section_type="note").count(), 0)
+        before = TripChange.objects.count()
+        out = StringIO()
+        call_command("convert_day_first", "--all", "--apply", stdout=out)
+        self.assertIn("converted 5.", out.getvalue())
+        self.assertEqual(TripChange.objects.count(), before + 2)  # one history line per trip
+        self.assertEqual(Section.objects.filter(day__trip__in=[self.trip, other], section_type__in=[
+            "phase", "callout", "free_text", "choose_your_adventure"]).count(), 0)
+        self.assertTrue(other.option_groups.filter(prompt="Beach or boat?").exists())
+        for trip in (self.trip, other):
+            page = Trip.objects.prefetch_related("days__sections", "booking_tasks__options").get(pk=trip.pk)
+            for day in page.days.all():
+                day.ordered_sections = list(day.sections.all())
+            self.assertEqual(day_first.pending_count(page), 0)
+        out = StringIO()
+        call_command("convert_day_first", "--all", stdout=out)
+        self.assertIn("0 with something to convert", out.getvalue())
+
+    def test_trip_or_all_not_both(self):
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            call_command("convert_day_first", "--all", "--trip", str(self.trip.pk), stdout=StringIO())
+        with self.assertRaises(CommandError):
+            call_command("convert_day_first", stdout=StringIO())
+
+
 class NoteTests(Fixture):
     def test_the_page_shows_notes_like_what_they_replace(self):
         day_first.apply(self.trip)
