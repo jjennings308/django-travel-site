@@ -72,7 +72,8 @@ class PerfReportTests(TestCase):
         report = out.getvalue()
         for name in ("trip page", "settings", "bookings", "booklet (HTML only)", "calendar feed", "search", "sitemap.xml"):
             self.assertIn(name, report)
-        self.assertNotRegex(report, r"\s3\d\d\s")  # no redirect was timed
+        # No redirect was timed: a 3xx in the status column (not, say, "Trip 331" in the heading).
+        self.assertNotRegex(report, r"(?m)\s3\d\d\s+\d+\s+\d+\s*$")
         self.assertEqual(get_user_model().objects.count(), users_before)  # rolled back
 
 

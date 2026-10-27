@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): what's being decided, when, and its options; under each saved option, the items in it, and a one-line add straight into it (trips:quick_add with option=). An item can also be put in an option from its own page ("In option").
+A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): what's being decided and what kind of thing it is (typed-choices T1: the kind's shared fields show for it, Alpine; all show without JavaScript, and the form clears the others), when, and its options, which ask for the kind's fields; under each saved option, the items in it, and a one-line add straight into it (trips:quick_add with option=). An item can also be put in an option from its own page ("In option").
 {% endcomment %}
 {% block title %}{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -10,13 +10,23 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
     <span>Day {{ day.day_number }}</span><span>/</span>
     <span>{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</span>
   </nav>
-  <form method="post" class="card p-6" novalidate data-panel-tab="details">
+  <form method="post" class="card p-6" novalidate data-panel-tab="details" x-data="{ kind: '{{ form.kind.value|default:'any' }}' }">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     <h1 class="page-title mb-1">{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</h1>
     <p class="mb-4 text-zinc-500">Day {{ day.day_number }}{% if day.date %}, {{ day.date|date:"l, F j" }}{% endif %}. Options to choose between; everyone on the trip can 👍 them, and an editor picks one. Until then nothing in them counts: not in the timeline, the budget or the calendar. {% include "partials/_help_link.html" with slug="options-and-votes" label="options and votes" text="How this works" %}</p>
     {% if group.pk %}<p class="mb-4"><span class="badge badge-mode">{{ group.get_state_display }}</span>{% if options|length > 1 %} <a class="link-quiet ml-2 text-sm font-medium" href="{% url 'trips:group_split' trip.pk group.pk %}?next={{ next|urlencode }}" data-split>{% if group.state == "split" %}Change who goes{% else %}Split between people{% endif %}</a>{% endif %}</p>{% endif %}
-    {% include "trips/_form_fields.html" with form=form %}
+    {% for field in form.visible_fields %}
+      {% with name=field.name %}
+      <div class="mb-4"{% if name == "nights" %} x-show="kind === 'stay'"{% elif name == "meal_type" %} x-show="kind === 'eat'"{% elif name == "start_time" %} x-show="kind !== 'stay'"{% elif name == "end_time" %} x-show="kind === 'do'"{% elif name == "mode" %} x-show="kind === 'travel'"{% endif %} data-group-field="{{ name }}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+        {% if name == "kind" and group.pk %}<p class="mt-1 text-xs text-zinc-500">Change it and save: the options then ask for what that kind needs.</p>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endwith %}
+    {% endfor %}
     {{ formset.management_form }}
     {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}
     <h2 class="form-section-title mt-2 mb-3">Options</h2>
@@ -26,9 +36,10 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
           {{ option_form.id }}
           <div class="grid gap-3 sm:grid-cols-3">
             {% for field in option_form.visible_fields %}{% if field.name != "DELETE" %}
-              <div class="{% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
+              <div class="min-w-0 {% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
             {% endif %}{% endfor %}
           </div>
+          {% if option_form.non_field_errors %}<div class="alert-error mt-2">{{ option_form.non_field_errors }}</div>{% endif %}
           {% if option_form.instance.pk %}<label class="mt-2 flex items-center gap-2 text-sm text-zinc-600">{{ option_form.DELETE }} Remove this option (anything in it stays on the day)</label>{% endif %}
         </fieldset>
       {% endfor %}

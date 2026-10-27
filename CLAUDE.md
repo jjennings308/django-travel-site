@@ -850,6 +850,21 @@ that matter most:
   task's day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the
   choice …". (S1 also converted choose-your-adventure sections here — to groups, or to a note on the same row when one
   had a confirmation — before S2 retired the type.)
+- **Typed choices** (typed-choices plan T1; trips 0052): `OptionGroup.kind` any (default; choices before T1) / stay /
+  eat / do / travel, with the kind's shared fields `nights` (stay), `meal_type` + `start_time` (eat), `start_time` /
+  `end_time` (do), `mode` (travel). `Option` gains a catalogue link (at most one of `poi` / `activity` / `event` /
+  `city`, `option_one_target`, SET_NULL), `place_text`, `nights` (a stay override; blank = the group's), `from_text` /
+  `to_text`, and `made` (generic, the item Pick creates — T2). For a stay `est_cost` is per night: `Option.own_cost` =
+  nightly × `stay_nights` (× 1 while unknown) feeds `options._costs` and the trip estimate; `Option.kind_line()` is
+  the box's and the booklet's line ("EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße", "Augustiner Keller · EUR
+  40.00", "Hacker-Festzelt · 11:00–16:00", "Train · Augsburg → Munich"). `OptionGroupForm` (**What is this choice
+  about?**, the kind's fields shown by Alpine, the others cleared in `clean`) and `OptionForm(kind=…)` (`KIND_FIELDS`;
+  catalogue pickers from `catalogue_places` — Food & drink first for eat —, `catalogue_activities`,
+  `catalogue_events`, the city box for a stay, built once per trip object `_option_pickers` and shared by
+  `share_choices`, so the page's count doesn't grow with rows; the formset takes the posted kind, and saving a changed
+  kind stays on the page). `quick_add.choice_kind(prompt)` (pure) guesses the kind — stay / meal words / travel words
+  (not "walk") / else do — for + Add's **Options** and `group_new` (`?prompt=`, `?kind=` overrides). `options.load`
+  select_relates the option's catalogue link, so the trip page's pin holds.
 - **Split** (day-first plan P5; no migration): `OptionGroup.split(tracks, user)` (option → travellers; state `split`,
   nothing `chosen`) from `trips:group_split` (`/trips/<pk>/choices/<id>/split/`, editors; `forms.SplitForm`: a radio row
   per person on `day.roster`, everyone placed once, at least two options taken — else "pick it instead"; prefilled, so
@@ -1382,6 +1397,13 @@ Tidy and history restore — S2; logistics tables stay). Decided 2026-10-27. Sta
 confirmation case as a note) done on branch `s1-convert-all`; S2 (types removed, trips 0051) done on branch
 `retire-section-types` — merge only after S1 has run on production (0051 refuses to migrate while a
 choose-your-adventure section is left). The decision-to-do conversion stays (page, command, banner).
+
+### Typed choices
+
+Plan: `docs/plans/typed-choices.md` (a "choose one" knows what it decides — stay / eat / do / travel — its options ask
+only for that kind's fields, and Pick turns the winner into the real item; ideas and the map later). Decisions
+2026-10-27. Phases T1–T3, one branch each, in order. Status: T1 (kinds and the options' fields, the kind's line on the
+day and in the booklet) done on branch `t1-choice-kinds`.
 
 ### Typed choices
 

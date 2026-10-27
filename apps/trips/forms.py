@@ -2126,40 +2126,114 @@ RouteFormSet = formset_factory(RouteStopForm, extra=3)
 # "Choose one" groups (day-first plan, P4)
 # ---------------------------------------------------------------------------
 class OptionGroupForm(forms.ModelForm):
-    """What's being decided on a day; its options are the formset below it."""
+    """What's being decided on a day: **What is this choice about?** (typed-choices T1) and the fields its
+    options share for that kind — nights for a stay, the meal and its time for eating out, start and end
+    for something to do, the mode for travel (the page shows only the kind's). Its options are the formset
+    below it."""
+
+    #: The group fields each kind uses; the rest are cleared on save so a changed kind leaves no strays.
+    KIND_FIELDS = {"stay": ("nights",), "eat": ("meal_type", "start_time"), "do": ("start_time", "end_time"),
+                   "travel": ("mode", "start_time"), "any": ("start_time",)}
 
     class Meta:
         model = OptionGroup
-        fields = ["prompt", "start_time", "notes", "order"]
-        widgets = {"start_time": TimeInput(styled=False), "notes": forms.Textarea(attrs={"rows": 2})}
+        fields = ["prompt", "kind", "nights", "meal_type", "start_time", "end_time", "mode", "notes", "order"]
+        labels = {"start_time": "Time", "end_time": "Until"}
+        widgets = {"start_time": TimeInput(styled=False), "end_time": TimeInput(styled=False),
+                   "notes": forms.Textarea(attrs={"rows": 2})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["order"].required = False
+        self.fields["kind"].required = False  # not posted: the choice keeps its kind
+        self.fields["kind"].widget.attrs["x-model"] = "kind"  # the page shows the kind's fields (Alpine)
 
     def clean_order(self):
         return self.cleaned_data.get("order") or 0
 
+    def clean_kind(self):
+        return self.cleaned_data.get("kind") or self.instance.kind or OptionGroup.Kind.ANY
+
+    def clean(self):
+        cleaned = super().clean()
+        keep = self.KIND_FIELDS.get(cleaned.get("kind") or "any", ())
+        for name in ("nights", "meal_type", "start_time", "end_time", "mode"):
+            if name not in keep:
+                cleaned[name] = "" if name in ("meal_type", "mode") else None
+        start, end = cleaned.get("start_time"), cleaned.get("end_time")
+        if start and end and end <= start:
+            self.add_error("end_time", "Until must be after the time it starts.")
+        return cleaned
+
 
 class OptionForm(forms.ModelForm):
-    """One option: a title, notes, a link and an estimated cost. Its legs, stays, activities, meals and
-    notes are those items with ``option`` set to it (each item's own page)."""
+    """One option: a title, notes, a link and an estimated cost, plus what its choice's kind asks for
+    (typed-choices T1): a place — a catalogue place, activity, event or city, or typed — for a stay, a meal
+    or something to do; a nights override for a stay (whose cost is per night); from / to for travel. Its
+    legs, stays, activities, meals and notes are those items with ``option`` set to it (each item's own
+    page)."""
+
+    #: The option fields each kind asks for, besides title, notes, link and cost (always).
+    KIND_FIELDS = {"stay": ("city", "poi", "place_text", "nights"), "eat": ("poi", "place_text"),
+                   "do": ("poi", "activity", "event", "place_text"), "travel": ("from_text", "to_text"), "any": ()}
+    EXTRA = ("poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text")
 
     class Meta:
         model = Option
-        fields = ["title", "notes", "url", "est_cost", "currency", "order"]
+        fields = ["title", "poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text",
+                  "notes", "url", "est_cost", "currency", "order"]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
 
-    def __init__(self, *args, trip=None, city_ids=(), **kwargs):
+    def __init__(self, *args, trip=None, city_ids=(), kind="any", **kwargs):
         super().__init__(*args, **kwargs)
+        self.kind = kind or "any"
         self.fields["order"].required = False
         if trip is not None:
             currencies.setup(self, "currency", trip, city_ids)
         else:
             self.fields["currency"].required = False
+        wanted = self.KIND_FIELDS.get(self.kind, ())
+        for name in self.EXTRA:
+            if name not in wanted:
+                del self.fields[name]
+        pickers = self._pickers(trip)
+        if "poi" in self.fields:
+            self.fields["poi"].queryset = pickers["food" if self.kind == "eat" else "places"]
+            self.fields["poi"].label_from_instance = _place_label
+            self.fields["poi"].label = "Catalogue place"
+        if "activity" in self.fields:
+            self.fields["activity"].queryset = pickers["activities"]
+            self.fields["activity"].label = "Catalogue activity"
+        if "event" in self.fields:
+            self.fields["event"].queryset = pickers["events"]
+            self.fields["event"].label_from_instance = _event_label
+            self.fields["event"].label = "Catalogue event"
+        if "city" in self.fields:
+            _leg_city_fields(self, trip, names=("city",))
+        if self.kind == "stay":
+            self.fields["est_cost"].label = "Cost per night"
+
+    @staticmethod
+    def _pickers(trip):
+        """The catalogue querysets, built once per trip object: building one reads the trip's cities, and the
+        formset has a form per option (``share_choices`` then loads each list once)."""
+        cached = getattr(trip, "_option_pickers", None) if trip is not None else None
+        if cached is None:
+            cached = {"places": catalogue_places(trip), "food": catalogue_places(trip, food_first=True),
+                      "activities": catalogue_activities(trip), "events": catalogue_events(trip)}
+            if trip is not None:
+                trip._option_pickers = cached
+        return cached
 
     def clean_order(self):
         return self.cleaned_data.get("order") or 0
+
+    def clean(self):
+        cleaned = super().clean()
+        linked = [name for name in ("poi", "activity", "event", "city") if cleaned.get(name)]
+        if len(linked) > 1:
+            raise forms.ValidationError("Link one catalogue item at most: a place, an activity, an event or a city.")
+        return cleaned
 
 
 OptionFormSet = inlineformset_factory(OptionGroup, Option, form=OptionForm, extra=2, can_delete=True)

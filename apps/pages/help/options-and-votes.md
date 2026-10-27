@@ -52,9 +52,25 @@ Editors make a choice on a day in either of two ways:
 - The day's page: **+ Choose one** under **Add to this day**.
 - An idea on the trip's Ideas shelf: **Add as an option** ([ideas and goals](/help/ideas-and-goals/#making-an-idea-an-option)).
 
-Either opens the choice's page: what's being decided, an optional time (it then sits in the timeline), notes, and its **Options** (title, notes, a link, an estimated cost). Save, and each saved option gets a box to add things straight into it: type a line such as "Train Munich → Füssen 9:15" or "Dinner Augustiner 7pm", as in + Add.
+Either opens the choice's page: what's being decided, **What is this choice about?** ([below](#what-a-choice-is-about)), an optional time (it then sits in the timeline), notes, and its **Options** (title, notes, a link, an estimated cost, and what the kind asks for). Save, and each saved option gets a box to add things straight into it: type a line such as "Train Munich → Füssen 9:15" or "Dinner Augustiner 7pm", as in + Add.
 
 To put something already on the day into an option, open it (its panel or page) and choose the option under **In option**. Set it back to blank to take it out. Deleting a choice keeps everything that was in its options, simply on the day.
+
+## What a choice is about
+
+A choice can say what kind of thing it decides, so each option asks only for what you need to compare them:
+
+| Kind | The choice has | Each option has |
+| --- | --- | --- |
+| **Stay** | how many **nights**, from its day | a catalogue city or place, or an address; a **cost per night**; its own nights if it differs (a 3-night minimum) |
+| **Eat** | the **meal** and its time | a catalogue place (Food & drink first) or a typed one; a cost |
+| **Do** | a **time** and **until** | a catalogue place, activity or event, or a typed place; a cost |
+| **Travel** | the **mode** (train, flight…) and a time | **from** and **to**; a cost |
+| **Anything** | a time | just a title, notes, a link and a cost, as before |
+
+The site guesses the kind from what you type: "Where to stay in Munich" or "Augsburg hotel" is a stay, "Dinner Friday" eating out (dinner), "Train or drive to Füssen" travel, anything else something to do. Change it on the choice's page and save: the options then ask for that kind's details. Choices made before kinds existed are **Anything** and work as before.
+
+On the day, each option shows a line for its kind: a stay "EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße", a meal "Augustiner Bräustuben · EUR 40.00", something to do "Hacker-Festzelt · 11:00–16:00", a journey "Train · Augsburg → Munich". A stay's cost counts as nightly price × nights, in the option's total and the trip's estimated cost. The PDF prints the same lines.
 
 ## From older trips
 
@@ -62,4 +78,4 @@ Trips planned before choices had **Choose your adventure** sections and **decisi
 
 ## In the PDF
 
-An undecided choice prints as "Afternoon — undecided" with each option and what's in it. A picked one prints what was chosen, with its items among the day's own. A split one prints its tracks with who's on each: side by side when there are two, one under another when there are more.
+An undecided choice prints as "Afternoon — undecided" with each option, its line for the choice's kind, and what's in it. A picked one prints what was chosen, with its items among the day's own. A split one prints its tracks with who's on each: side by side when there are two, one under another when there are more.

@@ -1,6 +1,6 @@
 # Plan: typed choices (a "choose one" knows what it's choosing)
 
-Status: planning only (2026-10-27). Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
+Status: T1 done (2026-10-27, branch `t1-choice-kinds`). Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
 branch each, in order. Read with `CLAUDE.md` → Trips → "'Choose one' groups and votes", "Split", "Ideas shelf" and
 "+ Add and five kinds", and `docs/plans/day-first-planning.md` (P4–P6).
 
@@ -39,6 +39,12 @@ needed to compare, and **turn the winner into the real item** when an editor pic
 ## Phases
 
 ### T1 — Kinds and the options' fields
+
+Done (branch `t1-choice-kinds`). As built: + Add's **Options** and + Choose one guess the kind from the prompt and the
+choice's page changes it (no extra question first); saving a changed kind stays on the page so the options can be
+filled in; a stay option's cost counts × 1 while no nights are known; the line shows the option's catalogue place as a
+link; the travel line has no duration (options have none until T2's legs); the snapshot fixture gained an open stay
+choice (two options, one with its own nights).
 
 - `OptionGroupForm`: **What is this choice about?** (Stay / Eat / Do / Travel / Anything) and the kind's shared
   fields (nights; meal type + time; start / end; mode). `OptionFormSet` shows only the fields for the kind (title,

@@ -139,3 +139,28 @@ def _meal_type_for(clock):
     if clock is None:
         return "dinner"
     return "breakfast" if clock.hour < 11 else "lunch" if clock.hour < 16 else "dinner"
+
+
+# ---- what a "choose one" is about (typed-choices T1) ------------------------------------------
+CHOICE_KINDS = ("stay", "eat", "do", "travel", "any")
+
+
+def _has(text, words):
+    return any(re.search(r"(?<![\w&])" + re.escape(w) + r"(?![\w&])", text, re.IGNORECASE) for w in words)
+
+
+def choice_kind(text):
+    """What a choice typed into + Add's **Options** (or + Choose one) is about, from its prompt: "Where to
+    stay in Munich" / "Augsburg hotel" → stay; "Dinner Friday" → eat (with that meal); "Train or drive to
+    Füssen" → travel (with the mode named); anything else → do. Returns {"kind", "meal_type"?, "mode"?};
+    the group's page can change it."""
+    text = " ".join((text or "").split())
+    meal = next((MEAL_WORDS[w] for w in re.findall(r"[A-Za-z]+", text.lower()) if w in MEAL_WORDS), None)
+    if _has(text, STAY_WORDS) or re.search(r"\bwhere to (stay|sleep)\b|\bnights?\b", text, re.IGNORECASE):
+        return {"kind": "stay"}
+    if meal:
+        return {"kind": "eat", "meal_type": meal}
+    if _has(text, [w for w in TRAVEL_WORDS if w != "walk"]) or re.search(r"\bget(ting)? to\b|\bhow to get\b", text, re.IGNORECASE):
+        mode = _mode(text)
+        return {"kind": "travel", **({"mode": mode} if mode != "other" else {})}
+    return {"kind": "do"}
