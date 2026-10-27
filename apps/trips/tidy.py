@@ -33,7 +33,8 @@ Kinds (``Suggestion.kind``):
 2. ``callout_task`` — a "Book…" callout repeats an open task.
 3. ``phone`` — a phone number typed into text; becomes a contact linked to the item.
 4. ``notes_repeat`` / ``notes_options`` — trip notes repeating legs or stays; a numbered list of
-   options that is really a decision.
+   options that is really a choice: becomes a "choose one" group on the day its heading or lines name
+   ("Day 4 dinner options:"), else on Day 1, saying to check the day.
 5. ``table_activity`` — a logistics table describing an activity of that day.
 6. ``day_slip`` — "Day 3" written in Day 4's text (flag only).
 7. ``meal_phase`` — an empty phase that is only a time and a meal ("~7pm — Dinner") on a day with one
@@ -446,12 +447,18 @@ def _trip_notes(snapshot, known):
             if j - i >= 2:
                 block = lines[i:j]
                 heading = next((lines[k].strip().rstrip(":") for k in range(i - 1, -1, -1) if lines[k].strip()), "")
-                title = heading[:200] or "Decision from the trip notes"
+                title = heading[:200] or "Choice from the trip notes"
+                numbers = [d["number"] for d in snapshot.get("days", [])]
+                named = next((int(m.group(1)) for text in (heading, *block) for m in [DAY_REF.search(text)] if m), None)
+                day = named if named in numbers else (min(numbers) if numbers else None)
+                check = "" if day is None or named in numbers else " (no day named: check it)"
+                where = f"Day {day}{check}" if day is not None else "a day (add one first)"
                 yield Suggestion(
                     key=_key("notes_options", "\n".join(block)), kind="notes_options", day=None,
-                    where="Trip notes", before="\n".join(block), after=f"A decision “{title}” with {len(block)} options",
-                    actions=[("decision", "Make it a decision task with these options")],
-                    change={"op": "notes_options", "lines": block, "title": title,
+                    where="Trip notes", before="\n".join(block),
+                    after=f"A choice “{title}” with {len(block)} options on {where}",
+                    actions=[("choice", f"Make it a choice on {where} with these options")],
+                    change={"op": "notes_options", "lines": block, "title": title, "day": day,
                             "options": [NUMBERED.match(b).group(1).strip()[:200] for b in block]})
                 i = j
                 continue

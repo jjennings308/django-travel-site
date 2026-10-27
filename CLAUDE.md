@@ -756,9 +756,10 @@ that matter most:
     `_activity_row.html`, `_meal_row.html` (`#leg-N`, `#activity-N`, `#meal-N`); then the
     **narrative** in section order (travel sections show only their intro and reference rows —
     their placed legs are in the timeline); then **Food ideas** (meals with no reservation time).
-  - **Notes:** anyone with the `comment` capability can start a note on a day (**Add a note to this
-    day**, at the end of the open day), on a section or on a task in Reference (**Add a note**), each
-    shown only while it has none; once it has notes, its thread's **Add a comment** takes over.
+  - **Comments** (called "notes" until the help refresh, renamed so they don't clash with + Add's Note items):
+    anyone with the `comment` capability can start one on a day (**Add a comment to this
+    day**, at the end of the open day), on a section or on a task in Reference (**Add a comment**), each
+    shown only while it has none; once it has comments, its thread's **Add a comment** takes over.
     Posting or editing a comment returns to `trip_detail#comment-N` (one anchor — the comment sits
     inside its day, so the page opens it).
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
@@ -905,7 +906,7 @@ that matter most:
   (`repeats_item`), a "Book…" callout repeating an open task (`callout_task`: delete it, or keep it as an
   info note on the task's item), a phone number in text or trip notes (`phone` → a contact linked to the
   named meal/section; a "name / notes / Phone:" block in the trip notes becomes one contact), trip notes
-  repeating legs/stays or listing numbered options (`notes_repeat`, `notes_options` → a decision task),
+  repeating legs/stays or listing numbered options (`notes_repeat`, `notes_options` → a "choose one" group on the day its heading or lines name, else Day 1 flagged "check it"; never a decision to-do),
   a logistics table titled like an activity (`table_activity` → an info note on it), "Day N" written
   on another day (`day_slip`, flag only) and an empty phase that is only "<time> — Dinner" next to the day's
   one meal of that type (`meal_phase`: give the meal that `reserved_time` — `tidy.clock_time`, am/pm from the

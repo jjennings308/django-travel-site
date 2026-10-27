@@ -3,7 +3,7 @@ summary: Add trains, flights and drives, from a rough plan to a booked journey w
 audience: editors
 section: Trips
 order: 30
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Travel legs
 
@@ -19,7 +19,11 @@ A leg is one journey: a flight, a train, a drive or a walk. It starts as a plan 
 
 ## Add a leg quickly
 
-On a day's page, click **+ Leg** and type the leg like a table row: **From**, **To**, **Mode**, **~Duration** (such as "45 min" or "2.5 hrs") and a **Note**, then click **Add leg**. It's planned, on that day. The site matches the places to the trip's cities by name where it can.
+On the trip page, open the day and type the journey into **+ Add** at the end of it, such as "Train Munich → Salzburg 9:15" or "Train to Salzburg" (which leaves from the day's city), then press Enter or click **Travel** ([+ Add](/help/adding-a-day/#add-to-a-day)). The site reads the mode, the two places and a rough time like "~45 min" from the line, and matches the places to the trip's cities by name where it can. The leg is planned, on that day, and opens beside the page so you can add more. A time you type is kept in its notes ("Around 09:15"), since a planned leg has no times until it's booked.
+
+Laying out a whole trip? **Set the route** (cities and nights) adds a planned leg on each travel day between one city and the next, along with a placeholder stay in each city ([the route](/help/starting-a-trip/#the-route)).
+
+The other way: on a day's page, click **+ Leg** and type the leg like a table row: **From**, **To**, **Mode**, **~Duration** (such as "45 min" or "2.5 hrs") and a **Note**, then click **Add leg**.
 
 ## Edit a leg
 

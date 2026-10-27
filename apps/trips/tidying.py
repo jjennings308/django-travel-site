@@ -8,8 +8,7 @@ import re
 from django.db import transaction
 
 from . import tidy
-from .models import (BookingTask, Confirmation, Contact, ItemLink, LINKABLE, Meal, Section, TaskOption, TidyDismissal,
-                     TripInfo)
+from .models import Confirmation, Contact, ItemLink, LINKABLE, Meal, Section, TidyDismissal, TripInfo
 
 
 def snapshot(trip):
@@ -249,9 +248,14 @@ def _apply_one(trip, s, action, user=None):
         lines = trip.notes.splitlines()
         if any(line not in lines for line in c["lines"]):
             raise Stale("the trip notes changed")
-        task = BookingTask.objects.create(trip=trip, title=c["title"][:200], kind=BookingTask.Kind.DECIDE)
-        for order, title in enumerate(c["options"], start=1):
-            TaskOption.objects.create(task=task, title=title, order=order)
+        # A "choose one" group on its day (day-first P4), never a decision to-do any more.
+        from . import day_first
+        day = trip.days.filter(day_number=c.get("day")).first() if c.get("day") is not None else None
+        if day is None:
+            raise Stale("the trip has no such day" if c.get("day") is not None else "the trip has no days yet")
+        day_first.make_group(trip, day, c["title"][:200], "", [
+            {"title": title, "notes": "", "url": "", "est_cost": None, "currency": "", "order": order, "chosen": False}
+            for order, title in enumerate(c["options"])])
         for line in c["lines"]:
             lines.remove(line)
         trip.notes = "\n".join(lines).strip()

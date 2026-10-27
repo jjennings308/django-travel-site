@@ -228,14 +228,32 @@ class ApplyTests(Fixture):
         self.assertEqual((applied, len(skipped)), ([], 1))
         self.assertTrue(Section.objects.filter(pk=phase.pk).exists())
 
-    def test_notes_options_become_a_decision(self):
+    def test_notes_options_become_a_choice_on_the_named_day(self):
+        """A choice on a day (day-first P4), never a decision to-do."""
+        Day.objects.create(trip=self.trip, day_number=5, date=date(2027, 9, 21))
+        self.trip.notes = "Day 5 dinner options:\n1. Hotel Augusta\n2. Drei Mohren\n\nKeep this"
+        self.trip.save()
+        found = self.suggestions()
+        options = next(s for s in found if s.kind == "notes_options")
+        self.assertEqual(options.after, "A choice “Day 5 dinner options” with 2 options on Day 5")
+        self.assertEqual(options.actions, [("choice", "Make it a choice on Day 5 with these options")])
+        tidying.apply(self.trip, found, {options.key: "choice"})
+        group = self.trip.option_groups.get()
+        self.assertEqual((group.day.day_number, group.prompt, group.state), (5, "Day 5 dinner options", "open"))
+        self.assertEqual([o.title for o in group.options.all()], ["Hotel Augusta", "Drei Mohren"])
+        self.assertFalse(BookingTask.objects.filter(kind="decide").exists())
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.notes, "Day 5 dinner options:\n\nKeep this")
+
+    def test_notes_options_without_a_day_go_on_day_1_flagged(self):
+        Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 17))
         self.trip.notes = "Augsburg options:\n1. Hotel Augusta\n2. Drei Mohren"
         self.trip.save()
         found = self.suggestions()
         options = next(s for s in found if s.kind == "notes_options")
-        tidying.apply(self.trip, found, {options.key: "decision"})
-        task = BookingTask.objects.get(kind="decide")
-        self.assertEqual([o.title for o in task.options.all()], ["Hotel Augusta", "Drei Mohren"])
+        self.assertIn("on Day 1 (no day named: check it)", options.after)
+        tidying.apply(self.trip, found, {options.key: "choice"})
+        self.assertEqual(self.trip.option_groups.get().day.day_number, 1)
 
 
 class PageTests(Fixture):
