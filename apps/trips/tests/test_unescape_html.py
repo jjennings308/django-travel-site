@@ -69,7 +69,7 @@ class UnescapeHtmlTests(TestCase):
     def test_numeric_entities_are_resolved(self):
         meal_note = Section.objects.create(
             day=self.day,
-            section_type=Section.Type.CALLOUT,
+            section_type=Section.Type.NOTE,
             content={},
             title="Caf&#233; &amp; bar",
         )
@@ -80,7 +80,7 @@ class UnescapeHtmlTests(TestCase):
     def test_json_content_is_never_touched(self):
         section = Section.objects.create(
             day=self.day,
-            section_type=Section.Type.FREE_TEXT,
+            section_type=Section.Type.NOTE,
             content={"paragraphs": ["Tom &amp; Jerry"]},
             title="fine",
         )

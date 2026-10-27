@@ -22,8 +22,8 @@ class BookletTests(TestCase):
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day1 = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12), theme="Arrival")
         self.day2 = Day.objects.create(trip=self.trip, day_number=2, date=date(2026, 9, 13), theme="High Road")
-        Section.objects.create(day=self.day1, section_type="callout", title="Tip",
-                               content={"tone": "info", "text": "💡 Pickup is in the terminal"})
+        Section.objects.create(day=self.day1, section_type="note", title="Tip",
+                               content={"tone": "tip", "paragraphs": ["💡 Pickup is in the terminal"]})
         when = datetime(2026, 9, 12, 11, 5, tzinfo=UTC)
         leg = TransportLeg.objects.create(trip=self.trip, mode="plane", operator="DL", service_number="2579",
                                           origin="BWI", destination="ATL", departure_at=when, arrival_at=when,

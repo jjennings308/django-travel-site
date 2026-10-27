@@ -46,8 +46,8 @@ class Fixture(TestCase):
                                     poi=self.castle)
 
     def callout(self, text, day=None, title="Heads up", tone="warning"):
-        return Section.objects.create(day=day or self.day, section_type="callout", title=title,
-                                      content={"tone": tone, "text": text})
+        return Section.objects.create(day=day or self.day, section_type="note", title=title,
+                                      content={"tone": tone, "paragraphs": [text]})
 
     def found(self):
         return [s for s in tidying.suggestions(self.trip) if s.kind == "catalogue_note"]
@@ -58,7 +58,7 @@ class DetectTests(Fixture):
         self.callout("Marburg Castle's museum is cash only.")
         self.callout("Marburg Castle again, but on a day with nothing linked.", day=self.other_day)
         self.callout("Olga is arranged by John.")
-        Section.objects.create(day=self.day, section_type="free_text", title="Marburg Castle",
+        Section.objects.create(day=self.day, section_type="note", title="Marburg Castle",
                                content={"paragraphs": ["Marburg Castle is up the hill."]})
         found = self.found()
         self.assertEqual(len(found), 1)
@@ -68,7 +68,7 @@ class DetectTests(Fixture):
 
     def test_an_events_activity_and_venue_count_and_capitals_and_accents_dont(self):
         Meal.objects.create(day=self.other_day, name="Tent lunch", meal_type="lunch")
-        Section.objects.create(day=self.other_day, section_type="free_text", title="Wiesn", event=self.okto27,
+        Section.objects.create(day=self.other_day, section_type="note", title="Wiesn", event=self.okto27,
                                content={"paragraphs": ["Beer."]})
         self.callout("THERESIENWIESE: cash only in the tents.", day=self.other_day)
         self.assertEqual([s.change["target"]["kind"] for s in self.found()], ["poi"])

@@ -126,13 +126,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
     {% endif %}
 
     {% for section in day.ordered_sections %}
-      {% if section.section_type == "phase" %}
-        <div class="block">
-          <h3>{{ section.content.heading|default:section.title }}</h3>
-          {% if section.content.summary %}<p>{{ section.content.summary }}</p>{% endif %}
-          {% if section.content.highlights %}<ul>{% for item in section.content.highlights %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
-        </div>
-      {% elif section.section_type == "logistics_table" or section.section_type == "travel" %}
+      {% if section.section_type == "logistics_table" or section.section_type == "travel" %}
         {% if section.content.rows or section.content.intro %}
           <div class="block">
             {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}
@@ -145,16 +139,6 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
             {% endif %}
           </div>
         {% endif %}
-      {% elif section.section_type == "callout" %}
-        <div class="callout {{ section.content.tone|default:'info' }}">{% if section.title %}<strong>{{ section.title }}:</strong> {% endif %}{{ section.content.text }}</div>
-      {% elif section.section_type == "choose_your_adventure" %}
-        <div class="block">
-          <h3>{{ section.content.prompt|default:section.title }}</h3>
-          {% if section.content.summary %}<p>{{ section.content.summary }}</p>{% endif %}
-          {% for option in section.content.options %}
-            <div class="option"><strong>{% if option.letter %}{{ option.letter }}. {% endif %}{{ option.title }}</strong>{% if option.duration or option.cost %} <span class="muted small">{{ option.duration }}{% if option.duration and option.cost %} · {% endif %}{{ option.cost }}</span>{% endif %}{% if option.description %}<br>{{ option.description }}{% endif %}</div>
-          {% endfor %}
-        </div>
       {% elif section.section_type == "note" %}
         {% if section.note_style %}
           <div class="callout {{ section.note_style }}">{% if section.title %}<strong>{{ section.title }}:</strong> {% endif %}{% for paragraph in section.content.paragraphs %}{{ paragraph }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
@@ -164,11 +148,6 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
             {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
           </div>
         {% endif %}
-      {% elif section.section_type == "free_text" %}
-        <div class="block">
-          {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}
-          {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
-        </div>
       {% endif %}
       {% if section.poi_id or section.activity_id or section.event_id %}<p class="small muted">{% include "trips/pdf/_catalogue.html" with item=section %}</p>{% include "trips/pdf/_notes.html" with item=section %}{% endif %}
       {% if section.confirmation_list %}<p class="small">Confirmation: {% for c in section.confirmation_list %}<span class="code">{{ c.confirmation_number }}</span>{% if c.provider %} ({{ c.provider }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}

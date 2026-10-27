@@ -92,7 +92,7 @@
       {% if book_ahead_items %}<a class="link-quiet font-medium text-amber-700" href="#{{ book_ahead_items.0.anchor }}" data-book-ahead>{{ book_ahead_items|length }} to book ahead</a>{% endif %}
       {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
       {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
-      {% if notes_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}" data-convert-link>{{ notes_pending }} to convert to notes and choices</a>{% endif %}
+      {% if notes_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}" data-convert-link>{{ notes_pending }} decision{{ notes_pending|pluralize }} to turn into choices</a>{% endif %}
     </p>
   {% endif %}
 

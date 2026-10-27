@@ -1,6 +1,6 @@
 # Plan: retire phases, callouts, free text and choose-your-adventure sections
 
-Status: S1 done (2026-10-27, branch `s1-convert-all`; James still runs it on dev and production); S2 not started. Decided by James 2026-10-27. Two steps: S1 (convert the data, small), then S2
+Status: S1 done (2026-10-27, branch `s1-convert-all`); S2 done (2026-10-27, branch `retire-section-types`, not to be merged until S1 has run on production). Decided by James 2026-10-27. Two steps: S1 (convert the data, small), then S2
 (remove the types from the code, one branch). Read with `CLAUDE.md` → Trips → "+ Add and five kinds" and
 "'Choose one' groups and votes", and `docs/plans/day-first-planning.md` (P3, P4).
 
@@ -32,6 +32,14 @@ haven't been converted, in the importers, in the section page's create URL (an e
   `pg_dump` first and `convert_day_first --all --apply`.
 
 ## S2 — Remove the types (branch `retire-section-types`)
+
+Done. As built: the decision-to-do conversion stays (review page, `convert_day_first`, the banner, now "N decisions
+to turn into choices"), since production couldn't be checked from here for open decision to-dos; it can go in a later
+change once none are left. `day_first` keeps only the plain-dict mappings (`note_from`, `adventure_group`,
+`make_group`, `adventure_note`, `as_note`) and the decision conversion; the section-conversion review is gone. The
+section page's choose-your-adventure options formset went with its form. The booklet snapshot is unchanged (its
+fixture builds the notes through the mapping, and labels the NIGHT1 confirmation as before). Tidy reads notes directly
+with the same keys.
 
 Do not merge S2 until S1 has run on production (see the migration below).
 

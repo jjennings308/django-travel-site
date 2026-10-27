@@ -139,11 +139,11 @@ def _days_with_counts(trip):
 
 
 def _add_section_types():
-    """The day page's section buttons: Note, Travel notes, Choose your adventure (day-first plan P3;
-    phases, callouts and free text became notes, and a choice becomes an option group in P4). A
-    logistics table is not offered either (E6); old sections of every type still render and edit."""
+    """The section types a day can be given, as the day page's buttons: Note and Travel notes (day-first
+    plan P3; choices come from + Add's Options and + Choose one, P4). A logistics table is not offered
+    either (E6): only the importer makes them; old ones still render and edit."""
     labels = {Section.Type.TRAVEL: "Travel notes"}
-    order = (Section.Type.NOTE, Section.Type.TRAVEL, Section.Type.CHOOSE_YOUR_ADVENTURE)
+    order = (Section.Type.NOTE, Section.Type.TRAVEL)
     return [{"value": value, "label": labels.get(value, Section.Type(value).label)} for value in order]
 
 
@@ -483,7 +483,7 @@ def _trip_page_context(request, trip):
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
-    # Old content still to convert (phases, callouts, free text, choices, decisions; P3–P4): no query.
+    # Decision to-dos still to turn into choices (P4): no query.
     from .day_first import pending_count
     notes_pending = pending_count(trip) if "edit" in capabilities else 0
     # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
@@ -1225,12 +1225,12 @@ def section_create(request, trip_pk, day_pk, section_type):
     """Create a section of a given type, then edit its payload.
 
     The type arrives in the URL rather than in a select on the page, so creating
-    a section is one link rather than a form plus a page. It is still validated
-    against `Section.Type`: an unknown type in a hand-written URL would otherwise
-    build a section with no payload form and fail on save.
+    a section is one link rather than a form plus a page. Only the types Add to this
+    day offers are made (Note, Travel notes): a retired type (phase, callout, free
+    text, choose your adventure) or a logistics table in a hand-written URL is a 404.
     """
     trip, day = _editable_day(request, trip_pk, day_pk)
-    if section_type not in Section.Type.values:
+    if section_type not in {t["value"] for t in _add_section_types()}:
         raise Http404
 
     if request.method == "POST":
@@ -1287,7 +1287,6 @@ def _section_context(trip, day, section, payload_form, *, is_create):
         "section": section,
         "form": SectionForm(instance=section, trip=trip),
         "payload_form": payload_form,
-        "options_formset": getattr(payload_form, "options", None),
         "unsupported_type": None if payload_form is not None else section.section_type,
         "is_create": is_create,
         **_section_legs_context(section),
@@ -2506,14 +2505,13 @@ def stay_delete(request, pk, stay_pk):
 # ---- converting old sections to the day-first kinds (day-first plan, P3) -----------------------
 @login_required
 def trip_convert(request, pk):
-    """Review converting this trip's old content (editors; linked from the Needs attention banner while
-    any is left): phases, callouts and free text to notes (P3); choose-your-adventure sections and
-    decision to-dos to "choose one" groups (P4). Everything starts ticked; nothing changes until the
+    """Review turning this trip's open decision to-dos into "choose one" groups (editors; linked from the
+    Needs attention banner while any is left; P4). Everything starts ticked; nothing changes until the
     ticked ones are converted, in one transaction (``apps/trips/day_first.py``)."""
     from . import day_first
     trip = _readable_trip(request, pk, "edit")
     if request.method == "POST":
-        keys = [value for value in request.POST.getlist("item") if value.startswith(("section-", "task-"))]
+        keys = [value for value in request.POST.getlist("item") if value.startswith("task-")]
         count = day_first.apply(trip, keys) if keys else 0
         if count:
             messages.success(request, f"Converted {count} item{'s' if count != 1 else ''}.")

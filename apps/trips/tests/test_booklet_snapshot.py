@@ -70,18 +70,22 @@ def build_trip():
     augusta = Lodging.objects.create(trip=trip, name="Hotel Augusta", address="Ludwigstraße 2, Augsburg",
                                      check_in=d4.date, check_out=date(2027, 9, 22))
 
-    Section.objects.create(day=d2, section_type="phase", title="Arrive", order=1,
-                           content={"heading": "Morning — Arrive", "summary": "Land FRA, clear customs.",
+    # The old phase, callout, free text and choose your adventure as the notes they became (P3, S1; the types
+    # were retired in retire-old-section-types S2), so the booklet is unchanged.
+    from apps.trips import day_first
+
+    def note(day, kind, title, order, content, **extra):
+        title, content = day_first.as_note(kind, title, content)
+        return Section.objects.create(day=day, section_type="note", title=title, order=order, content=content, **extra)
+    note(d2, "phase", "Arrive", 1, {"heading": "Morning — Arrive", "summary": "Land FRA, clear customs.",
                                     "highlights": ["Coffee", "Nap"]})
     Section.objects.create(day=d2, section_type="logistics_table", title="Trains", order=2,
                            content={"columns": ["Leg", "Time"], "rows": [["FRA → Butzbach", "~45 min"]]})
-    Section.objects.create(day=d2, section_type="callout", title="Tip", order=3,
-                           content={"tone": "warning", "text": "💡 Pickup is in the terminal"})
-    tour = Section.objects.create(day=d3, section_type="choose_your_adventure", title="Afternoon", order=1,
-                                  content={"prompt": "Pick one", "summary": "Both are short.", "options": [
-                                      {"letter": "A", "title": "Castle", "description": "Up the hill",
-                                       "duration": "2 h", "cost": "€8"},
-                                      {"letter": "B", "title": "Old town", "description": "Stroll"}]})
+    note(d2, "callout", "Tip", 3, {"tone": "warning", "text": "💡 Pickup is in the terminal"})
+    tour = note(d3, "choose_your_adventure", "Afternoon", 1, {
+        "prompt": "Pick one", "summary": "Both are short.", "options": [
+            {"letter": "A", "title": "Castle", "description": "Up the hill", "duration": "2 h", "cost": "€8"},
+            {"letter": "B", "title": "Old town", "description": "Stroll"}]})
     # Catalogue links (site roadmap R18): a section about a place and an activity, a meal at a place.
     de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe")
     marburg = City.objects.create(name="Marburg", slug="marburg", country=de, latitude=50.8, longitude=8.77)
@@ -90,8 +94,8 @@ def build_trip():
     franco = POI.objects.create(name="Da Franco", slug="da-franco", city=marburg, latitude=50.8, longitude=8.77)
     category = ActivityCategory.objects.create(name="Sightseeing", slug="sightseeing")
     walk = Activity.objects.create(name="Castle walk", slug="castle-walk", category=category, description="x")
-    Section.objects.create(day=d3, section_type="free_text", title="Notes", order=2, poi=castle, activity=walk,
-                           content={"paragraphs": ["First paragraph.", "Second paragraph."]})
+    note(d3, "free_text", "Notes", 2, {"paragraphs": ["First paragraph.", "Second paragraph."]}, poi=castle,
+         activity=walk)
     dinner = Meal.objects.create(day=d2, name="Ristorante Da Franco", meal_type="dinner", cuisine="Italian",
                                  price_range="$$", why_recommended="Wood-fired pizza", poi=franco,
                                  reservation_notes="Call ahead", reserved_time=time(19, 30))
@@ -128,7 +132,8 @@ def build_trip():
                                     original_name="DB ticket.pdf", content_type="application/pdf", size=1000)
     Confirmation.attach_number(trip, "5305434791", hof, provider="Booking.com")
     Confirmation.attach_number(trip, "UNI-77", guide, provider="Uni Marburg")
-    Confirmation.attach_number(trip, "NIGHT1", tour, provider="Nightwatchman")
+    # Labelled as when it was attached to the section before conversion renamed it.
+    Confirmation.attach_number(trip, "NIGHT1", tour, provider="Nightwatchman", label="Afternoon")
     Confirmation.attach_number(trip, "TABLE9", dinner, provider="Da Franco")
     Confirmation.objects.create(trip=trip, confirmation_number="EUSP2592862107", provider="Allianz",
                                 label="Travel insurance")
@@ -163,8 +168,7 @@ def build_trip():
     TripActivity.objects.create(trip=trip, day=d4, title="Fuggerei walk", kind="tour", start_time=time(14, 30),
                                 option=walk)
     afternoon.split({puppets: [ada], walk: [bo]})
-    # Day-first plan P3: the trip's phase, callout and free text as they are once converted to notes.
-    from apps.trips import day_first
+    # Its decision to-dos as "choose one" groups (P4).
     day_first.apply(trip)
     return trip
 

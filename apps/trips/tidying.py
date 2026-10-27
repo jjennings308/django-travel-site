@@ -27,11 +27,9 @@ def snapshot(trip):
         for s in (s for s in sections if s.day_id == day.pk):
             c = s.content if isinstance(s.content, dict) else {}
             plain_sections.append({
-                "id": s.pk, "type": _tidy_type(s), "title": s.title, "heading": c.get("heading") or "",
-                "summary": c.get("summary") or "", "highlights": list(c.get("highlights") or []),
-                "paragraphs": list(c.get("paragraphs") or []), "text": c.get("text") or "",
-                "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []],
-                "tone": c.get("tone") or "", **_note_fields(s)})
+                "id": s.pk, "type": s.section_type, "title": s.title, "tone": c.get("tone") or "",
+                "paragraphs": list(c.get("paragraphs") or []),
+                "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []]})
         plain_days.append({
             "id": day.pk, "number": day.day_number, "date": day.date, "sections": plain_sections,
             "legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination}
@@ -112,58 +110,30 @@ def _section(trip, pk):
     return section
 
 
-def _tidy_type(section):
-    """The type tidy reads a section as. A note (day-first plan P3) reads as what it replaced: a toned
-    one-paragraph note as a callout, an empty one (a heading only) as a phase, the rest as free text."""
-    if section.section_type != "note":
-        return section.section_type
+def _plain(section):
     content = section.content if isinstance(section.content, dict) else {}
-    paragraphs = content.get("paragraphs") or []
-    if content.get("tone") and len(paragraphs) == 1:
-        return "callout"
-    return "free_text" if paragraphs else "phase"
-
-
-def _note_fields(section):
-    """A note's fields in the shape of the type it reads as (``_tidy_type``)."""
-    if section.section_type != "note":
-        return {}
-    content = section.content if isinstance(section.content, dict) else {}
-    kind = _tidy_type(section)
-    if kind == "callout":
-        return {"text": content["paragraphs"][0]}
-    if kind == "phase":
-        return {"heading": section.title}
-    return {}
+    return {"type": section.section_type, "tone": content.get("tone") or "",
+            "paragraphs": list(content.get("paragraphs") or [])}
 
 
 def _callout_text(section):
-    """A callout's text, or a callout-like note's one paragraph; None for anything else."""
-    content = section.content if isinstance(section.content, dict) else {}
-    if section.section_type == "callout":
-        return content.get("text", "")
-    if section.section_type == "note" and _tidy_type(section) == "callout":
-        return content["paragraphs"][0]
-    return None
+    """A callout-like note's one paragraph (``tidy._is_callout``); None for anything else."""
+    plain = _plain(section)
+    return tidy._callout_text(plain) if tidy._is_callout(plain) else None
 
 
 def _remove_from_content(section, field, line, replacement=None):
     content = dict(section.content or {})
-    if section.section_type == "note" and field in ("summary", "text"):
-        field = "paragraphs"  # a note's lines are its paragraphs
-    if field == "summary" or field == "text":
-        if (content.get(field) or "") != line:
-            raise Stale("the text changed")
-        content[field] = replacement if replacement is not None else ""
+    if field == "text":
+        field = "paragraphs"  # a callout-like note's text is its one paragraph
+    items = list(content.get(field) or [])
+    if line not in items:
+        raise Stale("the line changed")
+    if replacement is None:
+        items.remove(line)
     else:
-        items = list(content.get(field) or [])
-        if line not in items:
-            raise Stale("the line changed")
-        if replacement is None:
-            items.remove(line)
-        else:
-            items[items.index(line)] = replacement
-        content[field] = items
+        items[items.index(line)] = replacement
+    content[field] = items
     section.content = content
     section.save(update_fields=["content"])
 
@@ -235,10 +205,8 @@ def _apply_one(trip, s, action, user=None):
             section = _section(trip, place["id"])
             content = section.content or {}
             field = place["field"]
-            if section.section_type == "note" and field in ("summary", "text"):
+            if field == "text":
                 current = _callout_text(section) or ""
-            elif field in ("summary", "text"):
-                current = content.get(field) or ""
             else:
                 items = content.get(field) or []
                 index = place["index"]
@@ -291,8 +259,7 @@ def _apply_one(trip, s, action, user=None):
     elif op == "meal_phase":
         section = _section(trip, c["section"])
         content = section.content or {}
-        if _tidy_type(section) != "phase" or content.get("summary") or content.get("highlights") \
-                or content.get("paragraphs") or (content.get("heading") or section.title) != c["heading"]:
+        if not tidy._is_heading_only(_plain(section)) or section.title != c["heading"]:
             raise Stale("the phase changed")
         meal = Meal.objects.filter(day__trip=trip, day_id=section.day_id, pk=c["meal"]).first()
         if meal is None:

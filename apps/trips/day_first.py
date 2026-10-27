@@ -1,116 +1,55 @@
-"""Converting a trip's old content to the day-first kinds (day-first plan, decision 6), on review.
+"""The old section types as day-first kinds, and decision to-dos as "choose one" groups.
 
-P3: phases, callouts and free text become **notes** (``Section.Type.NOTE``, payload ``{"tone",
-"paragraphs"}``; the heading is the section's ``title``):
+**The retired types** (retire-old-section-types S2): phases, callouts, free text and "choose your adventure"
+sections no longer exist on any trip — S1 converted them (``convert_day_first --all``) and the migration
+that retired them converted any left. They still turn up in two places: Word documents (``docx_import`` /
+``docx_europe`` parse into them) and old history snapshots (``changes.restore``). Both go through the
+mappings here, which work on plain ``(section_type, title, content)`` so nothing needs a saved section:
 
-* a phase: heading (its ``heading``, else its title), then its summary as a paragraph and each highlight
-  as a "• " paragraph;
-* a callout: its title and text, its tone kept (info → tip);
-* free text: its title and paragraphs.
+* ``note_from`` — a phase, callout or free text as a **note** (``Section.Type.NOTE``, payload ``{"tone",
+  "paragraphs"}``; the heading is the section's ``title``): a phase's heading, then its summary and each
+  highlight as a "• " paragraph; a callout's title and text, its tone kept (info → tip); free text's title
+  and paragraphs. Other payload keys are kept, so nothing an importer wrote is lost.
+* ``adventure_group`` — a choose-your-adventure as a **"choose one" group**: prompt (else title), summary as
+  notes, an option per option (description, then duration and cost, as its notes). ``import_itinerary``
+  makes these.
+* ``adventure_note`` — a choose-your-adventure as a note, for when a group won't do (a snapshot being
+  restored onto its own row): the prompt as heading, summary, then "• title — description (duration ·
+  cost)" per option.
 
-Other keys in the payload are kept, as the payload forms keep them, so nothing an importer wrote is lost.
+The migration that retired the types (trips 0051) has its own frozen copy of ``note_from``; keep them in
+step only for new code, never by importing this module from a migration.
 
-P4: "Choose your adventure" sections and decision to-dos become **"choose one" groups**
-(``OptionGroup`` with an ``Option`` each):
-
-* a choose-your-adventure section: on its day, prompt = its prompt (else title), its summary as the
-  group's notes, an option per option (description, then duration and cost, as its notes); its notes
-  (comments) and contacts move to the day; the section goes. One with a confirmation becomes a **note**
-  instead (retire-old-section-types S1: a confirmation can't cover a whole choice, and nothing is left
-  over): the prompt as its heading, its summary, then each option as a "• title — description (duration
-  · cost)" paragraph, on the same row, so its confirmation, comments and contacts stay with it;
-* a decision to-do (``BookingTask.kind == "decide"`` with options): on the task's day, else its leg's,
-  stay's or activity's day, else Day 1 (flagged "check the day"); prompt = its title; each option's
-  detail, link and cost carried over; a chosen option is kept as picked. The to-do is ticked off with
-  a note saying where its choice went (its options stay readable on it).
-
-``plan(trip)`` lists what would change, by day, without saving; ``apply(trip, keys)`` converts the chosen
-ones (``"section-<id>"`` / ``"task-<id>"``; plain ids are sections) in one transaction under one history
-line. ``trips:trip_convert`` (the review page), ``manage.py convert_day_first`` and ``import_itinerary
---apply`` (everything, for a new trip) call them; ``pending_count`` is the trip page's banner number.
+**Decision to-dos** (``BookingTask.kind == "decide"`` with options, U6) are still converted on review:
+each becomes a group on the task's day, else its leg's, stay's or activity's day, else Day 1 (flagged
+"check the day"); prompt = its title; each option's detail, link and cost carried over; a chosen option is
+kept as picked; the to-do is ticked off with a note saying where its choice went. ``plan(trip)`` lists
+them by day without saving; ``apply(trip, keys)`` converts the chosen ones (``"task-<id>"``) in one
+transaction under one history line. ``trips:trip_convert`` (the review page) and ``manage.py
+convert_day_first`` call them; ``pending_count`` is the trip page's banner number.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from django.db import transaction
 
-from .models import BookingTask, Section
+from .models import BookingTask
 
 TONES = {"info": "tip", "tip": "tip", "warning": "warning", "critical": "critical"}
+#: Section types retired in S2: never saved any more, still read from documents and old snapshots.
+OLD_NOTE_TYPES = ("phase", "callout", "free_text")
+ADVENTURE = "choose_your_adventure"
+RETIRED = (*OLD_NOTE_TYPES, ADVENTURE)
 
 
-@dataclass
-class Conversion:
-    """A phase, callout or free text → a note."""
-    section: Section
-    title: str
-    content: dict
-
-    @property
-    def key(self):
-        return f"section-{self.section.pk}"
-
-    @property
-    def before(self):
-        """The section as it reads now, in one line per part."""
-        s, c = self.section, self.section.content if isinstance(self.section.content, dict) else {}
-        kind = s.get_section_type_display()
-        if s.section_type == Section.Type.PHASE:
-            parts = [c.get("heading") or s.title, c.get("summary") or "", *(f"• {h}" for h in c.get("highlights") or [])]
-        elif s.section_type == Section.Type.CALLOUT:
-            parts = [f"{s.title}: {c.get('text') or ''}" if s.title else c.get("text") or "", f"({c.get('tone') or 'info'})"]
-        elif s.section_type == Section.Type.CHOOSE_YOUR_ADVENTURE:
-            parts = [c.get("prompt") or s.title, *(f"• {o.get('title')}" for o in c.get("options") or []
-                                                   if isinstance(o, dict))]
-        else:
-            parts = [s.title, *(c.get("paragraphs") or [])]
-        return kind, [p for p in parts if p]
-
-    @property
-    def after(self):
-        tone = self.content.get("tone")
-        head = [f"{self.title}" + (f" ({tone})" if tone else "")] if self.title or tone else []
-        return "Note", head + list(self.content.get("paragraphs") or [])
-
-
-@dataclass
-class ChoiceConversion:
-    """A choose-your-adventure section or a decision to-do → a "choose one" group (P4)."""
-    source: object  # Section or BookingTask
-    day: object
-    prompt: str
-    notes: str
-    options: list  # [{"title", "notes", "url", "est_cost", "currency", "order", "chosen"}]
-    flag: str = ""  # something to check by hand ("no day: put on Day 1")
-    blocked: str = ""  # why it can't be converted (left as it is)
-    extra: dict = field(default_factory=dict)
-
-    @property
-    def key(self):
-        return f"{'task' if isinstance(self.source, BookingTask) else 'section'}-{self.source.pk}"
-
-    @property
-    def before(self):
-        if isinstance(self.source, BookingTask):
-            return "Decision to-do", [self.source.title, *(f"• {o['title']}" + (" ✓" if o["chosen"] else "")
-                                                            for o in self.options)]
-        return "Choose your adventure", [self.prompt, *(f"• {o['title']}" for o in self.options)]
-
-    @property
-    def after(self):
-        chosen = next((o["title"] for o in self.options if o["chosen"]), None)
-        head = f"{self.prompt}" + (f" (picked: {chosen})" if chosen else " (undecided)")
-        return "Choose one", [head, *(f"• {o['title']}" + (f" — {o['notes']}" if o["notes"] else "")
-                                      for o in self.options)]
-
-
-def _as_note(section):
-    content = dict(section.content) if isinstance(section.content, dict) else {}
-    title = section.title or ""
-    if section.section_type == Section.Type.PHASE:
+def note_from(section_type, title, content):
+    """A phase, callout or free text payload as a note: (title, content)."""
+    content = dict(content) if isinstance(content, dict) else {}
+    title = title or ""
+    if section_type == "phase":
         title = (content.pop("heading", "") or title)[:200]
         paragraphs = [p for p in [content.pop("summary", "")] if p] + [f"• {h}" for h in content.pop("highlights", []) or []]
         tone = ""
-    elif section.section_type == Section.Type.CALLOUT:
+    elif section_type == "callout":
         text = content.pop("text", "") or ""
         tone = TONES.get(content.pop("tone", "") or "info", "tip")
         paragraphs = [line for line in text.split("\n") if line.strip()]
@@ -121,15 +60,18 @@ def _as_note(section):
     return title, content
 
 
-def _adventure_note(section):
-    """A choose-your-adventure section that can't become a group (it has a confirmation) as a note:
-    (title, content)."""
-    content = dict(section.content) if isinstance(section.content, dict) else {}
-    title = (content.pop("prompt", "") or section.title or "Choose one")[:200]
+def _options(content):
+    return [option for option in (content.get("options") or []) if isinstance(option, dict)]
+
+
+def adventure_note(title, content):
+    """A choose-your-adventure payload as a note: (title, content)."""
+    content = dict(content) if isinstance(content, dict) else {}
+    options = _options(content)
+    content.pop("options", None)
+    heading = (content.pop("prompt", "") or title or "Choose one")[:200]
     paragraphs = [p for p in [content.pop("summary", "") or ""] if p]
-    for option in content.pop("options", []) or []:
-        if not isinstance(option, dict):
-            continue
+    for option in options:
         line = f"• {option.get('title') or 'Option'}"
         if option.get("description"):
             line += f" — {option['description']}"
@@ -138,23 +80,71 @@ def _adventure_note(section):
             line += f" ({extra})"
         paragraphs.append(line)
     content.update({"tone": "", "paragraphs": paragraphs})
-    return title, content
+    return heading, content
 
 
-def _from_adventure(section, day):
-    if section.confirmation_links.exists():
-        return Conversion(section, *_adventure_note(section))
-    content = section.content if isinstance(section.content, dict) else {}
+def adventure_group(title, content):
+    """A choose-your-adventure payload as a group: {"prompt", "notes", "options": [{"title", "notes", …}]}."""
+    content = content if isinstance(content, dict) else {}
     options = []
-    for order, option in enumerate(content.get("options") or []):
-        if not isinstance(option, dict):
-            continue
+    for order, option in enumerate(_options(content)):
         extra = " · ".join(str(option.get(k)) for k in ("duration", "cost") if option.get(k))
         notes = "\n".join(p for p in (str(option.get("description") or ""), extra) if p)
         options.append({"title": (str(option.get("title") or "") or f"Option {order + 1}")[:200], "notes": notes,
                         "url": "", "est_cost": None, "currency": "", "order": order, "chosen": False})
-    return ChoiceConversion(section, day, (content.get("prompt") or section.title or "Choose one")[:200],
-                            content.get("summary") or "", options)
+    return {"prompt": (content.get("prompt") or title or "Choose one")[:200], "notes": content.get("summary") or "",
+            "options": options}
+
+
+def as_note(section_type, title, content):
+    """Any retired type as a note: (title, content)."""
+    if section_type == ADVENTURE:
+        return adventure_note(title, content)
+    return note_from(section_type, title, content)
+
+
+def make_group(trip, day, prompt, notes, options, order=None):
+    """An ``OptionGroup`` on ``day`` with its options (dicts as ``adventure_group`` makes); a chosen one is picked."""
+    from .models import Option, OptionGroup
+    group = OptionGroup.objects.create(trip=trip, day=day, prompt=prompt, notes=notes,
+                                       order=day.option_groups.count() if order is None else order)
+    chosen = None
+    for data in options:
+        option = Option.objects.create(group=group, title=data["title"], notes=data["notes"], url=data["url"] or "",
+                                       est_cost=data["est_cost"], currency=data["currency"] or "", order=data["order"])
+        if data["chosen"]:
+            chosen = option
+    if chosen is not None:
+        group.pick(chosen)
+    return group
+
+
+@dataclass
+class ChoiceConversion:
+    """A decision to-do → a "choose one" group."""
+    source: BookingTask
+    day: object
+    prompt: str
+    notes: str
+    options: list  # [{"title", "notes", "url", "est_cost", "currency", "order", "chosen"}]
+    flag: str = ""  # something to check by hand ("no day: put on Day 1")
+    blocked: str = ""  # why it can't be converted (left as it is)
+
+    @property
+    def key(self):
+        return f"task-{self.source.pk}"
+
+    @property
+    def before(self):
+        return "Decision to-do", [self.source.title, *(f"• {o['title']}" + (" ✓" if o["chosen"] else "")
+                                                        for o in self.options)]
+
+    @property
+    def after(self):
+        chosen = next((o["title"] for o in self.options if o["chosen"]), None)
+        head = f"{self.prompt}" + (f" (picked: {chosen})" if chosen else " (undecided)")
+        return "Choose one", [head, *(f"• {o['title']}" + (f" — {o['notes']}" if o["notes"] else "")
+                                      for o in self.options)]
 
 
 def _task_day(task, days):
@@ -176,19 +166,9 @@ def _from_task(task, days):
                             blocked="" if day is not None else "the trip has no days yet")
 
 
-def pending(sections):
-    """The sections (already loaded) that would become notes."""
-    return [s for s in sections if s.section_type in Section.OLD_NOTE_TYPES]
-
-
 def pending_count(trip):
-    """Everything still to convert, from the trip page's prefetch (no query): old note sections,
-    choose-your-adventure sections, and open decision to-dos with options."""
-    sections = [s for d in trip.days.all() for s in getattr(d, "ordered_sections", [])]
-    return (len(pending(sections))
-            + sum(1 for s in sections if s.section_type == Section.Type.CHOOSE_YOUR_ADVENTURE)
-            + sum(1 for t in trip.booking_tasks.all()
-                  if t.kind == BookingTask.Kind.DECIDE and not t.done and t.options.all()))
+    """Open decision to-dos with options, from the trip page's prefetch (no query)."""
+    return sum(1 for t in trip.booking_tasks.all() if t.kind == BookingTask.Kind.DECIDE and not t.done and t.options.all())
 
 
 def _decisions(trip):
@@ -197,16 +177,9 @@ def _decisions(trip):
 
 
 def plan(trip):
-    """[(day, [Conversion | ChoiceConversion, …]), …] in day order, for everything still to convert."""
-    days = list(trip.days.order_by("date", "day_number").prefetch_related("sections"))
+    """[(day, [ChoiceConversion, …]), …] in day order, for every open decision to-do with options."""
+    days = list(trip.days.order_by("date", "day_number"))
     by_day = {day.pk: [] for day in days}
-    for day in days:
-        sections = sorted(day.sections.all(), key=lambda s: (s.order, s.pk))
-        for section in sections:
-            if section.section_type in Section.OLD_NOTE_TYPES:
-                by_day[day.pk].append(Conversion(section, *_as_note(section)))
-            elif section.section_type == Section.Type.CHOOSE_YOUR_ADVENTURE:
-                by_day[day.pk].append(_from_adventure(section, day))
     for task in _decisions(trip):
         if task.options.all():
             conversion = _from_task(task, days)
@@ -215,54 +188,21 @@ def plan(trip):
     return [(day, by_day[day.pk]) for day in days if by_day[day.pk]]
 
 
-def _make_group(trip, conversion):
-    from .models import Comment, ItemLink, Option, OptionGroup
-    from django.contrib.contenttypes.models import ContentType
-    source = conversion.source
-    group = OptionGroup.objects.create(
-        trip=trip, day=conversion.day, prompt=conversion.prompt, notes=conversion.notes,
-        order=source.order if isinstance(source, Section) else conversion.day.option_groups.count())
-    chosen = None
-    for data in conversion.options:
-        option = Option.objects.create(group=group, title=data["title"], notes=data["notes"], url=data["url"] or "",
-                                       est_cost=data["est_cost"], currency=data["currency"] or "", order=data["order"])
-        if data["chosen"]:
-            chosen = option
-    if chosen is not None:
-        group.pick(chosen)
-    if isinstance(source, BookingTask):
-        note = f"Moved to the choice “{group.prompt}” on Day {conversion.day.day_number}."
-        source.done = True
-        source.notes = "\n".join(p for p in (source.notes, note) if p)
-        source.save(update_fields=["done", "notes"])
-    else:
-        # Its notes (comments) and contacts move to the day it was on; the section goes.
-        Comment.objects.filter(content_type=ContentType.objects.get_for_model(Section), object_id=source.pk).update(
-            content_type=ContentType.objects.get_for_model(type(conversion.day)), object_id=conversion.day.pk)
-        for link in ItemLink.objects.filter(target_type=ContentType.objects.get_for_model(Section), target_id=source.pk):
-            ItemLink.link(link.source, conversion.day)
-        source.delete()
-    return group
-
-
 def apply(trip, keys=None):
     """Convert the chosen ones (every one when ``keys`` is None); returns how many."""
     from .changes import batch
-    wanted = None if keys is None else {k if isinstance(k, str) else f"section-{k}" for k in keys}
+    wanted = None if keys is None else set(keys)
     count = 0
-    with transaction.atomic(), batch("Converted to notes and choices", trip=trip):
+    with transaction.atomic(), batch("Converted decisions to choices", trip=trip):
         for _day, conversions in plan(trip):
             for conversion in conversions:
-                if wanted is not None and conversion.key not in wanted:
+                if (wanted is not None and conversion.key not in wanted) or conversion.blocked:
                     continue
-                if isinstance(conversion, Conversion):
-                    section = conversion.section
-                    section.title, section.content = conversion.title, conversion.content
-                    section.section_type = Section.Type.NOTE
-                    section.save(update_fields=["title", "content", "section_type"])
-                elif conversion.blocked:
-                    continue
-                else:
-                    _make_group(trip, conversion)
+                group = make_group(trip, conversion.day, conversion.prompt, conversion.notes, conversion.options)
+                task = conversion.source
+                note = f"Moved to the choice “{group.prompt}” on Day {conversion.day.day_number}."
+                task.done = True
+                task.notes = "\n".join(p for p in (task.notes, note) if p)
+                task.save(update_fields=["done", "notes"])
                 count += 1
     return count

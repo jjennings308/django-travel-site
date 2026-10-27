@@ -33,8 +33,10 @@ class DayPageTests(Fixture):
         add = html[html.index('id="add"'):html.index('id="on-this-day"')]
         labels = [label for label in ("+ Note<", "+ Phase", "+ Callout", "+ Free text", "+ Travel notes",
                                       "+ Choose your adventure") if label in add]
-        # Phases, callouts and free text are notes now (day-first plan P3).
-        self.assertEqual(labels, ["+ Note<", "+ Travel notes", "+ Choose your adventure"])
+        # Phases, callouts and free text are notes now (day-first plan P3); a choice is + Choose one (P4), and
+        # Choose your adventure left with the retired types (retire-old-section-types S2).
+        self.assertEqual(labels, ["+ Note<", "+ Travel notes"])
+        self.assertIn("+ Choose one", add)
         self.assertNotIn("Logistics table", add)
         self.assertIn(reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "travel"]), add)
 
@@ -56,7 +58,7 @@ class MakeTravelNotesTests(Fixture):
         self.client.force_login(self.viewer)
         self.assertEqual(self.client.post(self.convert_url).status_code, 403)
         self.assertEqual(self.client.get(self.convert_url).status_code, 405)
-        note = Section.objects.create(day=self.day, section_type=Section.Type.FREE_TEXT, content={"text": "x"})
+        note = Section.objects.create(day=self.day, section_type=Section.Type.NOTE, content={"paragraphs": ["x"]})
         self.client.force_login(self.editor)
         url = reverse("trips:section_to_travel_notes", args=[self.trip.pk, self.day.pk, note.pk])
         self.assertEqual(self.client.post(url).status_code, 404)

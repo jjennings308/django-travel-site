@@ -66,7 +66,7 @@ The words don't need to be exact, and nothing is guessed that you didn't type. I
 
 A **note** is the day's text: an optional heading, the text (one paragraph per line; start a line with • for a bullet) and a **tone**. None reads as plain text; **Tip**, **Warning** and **Critical** stand out in colour on the page and in the PDF.
 
-Trips made before notes have phases, callouts and free text instead. They still show and edit as before; **Needs attention** on the trip page offers **N sections to turn into notes**, which lists each one, ticked, as it is now and as a note. A phase's heading, summary and highlights (as • lines), a callout's text and tone, and free text's paragraphs all carry over; untick any you'd rather leave, then click **Turn the ticked sections into notes**.
+Trips made before notes had phases, callouts and free text instead; every one has been turned into a note (a phase's heading, summary and highlights as • lines, a callout's text and tone, free text's paragraphs). A Word itinerary imported now becomes notes straight away.
 
 ## Add from the day page
 
@@ -81,7 +81,7 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 | + Activity | A tour, timed entry, ticket, table booking or car hire | Kind, title, provider, start and end time, place, cost, notes. |
 | + Meal | A restaurant or food stop | Name, meal type, cuisine, price range, why it's recommended. Give it a **Reservation time** only if a table is booked. |
 | + Contact or note | A phone number or tip for the whole day | A contact (name, phone, email) or an info note (title and text). |
-| Section buttons | The day's write-up | **Note** (a heading, a tone and text: a part of the day, a tip or a warning; [notes](#notes)), **Travel notes** (a heading for the day's journeys, with an intro and rows for things like ticket prices), **Choose your adventure** (options to pick from). |
+| Section buttons | The day's write-up | **Note** (a heading, a tone and text: a part of the day, a tip or a warning; [notes](#notes)), **Travel notes** (a heading for the day's journeys, with an intro and rows for things like ticket prices). Options to pick from are a choice: **+ Choose one** ([choices](/help/options-and-votes/#making-a-choice)). |
 
 Everything you add appears under **On this day**, in the same order as on the trip page. Each item has its own **Confirmations** and **Contacts & info** links for booking numbers and phone numbers.
 

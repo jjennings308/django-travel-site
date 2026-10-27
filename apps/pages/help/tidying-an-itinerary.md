@@ -32,12 +32,12 @@ On the trip page, editors find **Tidy suggestions** in the **⋯** menu. The pag
 | Suggestion | For example | What applying it does |
 | --- | --- | --- |
 | A line repeats a journey, stay, meal or activity | "Check out Hotel Hessischer Hof after breakfast" | Removes the line; optionally adds its extra words to the item's notes. |
-| A booking reminder repeats a task | "📅 Book: ICE seats for 6" | Deletes the reminder, or keeps its text as an info note on the task's item. |
+| A booking reminder (a tip or warning note) repeats a task | "📅 Book: ICE seats for 6" | Deletes the reminder, or keeps its text as an info note on the task's item. |
 | A phone number in the text | "Call ahead: 06033 65147" | Makes a contact, linked to the meal or plan, and removes the number from the text. |
 | Trip notes that belong elsewhere | A hotels line, or a numbered list of options | Removes the line, or makes a decision with those options. |
 | A table that describes an activity | A tour's times and meeting point | Moves the rows into an info note on the activity. |
-| An empty plan that's only a time and a meal | "~7pm — Dinner", on a day with one dinner | Gives the meal that reservation time, so it shows in the day's timeline, and removes the plan. If the meal already has a time, just removes the plan. |
-| A callout about a place, activity or event linked that day | "Marburg Castle's museum is cash only", on a day whose activity is linked to Marburg Castle | Moves it to the catalogue as a **Good to know** note on that place, and removes the callout. It's checked by staff first (yours, if you're staff, go up at once); once approved it shows under that item on this trip and on every other trip that goes there. |
+| An empty note that's only a time and a meal (its heading, nothing under it) | "~7pm — Dinner", on a day with one dinner | Gives the meal that reservation time, so it shows in the day's timeline, and removes the note. If the meal already has a time, just removes the note. |
+| A tip or warning note about a place, activity or event linked that day | "Marburg Castle's museum is cash only", on a day whose activity is linked to Marburg Castle | Moves it to the catalogue as a **Good to know** note on that place, and removes it from the day. It's checked by staff first (yours, if you're staff, go up at once); once approved it shows under that item on this trip and on every other trip that goes there. |
 | A "Day N" that doesn't match | "Day 3 is a travel day" on Day 4 | Nothing: marked **Check by hand**. |
 
 Everything starts unticked. Tick what you agree with, choose an action where there are two, and click **Apply the ticked suggestions**. **Exact match** marks the safest ones. If the text changed since the page was opened, that suggestion is skipped and reported. **Not this** hides a suggestion for good.

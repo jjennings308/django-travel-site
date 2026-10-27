@@ -1,17 +1,26 @@
-"""Phases, callouts and free text turned into notes, on review (docs/plans/day-first-planning.md, P3)."""
+"""The retired section types as notes and groups, and decision to-dos turned into choices
+(docs/plans/day-first-planning.md P3–P4; docs/plans/retire-old-section-types.md S1–S2)."""
 from datetime import date, time
 from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips import day_first, tidying
+from apps.core.testing import RestoringTransactionTestCase
+from apps.trips import changes, day_first, tidying
 from apps.trips.forms import NotePayloadForm
-from apps.trips.models import Day, Meal, Section, Trip, TripChange, TripGrant, TripRole
+from apps.trips.models import (BookingTask, Day, Meal, Section, TaskOption, Trip, TripChange, TripGrant,
+                               TripRole)
 
 User = get_user_model()
+
+PHASE = {"heading": "Morning — Arrive", "summary": "Land FRA.", "highlights": ["Coffee", "Nap"], "source": "docx"}
+CALLOUT = {"tone": "info", "text": "Pickup is in the terminal"}
+FREE_TEXT = {"paragraphs": ["First.", "Second."]}
 
 
 class Fixture(TestCase):
@@ -23,110 +32,125 @@ class Fixture(TestCase):
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18))
-        self.phase = Section.objects.create(day=self.day, section_type="phase", title="Arrive", order=1, icon="🛬",
-                                            content={"heading": "Morning — Arrive", "summary": "Land FRA.",
-                                                     "highlights": ["Coffee", "Nap"], "source": "docx"})
-        self.callout = Section.objects.create(day=self.day, section_type="callout", title="Tip", order=2,
-                                              content={"tone": "info", "text": "Pickup is in the terminal"})
-        self.prose = Section.objects.create(day=self.day, section_type="free_text", title="Notes", order=3,
-                                            content={"paragraphs": ["First.", "Second."]})
-        self.table = Section.objects.create(day=self.day, section_type="logistics_table", title="Trains", order=4,
-                                            content={"columns": ["Leg"], "rows": [["A → B"]]})
 
 
-class ConvertTests(Fixture):
-    def test_the_plan_saves_nothing(self):
-        (day, items), = day_first.plan(self.trip)
-        self.assertEqual([item.section for item in items], [self.phase, self.callout, self.prose])
-        self.assertEqual(items[0].after, ("Note", ["Morning — Arrive", "Land FRA.", "• Coffee", "• Nap"]))
-        self.assertEqual(items[1].after, ("Note", ["Tip (tip)", "Pickup is in the terminal"]))
-        self.assertEqual(Section.objects.filter(section_type="note").count(), 0)
+class MappingTests(TestCase):
+    """The one mapping the importer and history restore share (the migration keeps a frozen copy)."""
 
-    def test_nothing_is_lost(self):
-        before = TripChange.objects.count()
-        self.assertEqual(day_first.apply(self.trip), 3)
-        for section in (self.phase, self.callout, self.prose, self.table):
-            section.refresh_from_db()
-        self.assertEqual((self.phase.section_type, self.phase.title, self.phase.icon, self.phase.content),
-                         ("note", "Morning — Arrive", "🛬",
-                          {"tone": "", "paragraphs": ["Land FRA.", "• Coffee", "• Nap"], "source": "docx"}))
-        self.assertEqual((self.callout.title, self.callout.content),
+    def test_a_phase_callout_and_free_text_as_notes(self):
+        self.assertEqual(day_first.note_from("phase", "Arrive", PHASE),
+                         ("Morning — Arrive", {"tone": "", "paragraphs": ["Land FRA.", "• Coffee", "• Nap"],
+                                               "source": "docx"}))
+        self.assertEqual(day_first.note_from("callout", "Tip", CALLOUT),
                          ("Tip", {"tone": "tip", "paragraphs": ["Pickup is in the terminal"]}))
-        self.assertEqual(self.callout.note_style, "info")  # drawn as the old info callout
-        self.assertEqual(self.prose.content, {"tone": "", "paragraphs": ["First.", "Second."]})
-        self.assertEqual(self.table.section_type, "logistics_table")  # import-only, left alone
-        self.assertEqual(TripChange.objects.count(), before + 1)  # one history line
-        self.assertEqual(day_first.plan(self.trip), [])
-        self.assertEqual(day_first.apply(self.trip), 0)
+        self.assertEqual(day_first.note_from("free_text", "Notes", FREE_TEXT),
+                         ("Notes", {"tone": "", "paragraphs": ["First.", "Second."]}))
+        self.assertEqual(day_first.note_from("callout", "", {"tone": "warning", "text": "One\n\nTwo"})[1],
+                         {"tone": "warning", "paragraphs": ["One", "Two"]})
+        self.assertEqual(day_first.note_from("phase", "", "not a dict"), ("", {"tone": "", "paragraphs": []}))
 
-    def test_only_the_ticked_ones(self):
-        self.assertEqual(day_first.apply(self.trip, [self.callout.pk]), 1)
-        self.assertEqual(sorted(Section.objects.values_list("section_type", flat=True)),
-                         ["free_text", "logistics_table", "note", "phase"])
+    def test_the_payload_is_not_changed_in_place(self):
+        stored = dict(PHASE)
+        day_first.note_from("phase", "Arrive", stored)
+        self.assertEqual(stored, PHASE)
+
+    def test_as_note_handles_every_retired_type(self):
+        self.assertEqual(day_first.as_note("choose_your_adventure", "T", {"prompt": "P", "options": [{"title": "A"}]}),
+                         ("P", {"tone": "", "paragraphs": ["• A"]}))
+        self.assertEqual(day_first.as_note("free_text", "N", FREE_TEXT)[0], "N")
+
+
+class ImportTests(Fixture):
+    def test_the_importer_saves_notes_and_groups(self):
+        """``import_itinerary`` never saves a retired type: what the parser calls a phase, callout or free text
+        is saved as a note, a choose-your-adventure as a "choose one" group."""
+        from apps.trips.management.commands.import_itinerary import Command
+        command = Command()
+        for order, (kind, title, content) in enumerate((("phase", "Arrive", PHASE), ("callout", "Tip", CALLOUT),
+                                                       ("free_text", "Notes", FREE_TEXT),
+                                                       ("logistics_table", "Trains", {"columns": ["Leg"], "rows": []}),
+                                                       ("choose_your_adventure", "Afternoon",
+                                                        {"prompt": "Lake or town?", "options": [{"title": "Lake"},
+                                                                                                {"title": "Town"}]}))):
+            command._save_section(self.trip, self.day, {"section_type": kind, "title": title, "icon": "",
+                                                        "order": order, "content": content})
+        self.assertEqual(list(Section.objects.order_by("order").values_list("section_type", "title")),
+                         [("note", "Morning — Arrive"), ("note", "Tip"), ("note", "Notes"),
+                          ("logistics_table", "Trains")])
+        group = self.trip.option_groups.get()
+        self.assertEqual((group.prompt, group.order, [o.title for o in group.options.all()]),
+                         ("Lake or town?", 4, ["Lake", "Town"]))
+
+
+class RestoreTests(Fixture):
+    def removed(self, **fields):
+        """A removed section's history line, its snapshot changed to look like one taken before S2."""
+        section = Section.objects.create(day=self.day, section_type="note", title="x", order=2)
+        section.delete()
+        change = TripChange.objects.filter(kind=TripChange.Kind.REMOVED).latest("pk")
+        change.before["object"]["fields"].update(fields)
+        change.save(update_fields=["before"])
+        return change
+
+    def test_an_old_snapshot_comes_back_as_a_note(self):
+        change = self.removed(section_type="phase", title="Arrive", content=PHASE)
+        restored = changes.restore(change, self.editor)
+        restored.refresh_from_db()
+        self.assertEqual((restored.section_type, restored.title, restored.order), ("note", "Morning — Arrive", 2))
+        self.assertEqual(restored.content["paragraphs"], ["Land FRA.", "• Coffee", "• Nap"])
+
+    def test_an_old_choose_your_adventure_snapshot_comes_back_as_a_note(self):
+        change = self.removed(section_type="choose_your_adventure", title="Afternoon",
+                              content={"prompt": "Pick", "options": [{"title": "Lake"}]})
+        restored = changes.restore(change, self.editor)
+        self.assertEqual((restored.section_type, restored.title, restored.content["paragraphs"]),
+                         ("note", "Pick", ["• Lake"]))
+
+
+class DecisionTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.task = BookingTask.objects.create(trip=self.trip, title="Which hotel?", kind="decide", day=self.day)
+        TaskOption.objects.create(task=self.task, title="Augusta", order=0, chosen=True)
+        TaskOption.objects.create(task=self.task, title="Drei Mohren", order=1)
 
     def test_the_review_page(self):
         self.client.force_login(self.editor)
         url = reverse("trips:trip_convert", args=[self.trip.pk])
         page = self.client.get(url)
-        self.assertContains(page, "data-convert-row", count=3)
-        self.assertContains(page, "• Coffee")
-        self.client.post(url, {"item": [f"section-{self.phase.pk}", f"section-{self.prose.pk}"]})
-        self.assertEqual(Section.objects.filter(section_type="note").count(), 2)
+        self.assertContains(page, "data-convert-row", count=1)
+        self.assertContains(page, "Turn decisions into choices")
+        self.client.post(url, {"item": [f"task-{self.task.pk}", "section-1"]})
+        self.assertEqual(self.trip.option_groups.get().state, "picked")
         self.client.force_login(self.viewer)
         self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_needs_attention_links_it_for_editors(self):
         self.client.force_login(self.editor)
         trip_page = reverse("trips:trip_detail", args=[self.trip.pk])
-        self.assertContains(self.client.get(trip_page), "3 to convert to notes and choices")
+        self.assertContains(self.client.get(trip_page), "1 decision to turn into choices")
         self.client.force_login(self.viewer)
-        self.assertNotContains(self.client.get(trip_page), "to convert to notes")
+        self.assertNotContains(self.client.get(trip_page), "to turn into choices")
         day_first.apply(self.trip)
         self.client.force_login(self.editor)
-        self.assertNotContains(self.client.get(trip_page), "to convert to notes")
+        self.assertNotContains(self.client.get(trip_page), "to turn into choices")
 
-    def test_the_command(self):
+    def test_the_command_for_one_trip_and_all(self):
         out = StringIO()
         call_command("convert_day_first", trip=self.trip.pk, stdout=out)
         self.assertIn("Dry run", out.getvalue())
-        self.assertEqual(Section.objects.filter(section_type="note").count(), 0)
-        call_command("convert_day_first", trip=self.trip.pk, apply=True, stdout=out)
-        self.assertEqual(Section.objects.filter(section_type="note").count(), 3)
-
-
-    def test_every_trip_with_all(self):
-        """Retire-old-section-types S1: --all goes through every live trip; dry run, then apply."""
-        other = Trip.objects.create(name="Coast", start_date=date(2027, 10, 1), end_date=date(2027, 10, 2),
-                                    created_by=self.editor)
+        self.assertFalse(self.trip.option_groups.exists())
+        other = Trip.objects.create(name="Coast", start_date=date(2027, 10, 1), end_date=date(2027, 10, 2))
         other_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 10, 1))
-        Section.objects.create(day=other_day, section_type="callout", title="Tip", content={"text": "Tides"})
-        Section.objects.create(day=other_day, section_type="choose_your_adventure", title="Afternoon",
-                               content={"prompt": "Beach or boat?", "options": [{"title": "Beach"}, {"title": "Boat"}]})
-        gone = Trip.objects.create(name="Deleted", start_date=date(2027, 1, 1), end_date=date(2027, 1, 1))
-        gone_day = Day.objects.create(trip=gone, day_number=1, date=date(2027, 1, 1))
-        Section.objects.create(day=gone_day, section_type="phase", title="Old", content={"heading": "Old"})
-        gone.soft_delete()
+        task = BookingTask.objects.create(trip=other, title="Boat?", kind="decide", day=other_day)
+        TaskOption.objects.create(task=task, title="Yes")
         out = StringIO()
         call_command("convert_day_first", "--all", stdout=out)
-        self.assertIn("Alps (trip", out.getvalue())
-        self.assertIn("Coast (trip", out.getvalue())
-        self.assertNotIn("Deleted", out.getvalue())
-        self.assertIn("2 trips, 2 with something to convert, 5 items.", out.getvalue())
-        self.assertIn("Dry run", out.getvalue())
-        self.assertEqual(Section.objects.filter(section_type="note").count(), 0)
+        self.assertIn("2 trips, 2 with something to convert, 2 items.", out.getvalue())
         before = TripChange.objects.count()
-        out = StringIO()
-        call_command("convert_day_first", "--all", "--apply", stdout=out)
-        self.assertIn("converted 5.", out.getvalue())
+        call_command("convert_day_first", "--all", "--apply", stdout=StringIO())
         self.assertEqual(TripChange.objects.count(), before + 2)  # one history line per trip
-        self.assertEqual(Section.objects.filter(day__trip__in=[self.trip, other], section_type__in=[
-            "phase", "callout", "free_text", "choose_your_adventure"]).count(), 0)
-        self.assertTrue(other.option_groups.filter(prompt="Beach or boat?").exists())
-        for trip in (self.trip, other):
-            page = Trip.objects.prefetch_related("days__sections", "booking_tasks__options").get(pk=trip.pk)
-            for day in page.days.all():
-                day.ordered_sections = list(day.sections.all())
-            self.assertEqual(day_first.pending_count(page), 0)
+        self.assertTrue(other.option_groups.filter(prompt="Boat?").exists())
         out = StringIO()
         call_command("convert_day_first", "--all", stdout=out)
         self.assertIn("0 with something to convert", out.getvalue())
@@ -140,8 +164,11 @@ class ConvertTests(Fixture):
 
 
 class NoteTests(Fixture):
-    def test_the_page_shows_notes_like_what_they_replace(self):
-        day_first.apply(self.trip)
+    def test_the_page_draws_notes(self):
+        Section.objects.create(day=self.day, section_type="note", title="Tip", order=1,
+                               content={"tone": "tip", "paragraphs": ["Pickup is in the terminal"]})
+        Section.objects.create(day=self.day, section_type="note", title="Morning — Arrive", order=2,
+                               content={"tone": "", "paragraphs": ["• Coffee"]})
         self.client.force_login(self.viewer)
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
         self.assertIn('callout callout-info"><span class="font-semibold">Tip:</span> Pickup is in the terminal', html)
@@ -153,21 +180,68 @@ class NoteTests(Fixture):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.to_content(), {"source": "docx", "tone": "warning", "paragraphs": ["One", "Two"]})
 
-    def test_tidy_reads_notes_as_what_they_replaced(self):
-        """A converted "Book …" callout and an empty "19:30 — Dinner" phase still get their suggestions."""
-        from apps.trips.models import BookingTask
-        Section.objects.all().delete()
-        Section.objects.create(day=self.day, section_type="callout", title="Book", order=1,
-                               content={"tone": "critical", "text": "Book the Augustiner table"})
-        Section.objects.create(day=self.day, section_type="phase", title="19:30 — Dinner", order=2,
-                               content={"heading": "19:30 — Dinner"})
+    def test_tidy_reads_notes_as_callouts_and_phases(self):
+        """A toned one-paragraph "Book …" note and an empty "19:30 — Dinner" note get the suggestions a callout and
+        a phase used to."""
+        Section.objects.create(day=self.day, section_type="note", title="Book", order=1,
+                               content={"tone": "critical", "paragraphs": ["Book the Augustiner table"]})
+        Section.objects.create(day=self.day, section_type="note", title="19:30 — Dinner", order=2,
+                               content={"tone": "", "paragraphs": []})
         Meal.objects.create(day=self.day, name="Augustiner", meal_type="dinner")
         BookingTask.objects.create(trip=self.trip, title="Book the Augustiner table")
-        before = sorted(s.kind for s in tidying.suggestions(self.trip))
-        day_first.apply(self.trip)
         found = tidying.suggestions(self.trip)
-        self.assertEqual(sorted(s.kind for s in found), before)
-        self.assertIn("meal_phase", before)
+        self.assertEqual(sorted(s.kind for s in found), ["callout_task", "meal_phase"])
         applied, skipped = tidying.apply(self.trip, found, {s.key: s.actions[0][0] for s in found})
         self.assertEqual(skipped, [])
         self.assertEqual(Meal.objects.get().reserved_time, time(19, 30))
+        self.assertFalse(Section.objects.exists())
+
+
+class RetireMigrationTests(RestoringTransactionTestCase):
+    """trips 0051: phases, callouts and free text left become notes; a leftover choose-your-adventure stops it."""
+
+    BEFORE = [("trips", "0050_trip_ideas")]
+    AFTER = [("trips", "0051_retire_old_section_types")]
+
+    def migrate(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        pinned = dict(targets)
+        nodes = [(app, pinned.get(app, name)) for app, name in executor.loader.graph.leaf_nodes()]
+        executor.migrate(nodes)
+        executor.loader.build_graph()
+        return executor.loader.project_state(nodes).apps
+
+    def tearDown(self):
+        self.migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def day(self, apps):
+        Trip = apps.get_model("trips", "Trip")
+        Day = apps.get_model("trips", "Day")
+        trip = Trip.objects.create(name="Old trip", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
+        return Day.objects.create(trip=trip, day_number=1, date=date(2027, 1, 1))
+
+    def test_old_note_types_become_notes(self):
+        apps = self.migrate(self.BEFORE)
+        Section = apps.get_model("trips", "Section")
+        day = self.day(apps)
+        olds = (("phase", "Arrive", PHASE), ("callout", "Tip", CALLOUT), ("free_text", "Notes", FREE_TEXT))
+        made = [(Section.objects.create(day=day, section_type=kind, title=title, content=content, order=n).pk,
+                 kind, title, content) for n, (kind, title, content) in enumerate(olds)]
+        table = Section.objects.create(day=day, section_type="logistics_table", content={"rows": []}).pk
+        apps = self.migrate(self.AFTER)
+        Section = apps.get_model("trips", "Section")
+        for pk, kind, title, content in made:
+            row = Section.objects.get(pk=pk)
+            self.assertEqual((row.section_type, row.title, row.content),
+                             ("note", *day_first.note_from(kind, title, content)), kind)
+        self.assertEqual(Section.objects.get(pk=table).section_type, "logistics_table")
+
+    def test_a_leftover_choose_your_adventure_stops_it(self):
+        apps = self.migrate(self.BEFORE)
+        Section = apps.get_model("trips", "Section")
+        day = self.day(apps)
+        Section.objects.create(day=day, section_type="choose_your_adventure", content={"options": []})
+        with self.assertRaisesMessage(RuntimeError, "run `manage.py convert_day_first --all --apply` first"):
+            self.migrate(self.AFTER)
+        Section.objects.filter(section_type="choose_your_adventure").delete()

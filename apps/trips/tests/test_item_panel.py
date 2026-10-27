@@ -34,8 +34,8 @@ class Fixture(TestCase):
                                                     start_time=time(14, 0))
         self.meal = Meal.objects.create(day=self.day, name="Augustiner", meal_type="dinner",
                                         reserved_time=time(19, 30))
-        self.section = Section.objects.create(day=self.day, section_type="callout", title="Heads up",
-                                              content={"tone": "warning", "text": "Cash only."})
+        self.section = Section.objects.create(day=self.day, section_type="note", title="Heads up",
+                                              content={"tone": "warning", "paragraphs": ["Cash only."]})
 
     def edit_urls(self):
         t = self.trip.pk

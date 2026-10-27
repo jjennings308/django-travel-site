@@ -423,7 +423,7 @@ class SoftDeleteTests(AccessFixture):
             trip=self.taos, day_number=1, date=date(2026, 9, 12)
         )
         Section.objects.create(
-            day=day, section_type=Section.Type.FREE_TEXT, content={}
+            day=day, section_type=Section.Type.NOTE, content={}
         )
         pk = self.taos.pk
 

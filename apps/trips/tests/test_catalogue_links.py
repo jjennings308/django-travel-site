@@ -64,7 +64,7 @@ class FormTests(Fixture):
         self.assertIn("poi", form.errors)
 
     def test_section_place_and_activity(self):
-        section = Section(day=self.day, section_type="free_text")
+        section = Section(day=self.day, section_type="note")
         form = SectionForm({"title": "Walk", "poi": self.tate.pk, "activity": self.walk.pk}, instance=section)
         self.assertTrue(form.is_valid(), form.errors)
         self.assertNotIn(self.paris_walk, form.fields["activity"].queryset)
@@ -104,7 +104,7 @@ class SuggestionTests(Fixture):
         self.assertNotContains(self.page(), "Looks like")
 
     def test_section_title_matches_an_activity(self):
-        Section.objects.create(day=self.day, section_type="free_text", title="Thames Walk")
+        Section.objects.create(day=self.day, section_type="note", title="Thames Walk")
         self.assertContains(self.page(), "Looks like the catalogue activity")
 
     def test_partial_names_other_cities_and_ambiguous_names_suggest_nothing(self):
@@ -143,7 +143,7 @@ class DisplayTests(Fixture):
         Meal.objects.create(day=self.day, name="Lunch", meal_type="lunch", poi=self.market,
                             reserved_time=time(12, 0))
         Meal.objects.create(day=self.day, name="Snack", meal_type="snack", poi=self.tate)  # a food idea
-        Section.objects.create(day=self.day, section_type="free_text", title="Afternoon", activity=self.walk,
+        Section.objects.create(day=self.day, section_type="note", title="Afternoon", activity=self.walk,
                                content={"paragraphs": ["x"]})
         self.client.force_login(self.viewer)
         page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
@@ -159,7 +159,7 @@ class CountTests(Fixture):
 
     def test_each_live_trip_counts_once(self):
         Meal.objects.create(day=self.day, name="Lunch", meal_type="lunch", poi=self.market)
-        Section.objects.create(day=self.day, section_type="free_text", poi=self.market, activity=self.walk)
+        Section.objects.create(day=self.day, section_type="note", poi=self.market, activity=self.walk)
         TripActivity.objects.create(trip=self.trip, day=self.day, title="Tour", poi=self.market)
         catalogue_counts.recount()
         self.market.refresh_from_db()
@@ -168,7 +168,7 @@ class CountTests(Fixture):
 
         second, day = self.other_trip()
         TripActivity.objects.create(trip=second, day=day, title="Food tour", poi=self.market)
-        Section.objects.create(day=day, section_type="free_text", activity=self.walk)
+        Section.objects.create(day=day, section_type="note", activity=self.walk)
         deleted, gone_day = self.other_trip("Deleted")
         Meal.objects.create(day=gone_day, name="Lunch", meal_type="lunch", poi=self.market)
         deleted.soft_delete()

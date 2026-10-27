@@ -235,49 +235,26 @@ class EditingTests(Fixture):
 
 
 class ConvertTests(Fixture):
-    def test_a_choose_your_adventure_section_becomes_a_group(self):
-        section = Section.objects.create(day=self.day, section_type="choose_your_adventure", title="Morning", order=3,
-                                         content={"prompt": "Pick one", "summary": "Both short.", "options": [
-                                             {"letter": "A", "title": "Lake", "description": "Swim", "duration": "2 h",
-                                              "cost": "€8"}, {"title": "Old town", "description": "Stroll"}]})
-        Comment.objects.create(content_object=section, author=self.commentor, body="Lake!")
-        (day, items), = day_first.plan(self.trip)
-        self.assertEqual(items[0].after, ("Choose one", ["Pick one (undecided)", "• Lake — Swim\n2 h · €8",
-                                                         "• Old town — Stroll"]))
-        self.assertEqual(day_first.apply(self.trip), 1)
-        group = OptionGroup.objects.get(prompt="Pick one")
-        self.assertEqual((group.notes, group.order, group.state), ("Both short.", 3, "open"))
-        self.assertEqual([(o.title, o.notes) for o in group.options.all()],
-                         [("Lake", "Swim\n2 h · €8"), ("Old town", "Stroll")])
-        self.assertFalse(Section.objects.filter(pk=section.pk).exists())
-        comment = Comment.objects.get(body="Lake!")
-        self.assertEqual((comment.content_type, comment.object_id), (ContentType.objects.get_for_model(Day), self.day.pk))
+    def test_a_choose_your_adventure_maps_to_a_group(self):
+        """What the importer saves for a parsed choose-your-adventure (retire-old-section-types S2)."""
+        group = day_first.adventure_group("Morning", {
+            "prompt": "Pick one", "summary": "Both short.", "options": [
+                {"letter": "A", "title": "Lake", "description": "Swim", "duration": "2 h", "cost": "€8"},
+                {"title": "Old town", "description": "Stroll"}, "junk"]})
+        self.assertEqual((group["prompt"], group["notes"]), ("Pick one", "Both short."))
+        self.assertEqual([(o["title"], o["notes"], o["order"]) for o in group["options"]],
+                         [("Lake", "Swim\n2 h · €8", 0), ("Old town", "Stroll", 1)])
+        made = day_first.make_group(self.trip, self.day, group["prompt"], group["notes"], group["options"], order=3)
+        self.assertEqual((made.order, made.state, made.options.count()), (3, "open", 2))
 
-    def test_one_with_a_confirmation_becomes_a_note_with_its_links(self):
-        """Retire-old-section-types S1: a confirmation can't cover a whole choice, so the section becomes a
-        note on the same row, keeping its confirmation, comments and contacts; nothing is left over."""
-        from apps.trips.models import Contact, ItemLink
-        section = Section.objects.create(day=self.day, section_type="choose_your_adventure", title="Tour", order=2,
-                                         content={"prompt": "Which tour?", "summary": "Booked as one.", "source": "docx",
-                                                  "options": [{"title": "A", "description": "Boat", "duration": "2 h",
-                                                               "cost": "€30"}, {"title": "B"}, "junk"]})
-        confirmation = Confirmation.objects.create(trip=self.trip, confirmation_number="X1")
-        confirmation.link(section)
-        Comment.objects.create(content_object=section, author=self.commentor, body="Boat!")
-        ItemLink.link(Contact.objects.create(trip=self.trip, name="Captain"), section)
-        (day, items), = day_first.plan(self.trip)
-        self.assertEqual(items[0].before, ("Choose your adventure", ["Which tour?", "• A", "• B"]))
-        self.assertEqual(items[0].after, ("Note", ["Which tour?", "Booked as one.", "• A — Boat (2 h · €30)", "• B"]))
-        self.assertEqual(day_first.apply(self.trip), 1)
-        section.refresh_from_db()
-        self.assertEqual((section.section_type, section.title, section.order), ("note", "Which tour?", 2))
-        self.assertEqual(section.content, {"source": "docx", "tone": "",
-                                           "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]})
-        self.assertEqual(list(confirmation.links.values_list("object_id", flat=True)), [section.pk])
-        self.assertTrue(Comment.objects.filter(body="Boat!", object_id=section.pk).exists())
-        self.assertTrue(ItemLink.objects.filter(target_id=section.pk).exists())
-        self.assertFalse(OptionGroup.objects.filter(prompt="Which tour?").exists())
-        self.assertEqual(day_first.plan(self.trip), [])
+    def test_a_choose_your_adventure_maps_to_a_note(self):
+        """For an old history snapshot restored onto its own row (S2); S1 made these for one with a confirmation."""
+        title, content = day_first.adventure_note("Tour", {
+            "prompt": "Which tour?", "summary": "Booked as one.", "source": "docx",
+            "options": [{"title": "A", "description": "Boat", "duration": "2 h", "cost": "€30"}, {"title": "B"}, "junk"]})
+        self.assertEqual(title, "Which tour?")
+        self.assertEqual(content, {"source": "docx", "tone": "",
+                                   "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]})
 
     def test_a_decision_todo_becomes_a_picked_group_on_its_day(self):
         stay_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19))
@@ -302,10 +279,9 @@ class ConvertTests(Fixture):
         self.assertEqual(task.options.count(), 2)  # still readable
 
     def test_the_banner_counts_them(self):
-        Section.objects.create(day=self.day, section_type="choose_your_adventure", content={"options": []})
         task = BookingTask.objects.create(trip=self.trip, title="Hotel?", kind="decide")
         TaskOption.objects.create(task=task, title="A")
-        self.assertIn("2 to convert to notes and choices", self.page())
+        self.assertIn("1 decision to turn into choices", self.page())
 
 
 class BookletTests(Fixture):

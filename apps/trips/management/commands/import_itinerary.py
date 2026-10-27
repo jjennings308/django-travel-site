@@ -26,6 +26,9 @@ from apps.trips.models import (
     Trip,
 )
 
+# What the dry run says each parsed section will be saved as (retire-old-section-types S2).
+SAVED_AS = {"phase": "note", "callout": "note", "free_text": "note", "choose_your_adventure": "choose one"}
+
 
 class Command(BaseCommand):
     help = "Import an itinerary .docx into the trips schema (dry-run unless --apply)."
@@ -167,12 +170,6 @@ class Command(BaseCommand):
                 # New itineraries start as legs (trip-items plan, Phase D): the same
                 # conversion as the trip page's review, with its automatic choices.
                 converted = travel_tables.convert_automatically(trip)
-            # And their phases, callouts and free text start as notes, their choices as "choose one" groups
-            # (day-first plan, P3–P4).
-            from apps.trips import day_first
-            notes = day_first.apply(trip)
-        if notes:
-            self.stdout.write(f"Notes and choices: {notes} sections became notes or \"choose one\" groups.")
         if converted and (converted["created"] or converted["linked"]):
             self.stdout.write(
                 f"Travel tables: made {len(converted['created'])} planned legs, linked "
@@ -353,7 +350,7 @@ class Command(BaseCommand):
                 )
             for section in record["sections"]:
                 out(
-                    f"      {section['order']:>2}. {section['section_type']:22} "
+                    f"      {section['order']:>2}. {SAVED_AS.get(section['section_type'], section['section_type']):22} "
                     f"{section['icon']}{section['title'][:52]}"
                 )
 
@@ -481,7 +478,7 @@ class Command(BaseCommand):
             if warn:
                 self._set_roster(day, record.get("roster"), travelers, warn)
             for section in record["sections"]:
-                Section.objects.create(day=day, **section)
+                self._save_section(trip, day, section)
             for meal in record["meals"]:
                 Meal.objects.create(day=day, **meal)
 
@@ -489,6 +486,22 @@ class Command(BaseCommand):
             BookingTask.objects.create(trip=trip, **record)
 
         return trip
+
+    def _save_section(self, trip, day, section):
+        """A parsed section as the day-first kinds (retire-old-section-types S2): the parsers still say
+        phase, callout, free text and choose your adventure, which are saved as notes and "choose one"
+        groups (``day_first``'s mappings); travel and logistics tables are saved as they are."""
+        from apps.trips import day_first
+        kind = section["section_type"]
+        if kind == day_first.ADVENTURE:
+            group = day_first.adventure_group(section["title"], section["content"])
+            day_first.make_group(trip, day, group["prompt"], group["notes"], group["options"], order=section["order"])
+        elif kind in day_first.OLD_NOTE_TYPES:
+            title, content = day_first.note_from(kind, section["title"], section["content"])
+            Section.objects.create(day=day, **{**section, "section_type": Section.Type.NOTE, "title": title,
+                                               "content": content})
+        else:
+            Section.objects.create(day=day, **section)
 
     def _set_roster(self, day, roster, travelers, warn):
         """Attach the day's roster, or leave it blank to mean "whole trip".

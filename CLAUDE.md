@@ -801,15 +801,19 @@ that matter most:
   **Notes:** `Section.Type.NOTE` (trips 0048, choices only): title = optional heading, payload `{"tone": "" | tip | warning
   | critical, "paragraphs"}` (`NotePayloadForm`; a "• " paragraph is a bullet), drawn as a callout of `note_style`
   (`Section.NOTE_TONE_STYLES`: tip → info) or else like free text, on the page and in the booklet. Add to this day offers
-  Note, Travel notes and Choose your adventure. **Converting** `Section.OLD_NOTE_TYPES` (phase, callout, free text):
-  `apps/trips/day_first.py` (`plan` / `apply(trip, ids)`, one transaction, one history line; a phase's heading becomes
-  the title, summary and highlights (as "• ") paragraphs; a callout's tone kept, info → tip; other payload keys kept) via
-  `trips:trip_convert` (`/trips/<pk>/convert/`, editors, every row ticked; Needs attention's "N sections to turn into
-  notes", counted from the prefetch), `manage.py convert_day_first --trip <pk> | --all [--apply]` (`--all`: every live trip, one transaction and history line each, then totals) and `import_itinerary --apply`
-  (a new trip's sections become notes; the parsers still emit the old types). Old types still render and edit. **Tidy**
-  reads a note as what it replaced (`tidying._tidy_type`: a toned one-paragraph note as a callout, a heading-only one as a
-  phase, else free text) and applies to it (`_callout_text`, paragraphs for "text" / "summary"). The booklet snapshot's
-  fixture converts its phase, callout and free text: only the phase's highlights changed, from a list to "• " lines. Its choose-your-adventure has a confirmation, so since S1 it converts to a note too (options as "• " lines).
+  Note and Travel notes (`views._add_section_types`; `section_create` 404s for any other type). **Phases, callouts, free
+  text and choose your adventure are retired** (retire-old-section-types S2, trips 0051: `Section.Type` is logistics
+  table, travel and note; the migration converted any phase / callout / free text left with a frozen copy of the mapping
+  and refuses to run while a choose-your-adventure is left). The Word parsers still emit them as dicts;
+  `apps/trips/day_first.py` holds the one mapping, on plain `(section_type, title, content)`: `note_from` (a phase's
+  heading → title, summary and highlights as "• " paragraphs; a callout's tone kept, info → tip, text → paragraphs; free
+  text's paragraphs; other payload keys kept), `adventure_group` / `make_group` and `adventure_note` (prompt as heading,
+  summary, "• title — description (duration · cost)"). `import_itinerary`'s `_save_section` saves notes and "choose one"
+  groups from the parsed dicts (never a retired type; its dry run says "note" / "choose one"); `changes.restore` brings a
+  pre-S2 snapshot of a retired type back as a note (`as_note`). **Tidy** reads notes directly (`tidy._is_callout`: a toned
+  one-paragraph note reads as a callout; `_is_heading_only`: a heading with no paragraphs as a phase; other notes'
+  paragraphs as narrative lines; kind names and keys unchanged, so old dismissals still match). The booklet snapshot's
+  fixture makes its notes through the same mapping (the choose-your-adventure with a confirmation as its note).
 - **"Choose one" groups and votes** (day-first plan P4; trips 0049, which depends on accounts 0019): `OptionGroup`
   (trip, day — a stay group on its first night —, `prompt`, `notes`, `start_time` (places it in the timeline), `order`,
   `state` open / picked / split, `decided_by` / `decided_at`; `pick(option, user)` / `reopen()`, and an open group's
@@ -839,10 +843,12 @@ that matter most:
   reopens, undoing a reopen isn't offered. The To do page lists open groups first; new to-dos can't be "decide" (an
   existing decision keeps its kind and options page). **Booklet:** an open group prints "Prompt — undecided" with each
   option and its items; a picked one prints "Prompt: chosen (cost — notes)" and its items with the day's. **Converting**
-  (`day_first`, the same review page, now keyed `section-<id>` / `task-<id>`): choose-your-adventure sections → groups
-  (prompt, summary → notes, options with description + duration · cost as notes; comments and contacts move to the
-  day; one with a confirmation becomes a note on the same row instead — prompt as heading, summary, "• title — description (duration · cost)" — so its confirmation, comments and contacts stay (`day_first._adventure_note`, S1)) and open decision to-dos with options → groups on the task's
-  day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the choice …".
+  open decision to-dos with options (`day_first.plan` / `apply(trip, keys)`, keys `task-<id>`, one transaction and history
+  line; `trips:trip_convert`, `/trips/<pk>/convert/`, editors, every row ticked; Needs attention's "N decisions to turn into
+  choices", `pending_count` from the prefetch; `manage.py convert_day_first --trip <pk> | --all [--apply]`): groups on the
+  task's day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the
+  choice …". (S1 also converted choose-your-adventure sections here — to groups, or to a note on the same row when one
+  had a confirmation — before S2 retired the type.)
 - **Split** (day-first plan P5; no migration): `OptionGroup.split(tracks, user)` (option → travellers; state `split`,
   nothing `chosen`) from `trips:group_split` (`/trips/<pk>/choices/<id>/split/`, editors; `forms.SplitForm`: a radio row
   per person on `day.roster`, everyone placed once, at least two options taken — else "pick it instead"; prefilled, so
@@ -884,7 +890,7 @@ that matter most:
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
   editors to `trips:day_edit` (opened in the panel, P2), the day's workshop and the no-JS place where things on a day
   are added: **Add to this day** (first the one-line + Add, as on the trip page (P7); then a leg via the inline quick add, a stay, an activity, a meal via the meal formset
-  `#meals`, a section — Note, Travel notes, Choose your adventure (P3) — and a contact or note for
+  `#meals`, a section — Note, Travel notes (P3; S2) —, + Choose one, and a contact or note for
   the whole day; a to-do from its item's page), **On this day** (`views._day_workshop`: the day's stays — Check out / Check in / Sleeping —
   then the day's items in the trip page's order —
   `itinerary.timeline`, then sections, then food ideas — each with its confirmation numbers and linked
@@ -1372,8 +1378,9 @@ views opening items in the panel) done on branch `p7-settings`. Complete.
 Plan: `docs/plans/retire-old-section-types.md` (phases, callouts, free text and choose-your-adventure sections are
 converted on every trip — S1, `convert_day_first --all` — then removed from the model, importers, forms, templates,
 Tidy and history restore — S2; logistics tables stay). Decided 2026-10-27. Status: S1 (`convert_day_first --all`, the
-confirmation case as a note) done on branch `s1-convert-all`; James runs it on dev then production. S2 merges only
-after S1 has run on production.
+confirmation case as a note) done on branch `s1-convert-all`; S2 (types removed, trips 0051) done on branch
+`retire-section-types` — merge only after S1 has run on production (0051 refuses to migrate while a
+choose-your-adventure section is left). The decision-to-do conversion stays (page, command, banner).
 
 ### Rules carried over from the itinerary project
 

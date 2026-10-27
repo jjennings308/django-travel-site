@@ -407,7 +407,8 @@ def undo(change):
 
 
 def restore(change, actor=None):
-    """Bring a removed leg, stay, activity, meal or section back with its links."""
+    """Bring a removed leg, stay, activity, meal or section back with its links. A section of a type
+    retired since (a phase, callout, free text or choose your adventure) comes back as a note."""
     from django.contrib.contenttypes.models import ContentType
     from django.core import serializers
     snap = change.before or {}
@@ -420,6 +421,11 @@ def restore(change, actor=None):
     if not Trip.objects.filter(pk=change.trip_id, deleted_at=None).exists():
         raise CannotUndo("The trip is gone.")
     fields = dict(data["fields"])
+    if model is Section:
+        from .day_first import RETIRED, as_note
+        if fields.get("section_type") in RETIRED:  # snapshotted before S2 retired its type: back as a note
+            fields["title"], fields["content"] = as_note(fields["section_type"], fields.get("title"), fields.get("content"))
+            fields["section_type"] = Section.Type.NOTE
     for field in model._meta.concrete_fields:
         if not field.is_relation or field.name not in fields or fields[field.name] is None:
             continue
