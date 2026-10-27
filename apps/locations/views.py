@@ -243,6 +243,10 @@ def country_add(request):
             except Media.DoesNotExist:
                 pass
         
+        # Its flag (country-flags plan C1): the picture unless one was chosen above.
+        from . import flags
+        flags.attach(country)
+
         # Submit for review
         country.submit_for_review(request.user)
         
@@ -300,6 +304,9 @@ def country_edit(request, slug):
                 country.featured_media = media
             except Media.DoesNotExist:
                 pass
+        # "Use the flag" (country-flags plan C1): the flag back as the picture, whatever else was chosen.
+        if request.POST.get('use_flag') and country.flag_media_id:
+            country.featured_media_id = country.flag_media_id
         
         country.save()
         messages.success(request, f'Country "{country.name}" updated successfully!')
