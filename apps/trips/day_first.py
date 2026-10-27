@@ -15,8 +15,10 @@ P4: "Choose your adventure" sections and decision to-dos become **"choose one" g
 
 * a choose-your-adventure section: on its day, prompt = its prompt (else title), its summary as the
   group's notes, an option per option (description, then duration and cost, as its notes); its notes
-  (comments) and contacts move to the day; the section goes. One with a confirmation is left alone
-  (a confirmation can't cover a whole choice), and listed as such;
+  (comments) and contacts move to the day; the section goes. One with a confirmation becomes a **note**
+  instead (retire-old-section-types S1: a confirmation can't cover a whole choice, and nothing is left
+  over): the prompt as its heading, its summary, then each option as a "• title — description (duration
+  · cost)" paragraph, on the same row, so its confirmation, comments and contacts stay with it;
 * a decision to-do (``BookingTask.kind == "decide"`` with options): on the task's day, else its leg's,
   stay's or activity's day, else Day 1 (flagged "check the day"); prompt = its title; each option's
   detail, link and cost carried over; a chosen option is kept as picked. The to-do is ticked off with
@@ -56,6 +58,9 @@ class Conversion:
             parts = [c.get("heading") or s.title, c.get("summary") or "", *(f"• {h}" for h in c.get("highlights") or [])]
         elif s.section_type == Section.Type.CALLOUT:
             parts = [f"{s.title}: {c.get('text') or ''}" if s.title else c.get("text") or "", f"({c.get('tone') or 'info'})"]
+        elif s.section_type == Section.Type.CHOOSE_YOUR_ADVENTURE:
+            parts = [c.get("prompt") or s.title, *(f"• {o.get('title')}" for o in c.get("options") or []
+                                                   if isinstance(o, dict))]
         else:
             parts = [s.title, *(c.get("paragraphs") or [])]
         return kind, [p for p in parts if p]
@@ -116,7 +121,29 @@ def _as_note(section):
     return title, content
 
 
+def _adventure_note(section):
+    """A choose-your-adventure section that can't become a group (it has a confirmation) as a note:
+    (title, content)."""
+    content = dict(section.content) if isinstance(section.content, dict) else {}
+    title = (content.pop("prompt", "") or section.title or "Choose one")[:200]
+    paragraphs = [p for p in [content.pop("summary", "") or ""] if p]
+    for option in content.pop("options", []) or []:
+        if not isinstance(option, dict):
+            continue
+        line = f"• {option.get('title') or 'Option'}"
+        if option.get("description"):
+            line += f" — {option['description']}"
+        extra = " · ".join(str(option.get(k)) for k in ("duration", "cost") if option.get(k))
+        if extra:
+            line += f" ({extra})"
+        paragraphs.append(line)
+    content.update({"tone": "", "paragraphs": paragraphs})
+    return title, content
+
+
 def _from_adventure(section, day):
+    if section.confirmation_links.exists():
+        return Conversion(section, *_adventure_note(section))
     content = section.content if isinstance(section.content, dict) else {}
     options = []
     for order, option in enumerate(content.get("options") or []):
@@ -126,9 +153,8 @@ def _from_adventure(section, day):
         notes = "\n".join(p for p in (str(option.get("description") or ""), extra) if p)
         options.append({"title": (str(option.get("title") or "") or f"Option {order + 1}")[:200], "notes": notes,
                         "url": "", "est_cost": None, "currency": "", "order": order, "chosen": False})
-    blocked = "it has a confirmation" if section.confirmation_links.exists() else ""
     return ChoiceConversion(section, day, (content.get("prompt") or section.title or "Choose one")[:200],
-                            content.get("summary") or "", options, blocked=blocked)
+                            content.get("summary") or "", options)
 
 
 def _task_day(task, days):

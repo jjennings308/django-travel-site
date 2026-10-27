@@ -1,6 +1,6 @@
 # Plan: retire phases, callouts, free text and choose-your-adventure sections
 
-Status: planning only (2026-10-27). Decided by James 2026-10-27. Two steps: S1 (convert the data, small), then S2
+Status: S1 done (2026-10-27, branch `s1-convert-all`; James still runs it on dev and production); S2 not started. Decided by James 2026-10-27. Two steps: S1 (convert the data, small), then S2
 (remove the types from the code, one branch). Read with `CLAUDE.md` → Trips → "+ Add and five kinds" and
 "'Choose one' groups and votes", and `docs/plans/day-first-planning.md` (P3, P4).
 
