@@ -30,7 +30,20 @@ Anyone who can comment on the trip can vote: click **👍** on the option you'd 
 
 Editors click **Pick** on an option. Its items then count as the day's own: they join the timeline, Not booked yet, the cost estimate, the map and the calendar. The other options aren't deleted: the day shows **Chosen from: Afternoon (2 options) — Castle**, which opens the options **Considered**, with their votes. **Reopen the choice** there makes it undecided again. **Save for someday** beside a considered option adds it to your own bucket list ([ideas and goals](/help/ideas-and-goals/#save-for-someday)).
 
-Picking and reopening are in the trip's [history](/help/trip-history/); **Undo** on a pick reopens the choice.
+### Picking a stay, meal, activity or journey adds it to the day
+
+On a choice that says what it's about ([below](#what-a-choice-is-about)), **Pick** turns the option into the real thing on the day, and the trip page opens it beside the days so you can add the address, times and confirmation:
+
+| Kind | Picking adds |
+| --- | --- |
+| **Stay** | a stay from the choice's day for the option's nights (its own, else the choice's; one if neither says), with its city, address or place, nightly price and notes |
+| **Eat** | a meal on the day at the choice's time, at the option's catalogue place or typed name |
+| **Do** | an activity on the day from the choice's time until its end, at its catalogue place, activity's venue or event (an event becomes a ticket) |
+| **Travel** | a planned journey on the day by the choice's mode, from and to the option's places (matched to the trip's cities) |
+
+The option's details are copied once: from then on the stay, meal, activity or journey is the record, and changing the option doesn't change it. The new item sits inside its option, so it counts while the option is picked: **Reopen the choice** keeps it, under the option in **Considered**, and picking that option again uses it again instead of making another. Picking another option makes that option's item. An option you already put something in by hand (**In option**) makes nothing new. **Split** makes the item for each option someone takes, on their track.
+
+Picking and reopening are in the trip's [history](/help/trip-history/), and so is the item a pick adds; **Undo** on a pick reopens the choice (the item stays, under its option).
 
 ## Splitting a choice
 
