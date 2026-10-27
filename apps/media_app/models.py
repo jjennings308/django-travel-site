@@ -254,6 +254,12 @@ class Media(TimeStampedModel):
             return round(self.file_size / (1024 * 1024), 2)
         return None
     
+    @property
+    def is_flag(self):
+        """A country's flag picture (country-flags plan C1, ``locations.flags``: staff-side, titled "Flag of …"):
+        templates show it whole (contained on a plain background), never cropped like a photo."""
+        return not self.is_user_generated and (self.title or "").startswith("Flag of ")
+
     def is_attached(self):
         return self.content_type_id is not None and self.object_id is not None
 

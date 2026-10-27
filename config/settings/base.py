@@ -239,6 +239,9 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until 
 # Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
 GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
+# A new country gets its flag as its picture (country-flags plan C1, locations.flags); off in tests, which
+# turn it on with a temporary MEDIA_ROOT so no flag files land in uploads/.
+COUNTRY_FLAGS_ENABLED = True
 # Visit statistics (partials/_analytics.html): James's self-hosted Umami, cookieless. Empty = off, so
 # dev and tests never count; prod.py fills them in and staging.py empties them again.
 ANALYTICS_SCRIPT_URL = os.environ.get("ANALYTICS_SCRIPT_URL", "")

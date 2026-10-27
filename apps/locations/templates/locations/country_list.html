@@ -72,7 +72,7 @@
                     <a href="{% url 'locations:country_detail' country.slug %}" class="no-underline">
                         {% if country.featured_media %}
                             <div class="relative" style="height: 200px; overflow: hidden;">
-                                <img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="w-full rounded-t-xl" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="{{ country.featured_media.file.url }}" alt="{% if country.featured_media.is_flag %}Flag of {{ country.name }}{% else %}{{ country.name }}{% endif %}" class="h-full w-full rounded-t-xl {% if country.featured_media.is_flag %}bg-warm-100 object-contain p-4{% else %}object-cover{% endif %}">
                             </div>
                         {% else %}
                             <div class="bg-earth-clay flex items-center justify-center" style="height: 200px;">

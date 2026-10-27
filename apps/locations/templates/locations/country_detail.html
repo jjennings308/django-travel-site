@@ -17,7 +17,8 @@
                 {% if country.featured_media.media_type == 'video' %}
                     <video src="{{ country.featured_media.file.url }}" class="w-full h-full" style="object-fit: cover;" controls></video>
                 {% else %}
-                    <img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="w-full h-full" style="object-fit: cover;">
+                    {# A flag (country-flags C1) is shown whole on a plain background, never cropped; a photo fills the banner. #}
+                    <img src="{{ country.featured_media.file.url }}" alt="{% if country.featured_media.is_flag %}Flag of {{ country.name }}{% else %}{{ country.name }}{% endif %}" class="h-full w-full {% if country.featured_media.is_flag %}bg-warm-100 object-contain p-6 pb-28{% else %}object-cover{% endif %}" data-country-picture="{% if country.featured_media.is_flag %}flag{% else %}photo{% endif %}">
                 {% endif %}
                 <div class="absolute bottom-0 left-0 right-0 p-6" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
                     <div class="flex items-center">

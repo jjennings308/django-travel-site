@@ -1,6 +1,6 @@
 # Plan: a flag picture for every country, and a monthly country check
 
-Status: planning only (2026-10-27). Decided by James 2026-10-27. Two phases, one branch each, in order: C1 (flags),
+Status: C1 done (2026-10-27, branch `c1-country-flags`); C2 not started. Decided by James 2026-10-27. Two phases, one branch each, in order: C1 (flags),
 C2 (the monthly check). Read with `CLAUDE.md` → "Pictures", "Pictures first", "SEO basics" and "Currency choices".
 
 ## Why
@@ -23,6 +23,14 @@ country rows differ from theirs (renamed countries, retired currencies such as Z
 4. **No live calls from pages.** As today, pages never call an outside service.
 
 ## C1 — Flags as country pictures (branch `c1-country-flags`)
+
+Done. As built: the PNGs are 9.4 MB (257 flags, 1200 × 900; flags of 256 colours or fewer saved as lossless palette
+PNGs — a lossy palette would shrink it further, at some cost to flags with emblems); `Media.is_flag` (staff-side,
+titled "Flag of …") is how templates tell a flag from a photo — the smallest way that also covers events and
+activities falling back to a country's picture; the flag is stored with `default_storage` under `site/flags/` because
+`Media`'s upload path needs an uploader; `COUNTRY_FLAGS_ENABLED` (off in tests) keeps test runs from writing flag
+files into `uploads/`; the country edit page is the old hand-written one (pick from your images, no upload or remove),
+so it gained **Use the flag** only; every country `import_countries` seeds has a PNG (no exceptions).
 
 - **Images in the repo.** A dev-only script `scripts/build_flag_pngs.py` takes flag-icons 7.2.3's `flags/4x3/*.svg`
   (from npm: `npm pack flag-icons@7.2.3` in a scratch folder, never added to `package.json`) and renders each to a PNG

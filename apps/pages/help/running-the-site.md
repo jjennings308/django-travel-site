@@ -3,7 +3,7 @@ summary: The staff dashboard, approving submissions, giving people access to tri
 audience: staff
 section: Staff
 order: 10
-updated: 2026-10-23
+updated: 2026-10-27
 
 # Running the site
 
@@ -51,6 +51,12 @@ Staff see every trip, with no grant needed. See [sharing and access](/help/shari
 Dates are month/day/year, like 9/18/2027 (how Excel shows them); 2027-09-18 works too, but day-first dates such as 18/9/2027 are refused. Times are 20:00 or 8:00 PM.
 
 A **blank template** shows the columns; **export what's loaded now** downloads the published items in the same columns, ready to edit and import again. Imported items are published straight away.
+
+## Country flags
+
+Every country's picture is its flag, shown whole (never cropped) on its page, in the country list, on shared links and on any activity or event card that has no picture of its own. A new country gets its flag when it's added (on the site, by CSV import or by the seed command). On a country's **Edit** page, choosing an image makes it the picture instead; **Use the flag** puts the flag back.
+
+For the countries already on the site, the `country_flags` command (run on the server; `--dry-run` first lists what it would change, `--country DE` does one) makes each flag the picture. A photo a country had stops being its picture but isn't deleted, and the command lists those countries.
 
 ## Nightly counts
 

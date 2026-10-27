@@ -331,6 +331,8 @@ class Command(BaseCommand):
                 )
 
                 if was_created:
+                    from apps.locations import flags
+                    flags.attach(country)  # its flag as its picture (country-flags plan C1)
                     created += 1
                     approved_count += 1  # ADD THIS COUNTER
                     self.stdout.write(self.style.SUCCESS(

@@ -1,6 +1,6 @@
 {# templates/partials/_detail_header.html — banner header shared by the activity and event pages. Pass: title, label (category), stars / stars_count (average rating and number of reviews; shown when any), icon, image (a Media or nothing), place, when, when_icon, status / status_label (approval), extra (a second badge, e.g. visibility or "Cancelled"). A non-approved status gets a one-line explanation. #}
 <header class="sbl-card mb-6 overflow-hidden">
-  <div class="relative flex flex-col justify-end bg-earth-clay bg-cover bg-center px-6 py-10 text-white {% if image %}min-h-72{% endif %}"{% if image %} style="background-image: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.1)), url('{{ image.file.url }}');" role="img" aria-label="{{ image.alt_text|default:title }}"{% endif %}>
+  <div class="relative flex flex-col justify-end bg-earth-clay bg-cover bg-center px-6 py-10 text-white {% if image %}min-h-72{% endif %}"{% if image %} style="background-image: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.1)), url('{{ image.file.url }}');{% if image.is_flag %} background-size: cover, contain; background-repeat: no-repeat; background-color: var(--color-warm-100);{% endif %}" role="img" aria-label="{{ image.alt_text|default:title }}"{% endif %}>
     <p class="mb-2 text-sm font-medium uppercase tracking-wide text-white/80">{% if icon %}{% if 'bi-' in icon %}<i class="bi {{ icon }}"></i>{% else %}{{ icon }}{% endif %} {% endif %}{{ label }}</p>
     <h1 class="text-4xl font-bold md:text-5xl">{{ title }}</h1>
     {% if place or when or stars_count %}

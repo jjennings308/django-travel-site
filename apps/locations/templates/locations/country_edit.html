@@ -114,7 +114,9 @@
             <div class="mb-6">
                 <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image to replace the current one{% if not country.featured_media %} (none set yet){% endif %}.</p>
-                {% if country.featured_media %}<div class="mb-4"><p class="sbl-label">Current</p><img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="h-32 rounded-lg object-cover"></div>{% endif %}
+                {% if country.featured_media %}<div class="mb-4"><p class="sbl-label">Current</p><img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="h-32 rounded-lg {% if country.featured_media.is_flag %}bg-warm-100 object-contain p-2{% else %}object-cover{% endif %}"></div>{% endif %}
+                {# The flag (country-flags plan C1): choosing another image replaces it as the picture; this puts it back. #}
+                {% if country.flag_media_id and country.featured_media_id != country.flag_media_id %}<p class="mb-4"><button type="submit" name="use_flag" value="1" class="sbl-btn sbl-btn-outline sbl-btn-sm" data-use-flag>Use the flag</button> <span class="text-sm text-warm-500">Saves the page with the country's flag as its picture.</span></p>{% endif %}
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
                 

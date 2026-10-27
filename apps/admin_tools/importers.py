@@ -545,5 +545,8 @@ class Importer:
                         obj.visibility, obj.source = "public", "import"
                 obj.save()
                 row.form.save_m2m()
+                if row.instance is None and self.spec.model is Country:
+                    from apps.locations import flags
+                    flags.attach(obj)  # a new country's flag as its picture (country-flags plan C1)
                 done.append((row, obj))
         return done

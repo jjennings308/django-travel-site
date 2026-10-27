@@ -169,6 +169,10 @@ class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin
     phone_code = models.CharField(max_length=10, blank=True)
     
     # Metadata
+    # The country's flag as a picture (country-flags plan C1; ``locations.flags``): normally also its
+    # ``featured_media``; a photo uploaded instead replaces it as the picture and leaves this set.
+    flag_media = models.ForeignKey('media_app.Media', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+', help_text="The country's flag picture (made from flag-icons)")
     flag_emoji = models.CharField(
         max_length=10, 
         blank=True,
