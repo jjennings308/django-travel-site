@@ -1,0 +1,136 @@
+{% load trip_comments %}
+{% comment %}
+One day of the trip page (U2/U3). The trip page includes it per day; trips:day_fragment renders it alone, so the item panel (day-first plan, P2) can swap a day back in after a save. data-day-fragment is that URL. Needs the trip page context (views._trip_page_context) plus day=.
+{% endcomment %}
+<details class="day day-fold" id="day-{{ day.day_number }}"{% if day.pk == open_day_pk %} open{% endif %} data-day-pk="{{ day.pk }}" data-day-fragment="{% url 'trips:day_fragment' trip.pk day.pk %}">
+  <summary class="day-summary">
+    <span class="font-semibold text-zinc-900">Day {{ day.day_number }}</span>
+    {% if day.date %}<span class="text-zinc-500">{{ day.date|date:"D M j" }}</span>{% endif %}
+    {% if day.city %}<span class="text-zinc-700">{{ day.city.name }}</span>{% endif %}
+    {% if day.theme %}<span class="min-w-0 truncate text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
+    {% comment %}Line 2, the day at a glance (itinerary.overview): only the parts it has. Links inside a summary follow without toggling it.{% endcomment %}
+    {% if day.stay or day.checking_out or day.overnight or day.travel_summary or day.ordered_activities or day.attention %}
+      <span class="day-glance" data-day-glance>
+        {% if day.stay %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay in day.checking_in %} (check in){% endif %}</span>{% elif day.checking_out %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.checking_out.0.pk }}">{{ day.checking_out.0.name }}</a> (check out)</span>{% endif %}
+        {% if day.overnight %}<span>✈ overnight</span>{% endif %}
+        {% if day.travel_summary %}<span class="whitespace-nowrap">{{ day.travel_icons }} {{ day.travel_summary }}</span>{% endif %}
+        {% if day.ordered_activities %}<span class="min-w-0 truncate">{{ day.highlights|join:" · " }}</span>{% endif %}
+        {% if day.attention %}<a class="font-medium text-amber-700" href="#needs-attention" title="Not booked or still to do">⚠{{ day.attention }}</a>{% endif %}
+      </span>
+    {% endif %}
+  </summary>
+  <div class="day-body">
+  {% if can_edit %}<p class="mb-2 text-right text-sm"><a class="btn-quiet px-3 py-1" href="{% url 'trips:day_edit' trip.pk day.pk %}?next={{ request.path|urlencode }}%23day-{{ day.day_number }}" data-panel-link>Edit this day</a></p>{% endif %}
+  <p class="day-meta mb-4">
+    {% if day.date %}<span>{{ day.date|date:"l, F j" }}</span>{% endif %}
+    {% if day.city %}<span><a class="link-quiet" href="{% url 'locations:city_detail' day.city.slug %}">{{ day.city.name }}</a></span>{% endif %}
+    {% if day.meals_included %}<span class="chip">Meals included</span>{% endif %}
+    {% if day.is_split %}
+      <span class="chip border-amber-200 bg-amber-50 text-amber-800">Split group</span>
+      <span>({{ day.roster_summary }})</span>
+    {% endif %}
+  </p>
+
+  {% comment %}
+    Where you sleep (U3, itinerary.attach_stays): check-out first, then the stay in full on its
+    check-in day, or a one-line "Sleeping" on its other nights linking to that card.
+  {% endcomment %}
+  {% for stay in day.checking_out %}<p class="stay-line">Check out: <a class="link-quiet font-medium" href="#stay-{{ stay.pk }}">{{ stay.name }}</a></p>{% endfor %}
+  {% if day.checking_in %}
+    <div class="section card-grid">{% for stay in day.checking_in %}{% include "trips/partials/_stay_card.html" %}{% endfor %}</div>
+  {% elif day.stay %}
+    <div class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay.refs %}{% include "trips/partials/_refs.html" with refs=day.stay.refs %}{% endif %}</div>
+  {% endif %}
+
+  {% comment %}
+    The day's timeline (U3, itinerary.timeline): legs, activities and reserved meals in local
+    time order, then Any time. Each item's one home on the page; legs keep their local times.
+  {% endcomment %}
+  {% if day.timeline or day.any_time %}
+    <div class="section timeline">
+      {% if day.travel_total %}<p class="card-kicker mb-1">Travel: {{ day.travel_total }}</p>{% endif %}
+      {% for entry in day.timeline %}
+        {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time=entry.label %}
+        {% elif entry.kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=entry.item time=entry.label %}
+        {% else %}{% include "trips/partials/_meal_row.html" with meal=entry.item time=entry.label %}{% endif %}
+      {% endfor %}
+      {% if day.any_time %}
+        <p class="card-kicker mt-3 mb-1">Any time</p>
+        {% for entry in day.any_time %}
+          {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time="" %}
+          {% else %}{% include "trips/partials/_activity_row.html" with activity=entry.item time="" %}{% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% for section in day.ordered_sections %}
+    {% include "trips/partials/_section.html" %}
+  {% endfor %}
+
+  {% if day.good_to_know %}
+    {# Contacts and notes linked to this day or one of its sections (U4). #}
+    <div class="section good-to-know">
+      <p class="card-kicker mb-1">Good to know</p>
+      {% include "trips/partials/_refs.html" with refs=day.good_to_know %}
+    </div>
+  {% endif %}
+
+  {% if day.food_ideas %}
+    {# Meals with no reservation time; a booked table is in the timeline (U3). #}
+    <div class="section">
+      <h3 class="grid-label">Food ideas</h3>
+      <div class="card-grid">
+        {% for meal in day.food_ideas %}
+          <div class="card" id="meal-{{ meal.pk }}" data-panel="{% if can_edit %}{% url 'trips:meal_edit' trip.pk meal.day_id meal.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'meal' meal.pk %}{% endif %}">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <p class="card-title">
+                {{ meal.name }}
+                {% if meal.price_range %}<span class="text-zinc-500"> {{ meal.price_range }}</span>{% endif %}
+              </p>
+              <span class="badge badge-mode">{{ meal.get_meal_type_display }}</span>
+            </div>
+            {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
+            {% include "trips/partials/_catalogue_link.html" with item=meal %}
+            {% include "trips/partials/_trip_notes.html" with item=meal %}
+            {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}
+            {% if meal.reservation_notes %}<p class="mt-2 text-sm text-zinc-600">{{ meal.reservation_notes|linebreaksbr }}</p>{% endif %}
+            {% if meal.confirmation_list %}<p class="mt-2 text-sm"><span class="card-kicker">Confirmation</span> {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
+            {% if meal.refs %}<div class="mt-2">{% include "trips/partials/_refs.html" with refs=meal.refs %}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% comment %}
+    Per-day and per-section threads, inside the day they belong to.
+
+    A `commentor` who is not an editor cannot reach the day edit page at all,
+    so this is where a comment about a day is read back. Each block is
+    omitted entirely when empty rather than rendered as an empty heading.
+  {% endcomment %}
+  {% with day_threads=comments_by_target.day|dictkey:day.pk %}
+    {% if day_threads %}
+      <div class="no-print">
+        {% include "trips/_comments.html" with comment_kind="day" comment_pk=day.pk comments=day_threads can_comment=can_comment heading="Notes on this day" %}
+      </div>
+    {% elif can_comment %}
+      {# Start the day's first note; once it has one, its thread above takes over. #}
+      <p class="no-print mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:comment_create' 'day' day.pk %}#body">Add a note to this day</a></p>
+    {% endif %}
+  {% endwith %}
+
+  {% with section_threads=comments_by_target.section %}
+    {% for section in day.ordered_sections %}
+      {% with thread=section_threads|dictkey:section.pk %}
+        {% if thread %}
+          <div class="no-print">
+            {% include "trips/_comments.html" with comment_kind="section" comment_pk=section.pk comments=thread can_comment=can_comment heading=section.title|add:" — notes" %}
+          </div>
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  {% endwith %}
+  </div>
+</details>

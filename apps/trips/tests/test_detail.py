@@ -408,6 +408,17 @@ class QueryCountTests(DetailFixture):
     """
 
     def test_a_multi_day_trip_holds_a_fixed_query_count(self):
+        self.fill()
+        # 32 = 27 + confirmation files (R5) + checklists, items, ticks (R9) + rates, trip rates (R10)
+        # - the rewards context processor's query on every page (removed in R11)
+        # - UserTimezoneMiddleware's own query: since R21 it reads the same AccountSettings row as
+        #   UserThemeMiddleware (it used to read the deprecated UserPreferences) = 31.
+        with self.assertNumQueries(32):  # 31 + the catalogue notes of its linked items (catalogue-notes N2)
+            response = self.get()
+        self.assertEqual(response.status_code, 200)
+
+    def fill(self):
+        """Sixteen busy days: every kind of item, linked and confirmed (shared with DayFragmentQueryTests)."""
         ada = Traveler.objects.create(name="Ada")
         # R18: every meal and section linked to a catalogue place (and activity) — no extra query.
         from apps.activities.models import Activity, ActivityCategory
@@ -541,13 +552,23 @@ class QueryCountTests(DetailFixture):
         for n, currency in enumerate(["EUR", "GBP", "EUR"]):
             Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n,
                                         currency=currency)
-        # 32 = 27 + confirmation files (R5) + checklists, items, ticks (R9) + rates, trip rates (R10)
-        # - the rewards context processor's query on every page (removed in R11)
-        # - UserTimezoneMiddleware's own query: since R21 it reads the same AccountSettings row as
-        #   UserThemeMiddleware (it used to read the deprecated UserPreferences) = 31.
-        with self.assertNumQueries(32):  # 31 + the catalogue notes of its linked items (catalogue-notes N2)
-            response = self.get()
+
+
+class DayFragmentQueryTests(QueryCountTests):
+    """One day on its own (trips:day_fragment, day-first plan P2) is assembled from the same context as
+    the page, so it costs the page's fixed count, whichever day and however busy the trip."""
+
+    def test_a_multi_day_trip_holds_a_fixed_query_count(self):
+        pass  # the page's own pin, tested once in QueryCountTests
+
+    def test_one_day_holds_a_fixed_query_count(self):
+        self.fill()
+        day = self.trip.days.get(day_number=5)
+        with self.assertNumQueries(32):  # the page's 32: every day is assembled (stays and legs span days)
+            response = self.client.get(reverse("trips:day_fragment", args=[self.trip.pk, day.pk]))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="day-5" open')
+        self.assertNotContains(response, "<html")
 
 
 

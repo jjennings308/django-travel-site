@@ -1,0 +1,24 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+An item read-only in the item panel (trips:item_panel, day-first plan P2): readers click a leg, stay, activity, meal, section or day on the trip page and see it as the page shows it (the same partials, can_edit off), with its notes where it has them. Editors get the item's edit page instead.
+{% endcomment %}
+{% block title %}{% if kind == "leg" %}{{ item.origin }} → {{ item.destination }}{% elif kind == "stay" %}{{ item.name }}{% elif kind == "activity" %}{{ item.title }}{% elif kind == "meal" %}{{ item.name }}{% elif kind == "section" %}{{ item.title|default:item.get_section_type_display }}{% else %}Day {{ item.day_number }}{% endif %}{% endblock %}
+{% block content %}
+  <div data-panel-tab="details">
+    {% if day and kind != "day" %}<p class="card-kicker mb-2">Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"D M j" }}{% endif %}{% if day.city %} · {{ day.city.name }}{% endif %}</p>{% endif %}
+    {% if kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=item %}
+    {% elif kind == "stay" %}{% include "trips/partials/_stay_card.html" with stay=item %}
+    {% elif kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=item time=item.start_time|time:"g:i A"|default:"Any time" %}
+    {% elif kind == "meal" %}{% include "trips/partials/_meal_row.html" with meal=item time=item.reserved_time|time:"g:i A"|default:"" %}
+    {% elif kind == "section" %}{% include "trips/partials/_section.html" with section=item %}
+    {% else %}
+      <p class="day-meta mb-3">{% if item.date %}<span>{{ item.date|date:"l, F j" }}</span>{% endif %}{% if item.city %}<span>{{ item.city.name }}</span>{% endif %}{% if item.theme %}<span>{{ item.theme }}</span>{% endif %}</p>
+      {% if item.good_to_know %}<div class="good-to-know"><p class="card-kicker mb-1">Good to know</p>{% include "trips/partials/_refs.html" with refs=item.good_to_know %}</div>{% endif %}
+    {% endif %}
+  </div>
+  {% if panel_comments is not None %}
+    <div data-panel-tab="comments">
+      {% include "trips/_comments.html" with comment_kind=kind comment_pk=item.pk comments=panel_comments can_comment=can_comment heading="Notes" %}
+    </div>
+  {% endif %}
+{% endblock %}

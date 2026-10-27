@@ -1,0 +1,117 @@
+{% load trip_comments %}
+{% comment %}
+One section of a day on the trip page (inside trips/partials/_day.html), and in an item's read-only panel (trips:item_panel). Pass section=.
+{% endcomment %}
+<div id="section-{{ section.pk }}" class="scroll-mt-32" data-panel="{% if can_edit %}{% url 'trips:section_edit' trip.pk section.day_id section.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'section' section.pk %}{% endif %}">
+{% comment %}
+  Payload keys are optional by contract — the shape varies per day and
+  newer importers add keys. A missing one renders as nothing rather
+  than raising, which is what the fallback branches below rely on.
+{% endcomment %}
+{% if section.section_type == "phase" %}
+  <div class="section card">
+    <h3 class="section-title">{{ section.icon|default:"" }} {{ section.content.heading|default:section.title }}</h3>
+    {% if section.content.summary %}<p class="mb-2">{{ section.content.summary }}</p>{% endif %}
+    {% if section.content.highlights %}
+      <ul class="mb-2 ml-5 list-disc text-zinc-700">
+        {% for item in section.content.highlights %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+{% elif section.section_type == "travel" %}
+  {# Its placed legs are in the timeline now (U3); here only its intro and reference rows. #}
+  {% if section.content.intro or section.content.rows %}
+  <div class="section">
+    <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title|default:"Getting around" }}</h3>
+    {% if section.content.intro %}<p class="mb-2 text-zinc-700">{{ section.content.intro }}</p>{% endif %}
+    {% if section.content.rows %}
+      <div class="card-grid mt-3">
+        {% for row in section.content.rows %}
+          <div class="card"><dl class="space-y-2 text-sm">
+            {% for cell in row %}{% with column=section.content.columns|dictkey:forloop.counter0 %}
+              <div class="sm:flex sm:gap-3">{% if column %}<dt class="text-xs font-medium text-zinc-500 sm:w-28 sm:shrink-0 sm:pt-0.5">{{ column }}</dt>{% endif %}<dd class="min-w-0 flex-1 text-zinc-800">{{ cell }}</dd></div>
+            {% endwith %}{% endfor %}
+          </dl></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+{% elif section.section_type == "logistics_table" %}
+  <div class="section">
+    <h3 class="grid-label">{{ section.icon|default:"" }} {{ section.title }}</h3>
+    {% comment %}
+      One card per row, each cell labelled with its column name. The
+      columns vary per table (2-4 wide, different names), so a label
+      per cell is what keeps a wide row readable without a table
+      header the reader has to scroll back to. A missing column name
+      falls back to a bare cell rather than an empty label.
+    {% endcomment %}
+    <div class="card-grid">
+      {% for row in section.content.rows %}
+        <div class="card">
+          <dl class="space-y-2 text-sm">
+            {% for cell in row %}
+              {% with column=section.content.columns|dictkey:forloop.counter0 %}
+                <div class="sm:flex sm:gap-3">
+                  {% if column %}<dt class="text-xs font-medium text-zinc-500 sm:w-28 sm:shrink-0 sm:pt-0.5">{{ column }}</dt>{% endif %}
+                  <dd class="min-w-0 flex-1 text-zinc-800">{{ cell }}</dd>
+                </div>
+              {% endwith %}
+            {% endfor %}
+          </dl>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif section.section_type == "callout" %}
+  <div class="section callout callout-{{ section.content.tone|default:'info' }}">
+    {% if section.title %}<span class="font-semibold">{{ section.title }}:</span> {% endif %}
+    {{ section.content.text }}
+  </div>
+
+{% elif section.section_type == "choose_your_adventure" %}
+  <div class="section">
+    <h3 class="grid-label">{{ section.content.prompt|default:section.title }}</h3>
+    {% if section.content.summary %}<p class="mb-2">{{ section.content.summary }}</p>{% endif %}
+    <div class="card-grid">
+      {% for option in section.content.options %}
+        <div class="card">
+          <p class="card-title">{{ option.title }}</p>
+          {% if option.description %}<p class="mt-1 text-sm">{{ option.description }}</p>{% endif %}
+          {% if option.duration or option.cost %}
+            <p class="mt-1 text-sm text-zinc-500">
+              {% if option.duration %}{{ option.duration }}{% endif %}
+              {% if option.duration and option.cost %}&middot;{% endif %}
+              {% if option.cost %}{{ option.cost }}{% endif %}
+            </p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif section.section_type == "free_text" %}
+  <div class="section card prose-block">
+    <h3 class="section-title">{{ section.icon|default:"" }} {{ section.title }}</h3>
+    {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+  </div>
+
+{% else %}
+  {% comment %}
+    Unknown type from a future importer: show what is there rather than
+    silently dropping the traveller's content.
+  {% endcomment %}
+  <div class="section card">
+    <h3 class="section-title">{{ section.title|default:section.section_type }}</h3>
+    <p class="text-sm text-zinc-500">No layout for this section type yet.</p>
+  </div>
+{% endif %}
+{% if section.poi_id or section.activity_id or section.event_id %}<div class="-mt-2 mb-4">{% include "trips/partials/_catalogue_link.html" with item=section %}{% include "trips/partials/_trip_notes.html" with item=section %}</div>{% endif %}
+{% if can_comment and not comments_by_target.section|dictkey:section.pk %}<p class="no-print -mt-3 mb-4 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'section' section.pk %}#body">Add a note</a></p>{% endif %}
+{% if section.confirmation_list %}<p class="-mt-2 mb-4 text-sm"><span class="card-kicker">Confirmation</span> {% for c in section.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}</p>{% endif %}
+{% if can_edit %}<p class="-mt-3 mb-4 text-right text-xs"><a class="link-quiet font-medium" href="{% url 'trips:section_edit' trip.pk section.day_id section.pk %}?next={{ request.path|urlencode }}%23section-{{ section.pk }}" data-panel-link>Edit</a></p>{% endif %}
+</div>

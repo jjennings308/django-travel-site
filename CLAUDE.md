@@ -750,6 +750,29 @@ that matter most:
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
     in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
     yet and Contacts. Confirmation chips on items are links to their row.
+- **The item panel** (day-first plan P2; mechanism: plain `fetch` in `apps/trips/static/trips/panel.js`, no htmx, so no
+  new CDN file): on the trip page a click on an item (rows and cards carry `data-panel` = the edit URL for editors, else
+  `trips:item_panel`; Edit / Edit this day links carry `data-panel-link`) opens its page in `#item-panel` (a side panel from
+  `sm`, a full-screen sheet below). Any trips page renders without the site chrome with `?panel=1`: `base_trips.html`
+  extends `trips/_panel_base.html` then (content + messages, `data-panel-title`). The panel opens `<edit url>?panel=1&next=
+  <same>?panel=1`, so a save redirects back into the panel ("Saved", stays open); forms and `/trips/` links inside stay in
+  it (a link to the trip page closes it; files, PDF, iCal and `_blank` links don't), a 404 (deleted) closes it, inline
+  scripts are re-run (the leg page's zone fill is written to run once per page) and `locations/city_search.js` is loaded by
+  the trip page for editors so the city box works inside. Tabs are built from `data-panel-tab` markers (`details` /
+  `booking` / `people` / `contacts` / `comments`; an element may list several; a tab exists only when something is marked
+  with it alone): `_form_fields.html` marks `travelers` as people; the leg, stay, activity and meal pages wrap to-dos and
+  Confirmations as booking and Contacts & info as contacts; the section and day pages add their comments (`views._target_comments`)
+  in panel mode only, and the day page in the panel is just its details and meals (no workshop). After a save the item's
+  day, and any other day showing the item's anchor (a stay's nights), is swapped for `trips:day_fragment`
+  (`/trips/<pk>/days/<day_pk>/fragment/`: `trips/partials/_day.html` alone, open, from `views._trip_page_context` — the
+  page's context, shared with `item_panel`; `request.path` is set to the trip page so its links' `next` are right; pinned at
+  the page's 32 queries, `test_detail.DayFragmentQueryTests`); an item gone from every day (a leg given another date)
+  reloads the page at its anchor. `trips:item_panel` (`/trips/<pk>/panel/<kind>/<id>/`, kinds leg / stay / activity / meal
+  / section / day, anyone who can see the trip): the item read-only through the page's own partials (`_section.html` is
+  now a partial too) with `can_edit` off, plus Comments for a day or section. A **meal has its own page** now,
+  `trips:meal_edit` / `meal_delete` (`/trips/<pk>/days/<day_pk>/meals/<id>/`; confirmations and contacts & info like a
+  leg's; the day page's Meals formset still edits them together). `section_edit` / `section_delete` honour `next`.
+  Panel URLs carry a query string, so the offline worker never caches them; every item page still works on its own.
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
   editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
   plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
@@ -1227,7 +1250,8 @@ panel, + Add takes one line, five kinds of item; option groups inside a day with
 shelf linked to bucket-list goals; cities found by search, kept in step automatically and laid out by a route
 builder; trip-wide pages become read-only views and Edit trip becomes Settings). Decisions answered 2026-10-26.
 Phases P1–P7, one branch each, in order. Status: P1 (city search box and new cities, `trip_cities.sync`, the route
-builder and strip) done on branch `p1-cities`.
+builder and strip) done on branch `p1-cities`; P2 (the item panel, `trips:day_fragment`, `trips:item_panel`, the meal's
+own page) done on branch `p2-item-panel`.
 
 ### Rules carried over from the itinerary project
 

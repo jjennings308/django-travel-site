@@ -391,6 +391,16 @@
   .trips-ui details[open] > .day-summary::before {
     content: "▾";
   }
+  /* The item panel (day-first plan P2, trips/panel.js): items open it with a click; its tabs. */
+  .trips-ui [data-panel] {
+    @apply cursor-pointer;
+  }
+  .trips-ui .panel-tabs button {
+    @apply min-h-11 border-b-2 border-transparent px-3 font-medium whitespace-nowrap text-zinc-600 hover:text-zinc-900;
+  }
+  .trips-ui .panel-tabs button[aria-selected="true"] {
+    @apply border-accent-600 text-zinc-900;
+  }
   /* A day's timeline (U3): time column, then the item on one line, details below. */
   .trips-ui .timeline-row {
     @apply grid grid-cols-[4.5rem_1fr] gap-x-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 sm:grid-cols-[6.5rem_1fr];

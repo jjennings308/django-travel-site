@@ -11,7 +11,7 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
     <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
     <span>{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</span>
   </nav>
-  <form method="post" class="card p-6" novalidate>
+  <form method="post" class="card p-6" novalidate data-panel-tab="details people">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     <h1 class="page-title mb-1">{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</h1>
@@ -25,9 +25,9 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
     </div>
   </form>
   {% if activity %}
-    {% include "trips/partials/_item_todos.html" with kind="activity" item=activity open_tasks=open_tasks %}
-    {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}
-    {% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}
+    <div data-panel-tab="booking">{% include "trips/partials/_item_todos.html" with kind="activity" item=activity open_tasks=open_tasks %}
+    {% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}</div>
+    <div data-panel-tab="contacts">{% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}</div>
   {% else %}
     <p class="note mt-4">Save it first, then add its confirmation number here.</p>
   {% endif %}

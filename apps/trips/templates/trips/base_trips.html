@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends request.GET.panel|yesno:"trips/_panel_base.html,base.html" %}
 {% comment %}
-Every trips page extends this. "trips-ui" scopes the trips component styles (.card, .btn, .badge, ... in theme/static_src/src/styles.css) to these pages, so they do not restyle the rest of the site's templates that use the same class names. Pages override wrap_class for a wider layout.
+Every trips page extends this. "trips-ui" scopes the trips component styles (.card, .btn, .badge, ... in theme/static_src/src/styles.css) to these pages, so they do not restyle the rest of the site's templates that use the same class names. Pages override wrap_class for a wider layout. With ?panel=1 (the item panel on the trip page, day-first plan P2) the same page renders without the site chrome: trips/_panel_base.html.
 {% endcomment %}
 {% block content_class %}trips-ui{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}

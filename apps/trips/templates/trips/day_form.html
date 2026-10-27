@@ -19,7 +19,7 @@
     <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="adding-a-day" label="a day's page" text="How this works" %}{% if not is_create %}<a class="btn-quiet" href="{{ back }}">Back to the trip</a>{% endif %}</p>
   </div>
 
-  {% if not is_create %}
+  {% if not is_create and not request.GET.panel %}
     {% comment %}
       The day's workshop (trip-page UX plan, U5): add anything to this day, and see what's on it in
       the trip page's order, each item with Edit / Confirmations / Contacts & info. Every link comes
@@ -74,7 +74,8 @@
     <div class="alert-error">{{ form.non_field_errors }}</div>
   {% endif %}
 
-  <form method="post" novalidate>
+  {# In the item panel (?panel=1, P2) the page is only the day's details and meals, plus its notes; things on the day are edited from their own rows. #}
+  <form method="post" novalidate data-panel-tab="details people">
     {% csrf_token %}
     <section class="form-section">
       <h2 class="form-section-title">Day details</h2>
@@ -103,5 +104,6 @@
     </div>
     {% if not is_create %}<input type="hidden" name="next" value="{{ back }}">{% endif %}
   </form>
+  {% if panel_comments is not None %}<div data-panel-tab="comments">{% include "trips/_comments.html" with comment_kind="day" comment_pk=day.pk comments=panel_comments can_comment=True heading="Notes on this day" %}</div>{% endif %}
 
 {% endblock %}

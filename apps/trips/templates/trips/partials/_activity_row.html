@@ -1,13 +1,13 @@
 {% comment %}
 An activity as a timeline row on its day (U3). Pass activity= and time=. Its chips link to Reference.
 {% endcomment %}
-<div class="timeline-row" id="activity-{{ activity.pk }}">
+<div class="timeline-row" id="activity-{{ activity.pk }}" data-panel="{% if can_edit %}{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'activity' activity.pk %}{% endif %}">
   <div class="timeline-time">{{ time }}</div>
   <div class="min-w-0">
     <p><span aria-hidden="true">{{ activity.icon }}</span> <span class="font-medium text-zinc-900">{{ activity.title }}</span>
       <span class="text-zinc-500">{{ activity.get_kind_display }}{% if activity.provider %} · {{ activity.provider }}{% endif %}{% if activity.place_name %} · {% if activity.poi %}<a class="link-quiet" href="{% url 'locations:poi_detail' activity.poi.slug %}">{{ activity.poi.name }}</a>{% else %}{{ activity.place_text }}{% endif %}{% endif %}</span>
       {% for c in activity.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}
-      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}">Edit</a>{% endif %}
+      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}?next={{ request.path|urlencode }}%23activity-{{ activity.pk }}" data-panel-link>Edit</a>{% endif %}
     </p>
     {% if activity.event_id %}<p class="text-sm text-zinc-600"><span aria-hidden="true">📅</span> <a class="link-quiet" href="{% url 'events:event_detail' activity.event.slug %}">{{ activity.event.name }}</a></p>{% endif %}
     {% if activity.travelers.all %}<p class="text-sm text-zinc-500">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}

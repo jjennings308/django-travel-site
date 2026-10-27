@@ -1,0 +1,7 @@
+{% comment %}
+A trips page inside the item panel on the trip page (day-first plan P2; static trips/panel.js): only its content and messages, no header, sidebar or footer. Chosen by base_trips.html when the URL has ?panel=1. data-panel-title is what the panel shows as its heading.
+{% endcomment %}
+<div class="trips-ui" data-panel-page data-panel-title="{% filter striptags|force_escape %}{% block title %}{% endblock %}{% endfilter %}">
+  {% if messages %}<div class="mb-3 space-y-1">{% for message in messages %}<p class="callout-{% if message.tags == 'error' %}warning{% else %}info{% endif %} text-sm" data-panel-message>{{ message }}</p>{% endfor %}</div>{% endif %}
+  {% block content %}{% endblock %}
+</div>

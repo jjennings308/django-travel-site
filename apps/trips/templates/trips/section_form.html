@@ -95,14 +95,15 @@
 
       <div class="form-actions">
         <button type="submit" class="btn">{% if is_create %}Add section{% else %}Save section{% endif %}</button>
-        <a class="btn-quiet" href="{% url 'trips:day_edit' trip.pk day.pk %}">Cancel</a>
+        <a class="btn-quiet" href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'trips:day_edit' trip.pk day.pk %}{% endif %}">Cancel</a>
         {% if not is_create %}
-          <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk section.pk %}">Delete section</a>
+          <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:section_delete' trip.pk day.pk section.pk %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}">Delete section</a>
         {% endif %}
       </div>
     </form>
 
-    {% if not is_create %}<p class="mt-6 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' section.pk %}?next={{ request.path|urlencode }}">Confirmations for this</a> · <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'section' section.pk %}?next={{ request.path|urlencode }}">Contacts &amp; info</a> <span class="text-zinc-500">— a booked tour or timed entry described here.</span></p>{% endif %}
+    {% if panel_comments is not None %}<div data-panel-tab="comments">{% include "trips/_comments.html" with comment_kind="section" comment_pk=section.pk comments=panel_comments can_comment=True heading="Notes" %}</div>{% endif %}
+    {% if not is_create %}<p class="mt-6 text-sm" data-panel-tab="details"><a class="link-quiet font-medium" href="{% url 'trips:item_confirmations' trip.pk 'section' section.pk %}?next={{ request.get_full_path|urlencode }}">Confirmations for this</a> · <a class="link-quiet font-medium" href="{% url 'trips:item_links' trip.pk 'section' section.pk %}?next={{ request.get_full_path|urlencode }}">Contacts &amp; info</a> <span class="text-zinc-500">— a booked tour or timed entry described here.</span></p>{% endif %}
 
     {% if section_legs is not None %}
       {# A travel section's legs are TransportLegs placed here: edited as legs, never as rows. #}

@@ -358,6 +358,13 @@ def _trip_comments(trip, user):
     return by_target, grouped
 
 
+def _target_comments(user, kind, obj):
+    """One day's or section's comments, for its edit page in the item panel (P2: the Comments tab)."""
+    content_type = ContentType.objects.get_for_model(COMMENT_TARGET_KINDS[kind])
+    return list(Comment.objects.filter(content_type=content_type, object_id=obj.pk)
+                .annotate_editable(user).select_related("author"))
+
+
 def _trip_page_queryset(user):
     """The trip page's one big prefetch, shared with the PDF booklet (``trip_pdf``) so
     both render from the same rows. See ``trip_detail`` for why each relation is here."""
@@ -443,6 +450,13 @@ def trip_detail(request, pk):
     screen and a hundred.
     """
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    return render(request, "trips/trip_detail.html", _trip_page_context(request, trip))
+
+
+def _trip_page_context(request, trip):
+    """Everything the trip page shows, from the prefetched ``trip`` (``_trip_page_queryset``): also
+    what one day's fragment (``day_fragment``) and an item's read-only panel (``item_panel``) render,
+    so the three can't drift (day-first plan, P2)."""
     comments, comments_by_target = _trip_comments(trip, request.user)
     # One capabilities lookup for every action the page offers: each trip.can()
     # is a query, and this page pins its query count (QueryCountTests).
@@ -471,39 +485,103 @@ def trip_detail(request, pk):
         item.anchor = itinerary.anchor(item)
     opened = itinerary.open_day(days, django_timezone.localdate())
     checklist_lists = checklists.attach(trip)
-    return render(
-        request,
-        "trips/trip_detail.html",
-        {
-            "trip": trip,
-            "days": days,
-            "open_day_pk": opened.pk if opened else None,
-            "route_runs": route.runs(days),
-            "stray_legs": stray_legs,
-            "stray_stays": stray_stays,
-            "open_tasks": open_tasks,
-            "open_decisions": open_decisions,
-            "closed_items": note_warnings["closed"],
-            "book_ahead_items": note_warnings["book_ahead"],
-            "travel_tables_pending": travel_tables_pending,
-            "not_booked": not_booked,
-            "confirmation_groups": confirmation_groups(trip),
-            "checklists": checklist_lists,
-            "cost_estimate": budget.estimate(trip, _reader_currency(request)),
-            "checklist_attention": checklists.attention(trip, checklist_lists),
-            "leg_modes": TransportLeg.Mode.choices,
-            "trip_comments": comments.get(("trip", trip.pk), []),
-            "comments_by_target": comments_by_target,
-            "can_comment": "comment" in capabilities,
-            "can_edit": "edit" in capabilities,
-            "can_delete": "delete" in capabilities,
-            # The offline copy (site roadmap R6): this person's cache name, and fresh static
-            # files in dev, where their names aren't hashed.
-            "offline_key": offline_cache_key(request.user),
-            "my_grant": my_grant,
-            "offline_debug": settings.DEBUG,
-        },
-    )
+    return {
+        "trip": trip,
+        "days": days,
+        "open_day_pk": opened.pk if opened else None,
+        "route_runs": route.runs(days),
+        "stray_legs": stray_legs,
+        "stray_stays": stray_stays,
+        "open_tasks": open_tasks,
+        "open_decisions": open_decisions,
+        "closed_items": note_warnings["closed"],
+        "book_ahead_items": note_warnings["book_ahead"],
+        "travel_tables_pending": travel_tables_pending,
+        "not_booked": not_booked,
+        "confirmation_groups": confirmation_groups(trip),
+        "checklists": checklist_lists,
+        "cost_estimate": budget.estimate(trip, _reader_currency(request)),
+        "checklist_attention": checklists.attention(trip, checklist_lists),
+        "leg_modes": TransportLeg.Mode.choices,
+        "trip_comments": comments.get(("trip", trip.pk), []),
+        "comments_by_target": comments_by_target,
+        "can_comment": "comment" in capabilities,
+        "can_edit": "edit" in capabilities,
+        "can_delete": "delete" in capabilities,
+        # The offline copy (site roadmap R6): this person's cache name, and fresh static
+        # files in dev, where their names aren't hashed.
+        "offline_key": offline_cache_key(request.user),
+        "my_grant": my_grant,
+        "offline_debug": settings.DEBUG,
+    }
+
+
+def _is_panel(request):
+    """Rendered for the item panel on the trip page (``?panel=1``, day-first plan P2): the page's
+    content without the site chrome (``trips/_panel_base.html``, chosen in ``base_trips.html``)."""
+    return bool(request.GET.get("panel"))
+
+
+@login_required
+def day_fragment(request, pk, day_pk):
+    """One day of the trip page on its own (``trips/partials/_day.html``, open), from the same
+    context as the page, so the item panel can swap the day in after a save (P2). Anyone who can
+    see the trip."""
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    context = _trip_page_context(request, trip)
+    day = next((d for d in context["days"] if d.pk == day_pk), None)
+    if day is None:
+        raise Http404
+    # The day's links and forms carry the trip page's address as their "next", as on the page.
+    request.path = reverse("trips:trip_detail", args=[trip.pk])
+    return render(request, "trips/partials/_day.html", {**context, "day": day, "open_day_pk": day.pk})
+
+
+#: The item panel's kinds (P2): where each is found in the trip page's assembled days.
+PANEL_KINDS = ("leg", "stay", "activity", "meal", "section", "day")
+
+
+def _find_on_days(context, kind, item_pk):
+    """(item, its day) from the trip page context, or (None, None)."""
+    trip, days = context["trip"], context["days"]
+    if kind == "day":
+        day = next((d for d in days if d.pk == item_pk), None)
+        return day, day
+    if kind == "stay":
+        stay = next((s for s in trip.lodging.all() if s.pk == item_pk), None)
+        day = next((d for d in days if stay is not None and d.date == stay.check_in), None)
+        return stay, day
+    if kind == "leg":
+        leg = next((leg for leg in trip.transport.all() if leg.pk == item_pk), None)
+        return leg, getattr(leg, "on_day", None)
+    for day in days:
+        items = {"activity": getattr(day, "ordered_activities", []), "meal": getattr(day, "ordered_meals", []),
+                 "section": getattr(day, "ordered_sections", [])}[kind]
+        for item in items:
+            if item.pk == item_pk:
+                return item, day
+    return None, None
+
+
+@login_required
+def item_panel(request, pk, kind, item_pk):
+    """An item read-only, for the panel on the trip page (P2): readers (viewers, commentors) click a
+    leg, stay, activity, meal, section or day and see it as the page shows it, with its notes
+    (comments) where it has them. Editors get the item's own edit page in the panel instead."""
+    if kind not in PANEL_KINDS:
+        raise Http404
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    context = _trip_page_context(request, trip)
+    item, day = _find_on_days(context, kind, item_pk)
+    if item is None:
+        raise Http404
+    by_target = context["comments_by_target"]
+    comments = by_target.get(kind, {}).get(item.pk, []) if kind in ("day", "section") else None
+    request.path = reverse("trips:trip_detail", args=[trip.pk])
+    return render(request, "trips/item_panel.html", {
+        **context, "kind": kind, "item": item, "day": day, "panel_comments": comments,
+        "can_edit": False,  # read-only, whoever opens it
+    })
 
 
 @login_required
@@ -997,6 +1075,7 @@ def day_edit(request, trip_pk, pk):
             # value can never reach `{% url %}` and fail to reverse.
             "section_types": _add_section_types(),
             "is_create": False,
+            "panel_comments": _target_comments(request.user, "day", day) if _is_panel(request) else None,
         },
     )
 
@@ -1096,11 +1175,10 @@ def section_edit(request, trip_pk, day_pk, pk):
     payload_form = section_payload_form(
         section.section_type, content=section.content
     )
-    return render(
-        request,
-        "trips/section_form.html",
-        _section_context(trip, day, section, payload_form, is_create=False),
-    )
+    context = _section_context(trip, day, section, payload_form, is_create=False)
+    if _is_panel(request):
+        context["panel_comments"] = _target_comments(request.user, "section", section)
+    return render(request, "trips/section_form.html", context)
 
 
 def _section_context(trip, day, section, payload_form, *, is_create):
@@ -1189,12 +1267,12 @@ def _save_section(request, trip, day, section, section_type):
                 section.content = payload_form.to_content()
                 section.save()
             messages.success(request, "Saved section.")
-            return _after_section_save(trip, day, section)
+            return _after_section_save(request, trip, day, section)
     elif metadata_ok:
         with transaction.atomic():
             metadata_form.save()
         messages.success(request, "Saved section.")
-        return _after_section_save(trip, day, section)
+        return _after_section_save(request, trip, day, section)
 
     return render(
         request,
@@ -1208,10 +1286,10 @@ def _save_section(request, trip, day, section, section_type):
     )
 
 
-def _after_section_save(trip, day, section):
-    return redirect(
-        reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day"
-    )
+def _after_section_save(request, trip, day, section):
+    """Back to ``next`` when it's on this site (the trip page's Edit link, the panel), else the
+    day page's "On this day"."""
+    return redirect(_back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day"))
 
 
 @login_required
@@ -1228,12 +1306,12 @@ def section_delete(request, trip_pk, day_pk, pk):
     if request.method == "POST":
         section.delete()
         messages.success(request, "Deleted section.")
-        return redirect(reverse("trips:day_edit", args=[trip.pk, day.pk]))
+        return redirect(_back(request, reverse("trips:day_edit", args=[trip.pk, day.pk])))
 
     return render(
         request,
         "trips/section_confirm_delete.html",
-        {"trip": trip, "day": day, "section": section},
+        {"trip": trip, "day": day, "section": section, "next": _back(request, "")},
     )
 
 
@@ -1974,6 +2052,41 @@ def activity_delete(request, pk, day_pk, activity_pk):
         return redirect(back)
     return render(request, "trips/activity_confirm_delete.html",
                   {"trip": trip, "day": day, "activity": activity, "next": back})
+
+
+# ---- a meal on its own page (day-first plan P2: the item panel opens it) ---------------------
+@login_required
+def meal_edit(request, pk, day_pk, meal_pk):
+    """One meal on its own page (editors): its details, confirmations and contacts & info. Meals
+    are still also edited together in the day page's Meals form."""
+    from .forms import MealForm
+    trip, day = _editable_day(request, pk, day_pk)
+    meal = get_object_or_404(Meal.objects.filter(day=day), pk=meal_pk)
+    form = MealForm(request.POST or None, instance=meal, trip=trip)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#meal-{meal.pk}")
+    if request.method == "POST" and form.is_valid():
+        meal = form.save()
+        trip_cities.sync(trip)
+        messages.success(request, f"Saved {meal.name}.")
+        return redirect(back)
+    return render(request, "trips/meal_form.html", {
+        "trip": trip, "day": day, "meal": meal, "form": form, "next": back,
+        **_item_confirmations_context(request, trip, "meal", meal),
+        **_item_links_context(trip, "meal", meal),
+    })
+
+
+@login_required
+def meal_delete(request, pk, day_pk, meal_pk):
+    trip, day = _editable_day(request, pk, day_pk)
+    meal = get_object_or_404(Meal.objects.filter(day=day), pk=meal_pk)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
+    if request.method == "POST":
+        name = meal.name
+        meal.delete()
+        messages.success(request, f"Deleted {name}. Its confirmations are kept.")
+        return redirect(back)
+    return render(request, "trips/meal_confirm_delete.html", {"trip": trip, "day": day, "meal": meal, "next": back})
 
 
 # ---- catalogue notes on a trip (catalogue-notes plan, N2) -------------------------------------
