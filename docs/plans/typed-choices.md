@@ -1,6 +1,6 @@
 # Plan: typed choices (a "choose one" knows what it's choosing)
 
-Status: T1 done (2026-10-27, branch `t1-choice-kinds`). Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
+Status: T1 done (2026-10-27, branch `t1-choice-kinds`); T2 done (2026-10-27, branch `t2-pick-makes-item`). Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
 branch each, in order. Read with `CLAUDE.md` → Trips → "'Choose one' groups and votes", "Split", "Ideas shelf" and
 "+ Add and five kinds", and `docs/plans/day-first-planning.md` (P4–P6).
 
@@ -65,6 +65,12 @@ choice (two options, one with its own nights).
 - Help: `options-and-votes` (kinds); bump `updated`.
 
 ### T2 — Pick creates the item
+
+Done (branch `t2-pick-makes-item`). As built: the pick's history line and the item's "Added …" line are recorded
+separately, not inside one `changes.batch` — a batch would fold the pick into a summary line, and Undo needs the pick's
+own line to reopen the choice; the option's link goes into the item's notes (no contact / info link); a stay with no
+nights known gets one night; an activity's kind is read from its title (+ Add's rule), a ticket for an event; a
+deleted made item is made again on the next pick. The pick opens the new item through P7's `?item=` link.
 
 - `options.make_item(option)` (one place; used by Pick and by Split): for `stay` → a `Lodging` (name = title,
   address = place text, city = the catalogue city / place's city, check-in = the group's day's date, check-out =

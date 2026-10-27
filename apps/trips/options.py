@@ -217,3 +217,123 @@ def count_on_days(days):
     """Add each day's undecided groups to its ⚠ (after ``itinerary.overview`` set it)."""
     for day in days:
         day.attention = getattr(day, "attention", 0) + len(getattr(day, "open_groups", []))
+
+
+# ---- a typed option becomes its item (typed-choices T2) --------------------------------------
+def _city_of(option):
+    """The catalogue city an option is in: its own city, else its place's, venue's or event's."""
+    if option.city_id:
+        return option.city
+    for target in (option.poi, option.event, option.activity):
+        if target is not None and getattr(target, "city_id", None):
+            return target.city
+    if option.activity_id and option.activity.venue_id:
+        return option.activity.venue.city
+    return None
+
+
+def make_item(option, actor=None):
+    """Copy a typed option into the real item on its choice's day (once: decision 1, no sync), saved inside
+    the option so it counts exactly while the option does, and remember it in ``option.made``. Returns
+    the item, or None for an "Anything" choice. ``Option.made`` set already → that item (picking again reuses
+    it). Stay → a ``Lodging`` from the day for the option's nights; eat → a ``Meal`` at the choice's time;
+    do → a ``TripActivity`` (start / end from the choice); travel → a planned ``TransportLeg``."""
+    from django.db.models import Max
+    from apps.approval_system.models import ApprovalStatus
+    from apps.locations.models import City
+    from . import currencies, quick_add, trip_cities
+    from .logistics import match_city
+    from .models import Lodging, Meal, OptionGroup, TransportLeg, TripActivity
+    if option.made_id is not None:
+        made = option.made
+        if made is not None:
+            return made
+    group = option.group
+    day, trip = group.day, group.trip
+    Kind = OptionGroup.Kind
+    city = _city_of(option)
+    notes = "\n".join(p for p in (option.notes, option.url) if p)
+    currency = option.currency or currencies.default_for(trip, [getattr(city, "pk", None) or day.city_id])
+
+    def next_order(queryset):
+        return (queryset.aggregate(m=Max("order"))["m"] or 0) + 1
+
+    if group.kind == Kind.STAY:
+        if not day.date:
+            return None
+        nights = option.stay_nights or 1
+        item = Lodging.objects.create(
+            trip=trip, name=option.title[:200], address=option.place_text or (option.poi.address if option.poi_id else ""),
+            city=city or day.city, check_in=day.date, check_out=day.date + timedelta(days=nights),
+            nightly_rate=option.est_cost, currency=currency, notes=notes, option=option)
+        item.fill_day_cities()
+    elif group.kind == Kind.EAT:
+        item = Meal.objects.create(
+            day=day, name=option.title[:200], meal_type=group.meal_type or Meal.MealType.DINNER,
+            reserved_time=group.start_time, poi=option.poi, why_recommended=notes,
+            order=next_order(day.meals.all()), option=option)
+    elif group.kind == Kind.DO:
+        poi = option.poi or (option.event.poi if option.event_id and option.event.poi_id else None) or (
+            option.activity.venue if option.activity_id and option.activity.venue_id else None)
+        kind = TripActivity.Kind.TICKET if option.event_id else quick_add.parse(option.title, "do")["activity_kind"]
+        item = TripActivity.objects.create(
+            trip=trip, day=day, title=option.title[:200], kind=kind, poi=poi, event=option.event,
+            place_text="" if poi else (option.place_text or getattr(city, "name", "")),
+            start_time=group.start_time, end_time=group.end_time, est_cost=option.est_cost, currency=currency,
+            notes=notes, order=next_order(day.activities.all()), option=option)
+    elif group.kind == Kind.TRAVEL:
+        own = list(trip.cities.all())
+        catalogue = None
+
+        def find(name):
+            nonlocal catalogue
+            if not name:
+                return None
+            found = match_city(name, own)
+            if found is None:
+                catalogue = catalogue if catalogue is not None else list(
+                    City.objects.filter(approval_status=ApprovalStatus.APPROVED))
+                found = match_city(name, catalogue)
+            return found
+        origin = option.from_text or (day.city.name if day.city_id else "")
+        origin_city, destination_city = find(origin), find(option.to_text) or city
+        item = TransportLeg.objects.create(
+            trip=trip, date=day.date, mode=group.mode or TransportLeg.Mode.OTHER, origin=origin[:120],
+            destination=(option.to_text or getattr(destination_city, "name", ""))[:120],
+            origin_city=origin_city, destination_city=destination_city,
+            origin_timezone=getattr(origin_city, "timezone", "") or "",
+            destination_timezone=getattr(destination_city, "timezone", "") or "",
+            cost=option.est_cost, currency=currency, notes=notes,
+            order=next_order(trip.transport.filter(date=day.date)), option=option)
+    else:
+        return None
+    from django.contrib.contenttypes.models import ContentType
+    option.made_type, option.made_id = ContentType.objects.get_for_model(item), item.pk
+    option.save(update_fields=["made_type", "made_id"])
+    trip_cities.sync(trip)
+    return item
+
+
+def has_items(option):
+    """Whether something was put in the option by hand ("In option"): then it has its real item already."""
+    return any(getattr(option, name).exists() for name in ("legs", "stays", "activities", "meals", "sections"))
+
+
+def make_for(group):
+    """After a pick or a split of a typed choice (T2): the item for each option it now takes — the chosen one,
+    or every option someone takes in a split — made once (``make_item`` reuses ``option.made``); an option
+    with items put in it by hand makes nothing. Returns the items made or reused, in option order."""
+    from .models import OptionGroup
+    if group.kind == OptionGroup.Kind.ANY:
+        return []
+    items = []
+    for option in group.options.prefetch_related("travelers"):
+        taking = option.chosen or (group.state == OptionGroup.State.SPLIT and option.travelers.all())
+        if not taking:
+            continue
+        if option.made_id is None and has_items(option):
+            continue
+        item = make_item(option)
+        if item is not None:
+            items.append(item)
+    return items

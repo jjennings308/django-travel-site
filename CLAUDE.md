@@ -865,6 +865,17 @@ that matter most:
   kind stays on the page). `quick_add.choice_kind(prompt)` (pure) guesses the kind — stay / meal words / travel words
   (not "walk") / else do — for + Add's **Options** and `group_new` (`?prompt=`, `?kind=` overrides). `options.load`
   select_relates the option's catalogue link, so the trip page's pin holds.
+  **Pick makes the item** (T2): `options.make_item(option)` (the one place) copies a typed option once into a
+  `Lodging` (check-in = the day, + `stay_nights` or 1, city / address / nightly rate / notes + link, then
+  `fill_day_cities`), a `Meal` (`meal_type`, `reserved_time` = the choice's time, `poi`), a `TripActivity` (kind from the
+  title, ticket for an event; place = option's place, event venue or activity venue, else typed; start / end from the
+  choice) or a planned `TransportLeg` (mode, from / to matched to cities like + Add, zones), saved **inside the
+  option** (`item.option`) and remembered in `option.made`; `make_for(group)` does the chosen option, or every taken
+  option of a split; an option with items put in by hand makes nothing, `made` set → reused (picking again), a deleted
+  item is made again. `option_pick` then redirects to `trip_detail?item=<anchor>` (the panel opens it; JSON `{"url",
+  "anchor"}` for fetch); `group_split` makes one per track. Reopen deletes nothing (the item stays in its option, not
+  counting). History: the pick's own "choice" line (undo reopens) and an "Added …" line for the item, not batched,
+  so the pick stays undoable.
 - **Split** (day-first plan P5; no migration): `OptionGroup.split(tracks, user)` (option → travellers; state `split`,
   nothing `chosen`) from `trips:group_split` (`/trips/<pk>/choices/<id>/split/`, editors; `forms.SplitForm`: a radio row
   per person on `day.roster`, everyone placed once, at least two options taken — else "pick it instead"; prefilled, so
@@ -1403,7 +1414,8 @@ choose-your-adventure section is left). The decision-to-do conversion stays (pag
 Plan: `docs/plans/typed-choices.md` (a "choose one" knows what it decides — stay / eat / do / travel — its options ask
 only for that kind's fields, and Pick turns the winner into the real item; ideas and the map later). Decisions
 2026-10-27. Phases T1–T3, one branch each, in order. Status: T1 (kinds and the options' fields, the kind's line on the
-day and in the booklet) done on branch `t1-choice-kinds`.
+day and in the booklet) done on branch `t1-choice-kinds`; T2 (Pick makes the stay, meal, activity or journey) done on
+branch `t2-pick-makes-item`.
 
 ### Typed choices
 

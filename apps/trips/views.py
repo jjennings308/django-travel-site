@@ -2174,11 +2174,37 @@ def option_vote(request, pk, option_pk):
 @login_required
 @require_POST
 def option_pick(request, pk, option_pk):
-    """Pick an option (editors): its items count as the day's; the others are kept as Considered."""
+    """Pick an option (editors): its items count as the day's; the others are kept as Considered. On a typed
+    choice (typed-choices T2) the option becomes its real stay, meal, activity or journey, inside the option
+    (``options.make_for``; picking it again reuses that item), and the trip page opens it in the panel
+    (``?item=``) to add the address and confirmation — as JSON (``{"url", "anchor"}``) for a ``fetch``."""
+    from django.http import JsonResponse
+    from . import options as option_groups
     trip, option = _option_of(request, pk, option_pk, "edit")
-    option.group.pick(option, request.user)
+    with transaction.atomic():
+        option.group.pick(option, request.user)
+        made = option_groups.make_for(option.group)
+    if made:
+        item = made[0]
+        anchor = itinerary.anchor(item)
+        messages.success(request, f"Picked {option.title} for {option.group.prompt}: it's on Day "
+                                  f"{option.group.day.day_number} now. Add its details and confirmation.")
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JsonResponse({"url": _item_page(trip, item), "anchor": anchor})
+        return redirect(reverse("trips:trip_detail", args=[trip.pk]) + f"?item={anchor}#{anchor}")
     messages.success(request, f"Picked {option.title} for {option.group.prompt}.")
     return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{option.group.day.day_number}"))
+
+
+def _item_page(trip, item):
+    """An item's own (edit) page."""
+    if isinstance(item, TransportLeg):
+        return reverse("trips:leg_edit", args=[trip.pk, item.pk])
+    if isinstance(item, Lodging):
+        return reverse("trips:stay_edit", args=[trip.pk, item.pk])
+    if isinstance(item, Meal):
+        return reverse("trips:meal_edit", args=[trip.pk, item.day_id, item.pk])
+    return reverse("trips:activity_edit", args=[trip.pk, item.day_id, item.pk])
 
 
 @login_required
@@ -2250,7 +2276,10 @@ def group_split(request, pk, group_pk):
     travelers = list(group.day.roster.order_by("name"))
     form = SplitForm(request.POST or None, group=group, travelers=travelers)
     if request.method == "POST" and form.is_valid():
-        group.split(form.tracks(), request.user)
+        from . import options as option_groups
+        with transaction.atomic():
+            group.split(form.tracks(), request.user)
+            option_groups.make_for(group)  # a typed choice: each taken option's item, on its track (T2)
         messages.success(request, f"Split {group.prompt}: " + "; ".join(
             f"{', '.join(t.name for t in people)} → {option.title}" for option, people in form.tracks().items()) + ".")
         return redirect(back)
