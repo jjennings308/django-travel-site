@@ -104,6 +104,7 @@ urlpatterns = [
     path("<int:pk>/choices/<int:group_pk>/", views.group_edit, name="group_edit"),
     path("<int:pk>/choices/<int:group_pk>/delete/", views.group_delete, name="group_delete"),
     path("<int:pk>/choices/<int:group_pk>/reopen/", views.group_reopen, name="group_reopen"),
+    path("<int:pk>/choices/<int:group_pk>/split/", views.group_split, name="group_split"),
     path("<int:pk>/choices/options/<int:option_pk>/vote/", views.option_vote, name="option_vote"),
     path("<int:pk>/choices/options/<int:option_pk>/pick/", views.option_pick, name="option_pick"),
     path("<int:pk>/panel/<str:kind>/<int:item_pk>/", views.item_panel, name="item_panel"),

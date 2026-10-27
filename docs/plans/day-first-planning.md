@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`); P5 done (2026-10-27, branch `p5-split`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -201,6 +201,12 @@ choose-your-adventure section with a confirmation stays as it is; the day page g
 - Help: a new guide `options-and-votes`; update `reading-your-trip`, `bookings-and-confirmations`; bump `updated`.
 
 ### P5 — Split
+
+Done (branch `p5-split`). As built: no migration (`Option.travelers` and the `split` state came with P4); the people to
+split are the day's roster (its own group, else the trip's travellers); at least two options must be taken (everyone on
+one is a pick); options nobody takes fold into Considered; a split's time is its own or its earliest item's; the day's
+summary line still names either track's activities; a tracked stay never becomes the day's "Sleeping" stay (its other
+nights say "Sleeping (who): …"); undo on a split reopens it.
 
 - An open group's **Split** (editors): assign travellers to options (each traveller on at most one option of a
   group; everyone must be placed; `Option.travelers`). State `split`.

@@ -1,0 +1,8 @@
+{% comment %}One track of a split group in the booklet (P5): who, the option, then its items in time order. Pass option=.{% endcomment %}
+<p class="tag">{{ option.who }}</p>
+<strong>{{ option.title }}</strong>{% if option.cost %} <span class="muted small">{% if option.cost.approx %}≈ {% endif %}{{ option.cost.currency }} {{ option.cost.total }}</span>{% endif %}{% if option.notes %}<br>{{ option.notes }}{% endif %}
+{% for stay in option.items.stays %}<br>Stay: {{ stay.name }}, {{ stay.check_in|date:"M j" }}–{{ stay.check_out|date:"M j" }}{% for c in stay.confirmation_list %} · <span class="code">{{ c.confirmation_number }}</span>{% endfor %}{% endfor %}
+{% for entry in option.track_timeline %}<br>{{ entry.label }} {% if entry.kind == "leg" %}{{ entry.item.get_mode_display }}: {{ entry.item.origin }} → {{ entry.item.destination }}{% if entry.item.operator %} · {{ entry.item.operator }} {{ entry.item.service_number }}{% endif %}{% elif entry.kind == "activity" %}{{ entry.item.title }}{% else %}{{ entry.item.get_meal_type_display }}: {{ entry.item.name }}{% endif %}{% for c in entry.item.confirmation_list %} · <span class="code">{{ c.confirmation_number }}</span>{% endfor %}{% endfor %}
+{% for entry in option.track_any %}<br>{% if entry.kind == "leg" %}{{ entry.item.get_mode_display }}: {{ entry.item.origin }} → {{ entry.item.destination }} (planned){% else %}{{ entry.item.title }}{% endif %}{% for c in entry.item.confirmation_list %} · <span class="code">{{ c.confirmation_number }}</span>{% endfor %}{% endfor %}
+{% for meal in option.track_food %}<br>{{ meal.get_meal_type_display }}: {{ meal.name }}{% endfor %}
+{% for section in option.items.sections %}<br>{{ section.title|default:section.content_summary }}{% endfor %}

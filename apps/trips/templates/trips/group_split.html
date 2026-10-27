@@ -1,0 +1,42 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Split a "choose one" between the day's travellers (trips:group_split, day-first plan P5): a row per person, an option each. Every option someone takes counts and shows as a track of the day; the calendar's "only mine" follows each person's track.
+{% endcomment %}
+{% block title %}Split {{ group.prompt }} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Day {{ day.day_number }}</span><span>/</span>
+    <a href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ next|urlencode }}">{{ group.prompt }}</a><span>/</span>
+    <span>Split</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate data-panel-tab="details">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">Split “{{ group.prompt }}”</h1>
+    <p class="mb-4 text-zinc-500">Day {{ day.day_number }}{% if day.date %}, {{ day.date|date:"l, F j" }}{% endif %}. Send people different ways: each person takes one option, and everything in the options someone takes counts — each shows on the day as its own track, with who's on it. {% include "partials/_help_link.html" with slug="options-and-votes" anchor="splitting-a-choice" label="splitting" text="How this works" %}</p>
+    {% if form.non_field_errors %}<div class="alert-error mb-4">{{ form.non_field_errors }}</div>{% endif %}
+    {% if form.rows %}
+      <div class="scroll-x">
+        <table class="w-full text-sm" data-split-table>
+          <thead><tr><th class="text-left">Who</th>{% for option in form.options %}<th class="text-left">{{ option.title }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for traveler, field in form.rows %}
+              <tr>
+                <th class="text-left font-medium" scope="row">{{ traveler.name }}{% if field.errors %}<div class="text-xs font-normal text-red-700">{{ field.errors.0 }}</div>{% endif %}</th>
+                {% for radio in field %}<td><label class="flex min-h-11 items-center gap-2">{{ radio.tag }}<span class="sr-only">{{ radio.choice_label }}</span></label></td>{% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="note">Nobody is on this trip's roster yet. Add the travellers in Edit trip → The trip, then split.</p>
+    {% endif %}
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      {% if form.rows %}<button type="submit" class="btn">Split</button>{% endif %}
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

@@ -52,6 +52,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
   .callout.warning { border-color: #d97706; background: #fffbeb; }
   .callout.critical { border-color: #b91c1c; background: #fef2f2; }
   .option { margin: 0 0 5pt; padding-left: 8pt; border-left: 1pt solid #d6d3d1; }
+  .tracks td { vertical-align: top; border-left: 1pt solid #d6d3d1; }
   .tag { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; }
   .code { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-weight: 600; }
 
@@ -103,13 +104,13 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
       </div>
     {% endif %}
 
-    {% if day.day_legs %}
+    {% if day.shared_legs %}
       <div class="block">
         <h3>Getting around{% if day.travel_total %} <span class="muted small">{{ day.travel_total }}</span>{% endif %}</h3>
         <table>
           <thead><tr><th>Journey</th><th>When</th><th>With</th><th>Confirmation</th></tr></thead>
           <tbody>
-            {% for leg in day.day_legs %}
+            {% for leg in day.shared_legs %}
               <tr>
                 <td><strong>{{ leg.origin }} → {{ leg.destination }}</strong><br><span class="muted small">{{ leg.get_mode_display }}</span></td>
                 <td>{% if leg.is_planned %}Planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}{{ leg.departure_local_str }} → {{ leg.arrival_local_str }}{% if leg.departs_on_a_different_day %} (+1 day){% endif %}{% if leg.duration_str %}<br><span class="muted small">{{ leg.duration_str }}</span>{% endif %}{% endif %}</td>
@@ -190,12 +191,25 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
       </div>
     {% endfor %}
 
-    {% if day.ordered_activities %}
+    {% for group in day.split_groups %}
+      {# A split "choose one" (day-first plan P5): each track with who's on it; side by side when two. #}
+      <div class="block">
+        <h3>{{ group.prompt }} — split{% if group.start_time %} <span class="muted small">{{ group.start_time|time:"g:i A" }}</span>{% endif %}</h3>
+        {% if group.notes %}<p>{{ group.notes }}</p>{% endif %}
+        {% if group.tracks|length == 2 %}
+          <table class="tracks"><tbody><tr>{% for option in group.tracks %}<td style="width: 50%">{% include "trips/pdf/_track.html" %}</td>{% endfor %}</tr></tbody></table>
+        {% else %}
+          {% for option in group.tracks %}<div class="option">{% include "trips/pdf/_track.html" %}</div>{% endfor %}
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if day.shared_activities %}
       <div class="block">
         <h3>Activities</h3>
         <table>
           <tbody>
-            {% for activity in day.ordered_activities %}
+            {% for activity in day.shared_activities %}
               <tr>
                 <td style="width: 18%">{% if activity.time_range %}{{ activity.time_range }}{% else %}<span class="tag">{{ activity.get_kind_display }}</span>{% endif %}</td>
                 <td><strong>{{ activity.title }}</strong>{% if activity.provider %} · {{ activity.provider }}{% endif %}{% if activity.place_name %}<br><span class="muted small">{{ activity.place_name }}</span>{% endif %}{% if activity.travelers.all %}<br><span class="small">For {% for t in activity.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}{% if activity.notes %}<br><span class="small muted">{{ activity.notes }}</span>{% endif %}{% include "trips/pdf/_refs.html" with refs=activity.refs %}</td>
@@ -208,12 +222,12 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
       </div>
     {% endif %}
 
-    {% if day.ordered_meals %}
+    {% if day.shared_meals %}
       <div class="block">
         <h3>Food</h3>
         <table>
           <tbody>
-            {% for meal in day.ordered_meals %}
+            {% for meal in day.shared_meals %}
               <tr>
                 <td style="width: 18%"><span class="tag">{{ meal.get_meal_type_display }}</span>{% if meal.reserved_time %}<br>{{ meal.reserved_time|time:"g:i A" }}{% endif %}</td>
                 <td><strong>{{ meal.name }}</strong>{% if meal.price_range %} <span class="muted">{{ meal.price_range }}</span>{% endif %}{% if meal.cuisine %} · {{ meal.cuisine }}{% endif %}{% if meal.poi_id %}<br><span class="muted small">{% include "trips/pdf/_catalogue.html" with item=meal %}</span>{% endif %}{% if meal.why_recommended %}<br>{{ meal.why_recommended }}{% endif %}{% if meal.reservation_notes %}<br><span class="muted small">{{ meal.reservation_notes }}</span>{% endif %}{% for c in meal.confirmation_list %}<br><span class="code small">{{ c.confirmation_number }}</span>{% endfor %}{% include "trips/pdf/_refs.html" with refs=meal.refs %}</td>

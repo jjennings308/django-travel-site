@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the days at a glance, each day's plan
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Reading your trip
 
@@ -60,7 +60,7 @@ Contacts and tips linked to a hotel, train or activity appear right under it: a 
 
 A meal, activity or plan that's linked to a place or activity in the catalogue also shows that place's **notes** under it, such as "Cash only" or "Closed Mon, Tue", marked "From <place> · checked Oct 2026" ([Good to know notes](/help/places-and-events/#good-to-know-notes)). Two kinds of note also warn you, on the trip page and in the PDF: **⚠ <place> is closed on Mondays** when the meal or activity falls on a day it's closed, and **Book by <date>** when it needs booking ahead (worked out from the day, such as 3 months before). Both count in the day's ⚠ and in **Needs attention** (a book-by date once it's within 30 days or overdue); editors can turn a book-by date into a to-do with **Add as a to-do**. They print in the PDF too. Editors can click **Not for this trip** to hide one on this trip only; it's listed under the item as hidden, with **show** to bring it back.
 
-An undecided **choice** ("Afternoon: castle or museum?") is a box on its day with each option, what's in it, its cost and its 👍 votes; nothing in it is on the timeline until an editor picks one ([choices, options and votes](/help/options-and-votes/)).
+An undecided **choice** ("Afternoon: castle or museum?") is a box on its day with each option, what's in it, its cost and its 👍 votes; nothing in it is on the timeline until an editor picks one. A **split** choice shows a track per group of people, each headed by who's on it, side by side ([choices, options and votes](/help/options-and-votes/#splitting-a-choice)).
 
 ## Open an item
 

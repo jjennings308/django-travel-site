@@ -113,7 +113,7 @@ from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
-from django.db.models import BooleanField, Case, Q, Value, When
+from django.db.models import BooleanField, Case, Exists, OuterRef, Q, Value, When
 from django.utils import timezone as django_timezone
 
 def validate_timezone_name(value):
@@ -1995,8 +1995,9 @@ class TaskOption(models.Model):
 class OptionGroup(models.Model):
     """"Choose one" on a day (day-first plan, P4): a dinner, an afternoon, a whole day or where to
     stay, with its ``Option``s. Travellers vote; an editor **picks** one (its items count as the day's,
-    the others fold into Considered and can be reopened) or, in P5, **splits** the group between
-    travellers. Picking never deletes. A stay group sits on its first night. Converted from "Choose
+    the others fold into Considered and can be reopened) or **splits** the group between travellers
+    (P5: each option's ``travelers`` take it, and every option someone takes counts, as a track of the
+    day). Picking never deletes. A stay group sits on its first night. Converted from "Choose
     your adventure" sections and decision to-dos (``day_first``)."""
 
     class State(models.TextChoices):
@@ -2036,10 +2037,14 @@ class OptionGroup(models.Model):
         return next((o for o in self.options.all() if o.chosen), None)
 
     def summary(self):
-        """"Undecided" or the pick, for the history and the calendar."""
+        """"Undecided", the pick or the split, for the history and the calendar."""
         if self.state == self.State.PICKED:
             chosen = self.options.filter(chosen=True).first()
             return f"picked {chosen.title}" if chosen else "picked"
+        if self.state == self.State.SPLIT:
+            tracks = [f"{', '.join(t.name for t in option.travelers.all())} → {option.title}"
+                      for option in self.options.prefetch_related("travelers") if option.travelers.all()]
+            return f"split: {'; '.join(tracks)}" if tracks else "split"
         return self.get_state_display().lower()
 
     def pick(self, option, user=None):
@@ -2049,6 +2054,18 @@ class OptionGroup(models.Model):
             self.options.exclude(pk=option.pk).filter(chosen=True).update(chosen=False)
             Option.objects.filter(pk=option.pk).update(chosen=True)
             self.state, self.decided_by, self.decided_at = self.State.PICKED, user, tz.now()
+            self.save(update_fields=["state", "decided_by", "decided_at"])
+
+    def split(self, tracks, user=None):
+        """Send each option's travellers their own way (P5): ``tracks`` maps option → travellers (each
+        traveller on one option; ``forms.SplitForm`` checks that everyone is placed). Options nobody
+        takes are kept as Considered."""
+        from django.utils import timezone as tz
+        with transaction.atomic():
+            self.options.filter(chosen=True).update(chosen=False)
+            for option in self.options.all():
+                option.travelers.set(tracks.get(option, []))
+            self.state, self.decided_by, self.decided_at = self.State.SPLIT, user, tz.now()
             self.save(update_fields=["state", "decided_by", "decided_at"])
 
     def reopen(self):
@@ -2095,9 +2112,12 @@ class Vote(models.Model):
         constraints = [models.UniqueConstraint(fields=["user", "option"], name="vote_once_per_option")]
 
 
-def counts_q(prefix=""):
-    """The "what counts" rule as a filter (P4): an item outside any option, or in a chosen one."""
-    return Q(**{f"{prefix}option__isnull": True}) | Q(**{f"{prefix}option__chosen": True})
+def counts_q():
+    """The "what counts" rule as a filter: an item outside any option, in a chosen one (P4), or in an
+    option someone takes in a split group (P5) — ``options.counts`` is the same rule in Python."""
+    taken = Option.travelers.through.objects.filter(option_id=OuterRef("option_id"))
+    return (Q(option__isnull=True) | Q(option__chosen=True)
+            | (Q(option__group__state=OptionGroup.State.SPLIT) & Q(Exists(taken))))
 
 
 class TidyDismissal(models.Model):

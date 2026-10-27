@@ -1,10 +1,10 @@
 {% comment %}
-An undecided "choose one" group on its day (day-first plan P4; apps/trips/options.py): each option with its items, estimated cost and time, 👍 and who voted. Editors pick one (its items then count as the day's), add or edit options. Pass group=.
+An undecided "choose one" group on its day (day-first plan P4; apps/trips/options.py): each option with its items, estimated cost and time, 👍 and who voted. Editors pick one (its items then count as the day's), split it between travellers (P5), add or edit options. Pass group=.
 {% endcomment %}
 <div class="option-group section card border-amber-200 scroll-mt-32" id="group-{{ group.pk }}" data-option-group>
   <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
     <p class="card-title"><span aria-hidden="true">🔀</span> {{ group.prompt }} <span class="badge badge-medium">Undecided</span></p>
-    {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link>Edit · + Option</a>{% endif %}
+    {% if can_edit %}<span class="text-xs font-medium"><a class="link-quiet" href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link>Edit · + Option</a>{% if group.option_list|length > 1 %} · <a class="link-quiet" href="{% url 'trips:group_split' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link data-split>Split</a>{% endif %}</span>{% endif %}
   </div>
   {% if group.notes %}<p class="mt-1 text-sm text-zinc-600">{{ group.notes|linebreaksbr }}</p>{% endif %}
   <div class="mt-3 grid gap-3 sm:grid-cols-2">

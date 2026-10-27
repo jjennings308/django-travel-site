@@ -405,8 +405,9 @@
   .trips-ui .timeline-row {
     @apply grid grid-cols-[4.5rem_1fr] gap-x-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 sm:grid-cols-[6.5rem_1fr];
   }
+  /* Wraps at its spaces: a range ("2:00 PM – 4:00 PM") is wider than the phone column (split tracks, P5). */
   .trips-ui .timeline-time {
-    @apply pt-0.5 text-xs font-medium whitespace-nowrap text-zinc-500 tabular-nums;
+    @apply pt-0.5 text-xs font-medium text-zinc-500 tabular-nums;
   }
   /* A contact or info note linked to an item (U4). */
   .trips-ui .ref-line {

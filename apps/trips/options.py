@@ -1,14 +1,14 @@
 """Option groups on the trip page, the booklet and the feeds (day-first plan, P4).
 
 **What counts.** An item (leg, stay, activity, meal, note) counts as part of the trip when it is in no
-option, or in a chosen one (``counts``; ``models.counts_q`` is the same rule as a query filter, for the
+option, in a chosen one, or in an option someone takes in a split group (P5) (``counts``; ``models.counts_q`` is the same rule as a query filter, for the
 calendar feed and the map). Only counted items feed the timeline, Not booked yet, Needs attention, the
 cost estimate, the calendar, the map and the day's summary line: ``attach`` takes the others out of the
 trip page's prefetched lists, so every later step (``itinerary``, ``booking_tasks``, ``budget``) sees
 the counted ones only, with no change of its own.
 
-``attach(trip, days, viewer)`` loads the trip's groups in three queries (groups, options, votes with
-their people) and gives:
+``attach(trip, days, viewer)`` loads the trip's groups in four queries (groups, options, their
+travellers, votes with their people) and gives:
 
 * each option ``items`` (its legs, stays, activities, meals and notes), ``vote_count``, ``voters``,
   ``voted`` (the viewer's 👍), ``cost`` (option + items, in the trip's home currency where rates allow)
@@ -16,6 +16,14 @@ their people) and gives:
 * each day ``open_groups`` (undecided, shown as boxes; the timed ones join the timeline) and
   ``picked_groups``; an open group adds one to the day's ⚠ (``day.attention``, after ``overview``);
 * each item of a chosen option ``chosen_from`` (its group), so the page says "Chosen from: Afternoon".
+
+**Split** (P5): a split group's options with travellers are its **tracks** (``group.tracks``; the others
+are ``considered``), each with ``who`` ("Debbie, John"). Their items count — so Not booked yet, the cost
+estimate and the map add every track — and carry ``track`` (the option): ``itinerary.timeline`` leaves
+them out of the shared timeline and shows the group there as one entry whose tracks hold them, side by
+side (``day.split_groups``). Notes in a track leave ``day.ordered_sections`` for their track. Who is on
+an item (the calendar's "only mine") is ``on_it``: an activity's own travellers, else its option's
+travellers in a split, else the day's.
 
 Returns the open groups, for the Needs attention banner ("N decisions").
 """
@@ -26,20 +34,32 @@ from .models import OptionGroup
 KINDS = ("legs", "stays", "activities", "meals", "sections")
 
 
+def taken(option):
+    """In a split group, someone takes this option (P5). Needs ``option.group`` and its travellers."""
+    return option.group.state == OptionGroup.State.SPLIT and bool(option.travelers.all())
+
+
 def counts(item, options):
     """The rule for one item; ``options`` maps option id → ``Option``."""
     if not item.option_id:
         return True
     option = options.get(item.option_id)
-    return option is None or option.chosen
+    return option is None or option.chosen or taken(option)
+
+
+def on_it(own, option_travelers, day_travelers):
+    """Who is on an item (P5): its own travellers, else its split option's, else the day's (blank =
+    everyone)."""
+    return list(own) or list(option_travelers) or list(day_travelers)
 
 
 def load(trip):
-    """The trip's groups with their options and votes (and who voted): three queries."""
+    """The trip's groups with their options, who takes them (P5) and votes (and who voted): four queries."""
     from django.db.models import Prefetch
     from .models import Vote
     return list(OptionGroup.objects.filter(trip=trip)
-                .prefetch_related("options", Prefetch("options__votes", queryset=Vote.objects.select_related("user"))))
+                .prefetch_related("options", "options__travelers",
+                                  Prefetch("options__votes", queryset=Vote.objects.select_related("user"))))
 
 
 def _keep(owner, name, keep):
@@ -123,6 +143,7 @@ def attach(trip, days, viewer=None, groups=None):
     for group in groups:
         for option in group.options.all():
             option.group_ref = group
+            option.group = group  # the cached object, so taken() costs no query
             option.items = {kind: [] for kind in KINDS}
             options[option.pk] = option
             votes = list(option.votes.all())
@@ -137,6 +158,10 @@ def attach(trip, days, viewer=None, groups=None):
         for item in items:
             options[item.option_id].items[kind].append(item)
 
+    def on_track(item):
+        option = options.get(item.option_id) if item.option_id else None
+        return option is not None and taken(option)
+
     file(_keep(trip, "transport", keep), "legs")
     file(_keep(trip, "lodging", keep), "stays")
     for day in days:
@@ -144,14 +169,21 @@ def attach(trip, days, viewer=None, groups=None):
                            ("ordered_sections", "sections")):
             if hasattr(day, attr):
                 kept, out = _split_list(getattr(day, attr), keep)
+                if attr == "ordered_sections":  # a track's notes are read in its track (P5)
+                    kept, tracked = _split_list(kept, lambda s: not on_track(s))
+                    out += tracked
                 setattr(day, attr, kept)
                 file(out, kind)
-    # Items of a chosen option say where they came from.
+    # Items of a chosen option say where they came from; a split's items know their track (P5).
     for item in [*trip.transport.all(), *trip.lodging.all(),
                  *(i for day in days for attr in ("ordered_activities", "ordered_meals", "ordered_sections")
                    for i in getattr(day, attr, []))]:
         if item.option_id and item.option_id in options:
-            item.chosen_from = options[item.option_id].group_ref
+            option = options[item.option_id]
+            item.chosen_from = option.group_ref
+            if taken(option):
+                item.track = option
+                option.items[_kind_of(item)].append(item)
     _costs(trip, groups)
     for option in options.values():
         option.duration = _duration(option)
@@ -159,13 +191,23 @@ def attach(trip, days, viewer=None, groups=None):
     for group in groups:
         group.option_list = list(group.options.all())
         group.chosen = next((o for o in group.option_list if o.chosen), None)
-        group.considered = [o for o in group.option_list if not o.chosen]
+        group.tracks = [o for o in group.option_list if taken(o)]
+        group.considered = [o for o in group.option_list if not o.chosen and o not in group.tracks]
+        for option in group.tracks:
+            option.who = ", ".join(t.name for t in option.travelers.all())
         by_day.setdefault(group.day_id, []).append(group)
     for day in days:
         mine = by_day.get(day.pk, [])
         day.open_groups = [g for g in mine if g.is_open]
-        day.picked_groups = [g for g in mine if not g.is_open]
+        day.picked_groups = [g for g in mine if g.state == OptionGroup.State.PICKED]
+        day.split_groups = [g for g in mine if g.state == OptionGroup.State.SPLIT]
     return [g for g in groups if g.is_open]
+
+
+def _kind_of(item):
+    from .models import Lodging, Meal, TransportLeg
+    return ("legs" if isinstance(item, TransportLeg) else "stays" if isinstance(item, Lodging)
+            else "meals" if isinstance(item, Meal) else "activities")
 
 
 def count_on_days(days):

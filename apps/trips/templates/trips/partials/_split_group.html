@@ -1,0 +1,44 @@
+{% comment %}
+A split "choose one" on its day (day-first plan P5; apps/trips/options.py): each option someone takes is a track, with who's on it and its own small timeline; side by side on a wide screen, stacked on a phone. Items before and after it are the whole group's. Editors change who goes or reopen it. Pass group=.
+{% endcomment %}
+<div class="split-group section card border-sky-200 scroll-mt-32" id="group-{{ group.pk }}" data-split-group>
+  <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <p class="card-title"><span aria-hidden="true">🔀</span> {{ group.prompt }} <span class="badge badge-mode">Split</span></p>
+    {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:group_split' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link>Change who goes</a>{% endif %}
+  </div>
+  {% if group.notes %}<p class="mt-1 text-sm text-zinc-600">{{ group.notes|linebreaksbr }}</p>{% endif %}
+  <div class="mt-3 grid gap-3 {% if group.tracks|length == 2 %}sm:grid-cols-2{% else %}lg:grid-cols-3 sm:grid-cols-2{% endif %}">
+    {% for option in group.tracks %}
+      <div class="track min-w-0 rounded-lg border border-zinc-200 p-3 scroll-mt-32" id="option-{{ option.pk }}" data-track>
+        <p class="card-kicker" data-track-who>{{ option.who }}</p>
+        <p class="font-medium text-zinc-900">{{ option.title }}</p>
+        {% if option.notes %}<p class="mt-1 text-sm text-zinc-600">{{ option.notes|linebreaksbr }}</p>{% endif %}
+        {% if option.url %}<p class="mt-1 text-sm"><a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">More ↗</a></p>{% endif %}
+        {% if option.items.stays %}{% for stay in option.items.stays %}<p class="mt-2 text-sm" id="stay-{{ stay.pk }}" data-panel="{% if can_edit %}{% url 'trips:stay_edit' trip.pk stay.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'stay' stay.pk %}{% endif %}">🛏 <span class="font-medium">{{ stay.name }}</span> <span class="text-zinc-500">{{ stay.check_in|date:"M j" }}–{{ stay.check_out|date:"M j" }}</span>{% for c in stay.confirmation_list %} <a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}</a>{% endfor %}</p>{% endfor %}{% endif %}
+        {% if option.track_timeline or option.track_any %}
+          <div class="mt-2 timeline">
+            {% for entry in option.track_timeline %}
+              {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time=entry.label %}
+              {% elif entry.kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=entry.item time=entry.label %}
+              {% else %}{% include "trips/partials/_meal_row.html" with meal=entry.item time=entry.label %}{% endif %}
+            {% endfor %}
+            {% for entry in option.track_any %}
+              {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time="" %}
+              {% else %}{% include "trips/partials/_activity_row.html" with activity=entry.item time="" %}{% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% for meal in option.track_food %}{% include "trips/partials/_meal_row.html" with meal=meal time="" %}{% endfor %}
+        {% for section in option.items.sections %}{% include "trips/partials/_section.html" with section=section %}{% endfor %}
+        {% if option.cost %}<p class="mt-2 text-sm text-zinc-600" data-track-cost>{% if option.cost.approx %}≈ {% endif %}{{ option.cost.currency }} {{ option.cost.total }}</p>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {% if group.considered %}
+    <details class="mt-3 text-sm">
+      <summary class="cursor-pointer text-zinc-600">Considered ({{ group.considered|length }})</summary>
+      <ul class="mt-1 space-y-1">{% for option in group.considered %}<li id="option-{{ option.pk }}"><span class="font-medium">{{ option.title }}</span>{% if option.notes %} <span class="text-zinc-500">— {{ option.notes|truncatechars:120 }}</span>{% endif %}</li>{% endfor %}</ul>
+    </details>
+  {% endif %}
+  {% if can_edit %}<form method="post" action="{% url 'trips:group_reopen' trip.pk group.pk %}" class="mt-2 text-sm">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#group-{{ group.pk }}"><button type="submit" class="link-quiet font-medium" data-reopen>Reopen the choice</button>{% if group.decided_by %} <span class="text-xs text-zinc-500">· split by {{ group.decided_by.get_full_name|default:group.decided_by.username }}{% if group.decided_at %} · {{ group.decided_at|date:"M j" }}{% endif %}</span>{% endif %}</form>{% endif %}
+</div>

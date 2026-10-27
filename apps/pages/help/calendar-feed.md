@@ -3,7 +3,7 @@ summary: Subscribe to a trip from Google, Apple or Outlook calendar so its fligh
 audience: everyone
 section: Trips
 order: 15
-updated: 2026-10-18
+updated: 2026-10-27
 
 # Your trip in your calendar
 
@@ -39,7 +39,7 @@ Google can take up to a day to show a change; Apple and Outlook are usually quic
 
 Each event has the operator or provider, the **confirmation numbers**, and a link to the item on the trip page.
 
-**Only the things I'm on** leaves out activities with a list of people that doesn't include you, and anything on a day the group splits up when you're not on that day. Stays always show. If your account isn't linked to anyone on the trip's roster, you get everything.
+**Only the things I'm on** leaves out activities with a list of people that doesn't include you, anything on a day the group splits up when you're not on that day, and the other tracks of a [split choice](/help/options-and-votes/#splitting-a-choice) (you get your own track). Stays show unless they're on someone else's track. If your account isn't linked to anyone on the trip's roster, you get everything.
 
 ## Keep it private
 

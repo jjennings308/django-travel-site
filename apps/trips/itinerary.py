@@ -9,7 +9,8 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
 - ``travel_total(legs)``: "2 legs · ~3 h 15 min" when every leg has a time or an estimate.
 - ``attach_stays(days, stays)``: where you sleep each night — ``day.stay`` (check-in ≤ date <
   check-out), ``day.checking_in`` / ``day.checking_out`` (stays starting / ending that day); returns
-  the stays whose check-in is no day of the trip.
+  the stays whose check-in is no day of the trip. A stay on a split group's track (day-first plan P5,
+  ``stay.track``) is shown in its track on check-in and as ``day.track_stays`` on its other nights.
 - ``overview(days, not_booked, tasks)``: the web page's Overview row and day summary (U2) —
   ``day.overnight``, ``day.travel_icons``, ``day.travel_summary``, ``day.highlights``,
   ``day.attention``. Run after ``place_legs`` and ``attach_stays``.
@@ -26,7 +27,10 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
 - ``anchor(item)``: the trip page id of an item's row or card, else of its day.
 - ``timeline(days)``: each day's ``day.timeline`` (legs, activities and reserved meals in local
   time order), ``day.any_time`` (untimed legs in their order, then untimed activities) and
-  ``day.food_ideas`` (meals with no reservation time) (U3). Run after ``place_legs``.
+  ``day.food_ideas`` (meals with no reservation time) (U3). Run after ``place_legs``. Items on a split
+  group's track (day-first plan P5, ``item.track``) stay out of them: the group is one entry (kind
+  "split", at its time or its earliest item's), and each track has its own ``track_timeline``,
+  ``track_any`` and ``track_food``; a split with no time at all is in ``day.untimed_splits``.
 """
 from datetime import timedelta
 
@@ -87,12 +91,18 @@ def attach_stays(days, stays):
         day.stay = None
         day.checking_in = []
         day.checking_out = []
+        day.track_stays = []
         if not day.date:
             continue
         for stay in stays:
+            tracked = getattr(stay, "track", None) is not None
             if stay.check_in <= day.date < stay.check_out:
-                day.stay = stay
-            if stay.check_in == day.date:
+                if tracked:
+                    if stay.check_in != day.date:
+                        day.track_stays.append(stay)
+                else:
+                    day.stay = stay
+            if stay.check_in == day.date and not tracked:
                 day.checking_in.append(stay)
             if stay.check_out == day.date:
                 day.checking_out.append(stay)
@@ -161,39 +171,71 @@ def _fmt(clock):
     return clock.strftime("%I:%M %p").lstrip("0")
 
 
+def _entries(legs, activities, meals):
+    """(timed, any time, food ideas) for one day or one track."""
+    timed, any_time, food = [], [], []
+    for leg in legs:
+        leg.icon = MODE_ICONS.get(leg.mode, "•")
+        local = leg.departure_local
+        if local is not None:
+            timed.append({"kind": "leg", "item": leg, "time": local.time(), "label": leg.departure_local_str})
+        else:
+            any_time.append({"kind": "leg", "item": leg, "time": None, "label": ""})
+    for activity in activities:
+        activity.icon = ACTIVITY_ICONS.get(activity.kind, "•")
+        entry = {"kind": "activity", "item": activity, "time": activity.start_time, "label": activity.time_range}
+        (timed if activity.start_time else any_time).append(entry)
+    for meal in meals:
+        if meal.reserved_time:
+            timed.append({"kind": "meal", "item": meal, "time": meal.reserved_time, "label": _fmt(meal.reserved_time)})
+        else:
+            food.append(meal)
+    return timed, any_time, food
+
+
+RANK = {"leg": 0, "activity": 1, "meal": 2, "group": 3, "split": 3}
+
+
+def _shared(items):
+    return [item for item in items if getattr(item, "track", None) is None]
+
+
+def tracks(group):
+    """Each track of a split group (P5) gets ``track_timeline``, ``track_any`` and ``track_food``;
+    returns the group's time (its own, else its earliest item's), or None."""
+    times = []
+    for option in group.tracks:
+        items = option.items
+        option.track_timeline, option.track_any, option.track_food = _entries(
+            items["legs"], items["activities"], items["meals"])
+        option.track_timeline.sort(key=lambda e: (e["time"], RANK[e["kind"]]))
+        times += [e["time"] for e in option.track_timeline]
+    return group.start_time or (min(times) if times else None)
+
+
 def timeline(days):
     """Each day's timeline, Any time and Food ideas (see the module docstring). A leg's time is
     its local departure where it leaves (never converted to the reader's zone); activities and
     meals are wall-clock times on the day."""
     for day in days:
-        timed, any_time = [], []
-        for leg in getattr(day, "day_legs", []):
-            leg.icon = MODE_ICONS.get(leg.mode, "•")
-            local = leg.departure_local
-            if local is not None:
-                timed.append({"kind": "leg", "item": leg, "time": local.time(), "label": leg.departure_local_str})
-            else:
-                any_time.append({"kind": "leg", "item": leg, "time": None, "label": ""})
-        activities = getattr(day, "ordered_activities", [])
-        for activity in activities:
-            activity.icon = ACTIVITY_ICONS.get(activity.kind, "•")
-            entry = {"kind": "activity", "item": activity, "time": activity.start_time, "label": activity.time_range}
-            (timed if activity.start_time else any_time).append(entry)
-        day.food_ideas = []
-        for meal in getattr(day, "ordered_meals", []):
-            if meal.reserved_time:
-                timed.append({"kind": "meal", "item": meal, "time": meal.reserved_time,
-                              "label": _fmt(meal.reserved_time)})
-            else:
-                day.food_ideas.append(meal)
+        timed, any_time, day.food_ideas = _entries(_shared(getattr(day, "day_legs", [])),
+                                                   _shared(getattr(day, "ordered_activities", [])),
+                                                   _shared(getattr(day, "ordered_meals", [])))
         # Undecided "choose one" groups (day-first plan P4) with a time sit in the timeline as a box;
         # the others are shown after it (``day.open_groups``, set by ``options.attach``).
         for group in getattr(day, "open_groups", []):
             if group.start_time:
                 timed.append({"kind": "group", "item": group, "time": group.start_time, "label": _fmt(group.start_time)})
         day.untimed_groups = [g for g in getattr(day, "open_groups", []) if not g.start_time]
-        rank = {"leg": 0, "activity": 1, "meal": 2, "group": 3}
-        timed.sort(key=lambda e: (e["time"], rank[e["kind"]]))
+        # A split group (P5) is one entry holding its tracks, each a small timeline of its own.
+        day.untimed_splits = []
+        for group in getattr(day, "split_groups", []):
+            start = tracks(group)
+            if start is not None:
+                timed.append({"kind": "split", "item": group, "time": start, "label": _fmt(start)})
+            else:
+                day.untimed_splits.append(group)
+        timed.sort(key=lambda e: (e["time"], RANK[e["kind"]]))
         day.timeline = timed
         day.any_time = any_time  # legs first (Meta order), then activities
 

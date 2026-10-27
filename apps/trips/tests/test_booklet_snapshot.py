@@ -20,7 +20,7 @@ from django.urls import reverse
 
 from apps.activities.models import Activity, ActivityCategory
 from apps.locations.models import POI, City, Country
-from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Section,
+from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Option, OptionGroup, Section,
                                TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
 
 User = get_user_model()
@@ -153,6 +153,16 @@ def build_trip():
                               currency="EUR", url="https://example.com/augusta", order=1, chosen=True)
     TaskOption.objects.create(task=decide, title="Steigenberger Drei Mohren", est_cost=Decimal("210"), currency="EUR",
                               order=2)
+    # Day-first plan P5: a split afternoon on Day 4, Ada and Bo on their own tracks.
+    afternoon = OptionGroup.objects.create(trip=trip, day=d4, prompt="Augsburg afternoon")
+    puppets = Option.objects.create(group=afternoon, title="Puppet museum", est_cost=Decimal("12"), currency="EUR",
+                                    order=0)
+    walk = Option.objects.create(group=afternoon, title="Old town walk", notes="Meet at the Rathaus", order=1)
+    TripActivity.objects.create(trip=trip, day=d4, title="Augsburger Puppenkiste", kind="entry",
+                                start_time=time(15, 0), option=puppets)
+    TripActivity.objects.create(trip=trip, day=d4, title="Fuggerei walk", kind="tour", start_time=time(14, 30),
+                                option=walk)
+    afternoon.split({puppets: [ada], walk: [bo]})
     # Day-first plan P3: the trip's phase, callout and free text as they are once converted to notes.
     from apps.trips import day_first
     day_first.apply(trip)
