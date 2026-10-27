@@ -35,7 +35,7 @@ class OfflineTripPageTests(TestCase):
         self.assertNotIn(offline_cache_key(self.ed), html)
 
     def test_not_registered_on_other_trip_pages(self):
-        for url in (reverse("trips:trip_edit", args=[self.trip.pk]), reverse("trips:trip_list"),
+        for url in (reverse("trips:trip_settings", args=[self.trip.pk]), reverse("trips:trip_list"),
                     reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]),
                     reverse("trips:trip_people", args=[self.trip.pk])):
             with self.subTest(url=url):

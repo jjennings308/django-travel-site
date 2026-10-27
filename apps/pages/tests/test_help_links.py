@@ -46,7 +46,7 @@ class HelpLinkTests(TestCase):
             reverse("trips:trip_detail", args=[trip]): {
                 "/help/reading-your-trip/#days-at-a-glance",
                 "/help/reading-your-trip/#reference", "/help/reading-your-trip/#booklet"},
-            reverse("trips:trip_edit", args=[trip]): {"/help/starting-a-trip/"},
+            reverse("trips:trip_settings", args=[trip]): {"/help/starting-a-trip/"},
             reverse("trips:day_edit", args=[trip, self.day.pk]): {"/help/adding-a-day/"},
             reverse("trips:trip_todo", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},
             reverse("trips:task_new", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},

@@ -5,7 +5,8 @@
 // (trips:item_panel). Forms and links inside the panel stay in the panel; after a save the panel
 // reloads, shows "Saved" and stays open, and the day (and any other day that shows the item) is swapped
 // for a fresh copy from trips:day_fragment. A deleted item closes the panel. Without JavaScript none of
-// this runs and every link goes to the item's page as before.
+// this runs and every link goes to the item's page as before. ?item=<anchor> on the trip page opens
+// that item at once (links from Bookings, To do, the map and the calendar).
 (function () {
   var panel = document.getElementById("item-panel");
   if (!panel) return;
@@ -269,4 +270,13 @@
     }
     request(url.pathname + url.search, { method: "POST", body: data }).then(afterPost);
   });
+
+  // Arriving from a trip-wide view (Bookings, To do, the map, the calendar; P7) with ?item=<anchor>:
+  // the page's own script opens the item's day from the #hash; this opens the item itself in the panel.
+  var wanted = new URLSearchParams(location.search).get("item");
+  if (wanted && /^[a-z]+-\d+$/.test(wanted)) {
+    var target = document.getElementById(wanted);
+    var row = target && (target.matches("[data-panel]") ? target : target.querySelector("[data-panel]"));
+    if (row) open(row.dataset.panel, row);
+  }
 })();

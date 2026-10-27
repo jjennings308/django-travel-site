@@ -6,7 +6,7 @@
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}#day-{{ day.pk }}">{{ trip.name }}</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}#day-{{ day.pk }}">{{ trip.name }}</a>
   </nav>
 
   <div class="page-header">
@@ -27,6 +27,18 @@
     {% endcomment %}
     <section class="form-section" id="add">
       <h2 class="form-section-title">Add to this day</h2>
+      {# The trip page's + Add (P3), as a plain form: the new item opens on its own page and comes back here (P7). #}
+      <form method="post" action="{% url 'trips:quick_add' trip.pk day.pk %}" class="quick-add mt-2 rounded-lg border border-dashed border-zinc-300 p-3" data-day-quick-add>
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#on-this-day">
+        <label class="card-kicker" for="day-quick-add">+ Add in one line</label>
+        <input type="text" name="text" id="day-quick-add" maxlength="300" autocomplete="off" class="mt-1 w-full" placeholder="“Train Munich → Salzburg 9:15”, “Dinner Augustiner 7:30pm”, “Hotel Laimer Hof 3 nights”…">
+        <button type="submit" class="sr-only" tabindex="-1">Add</button>
+        <p class="mt-2 flex flex-wrap items-center gap-1.5 text-sm"><span class="text-zinc-500">Or add as:</span>
+          {% for value, label in quick_add_kinds %}<button type="submit" name="kind" value="{{ value }}" class="chip hover:border-zinc-400">{{ label }}</button>{% endfor %}
+          {% include "partials/_help_link.html" with slug="adding-a-day" anchor="add-to-a-day" label="+ Add" %}
+        </p>
+      </form>
+      <p class="card-kicker mt-4">Or open a form</p>
       <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ leg: false }">
         <button type="button" class="btn-quiet px-3 py-1.5" @click="leg = !leg" :aria-expanded="leg">+ Leg</button>
         <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:stay_new' trip.pk day.pk %}?next={{ request.path|urlencode }}%23on-this-day" data-add-stay>+ Stay</a>
@@ -101,7 +113,7 @@
       <button type="submit" class="btn">
         {% if is_create %}Add day{% else %}Save day{% endif %}
       </button>
-      <a class="btn-quiet" href="{% if is_create %}{% url 'trips:trip_edit' trip.pk %}{% else %}{{ back }}{% endif %}">Cancel</a>
+      <a class="btn-quiet" href="{% if is_create %}{% url 'trips:trip_settings' trip.pk %}{% else %}{{ back }}{% endif %}">Cancel</a>
     </div>
     {% if not is_create %}<input type="hidden" name="next" value="{{ back }}">{% endif %}
   </form>

@@ -63,7 +63,7 @@ class HomeCurrencyTests(Fixture):
 
     def test_edit_trip_shows_it(self):
         self.client.force_login(self.editor)
-        page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+        page = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk]))
         self.assertContains(page, 'name="home_currency"')
         self.assertContains(page, "Home currency")
 

@@ -7,7 +7,7 @@ One item's contacts and info notes (trips:item_links): a leg, stay, activity, me
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>Contacts &amp; info</span>
   </nav>
   <div class="page-header">

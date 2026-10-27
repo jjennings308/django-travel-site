@@ -109,7 +109,7 @@ class ReturnTests(Fixture):
         self.assertRedirects(response, self.detail + "#day-2", fetch_redirect_response=False)
 
     def test_next_from_edit_trip_is_honoured_and_outside_next_ignored(self):
-        edit = reverse("trips:trip_edit", args=[self.trip.pk]) + f"#day-{self.day.pk}"
+        edit = reverse("trips:trip_settings", args=[self.trip.pk]) + f"#day-{self.day.pk}"
         self.assertRedirects(self.post_day(next=edit), edit, fetch_redirect_response=False)
         self.assertRedirects(self.post_day(next="https://evil.example.com/"), self.detail + "#day-2",
                              fetch_redirect_response=False)

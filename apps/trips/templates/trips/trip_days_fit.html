@@ -1,0 +1,38 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/day_fit.py): offered after Settings moves the trip's dates. Days for the new dates, ticked; days now outside the dates, ticked only when nothing is on them. Nothing changes until "Fit the days"; the days are then numbered again in date order.
+{% endcomment %}
+{% block title %}Fit the days — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{{ settings_url }}">Settings</a><span>/</span>
+    <span>Fit the days</span>
+  </nav>
+  <form method="post" class="card p-6" data-days-fit>
+    {% csrf_token %}
+    <h1 class="page-title mb-1">The days and the new dates</h1>
+    <p class="mb-4 text-zinc-500">The trip now runs {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}. Choose what to do with the days; nothing changes until you click <strong>Fit the days</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="changing-the-dates" label="changing the dates" text="How this works" %}</p>
+    {% if missing %}
+      <h2 class="card-kicker mb-1">Add a day for</h2>
+      <ul class="mb-4 space-y-1">
+        {% for when in missing %}<li><label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="add" value="{{ when|date:'Y-m-d' }}" checked> {{ when|date:"l, F j" }}</label></li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% if outside %}
+      <h2 class="card-kicker mb-1">Remove — outside the new dates</h2>
+      <ul class="mb-2 space-y-1">
+        {% for day in outside %}
+          <li><label class="flex min-h-11 flex-wrap items-center gap-2"><input type="checkbox" name="remove" value="{{ day.pk }}"{% if day.is_empty %} checked{% endif %}> Day {{ day.day_number }} · {{ day.date|date:"D, M j" }}{% if day.theme %} — {{ day.theme }}{% endif %} <span class="text-sm text-zinc-500">{% if day.contents %}{{ day.contents|join:", " }} would be deleted{% else %}empty{% endif %}{% if day.has_bookings %} · its journeys and stays stay on the trip{% endif %}</span></label></li>
+        {% endfor %}
+      </ul>
+      <p class="note mb-4">Untick a day to keep it; it then shows under its date, outside the trip's dates.</p>
+    {% endif %}
+    {% if not missing and not outside %}<p class="note">The days already match the dates.</p>{% endif %}
+    <div class="flex flex-wrap items-center gap-3">
+      {% if missing or outside %}<button type="submit" class="btn">Fit the days</button>{% endif %}
+      <a class="btn-quiet" href="{{ settings_url }}#days">Leave them as they are</a>
+    </div>
+  </form>
+{% endblock %}

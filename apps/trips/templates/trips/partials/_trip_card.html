@@ -68,7 +68,7 @@
     {% if trip.list_capabilities.edit or trip.list_capabilities.delete %}
       <div class="relative z-10 flex shrink-0 gap-3">
         {% if trip.list_capabilities.edit %}
-          <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit</a>
+          <a class="link-quiet font-medium" href="{% url 'trips:trip_settings' trip.pk %}">Edit</a>
         {% endif %}
         {% if trip.list_capabilities.delete %}
           <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:trip_delete' trip.pk %}">Delete</a>

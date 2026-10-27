@@ -1,0 +1,53 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Bookings (trips:trip_bookings, day-first plan P7): the trip's confirmations, what isn't booked yet and every journey and stay in date order — read-only, for everyone who can see the trip. Each line opens its item on the trip page, in the panel (?item=<anchor>), where editors change it. Moved here from Edit trip: "All stays & legs". Loose confirmations are under Other.
+{% endcomment %}
+{% block title %}Bookings — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-5xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Bookings</span>
+  </nav>
+  <div class="mb-4">
+    <h1 class="page-title">Bookings {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-bookings-page" label="bookings" %}</h1>
+    <p class="mt-1 text-sm text-zinc-500">Confirmation numbers, what still needs booking, and every journey and stay. Click one to open it on the trip page{% if can_edit %}, where you change it{% endif %}.</p>
+  </div>
+
+  {% include "trips/partials/_confirmation_groups.html" with elsewhere=True %}
+  {% if not confirmation_groups %}<p class="empty-state">No confirmations yet.{% if can_edit %} Add one on the item it's for.{% endif %}</p>{% endif %}
+
+  {% if not_booked %}
+    <h2 class="grid-label mt-8" id="not-booked">Not booked yet</h2>
+    {% include "trips/partials/_not_booked.html" with elsewhere=True %}
+  {% endif %}
+
+  <section class="mt-8 scroll-mt-32" id="stays-legs">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <h2 class="grid-label">Getting around &amp; stays</h2>
+      {% if can_edit and travel_tables_pending %}<a class="link-quiet text-sm font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn “A → B” table rows into journeys</a>{% endif %}
+    </div>
+    {% if item_rows %}
+      {% url 'trips:trip_detail' trip.pk as trip_url %}
+      <div class="scroll-x">
+        <table class="data-grid" data-stays-legs>
+          <thead><tr><th>When</th><th>Day</th><th>What</th><th>Item</th><th>Confirmations</th></tr></thead>
+          <tbody>
+            {% for row in item_rows %}
+              <tr>
+                <td class="whitespace-nowrap">{{ row.when|date:"D, M j"|default:"—" }}</td>
+                <td class="whitespace-nowrap">{% if row.day %}<a class="link-quiet" href="{{ trip_url }}#day-{{ row.day.day_number }}">Day {{ row.day.day_number }}</a>{% else %}<span class="text-amber-700" data-not-on-a-day>{% if row.kind == "stay" %}Outside the trip's days{% else %}Not on any day{% endif %}</span>{% endif %}</td>
+                <td class="text-zinc-500">{{ row.what }}</td>
+                <td><a class="link-quiet font-medium text-zinc-900" href="{{ trip_url }}?item={{ row.anchor }}#{{ row.anchor }}" data-item-link>{{ row.label }}</a> <span class="text-zinc-500">{{ row.detail }}</span></td>
+                <td>{% for c in row.confirmations %}<a class="chip" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</a> {% empty %}<span class="text-zinc-400">—</span>{% endfor %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state py-6">No journeys or stays yet.{% if can_edit %} Add them from each day's + Add on the trip page.{% endif %}</p>
+    {% endif %}
+  </section>
+{% endblock %}

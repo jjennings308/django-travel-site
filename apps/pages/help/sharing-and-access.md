@@ -3,7 +3,7 @@ summary: Who can see, comment on or change a trip, how to invite people, and wha
 audience: everyone
 section: Getting started
 order: 10
-updated: 2026-10-19
+updated: 2026-10-27
 
 # Sharing and access
 
@@ -25,7 +25,7 @@ The same account can be an editor on one trip and a viewer on another. If you op
 
 ## Who's on the trip
 
-Click **People** at the top of the trip page (next to **Map**, **Budget** and **Photos**) to see everyone who can open the trip, their role, and who added them. Editors also find it on **Edit trip**.
+Click **People** at the top of the trip page (next to **Map**, **Budget** and **Photos**) to see everyone who can open the trip, their role, and who added them. Editors also find it on the trip's **Settings**.
 
 ## Inviting people
 

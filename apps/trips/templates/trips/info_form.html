@@ -7,7 +7,7 @@ An info note's own page (trips:info_edit / info_new, U4): its details and which 
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>{% if obj %}{{ obj.title }}{% else %}New info note{% endif %}</span>
   </nav>
   <form method="post" class="card p-6" novalidate>

@@ -6,7 +6,7 @@ whether the trip already exists, and duplicating the form markup to express that
 would mean two places to fix the next time a field is added.
 {% endcomment %}
 
-{% block title %}{% if is_create %}New trip{% else %}Edit {{ trip.name }}{% endif %}{% endblock %}
+{% block title %}{% if is_create %}New trip{% else %}Settings — {{ trip.name }}{% endif %}{% endblock %}
 
 {% block wrap_class %}max-w-5xl{% endblock %}
 
@@ -15,7 +15,7 @@ would mean two places to fix the next time a field is added.
   <nav class="crumbs"><a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span><a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a></nav>
 {% endif %}
 <div class="page-header">
-  <h1 class="page-title">{% if is_create %}New trip{% else %}Edit trip{% endif %}</h1>
+  <h1 class="page-title">{% if is_create %}New trip{% else %}Settings{% endif %}</h1>
   {% include "partials/_help_link.html" with slug="starting-a-trip" label="starting and editing a trip" text="How this works" %}
 </div>
 
@@ -24,7 +24,7 @@ would mean two places to fix the next time a field is added.
 
   <section class="form-section">
     <h2 class="form-section-title">The trip</h2>
-    <p class="form-section-lede">Name, dates and who is going.{% if not is_create %} Who can open the trip is on <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>.{% endif %}</p>
+    <p class="form-section-lede">Name, dates and who is going.{% if not is_create %} If new dates leave days outside the trip or dates without a day, you're offered which to add or remove next.{% endif %}{% if not is_create %} Who can open the trip is on <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>.{% endif %}</p>
     <div class="field-grid">{{ form.as_p }}</div>
 
     <fieldset class="mt-2 border-t border-zinc-100 pt-5">
@@ -63,7 +63,7 @@ would mean two places to fix the next time a field is added.
   or, worse, quietly post this trip's data and navigate somewhere else.
 {% endcomment %}
 {% if not is_create %}
-  <section class="form-section mt-10">
+  <section class="form-section mt-10 scroll-mt-32" id="days">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h2 class="form-section-title">Days</h2>
@@ -99,7 +99,7 @@ would mean two places to fix the next time a field is added.
                   {{ d.sections_count }} section{{ d.sections_count|pluralize }}
                 </td>
                 <td class="text-right whitespace-nowrap">
-                  <a class="link-quiet font-medium" href="{% url 'trips:day_edit' trip.pk d.pk %}?next={% url 'trips:trip_edit' trip.pk %}%23day-{{ d.pk }}">Edit</a>
+                  <a class="link-quiet font-medium" href="{% url 'trips:day_edit' trip.pk d.pk %}?next={% url 'trips:trip_settings' trip.pk %}%23day-{{ d.pk }}">Edit</a>
                   <a class="link-quiet ml-3 font-medium hover:text-red-700" href="{% url 'trips:day_delete' trip.pk d.pk %}">Delete</a>
                 </td>
               </tr>
@@ -112,37 +112,11 @@ would mean two places to fix the next time a field is added.
     {% endif %}
   </section>
 
-  {% url 'trips:trip_edit' trip.pk as edit_url %}
-  {% comment %}All stays & legs (edit-by-day plan E3): read-only, in date order; each is added and edited from its day or its own page.{% endcomment %}
+  {% url 'trips:trip_settings' trip.pk as edit_url %}
+  {% comment %}All stays & legs moved to Bookings (day-first plan P7): read-only there, each opening on the trip page.{% endcomment %}
   <section class="form-section mt-10" id="stays-legs">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h2 class="form-section-title">All stays &amp; legs</h2>
-        <p class="form-section-lede">Add a stay or a leg from its day (Edit this day → Add to this day). Edit one here for its dates, times, confirmations and contacts.</p>
-      </div>
-      {% if travel_tables_pending %}<a class="btn-quiet" href="{% url 'trips:trip_travel_review' trip.pk %}">Turn “A → B” table rows into legs</a>{% endif %}
-    </div>
-    {% if item_rows %}
-      <div class="scroll-x">
-        <table class="data-grid" data-stays-legs>
-          <thead><tr><th>When</th><th>Day</th><th>What</th><th>Item</th><th>Confirmations</th><th><span class="sr-only">Edit</span></th></tr></thead>
-          <tbody>
-            {% for row in item_rows %}
-              <tr>
-                <td class="whitespace-nowrap">{{ row.when|date:"D, M j"|default:"—" }}</td>
-                <td class="whitespace-nowrap">{% if row.day %}<a class="link-quiet" href="{% url 'trips:day_edit' trip.pk row.day.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Day {{ row.day.day_number }}</a>{% else %}<span class="text-amber-700" data-not-on-a-day>{% if row.kind == "stay" %}Outside the trip's days{% else %}Not on any day{% endif %}</span>{% endif %}</td>
-                <td class="text-zinc-500">{{ row.what }}</td>
-                <td><span class="font-medium text-zinc-900">{{ row.label }}</span> <span class="text-zinc-500">{{ row.detail }}</span></td>
-                <td>{% for c in row.confirmations %}<span class="chip">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}</span> {% empty %}<span class="text-zinc-400">—</span>{% endfor %}</td>
-                <td class="text-right whitespace-nowrap">{% if row.kind == "stay" %}<a class="link-quiet font-medium" href="{% url 'trips:stay_edit' trip.pk row.item.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Edit</a>{% else %}<a class="link-quiet font-medium" href="{% url 'trips:leg_edit' trip.pk row.item.pk %}?next={{ edit_url|urlencode }}%23stays-legs">Edit</a>{% endif %}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <p class="empty-state py-6">No stays or legs yet. Add them from each day.</p>
-    {% endif %}
+    <h2 class="form-section-title">Stays &amp; journeys</h2>
+    <p class="form-section-lede">Added and changed on the trip page, from each day's + Add or by opening one. Every stay and journey in date order, with its confirmations, is on <a class="link-quiet font-medium" href="{% url 'trips:trip_bookings' trip.pk %}#stays-legs" data-bookings-link>Bookings</a>.</p>
   </section>
 
   {% comment %}Loose confirmations: ones that cover no single item (insurance, a rail pass).{% endcomment %}

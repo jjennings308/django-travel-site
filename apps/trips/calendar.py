@@ -86,7 +86,7 @@ def build(trip, viewer=None, mine=False):
     cal.add("x-published-ttl", "PT4H")  # Outlook's older name for REFRESH-INTERVAL
 
     def event(uid, summary, start, end, location="", lines=(), anchor=""):
-        description = [line for line in lines if line] + [f"{trip_url}#{anchor}" if anchor else trip_url]
+        description = [line for line in lines if line] + [f"{trip_url}?item={anchor}#{anchor}" if anchor else trip_url]
         cal.add_component(vevent(uid, summary, start, end, location, "\n".join(description), now=now))
 
     for leg in legs:

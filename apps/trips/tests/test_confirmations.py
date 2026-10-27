@@ -166,7 +166,7 @@ class ItemConfirmationsTests(Fixture):
         self.client.force_login(self.editor)
         page = self.client.get(self.url("stay", self.stay))
         self.assertContains(page, "Hotel Chimayo")
-        back = reverse("trips:trip_edit", args=[self.trip.pk])
+        back = reverse("trips:trip_settings", args=[self.trip.pk])
         response = self.client.post(self.url("stay", self.stay), {"action": "add", "confirmation_number": "5305434791",
                                                                    "return_to": back})
         self.assertRedirects(response, back, fetch_redirect_response=False)
@@ -263,12 +263,13 @@ class ViewPageIsForReadingTests(Fixture):
         self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)  # Edit links stay
 
     def test_edit_trip_lists_stays_and_legs_and_adds_loose_confirmations(self):
-        """E3: Edit trip links each stay and leg to its own page (where its confirmations are added)
-        and keeps "Add a loose confirmation"; legs are added from the day page."""
+        """E3 / P7: Bookings opens each stay and leg on the trip page (where its confirmations are added);
+        Settings keeps "Add a loose confirmation"; legs are added from the day page."""
         self.client.force_login(self.editor)
-        html = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])).content.decode()
-        self.assertIn(reverse("trips:stay_edit", args=[self.trip.pk, self.stay.pk]), html)
-        self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)
+        html = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])).content.decode()
+        bookings = self.client.get(reverse("trips:trip_bookings", args=[self.trip.pk])).content.decode()
+        self.assertIn(f"?item=stay-{self.stay.pk}#stay-{self.stay.pk}", bookings)
+        self.assertIn(f"?item=leg-{self.bwi.pk}#leg-{self.bwi.pk}", bookings)
         self.assertIn(reverse("trips:confirmation_new", args=[self.trip.pk]), html)
         self.assertNotIn(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), html)
         day_page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])).content.decode()

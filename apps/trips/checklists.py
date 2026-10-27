@@ -157,7 +157,7 @@ ItemFormSet = forms.inlineformset_factory(Checklist, ChecklistItem, fields=["tex
 
 
 def _edit_back(trip):
-    return reverse("trips:trip_edit", args=[trip.pk]) + "#checklists"
+    return reverse("trips:trip_settings", args=[trip.pk]) + "#checklists"
 
 
 @login_required

@@ -25,7 +25,7 @@
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        {% if can_edit %}<a class="btn" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>{% endif %}
+        {% if can_edit %}<a class="btn" href="{% url 'trips:trip_settings' trip.pk %}" data-settings-link>Settings</a>{% endif %}
         <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
         {# ⋯ menu: calendar, sharing and delete, kept out of the way (Alpine). #}
           <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
@@ -60,6 +60,8 @@
       </div>
     </div>
     <p class="mt-2 flex flex-wrap gap-4 text-sm">
+      <a class="link-quiet font-medium" href="{% url 'trips:trip_bookings' trip.pk %}" data-bookings-link>Bookings</a>
+      <a class="link-quiet font-medium" href="{% url 'trips:trip_todo' trip.pk %}">To do</a>
       <a class="link-quiet font-medium" href="{% url 'trips:trip_map' trip.pk %}">Map</a>
       <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
       <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>
@@ -96,6 +98,7 @@
 
   <nav class="day-nav" aria-label="Sections of this page">
     <a href="#days">Days</a>
+    {% if ideas %}<a href="#ideas" data-jump-ideas>Ideas</a>{% endif %}
     <a href="#reference">Reference</a>
   </nav>
 
@@ -208,30 +211,7 @@
   <section class="mt-12 scroll-mt-32" id="reference">
     <h2 class="day-heading mb-4">Reference {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="reference" label="Reference" %}</h2>
 
-    {% if confirmation_groups %}
-      {# Generated from the confirmations and what they cover (views.confirmation_groups), each once. #}
-      <h3 class="grid-label">Confirmations</h3>
-      {% for title, items in confirmation_groups %}
-        <p class="card-kicker mb-1 mt-3">{{ title }}</p>
-        <ul class="card divide-y divide-zinc-100 p-0 text-sm">
-          {% for item in items %}
-            <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5 scroll-mt-32" id="confirmation-{{ item.pk }}">
-              <span class="font-mono text-base font-semibold tracking-wide text-zinc-900">{{ item.confirmation_number|default:"&mdash;" }}</span>
-              {% if item.provider %}<span class="text-zinc-700">{{ item.provider }}</span>{% endif %}
-              <span class="min-w-0 flex-1 text-zinc-600">
-                {% if item.label %}{{ item.label }}{% if item.description %} · {% endif %}{% endif %}
-                {% if item.anchor %}<a class="link-quiet" href="#{{ item.anchor }}">{{ item.description }}</a>{% endif %}
-                {% if item.travelers.all %}<span class="text-zinc-500"> · For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
-              </span>
-              {% if item.url %}<a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking ↗</a>{% endif %}
-              {% for f in item.files.all %}<a class="link-quiet font-medium" href="{% url 'trips:confirmation_file' trip.pk f.pk %}" target="_blank" rel="noopener" title="{{ f.size_display }}">📎 {{ f.original_name }}</a>{% endfor %}
-              {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23confirmation-{{ item.pk }}">Edit</a>{% endif %}
-              {% if item.notes %}<p class="w-full text-zinc-500">{{ item.notes|linebreaksbr }}</p>{% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endfor %}
-    {% endif %}
+    {% include "trips/partials/_confirmation_groups.html" %}
 
     {% if open_tasks %}
       <h3 class="grid-label mt-8 flex items-baseline justify-between gap-3" id="still-to-book">Still to book <a class="link-quiet text-xs font-medium normal-case" href="{% url 'trips:trip_todo' trip.pk %}" data-all-todos>All to-dos</a></h3>
@@ -279,14 +259,7 @@
     {% if not_booked %}
       {# Derived, never stored (booking_tasks.not_booked): bookable items with no confirmation and no task. #}
       <h3 class="grid-label mt-8" id="not-booked">Not booked yet</h3>
-      <ul class="card divide-y divide-zinc-100 p-0 text-sm">
-        {% for nb in not_booked %}
-          <li class="flex flex-wrap items-center gap-3 px-4 py-2">
-            <span class="badge badge-mode">{{ nb.what }}</span>
-            <a class="link-quiet font-medium" href="#{{ nb.anchor }}">{{ nb.label }}</a> <span class="text-zinc-500">{{ nb.when|date:"M j" }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+      {% include "trips/partials/_not_booked.html" %}
     {% endif %}
 
     {% if trip.contacts.all %}

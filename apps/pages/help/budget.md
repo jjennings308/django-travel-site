@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-26
+updated: 2026-10-27
 
 # The budget and splitting costs
 
@@ -23,7 +23,7 @@ Costs are split equally. If a cost doesn't divide exactly, the odd cents go to w
 
 Every **Currency** on a trip (costs, stays, journeys, activities, confirmations and a decision's options) offers a short list: the trip's **home currency** first, then the local currency of the place involved, such as EUR for a hotel in Munich, or both ends of a flight from Pittsburgh to Frankfurt. Something new starts on the local currency when there's only one, otherwise on the home currency. For anything else, pick **Other…** and type the three-letter code, such as CHF.
 
-The home currency is set on **Edit trip** under The trip. A new trip starts with the currency in your Settings.
+The home currency is set on the trip's **Settings** under The trip. A new trip starts with the currency in your Settings.
 
 ## Who owes whom
 

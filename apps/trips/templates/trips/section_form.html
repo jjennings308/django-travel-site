@@ -6,7 +6,7 @@
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a>
   </nav>
 

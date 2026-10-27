@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`); P5 done (2026-10-27, branch `p5-split`). P6 done (2026-10-27, branch `p6-ideas`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`); P5 done (2026-10-27, branch `p5-split`). P6 done (2026-10-27, branch `p6-ideas`). P7 done (2026-10-27, branch `p7-settings`); the plan is complete. Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -263,6 +263,15 @@ booklet or calendar.
 - Help: `options-and-votes` (ideas) or a new `ideas-and-goals` guide; the bucket-list guide; bump `updated`.
 
 ### P7 — Trip-wide views read-only; Edit trip becomes Settings
+
+Done (branch `p7-settings`). As built: Bookings (`trips:trip_bookings`) is one page holding the confirmations, Not
+booked yet and "Getting around & stays" (every journey and stay, moved from Edit trip), so there's no separate Getting
+around page; items open on the trip page through `?item=<anchor>` (the panel opens it, the hash opens its day) from
+Bookings, To do, the map page's lists and the calendar feed; Budget's lines are costs, not trip items, and the booklet
+has no links, so neither changed; to-dos keep their own pages. Settings keeps the Days table (Edit / Delete a day, Add
+a day, Set the route); a date change goes to a "Fit the days" page (days to add ticked, days outside ticked only when
+empty) rather than asking inline. The day page's Add to this day starts with the one-line + Add. Settings is pinned at
+19 queries (23 with All stays & legs).
 
 - **To do** (`trip_todo`) lists, in order: open option groups ("Decide: Afternoon on Day 4"), not-booked items,
   then hand-written to-dos. **Bookings** (Reference's confirmations), **Getting around**, **Costs** (Budget),

@@ -3,7 +3,7 @@ summary: Add a day, fill in its details, then add travel, stays, things to do, m
 audience: editors
 section: Trips
 order: 20
-updated: 2026-10-26
+updated: 2026-10-27
 
 # How to add a day to your trip
 
@@ -11,7 +11,7 @@ A guide for trip editors.
 
 ## Before you start
 
-You need **editor** access to the trip. If you can see a trip but have no **Edit trip** button at the top of its page, ask the trip's owner to make you an editor.
+You need **editor** access to the trip. If you can see a trip but have no **Settings** button at the top of its page, ask the trip's owner to make you an editor.
 
 A day is one date of the trip. Everything that happens on that date hangs off it: train and flight legs, activities, meals, notes and tips. You add the day first, then fill it in.
 
@@ -26,12 +26,12 @@ Have these ready:
 It takes five steps; the day is saved at step 5.
 
 1. Open **Trips** in the left menu and click your trip.
-2. Click **Edit trip** at the top of the trip page.
+2. Click **Settings** at the top of the trip page.
 3. Scroll down to the **Days** section, below the trip's main form.
 4. Click **Add a day**. The "Add a day to …" page opens.
 5. Fill in the fields (next section) and click **Add day**.
 
-You land back on Edit trip with a green "Added day N" message, and the new day appears in the Days table.
+You land back on Settings with a green "Added day N" message, and the new day appears in the Days table.
 
 ## Fill in the day's details
 
@@ -70,7 +70,7 @@ Trips made before notes have phases, callouts and free text instead. They still 
 
 ## Add from the day page
 
-A new day can also be filled from its **day page**. To get there, either click the day's **Edit** link in the Days table on Edit trip, or open the day on the trip page and click **Edit this day**.
+A new day can also be filled from its **day page**. To get there, either click the day's **Edit** link in the Days table on Settings, or open the day on the trip page and click **Edit this day**.
 
 At the top of the day page, **Add to this day** has a button for each kind of thing:
 
@@ -115,10 +115,10 @@ Open the trip page. Your day appears in two places:
 | Problem | Fix |
 | --- | --- |
 | "Day N already exists on this trip." | Pick an unused day number. Each day of a trip needs its own number. |
-| No **Edit trip** button | You have view-only access. Ask the trip's owner to make you an editor. |
+| No **Settings** button | You have view-only access. Ask the trip's owner to make you an editor. |
 | The city you want isn't found | It isn't in the catalogue yet: click **Add “…” as a new city** in the box, or leave the city blank. |
 | A train or flight shows on the wrong day | Edit the leg and correct its date. A leg appears on the day whose date matches its departure. |
-| Need to change a day | Edit trip → Days → **Edit**, change the fields, then click **Save day**. |
-| Need to remove a day | On **Edit trip**, in the Days table, click the day's **Delete** link and confirm. This permanently removes the day with its meals and sections; booking tasks that pointed at it are kept. |
+| Need to change a day | Settings → Days → **Edit**, change the fields, then click **Save day**. |
+| Need to remove a day | On **Settings**, in the Days table, click the day's **Delete** link and confirm. This permanently removes the day with its meals and sections; booking tasks that pointed at it are kept. |
 
 Tip: add a **Note** with a heading for each part of the day first (Morning, Afternoon, Evening). Then add the legs, activities and meals with times, so the timeline and the write-up line up.

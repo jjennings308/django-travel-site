@@ -3,7 +3,7 @@ summary: Add confirmation numbers, tickets and booking documents to journeys, st
 audience: editors
 section: Bookings & contacts
 order: 10
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Bookings and confirmations
 
@@ -52,7 +52,7 @@ Each train or flight shows its stage:
 
 ## Insurance and passes
 
-A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On **Edit trip**, under **Loose confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
+A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On the trip's **Settings**, under **Loose confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
 
 ## What's still to book
 
@@ -65,9 +65,13 @@ When you add the first confirmation to something that has open tasks, the site a
 
 ## The To do page
 
-**To do** lists every task on the trip: open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg") and a decision shows its options. Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
+**To do** (at the top of the trip page) lists what's left, in order: choices still to make (**Decide:** …), then **Not booked yet**, then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg") and a decision shows its options. Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
 
 Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**), **Options** and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
+
+## The Bookings page
+
+**Bookings**, at the top of the trip page, is the trip's bookings in one place, for everyone who can see the trip: the confirmations (grouped as in Reference), **Not booked yet**, and **Getting around & stays**, every journey and stay in date order with its day and confirmation numbers (a journey or stay whose date is outside the trip's days is flagged). Nothing is changed on it: click a line and it opens on the trip page, beside the days, where editors change it. The same goes for the lines on **To do**, the map page and the [calendar feed](/help/calendar-feed/).
 
 ## To-dos from catalogue notes
 

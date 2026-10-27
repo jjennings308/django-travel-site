@@ -83,7 +83,8 @@ class Command(BaseCommand):
         today = timezone.localdate()
         pages = [
             ("trip page", reverse("trips:trip_detail", args=[trip.pk])),
-            ("edit trip", reverse("trips:trip_edit", args=[trip.pk])),
+            ("settings", reverse("trips:trip_settings", args=[trip.pk])),
+            ("bookings", reverse("trips:trip_bookings", args=[trip.pk])),
             ("booklet (HTML only)", ("pdf-html", reverse("trips:trip_pdf", args=[trip.pk]))),
             ("booklet (PDF)", reverse("trips:trip_pdf", args=[trip.pk])),
             ("calendar feed (build)", ("feed", None)),

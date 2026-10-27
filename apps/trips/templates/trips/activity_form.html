@@ -7,7 +7,7 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
     <span>{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</span>
   </nav>
