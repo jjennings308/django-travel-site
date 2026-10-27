@@ -122,11 +122,13 @@ def in_one_currency(expenses, target, rates):
     return {"total": _money(sum(_cents(r.amount) for r in rows)), "rows": rows, "used": used, "missing": missing}
 
 
-def estimate(trip, target):
+def estimate(trip, target, extra=()):
     """Estimated trip cost in ``target`` from the trip page's prefetch: confirmations' ``cost`` and
     activities' ``est_cost`` (a blank currency counts as ``target``). Queries rates only when
     something is in another currency. Returns None when nothing has a cost."""
     costs = [(c.cost, c.currency or target, "booking") for c in trip.confirmations.all() if c.cost is not None]
+    # Chosen options' own estimates (day-first plan P4: an option that is only a title and a cost).
+    costs += [(amount, currency or target, "option") for amount, currency in extra if amount is not None]
     for day in trip.days.all():
         for activity in getattr(day, "ordered_activities", []):
             if activity.est_cost is not None:

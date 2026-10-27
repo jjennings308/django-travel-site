@@ -1,5 +1,6 @@
-"""Turn a trip's phases, callouts and free text into notes, as the trip's review page would with every
-section ticked (day-first plan P3, apps/trips/day_first.py).
+"""Turn a trip's phases, callouts and free text into notes (P3), and its choose-your-adventure sections and
+decision to-dos into "choose one" groups (P4), as the trip's review page would with everything ticked
+(day-first plan, apps/trips/day_first.py).
 
     .venv/bin/python manage.py convert_day_first --trip 36            # dry run: prints the plan
     .venv/bin/python manage.py convert_day_first --trip 36 --apply
@@ -13,7 +14,7 @@ from apps.trips.models import Trip
 
 
 class Command(BaseCommand):
-    help = "Turn a trip's phases, callouts and free text into notes (dry run unless --apply)."
+    help = "Turn a trip's phases, callouts and free text into notes, and its choices into option groups (dry run unless --apply)."
 
     def add_arguments(self, parser):
         parser.add_argument("--trip", type=int, required=True, help="The trip's id.")
@@ -37,4 +38,4 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Dry run: nothing saved. Add --apply to convert."))
             return
         count = day_first.apply(trip)
-        self.stdout.write(self.style.SUCCESS(f"Turned {count} sections into notes."))
+        self.stdout.write(self.style.SUCCESS(f"Converted {count}."))

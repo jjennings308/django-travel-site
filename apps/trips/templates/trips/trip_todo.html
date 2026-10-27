@@ -15,6 +15,14 @@ The trip's to-dos (trips:trip_todo, edit-by-day plan E2): open ones by priority 
     {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}
   </div>
   <p class="mb-4 text-sm text-zinc-500">Things still to book or decide for this trip, most urgent first. One that's about a journey, stay or activity also shows on it.</p>
+  {% if open_groups %}
+    {# Undecided "choose one" groups on the days (day-first plan P4): decided on the day itself. #}
+    <ul class="card mb-4 divide-y divide-zinc-100 p-0 text-sm" data-open-groups>
+      {% for group in open_groups %}
+        <li class="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5"><span class="font-medium">Decide: <a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}#group-{{ group.pk }}">{{ group.prompt }}</a></span><span class="text-zinc-500">Day {{ group.day.day_number }}{% if group.day.date %} · {{ group.day.date|date:"D M j" }}{% endif %} · {{ group.options.all|join:" / " }}</span></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
   {% if open_tasks %}
     <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-open-tasks>
       {% for task in open_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}

@@ -589,7 +589,7 @@ that matter most:
   all-day, stays check-in → check-out; descriptions carry operator, service number and **confirmation
   numbers** (James's decision) and a link to `trip_detail#<anchor>`; stable UIDs `leg-<pk>@sharebucketlist.com`.
   `mine`: activity travellers else the day's; legs/meals by the day's; blank = everyone; stays always.
-  10 queries per fetch (`test_calendar.FeedTests.test_fixed_query_count`). Never public.
+  12 queries per fetch with the undecided groups and their options (P4; `test_calendar.FeedTests.test_fixed_query_count`). Never public.
 - **Photos:** each trip has one shared album (`Trip.album`, a `media_app.MediaAlbum`, made on first upload by `Trip.add_photos`; trips 0017; the first photo is the cover). `trips:trip_photos` (`/trips/<pk>/photos/`, linked from the trip header): anyone who can see the trip sees them, `comment` capability adds, the uploader or an editor removes (`Trip.remove_photo` moves the cover on), editors pick the cover. Photos are `Media` attached to the trip, privacy private; never in the public view; a separate page so the detail query count holds. My adventures shows the album cover. The multi-photo upload field (`MultipleImageField`, `MAX_PHOTOS`) lives in `apps.media_app.forms`.
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
@@ -706,10 +706,10 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
   day / leg / stay / activity / confirmation pickers to the trip.
-- **The detail page** holds a fixed query count (32 here — N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
+- **The detail page** holds a fixed query count (35 here — P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
-  one is the tasks' options — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
+  one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
   so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
@@ -796,6 +796,39 @@ that matter most:
   reads a note as what it replaced (`tidying._tidy_type`: a toned one-paragraph note as a callout, a heading-only one as a
   phase, else free text) and applies to it (`_callout_text`, paragraphs for "text" / "summary"). The booklet snapshot's
   fixture converts its phase, callout and free text: only the phase's highlights changed, from a list to "• " lines.
+- **"Choose one" groups and votes** (day-first plan P4; trips 0049, which depends on accounts 0019): `OptionGroup`
+  (trip, day — a stay group on its first night —, `prompt`, `notes`, `start_time` (places it in the timeline), `order`,
+  `state` open / picked / split, `decided_by` / `decided_at`; `pick(option, user)` / `reopen()`, and an open group's
+  `save()` clears its chosen option), `Option` (group, title, notes, url, `est_cost` + currency, order, `chosen` — one
+  per group, `option_one_chosen` —, `travelers` for P5) and `Vote` (user + option, `vote_once_per_option`). Every leg,
+  stay, trip activity, meal and section has an optional `option` FK (SET_NULL: deleting a group leaves its items on the
+  day). **What counts:** an item outside any option or in a chosen one (`options.counts`; `models.counts_q()` as a
+  filter). `apps/trips/options.py` `attach(trip, days, viewer)` (3 queries: groups, options, votes with users) runs first
+  in `_trip_page_context` and `trip_pdf` and takes the other items out of the prefetched lists (`trip.transport` /
+  `lodging` caches, `day.ordered_*`), so the timeline, Not booked yet, the estimate, the day summary and everything after
+  see only what counts; it gives each option `items`, `vote_count`, `voters`, `voted`, `cost` (option + activities +
+  legs, in their currency when one, else home via `budget.rates_for`) and `duration`, each day `open_groups` /
+  `picked_groups`, and chosen items `chosen_from`. `count_on_days` adds an open group to the day's ⚠; the banner's
+  "N decisions" = open decision tasks + open groups (links to the first group). The calendar feed, the map, the public
+  view and `audit_public_leak` filter with `counts_q`; the feed adds one all-day "Undecided: A / B" per open group (12
+  queries now). The trip page pin is 35 (groups, options, votes; an option mixing currencies adds the two rate queries
+  once); the estimate adds chosen options' own `est_cost`. **Page:** `partials/_option_group.html` (a box: options, their
+  items through the usual rows, cost, time, 👍 for `comment`, Pick for editors; timed groups sit in `itinerary.timeline`
+  as kind "group", others after it as `day.untimed_groups`) and `_picked_group.html` ("Chosen from: … — X", Considered,
+  Reopen). **Views:** `trips:option_vote` (POST toggle, `comment`, 204 for fetch), `option_pick` / `group_reopen`
+  (editors), `group_new` / `group_edit` (`/trips/<pk>/days/<day_pk>/choices/new/`, `/trips/<pk>/choices/<id>/`:
+  `OptionGroupForm` + `OptionFormSet`, then per option its items and a one-line add into it — `quick_add` with `option=`)
+  / `group_delete`; `+ Add`'s **Options** button and the day page's **+ Choose one** make a group. Items join an option
+  from their own form's **In option** (`forms.InOptionMixin`: the options of its day's groups; the field is dropped when
+  the day has none, so pages that had no groups keep their query counts; the meal page uses `MealPageForm`, the day's
+  Meals formset doesn't). `OptionGroup` is in `changes.TRACKED` ("choice": prompt, decision, time); undoing a pick
+  reopens, undoing a reopen isn't offered. The To do page lists open groups first; new to-dos can't be "decide" (an
+  existing decision keeps its kind and options page). **Booklet:** an open group prints "Prompt — undecided" with each
+  option and its items; a picked one prints "Prompt: chosen (cost — notes)" and its items with the day's. **Converting**
+  (`day_first`, the same review page, now keyed `section-<id>` / `task-<id>`): choose-your-adventure sections → groups
+  (prompt, summary → notes, options with description + duration · cost as notes; comments and contacts move to the
+  day; one with a confirmation is left alone and says so) and open decision to-dos with options → groups on the task's
+  day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the choice …".
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
   editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
   plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
@@ -831,7 +864,8 @@ that matter most:
   `TidyDismissal` (the suggestion's stable key). `manage.py tidy_trip --trip <pk> [--apply]`: dry run
   lists everything; `--apply` applies only high-confidence kinds 1–2, never phones, notes, tables or
   slips. No detection runs on the trip page.
-- **Decisions are tasks with options** (trip-page UX plan, U6; trips 0032): `BookingTask.kind` is
+- **Decisions are tasks with options** (trip-page UX plan, U6; trips 0032; superseded by "choose one" groups in day-first
+  P4 — new to-dos can't be decisions and the review page converts old ones): `BookingTask.kind` is
   `book` (default) or `decide`; a decision's `TaskOption`s (title, detail, url, est_cost + currency,
   order; at most one `chosen` per task — partial unique index `taskoption_one_chosen`) are edited on
   `trips:task_options` (`/trips/<pk>/tasks/<id>/options/`, editors; saving options makes a task a
@@ -1275,7 +1309,8 @@ builder; trip-wide pages become read-only views and Edit trip becomes Settings).
 Phases P1–P7, one branch each, in order. Status: P1 (city search box and new cities, `trip_cities.sync`, the route
 builder and strip) done on branch `p1-cities`; P2 (the item panel, `trips:day_fragment`, `trips:item_panel`, the meal's
 own page) done on branch `p2-item-panel`; P3 (+ Add, notes, converting phases / callouts / free text) done on branch
-`p3-quick-add`.
+`p3-quick-add`; P4 ("choose one" groups, options and votes; converting choose-your-adventure sections and decision
+to-dos) done on branch `p4-option-groups`.
 
 ### Rules carried over from the itinerary project
 

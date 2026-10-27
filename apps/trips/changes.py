@@ -25,8 +25,8 @@ from django.utils import dateformat, timezone
 from apps.core.current import get_user
 
 from .models import (
-    BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, Section, TransportLeg,
-    Trip, TripActivity, TripChange, TripGrant, item_label,
+    BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, OptionGroup, Section,
+    TransportLeg, Trip, TripActivity, TripChange, TripGrant, item_label,
 )
 
 URGENT_DAYS = 7
@@ -102,6 +102,12 @@ TRACKED = {
         ("date", "date", lambda o: _date(o.date)),
         ("city_id", "city", _city),
         ("theme", "theme", lambda o: _text(o.theme)),
+    ]),
+    # A "choose one" (day-first plan P4): picking and reopening are recorded; undoing a pick reopens it.
+    OptionGroup: ("choice", lambda o: f"“{o.prompt}” on Day {_day_number(o.day_id)}", lambda o: o.trip_id, [
+        ("prompt", "question", lambda o: _text(o.prompt)),
+        ("state", "decision", lambda o: o.summary()),
+        ("start_time", "time", lambda o: _time(o.start_time)),
     ]),
     Confirmation: ("confirmation", lambda o: f"confirmation {o.confirmation_number}", lambda o: o.trip_id, [
         ("confirmation_number", "number", lambda o: _text(o.confirmation_number)),
@@ -365,6 +371,8 @@ def can_undo(change, latest):
     if latest.get((change.item_type, change.item_id)) != change.pk or not change.before:
         return False
     if change.kind == TripChange.Kind.CHANGED:
+        if change.item_type == "optiongroup" and change.before.get("before", {}).get("state", "open") != "open":
+            return False  # undoing a reopen would need the pick again: pick it on the day
         return "after" in change.before and change.item_type in MODELS
     if change.kind == TripChange.Kind.REMOVED:
         return "object" in change.before and MODELS.get(change.item_type) in RESTORABLE
@@ -383,9 +391,13 @@ def undo(change):
     for attname, value in change.before["after"].items():
         if fields[attname].to_python(value) != getattr(item, attname):
             raise CannotUndo("It has been edited since, so undoing could lose that edit.")
+    if isinstance(item, OptionGroup) and change.before["before"].get("state", "open") != "open":
+        raise CannotUndo("Pick it again on its day.")
     for attname, value in change.before["before"].items():
         setattr(item, attname, fields[attname].to_python(value))
-    item.save()
+    if isinstance(item, OptionGroup) and item.state == OptionGroup.State.OPEN:
+        item.decided_by, item.decided_at = None, None
+    item.save()  # an open group's save clears its chosen option
     return item
 
 

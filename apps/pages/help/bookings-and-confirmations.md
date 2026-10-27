@@ -75,6 +75,8 @@ When a place's note says to book ahead, such as Arches' timed entry 3 months ahe
 
 ## Decisions with options
 
+Choosing between options is now a **choice** on a day, which everyone can vote on and an editor picks ([choices, options and votes](/help/options-and-votes/)); new to-dos are bookings. The To do page lists undecided choices at the top. A decision to-do from before still works as below, and **Needs attention** offers to convert it into a choice.
+
 Some tasks are a choice, such as which hotel to book. Make the task a decision by giving it options:
 
 1. In Reference, under the task, click **Add options** (or **Options (n)** once it has some).

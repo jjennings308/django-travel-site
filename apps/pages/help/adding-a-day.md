@@ -60,7 +60,7 @@ The quickest way: open the day on the trip page and type one line in **+ Add to 
 | Tour of the salt mine 10am | **Do**: an activity at 10 AM. "Tickets …", "Museum …", "Visit …", or anything with a time. |
 | Bring euros for the tents | **Note**: anything else becomes a note on the day. |
 
-The words don't need to be exact, and nothing is guessed that you didn't type. If it guesses wrong, use a button instead of Enter: **Travel**, **Stay**, **Do**, **Eat** or **Note** makes that kind whatever the words say. Without JavaScript, the new item opens on its own page.
+The words don't need to be exact, and nothing is guessed that you didn't type. If it guesses wrong, use a button instead of Enter: **Travel**, **Stay**, **Do**, **Eat** or **Note** makes that kind whatever the words say. **Options** starts a choice ("Afternoon") to put options in and vote on ([choices, options and votes](/help/options-and-votes/)). Without JavaScript, the new item opens on its own page.
 
 ## Notes
 

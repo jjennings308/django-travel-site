@@ -51,6 +51,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
       {% if day.travel_total %}<p class="card-kicker mb-1">Travel: {{ day.travel_total }}</p>{% endif %}
       {% for entry in day.timeline %}
         {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time=entry.label %}
+        {% elif entry.kind == "group" %}{% include "trips/partials/_option_group.html" with group=entry.item %}
         {% elif entry.kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=entry.item time=entry.label %}
         {% else %}{% include "trips/partials/_meal_row.html" with meal=entry.item time=entry.label %}{% endif %}
       {% endfor %}
@@ -63,6 +64,10 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
       {% endif %}
     </div>
   {% endif %}
+
+  {# "Choose one" groups (P4): undecided ones without a time, then the decided ones' "Chosen from" line. #}
+  {% for group in day.untimed_groups %}{% include "trips/partials/_option_group.html" %}{% endfor %}
+  {% for group in day.picked_groups %}{% include "trips/partials/_picked_group.html" %}{% endfor %}
 
   {% for section in day.ordered_sections %}
     {% include "trips/partials/_section.html" %}
