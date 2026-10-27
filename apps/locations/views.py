@@ -14,7 +14,10 @@ from apps.media_app.models import Media
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import BreadcrumbPatterns
 
-from .forms import CityForm, POIForm, RegionForm
+from apps.core.ratelimit import limit
+
+from . import city_search as city_search_module
+from .forms import CityForm, NewCityForm, POIForm, RegionForm
 from .seo import place_meta
 
 
@@ -611,6 +614,75 @@ def city_add(request):
     }
     
     return render(request, 'locations/city_add.html', context)
+
+
+@limit("city_search", 120, 60, methods=("GET",))
+def city_search(request):
+    """JSON for the type-to-search city box (day-first plan, P1): up to 10 cities matching ``q``,
+    best first (``city_search.search``), optionally in one ``country`` (ISO code or id)."""
+    found = city_search_module.search(request.GET.get("q", "")[:100], request.user,
+                                      country=request.GET.get("country", "").strip()[:10] or None)
+    return JsonResponse({"results": [city_search_module.as_json(city) for city in found]})
+
+
+@login_required
+def country_options(request):
+    """Approved countries, for the box's "Add a new city" form."""
+    countries = Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by("name")
+    return JsonResponse({"countries": [{"id": c.pk, "name": c.name, "flag": c.flag} for c in countries]})
+
+
+def _wants_json(request):
+    return request.headers.get("X-Requested-With") == "fetch" or "json" in request.headers.get("Accept", "")
+
+
+def _new_city_coordinates(name, region, country):
+    from apps.core.geocoding import geocode
+    found = geocode(", ".join(part for part in (name, region.name if region else "", country.name) if part))
+    if found:
+        return found
+    if country.latitude is not None and country.longitude is not None:
+        return country.latitude, country.longitude
+    return 0, 0
+
+
+@login_required
+@limit("city_new", 20, 3600)
+def city_new(request):
+    """Add a city that isn't in the catalogue yet, from the city search box (or this page without
+    JavaScript): pending, the submitter's to use at once, in the approval queue for staff. A city
+    the member can already see under that name is returned instead of a second one."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    next_url = request.POST.get("next") or request.GET.get("next") or ""
+    if not url_has_allowed_host_and_scheme(next_url, {request.get_host()}, request.is_secure()):
+        next_url = ""
+    form = NewCityForm(request.POST or None, initial={"name": request.GET.get("name", "")})
+    if request.method == "POST":
+        if not form.is_valid():
+            if _wants_json(request):
+                return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        else:
+            name, country, region = (form.cleaned_data[k] for k in ("name", "country", "region"))
+            city = (city_search_module.visible_cities(request.user)
+                    .filter(name__iexact=name, country=country, region=region).first())
+            if city is None:
+                if City.objects.filter(name__iexact=name, country=country, region=region).exists():
+                    form.add_error("name", "That city has already been suggested and is waiting for review.")
+                    if _wants_json(request):
+                        return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+                else:
+                    latitude, longitude = _new_city_coordinates(name, region, country)
+                    city = City.objects.create(name=name, country=country, region=region, latitude=latitude,
+                                               longitude=longitude, submitted_by=request.user,
+                                               approval_status=ApprovalStatus.PENDING)
+                    city.submit_for_review(request.user)
+            if city is not None:
+                city = City.objects.select_related("region", "country").get(pk=city.pk)
+                if _wants_json(request):
+                    return JsonResponse({"city": city_search_module.as_json(city)})
+                messages.success(request, f"Added {city}. You can use it now; staff will review it.")
+                return redirect(next_url or reverse("locations:city_detail", args=[city.slug]))
+    return render(request, "locations/city_new.html", {"form": form, "next": next_url})
 
 
 # ============================================================================

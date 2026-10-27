@@ -69,7 +69,7 @@ would mean two places to fix the next time a field is added.
         <h2 class="form-section-title">Days</h2>
         <p class="form-section-lede">A day owns its meals and sections, so each one is saved on its own page.</p>
       </div>
-      <a class="btn-quiet" href="{% url 'trips:day_create' trip.pk %}">Add a day</a>
+      <p class="flex flex-wrap gap-2"><a class="btn-quiet" href="{% url 'trips:trip_route' trip.pk %}" data-route-link>Set the route</a><a class="btn-quiet" href="{% url 'trips:day_create' trip.pk %}">Add a day</a></p>
     </div>
 
     {% if days %}

@@ -23,6 +23,9 @@ urlpatterns = [
     # Cities
     path('cities/', views.city_list, name='city_list'),
     path('cities/add/', views.city_add, name='city_add'),
+    path('cities/search.json', views.city_search, name='city_search'),
+    path('cities/new/', views.city_new, name='city_new'),
+    path('countries.json', views.country_options, name='country_options'),
     path('cities/<slug:slug>/', views.city_detail, name='city_detail'),
     path('cities/<slug:slug>/edit/', views.city_edit, name='city_edit'),
     

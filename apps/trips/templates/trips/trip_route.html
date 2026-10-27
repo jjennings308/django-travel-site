@@ -1,0 +1,69 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+The route builder (trips:trip_route, day-first plan P1; apps/trips/route.py): city + nights rows in order. Preview lists what saving would do; Save sets the days' cities and, if ticked, adds planned legs and placeholder stays, in one transaction.
+{% endcomment %}
+{% block title %}Route — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Route</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">The route</h1>
+      <p class="page-subtitle">Where you'll be, in order, and for how many nights. Saving gives each day its city from {{ trip.start_date|date:"M j" }}; the travel day between two cities belongs to the next one.</p>
+    </div>
+    <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="starting-a-trip" anchor="the-route" label="the route" text="How this works" %}<a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a></p>
+  </div>
+
+  <form method="post" id="route-form">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    {% for error in formset.non_form_errors %}<p class="callout-warning mb-2">{{ error }}</p>{% endfor %}
+    <ol class="card space-y-3" data-route-rows>
+      {% for form in formset %}
+        <li class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div class="min-w-0"><label for="{{ form.city.id_for_label }}">Stop {{ forloop.counter }}</label>{{ form.city }}{{ form.city.errors }}</div>
+          <div><label for="{{ form.nights.id_for_label }}">Nights</label>{{ form.nights }}{{ form.nights.errors }}</div>
+        </li>
+      {% endfor %}
+    </ol>
+    <p class="mt-2 text-xs text-zinc-500">Need more stops? Preview, and three more rows appear. Clear a stop's city to drop it.</p>
+
+    <fieldset class="card mt-4 space-y-2 text-sm">
+      <legend class="card-kicker">When saving</legend>
+      <label class="flex items-center gap-2"><input type="checkbox" name="legs"{% if options.legs %} checked{% endif %}> Add a planned leg on each travel day (no times yet; skipped where there's one already)</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="stays"{% if options.stays %} checked{% endif %}> Add a stay to book in each city (“Stay in Munich”; skipped where a stay covers those nights)</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="replace"{% if options.replace %} checked{% endif %}> Replace days that already have a different city</label>
+      {% if route.route_nights > route.trip_nights or options.extend %}<label class="flex items-center gap-2"><input type="checkbox" name="extend"{% if options.extend %} checked{% endif %}> Extend the trip to fit the route</label>{% endif %}
+    </fieldset>
+
+    {% if route %}
+      <section class="card mt-4 text-sm" id="route-preview" data-route-preview>
+        <h2 class="section-title mb-2">If you save</h2>
+        {% if not route.stops %}<p>No stops yet: pick a city and its nights.</p>{% else %}
+          <p class="font-medium">{{ route.summary }}</p>
+          <p class="mt-1 text-zinc-600">{{ route.route_nights }} night{{ route.route_nights|pluralize }} on the route; the trip has {{ route.trip_nights }}.</p>
+          {% if route.cut %}<p class="callout-warning mt-2" data-route-mismatch>The route is longer than the trip: it stops at {{ trip.end_date|date:"D M j" }}. Tick “Extend the trip” to add the days.</p>{% endif %}
+          {% if route.new_end %}<p class="callout-info mt-2" data-route-mismatch>The trip will end on {{ route.new_end|date:"D M j, Y" }} instead of {{ trip.end_date|date:"D M j" }}.</p>{% endif %}
+          {% if route.blank_from %}<p class="callout-warning mt-2" data-route-mismatch>The route is shorter than the trip: from {{ route.blank_from|date:"D M j" }} on, days are left without a city.</p>{% endif %}
+          {% if route.days_set %}<p class="mt-2">Days given their city: {% for date, day, city in route.days_set %}{{ date|date:"M j" }} {{ city.name }}{% if not day %} (new day){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+          {% if route.conflicts %}
+            <p class="mt-2 font-medium">Already set to another city{% if not options.replace %} (kept unless you tick Replace){% endif %}:</p>
+            <ul class="list-disc pl-5" data-route-conflicts>{% for date, day, current, city in route.conflicts %}<li>Day {{ day.day_number }} · {{ date|date:"M j" }}: {{ current.name }} — the route says {{ city.name }}</li>{% endfor %}</ul>
+          {% endif %}
+          {% if route.legs %}<p class="mt-2">Travel days: {% for date, a, b, there in route.legs %}{{ date|date:"M j" }} {{ a.name }} → {{ b.name }}{% if there %} (already a leg){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+          {% if route.stays %}<p class="mt-2">Stays: {% for city, check_in, check_out, covered in route.stays %}{{ city.name }} {{ check_in|date:"M j" }}–{{ check_out|date:"M j" }}{% if covered %} (already: {{ covered.name }}){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <div class="mt-4 flex flex-wrap gap-3">
+      <button type="submit" name="preview" class="btn-quiet">Preview</button>
+      {% if route and route.stops %}<button type="submit" name="save" class="btn" data-route-save>Save the route</button>{% endif %}
+      <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

@@ -20,6 +20,7 @@ urlpatterns = [
     path("new/", views.trip_create, name="trip_create"),
     path("<int:pk>/", views.trip_detail, name="trip_detail"),
     path("<int:pk>/edit/", views.trip_edit, name="trip_edit"),
+    path("<int:pk>/route/", views.trip_route, name="trip_route"),
     path("<int:pk>/delete/", views.trip_delete, name="trip_delete"),
     path("<int:pk>/share/", views.trip_share, name="trip_share"),
     path("<int:pk>/notify/", views.trip_notify, name="trip_notify"),

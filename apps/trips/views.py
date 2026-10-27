@@ -48,7 +48,7 @@ from .forms import (
     TripForm,
     section_payload_form,
 )
-from . import budget, checklists, itinerary, trip_notes
+from . import budget, checklists, itinerary, route, trip_cities, trip_notes
 from .models import (
     TripExpense,
     BookingTask,
@@ -478,6 +478,7 @@ def trip_detail(request, pk):
             "trip": trip,
             "days": days,
             "open_day_pk": opened.pk if opened else None,
+            "route_runs": route.runs(days),
             "stray_legs": stray_legs,
             "stray_stays": stray_stays,
             "open_tasks": open_tasks,
@@ -696,6 +697,45 @@ def trip_create(request):
 
 
 @login_required
+def trip_route(request, pk):
+    """The route builder (day-first plan, P1; ``apps/trips/route.py``): rows of city + nights, in
+    order, starting from the days' cities. Preview shows what saving would do (days to fill, days kept
+    because they already have another city, legs, stays, a route that doesn't add up); Save does it in
+    one transaction under one history line. Editors only."""
+    from . import route as route_module
+    from .forms import RouteFormSet
+    trip = _readable_trip(request, pk, "edit")
+    days = list(trip.days.select_related("city"))
+    options = {"replace": False, "legs": True, "stays": True, "extend": False}
+    route = None
+    if request.method == "POST":
+        formset = RouteFormSet(request.POST, form_kwargs={"trip": trip})
+        options = {name: request.POST.get(name) == "on" for name in options}
+        if formset.is_valid():
+            stops = [(row["city"], row["nights"]) for row in formset.cleaned_data if row.get("city")]
+            route = route_module.plan(trip, stops, days, list(trip.transport.all()), list(trip.lodging.all()),
+                                      extend=options["extend"])
+            if "save" in request.POST and stops:
+                counts = route_module.apply(trip, route, replace=options["replace"], make_legs=options["legs"],
+                                            make_stays=options["stays"])
+                parts = [f"{counts['days'] + counts['new_days']} day{'s' if counts['days'] + counts['new_days'] != 1 else ''}"]
+                if counts["legs"]:
+                    parts.append(f"{counts['legs']} planned leg{'s' if counts['legs'] != 1 else ''}")
+                if counts["stays"]:
+                    parts.append(f"{counts['stays']} stay{'s' if counts['stays'] != 1 else ''} to book")
+                messages.success(request, f"Route set: {route.summary}. Saved {', '.join(parts)}.")
+                return redirect(reverse("trips:trip_detail", args=[trip.pk]) + "#days")
+            # Preview: the same rows again, with room for more stops.
+            formset = RouteFormSet(initial=[{"city": c, "nights": n} for c, n in stops],
+                                   form_kwargs={"trip": trip})
+    else:
+        formset = RouteFormSet(initial=route_module.initial_stops(days, trip.end_date), form_kwargs={"trip": trip})
+    return render(request, "trips/trip_route.html", {
+        "trip": trip, "formset": formset, "route": route, "options": options,
+    })
+
+
+@login_required
 def trip_edit(request, pk):
     """Change what belongs to the whole trip (edit-by-day plan, E3): name, dates, status, cities,
     notes and travellers, plus the days table and the trip-wide lists. Stays, legs, to-dos and
@@ -710,6 +750,7 @@ def trip_edit(request, pk):
             # commit=True, so the travelers m2m is saved with it — save_m2m() only exists on a
             # commit=False form.
             form.save()
+            trip_cities.sync(trip)
             _add_new_traveler(trip, traveler_form)
         messages.success(request, f"Saved “{trip.name}”.")
         _warn_if_ready_with_open_tasks(request, trip)
@@ -936,6 +977,7 @@ def day_edit(request, trip_pk, pk):
             with transaction.atomic():
                 form.save()
                 meal_formset.save()
+                trip_cities.sync(trip)  # a meal's catalogue place brings its city (P1)
             messages.success(request, f"Saved day {day.day_number}.")
             return redirect(_day_back(request, trip, day))
 
@@ -1853,10 +1895,10 @@ def leg_quick_add(request, pk, day_pk):
     if data.get("section"):
         section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.TRAVEL),
                                     pk=data["section"])
-    trip_cities = list(trip.cities.all())
+    own_cities = list(trip.cities.all())
     catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
-    origin_city = match_city(data["origin"], trip_cities) or match_city(data["origin"], catalogue)
-    destination_city = match_city(data["destination"], trip_cities) or match_city(data["destination"], catalogue)
+    origin_city = match_city(data["origin"], own_cities) or match_city(data["origin"], catalogue)
+    destination_city = match_city(data["destination"], own_cities) or match_city(data["destination"], catalogue)
     last = trip.transport.filter(date=day.date).aggregate(m=Max("order"))["m"]
     from . import currencies
     leg = TransportLeg.objects.create(
@@ -1867,9 +1909,7 @@ def leg_quick_add(request, pk, day_pk):
         origin_timezone=getattr(origin_city, "timezone", "") or "",
         destination_timezone=getattr(destination_city, "timezone", "") or "",
         est_duration=data["est_duration"], notes=data["notes"], order=(last or 0) + 1)
-    for city in (origin_city, destination_city):
-        if city is not None:
-            trip.cities.add(city)
+    trip_cities.sync(trip)
     messages.success(request, f"Added {leg.origin} → {leg.destination} (planned).")
     return redirect(back)
 

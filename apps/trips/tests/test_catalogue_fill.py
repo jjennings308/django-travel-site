@@ -71,7 +71,8 @@ class LegZoneTests(Fixture):
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:leg_edit", args=[self.trip.pk, leg.pk])).content.decode()
         self.assertIn(f'value="{self.frankfurt.pk}" data-tz="Europe/Berlin"', html)
-        self.assertIn('select[name="\' + pair[0] + \'"]', html)  # the fill script
+        self.assertIn("city.dataset.tz", html)  # the fill script
+        self.assertIn('"timezone": "Europe/Berlin"', html)  # the search box's chips and picks carry the zone
         self.assertIn("Filled in from the city", html)
 
 
