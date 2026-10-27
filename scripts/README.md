@@ -65,18 +65,46 @@ dev database nor production is touched. It ends with `OK` or `RESTORE CHECK FAIL
 Restore the dump with `pg_restore --clean --if-exists --no-owner -d travel_site`, copy the
 day's `files/` back with `rsync`, then restart the app.
 
-## Monthly country check (production cron)
+## Scheduled jobs and their emails
+
+**Rule:** anything a script or scheduled job needs to tell James goes to the addresses in `DJANGO_ADMINS` (the same
+`.env` value that receives web error emails) — never a crontab `MAILTO`, never another address setting
+(script-emails plan M1).
+
+- **Cron lines** go through `scripts/run_job.sh NAME [--report-on N] -- command …`: it keeps each run's output in
+  `~/logs/sbl-jobs/NAME/` (60 days), stays quiet on exit 0 and emails DJANGO_ADMINS on any other exit ("NAME failed
+  (exit N)" with the output's last 30 lines).
+- **The shell scripts** (`backup_prod.sh`, `sync_dev_from_prod.sh`, `sync_staging_from_prod.sh`) email through
+  `fail()` in `lib/sbl_common.sh` when they fail: the failure line and the log's last 30 lines. The systemd timers
+  (`deploy/backup/`, `deploy/dev/`) need nothing else. `sbl_notify` sends through the clone's `manage.py
+  notify_admins` when it has a `.venv`; otherwise (the backup machine) with `sendmail -t` and `DJANGO_ADMINS` /
+  `SERVER_EMAIL` from that clone's `.env`. `bash scripts/backup_prod.sh --check` says which way it will mail.
+- **Test the mail** from the app folder: `echo hello | .venv/bin/python manage.py notify_admins --subject test`
+  (on production add `DJANGO_SETTINGS_MODULE=config.settings.prod`).
+
+James's crontab on production (tazcomputer), replacing the old lines and any `MAILTO` (keep your own times if they
+differ):
+
+```
+DJANGO_SETTINGS_MODULE=config.settings.prod
+10 2 * * * bash /var/www/travel_site/scripts/run_job.sh recount_visitors -- .venv/bin/python manage.py recount_visitors
+40 7 * * * bash /var/www/travel_site/scripts/run_job.sh send_trip_digests -- .venv/bin/python manage.py send_trip_digests
+20 3 * * * bash /var/www/travel_site/scripts/run_job.sh purge_deleted_accounts -- .venv/bin/python manage.py purge_deleted_accounts
+30 17 * * 1-5 bash /var/www/travel_site/scripts/run_job.sh fetch_rates -- .venv/bin/python manage.py fetch_rates
+17 6 1 * * bash /var/www/travel_site/scripts/run_job.sh check_countries -- .venv/bin/python manage.py check_countries --email
+15 5 * * * bash /var/www/travel_site/scripts/run_job.sh sync_staging -- bash /var/www/travel_site_staging/scripts/sync_staging_from_prod.sh
+```
+
+The first line gives every job — and the report `run_job.sh` sends when one fails — production's settings (the
+staging sync sets staging's itself for its own steps).
+`run_job.sh` runs the command from `/var/www/travel_site`, so `.venv/bin/python manage.py` is the app's.
+
+## Monthly country check
 
 `manage.py check_countries` compares our countries with REST Countries (name, ISO-3 code, currency code and name,
 calling code, continent) and prints where they differ, then exits 1; nothing differing exits 0, and an API problem
 (including a missing `RESTCOUNTRIES_API_KEY` in `.env`) exits 2. It stores nothing — their terms allow keeping their
-data three days at most — so read the mail and edit a country by hand (or by CSV import) if you agree. Three API
-requests a run (the free plan allows 1,000 a month). On production, in James's crontab, with `MAILTO` set so cron
-mails the output:
-
-```
-MAILTO=you@example.com
-17 6 1 * * cd /var/www/travel_site && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py check_countries
-```
-
-`--country ZW` checks one country (one request).
+data three days at most — so read the report and edit a country by hand (or by CSV import) if you agree. Three API
+requests a run (the free plan allows 1,000 a month). With `--email` (the crontab line above) it emails the differences
+to DJANGO_ADMINS itself and exits 0, so `run_job.sh` mails only an API failure. `--country ZW` checks one country
+(one request).

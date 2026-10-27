@@ -3,7 +3,7 @@
     .venv/bin/python manage.py check_countries                # every country (three API requests)
     .venv/bin/python manage.py check_countries --country ZW   # one (one request)
 
-Monthly on production (cron mails the output; ``scripts/README.md``). For each of our countries with an
+Monthly on production with ``--email`` (``scripts/README.md``). For each of our countries with an
 ``iso_code`` it compares ``name`` (their common, official or alternate name), ``iso3_code``, ``currency_code`` (ours
 one of theirs; the others are noted), ``currency_name`` (that currency's name), ``phone_code`` (one of their calling
 codes, ignoring "+", spaces and dashes) and ``continent`` (one of theirs), all ignoring case and extra spaces, and
@@ -11,7 +11,9 @@ prints one line per difference ("ZW currency_code: ours ZWL, theirs ZWG"). Then 
 — one line, as information — the codes they have that we don't (territories mostly).
 
 Exit 0 when nothing differs, 1 when something does (a difference, or one of ours they don't know), 2 when the API
-couldn't be read or the key is missing. Stores nothing: their terms allow keeping their data for at most three
+couldn't be read or the key is missing. ``--email`` (the monthly cron, through ``scripts/run_job.sh``) also emails the
+differences to ``DJANGO_ADMINS`` (``core.job_mail``; script-emails plan M1) and then exits 0, so the wrapper doesn't
+mail them a second time; an API error still exits 2, which the wrapper reports. Stores nothing: their terms allow keeping their data for at most three
 days, so it stays in memory for the run; James edits a country by hand (or by CSV import) if he agrees.
 """
 import sys
@@ -36,8 +38,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--country", help="One country's two-letter code.")
+        parser.add_argument("--email", action="store_true",
+                            help="Also email the differences to DJANGO_ADMINS (then exit 0).")
 
-    def handle(self, *args, country=None, **options):
+    def handle(self, *args, country=None, email=False, **options):
         try:
             theirs = restcountries.fetch(getattr(settings, "RESTCOUNTRIES_API_KEY", ""), alpha_2=country)
         except restcountries.ApiError as error:
@@ -55,21 +59,27 @@ class Command(BaseCommand):
                 unknown.append(f"{code} {row.name}")
                 continue
             lines += [f"{code} {line}" for line in self._differences(row, other, notes)]
-        self.stdout.write(f"Compared {ours.count()} of our countries with REST Countries.")
-        for line in lines:
-            self.stdout.write(line)
+        report = [f"Compared {ours.count()} of our countries with REST Countries.", *lines]
         if unknown:
-            self.stdout.write(f"Ours they don't know ({len(unknown)}): {', '.join(unknown)}")
+            report.append(f"Ours they don't know ({len(unknown)}): {', '.join(unknown)}")
         if notes:
-            self.stdout.write("Notes:")
-            for note in notes:
-                self.stdout.write(f"  {note}")
+            report += ["Notes:", *(f"  {note}" for note in notes)]
         if by_code and not country:
-            self.stdout.write(f"Theirs we don't have ({len(by_code)}): {', '.join(sorted(by_code))}")
+            report.append(f"Theirs we don't have ({len(by_code)}): {', '.join(sorted(by_code))}")
+        for line in report:
+            self.stdout.write(line)
         if not lines and not unknown:
             self.stdout.write(self.style.SUCCESS("No differences."))
             return
-        self.stdout.write(self.style.WARNING(f"{len(lines) + len(unknown)} to look at."))
+        count = len(lines) + len(unknown)
+        self.stdout.write(self.style.WARNING(f"{count} to look at."))
+        if email:
+            from apps.core import job_mail
+            sent = job_mail.report(f"check_countries: {count} to look at", "\n".join(
+                report + ["", "Edit a country by hand (or by CSV import) where you agree. Nothing was changed."]))
+            self.stdout.write("Emailed to DJANGO_ADMINS." if sent else "Not emailed (DJANGO_ADMINS empty or mail failed).")
+            if sent:
+                return
         sys.exit(1)
 
     @staticmethod

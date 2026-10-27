@@ -153,6 +153,15 @@ line, systemd timer or management command that needs to tell James something mai
 `DJANGO_ADMINS`) — never a new per-script address setting, never a crontab `MAILTO`. Plan and mechanism:
 `docs/plans/script-emails.md` (`apps/core/job_mail.report`, `manage.py notify_admins`, `sbl_notify` / `fail()` in
 `scripts/lib/sbl_common.sh`, `scripts/run_job.sh` for cron lines). Bodies carry no secrets or personal data.
+Built in M1: `job_mail.report(subject, body)` sends from `SERVER_EMAIL` to `ADMINS` with `[ShareBucketList job] `
+(not prod's error prefix), nothing while `ADMINS` is empty, never raises; `notify_admins --subject …` (body on stdin,
+exit 0 even when mail fails); `sbl_notify SUBJECT` (stdin) uses `$SBL_NOTIFY_APP` / `$APP`'s `manage.py` and `.venv`
+(settings `$SBL_NOTIFY_SETTINGS` / `$DJANGO_SETTINGS_MODULE`), else `sendmail -t` with that `.env`'s `DJANGO_ADMINS` /
+`SERVER_EMAIL`, else a log line; `sbl_notify_how` says which (`backup_prod.sh --check` shows it); `fail()` mails the
+failure and the log's last 30 lines; the staging sync reports through production's app and settings (staging's
+mail goes to the console). `run_job.sh NAME [--report-on N] -- cmd` logs to `~/logs/sbl-jobs/NAME/` (60 days), quiet on
+0, mails otherwise; `check_countries --email` mails its differences itself and exits 0. The crontab lines are in
+`scripts/README.md`; tests `apps.core.tests.test_job_mail` (a fake app / fake sendmail).
 
 **Visit statistics:** the shared box's self-hosted Umami (`analytics.tazcomputer.com`, cookieless) via
 `templates/partials/_analytics.html` in both bases. `ANALYTICS_SCRIPT_URL` / `ANALYTICS_WEBSITE_ID` are empty in
@@ -1471,7 +1480,7 @@ Complete.
 
 Plan: `docs/plans/script-emails.md` (every script and scheduled job reports to `DJANGO_ADMINS`: a job mailer, a
 `notify_admins` command for shell scripts, `fail()` mails, a `run_job.sh` wrapper for cron lines, no `MAILTO`).
-Rule set 2026-10-27. One phase, M1. Status: not started.
+Rule set 2026-10-27. One phase, M1. Status: M1 done on branch `m1-script-emails`. Complete.
 
 ### Rules carried over from the itinerary project
 

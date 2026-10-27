@@ -17,6 +17,9 @@ DUMP="$(mktemp --suffix=.dump)"
 trap 'rm -f "$DUMP"' EXIT
 # log, fail, envval
 APP="$STAGING_APP"
+# A failure is emailed to DJANGO_ADMINS through production's manage.py and settings: staging's mail only goes to the
+# console (script-emails plan M1).
+SBL_NOTIFY_APP="$PROD_APP" SBL_NOTIFY_SETTINGS=config.settings.prod
 . "$STAGING_APP/scripts/lib/sbl_common.sh"
 mkdir -p "$(dirname "$LOG")"
 
