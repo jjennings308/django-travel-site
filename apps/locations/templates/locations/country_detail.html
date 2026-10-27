@@ -11,7 +11,7 @@
 {% block content %}
 <div class="py-6">
     <!-- Header with Featured Media -->
-    <div class="sbl-card shadow-sm mb-6 overflow-hidden">
+    <div class="sbl-card shadow-sm mb-6 overflow-hidden relative">
         {% if country.featured_media %}
             <div class="relative" style="height: 400px;">
                 {% if country.featured_media.media_type == 'video' %}
@@ -41,7 +41,7 @@
         {% endif %}
         
         <!-- Status Badge -->
-        <span class="sbl-badge absolute top-0 right-0 m-4 text-base {% if country.approval_status == 'approved' %} sbl-badge-success {% elif country.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif country.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
+        <span class="sbl-badge absolute top-0 left-0 z-10 m-4 text-base shadow {% if country.approval_status == 'approved' %} sbl-badge-success {% elif country.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif country.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
             {{ country.get_approval_status_display }}
         </span>
     </div>
