@@ -11,9 +11,10 @@ replaces an edited event instead of adding a second:
 
 Descriptions carry the operator, service number and **confirmation numbers** (James, 2026-10-18:
 the link is private per person and can be reset), and a link to the item on the trip page.
-``mine=True`` keeps what the viewer is on: an activity's own travellers, else the day's; legs and
-meals go by the day's; blank means everyone; stays always show; a viewer with no traveller record
-sees everything. Loading is a fixed number of queries, whatever the trip's size.
+``mine=True`` keeps what the viewer is on: an activity's own travellers, else — for an item on a
+split group's track (day-first plan P5) — its option's travellers, else the day's (``options.on_it``);
+legs and meals go by their track, else the day's; blank means everyone; stays show unless they're on
+someone else's track; a viewer with no traveller record sees everything. Loading is a fixed number of queries, whatever the trip's size.
 """
 from datetime import datetime, timedelta, timezone as dt_timezone
 
@@ -24,8 +25,9 @@ from django.urls import reverse
 from apps.core.ical import DOMAIN, calendar, vevent
 
 from .itinerary import ACTIVITY_ICONS, MODE_ICONS
-from .models import (ConfirmationLink, Day, Lodging, Meal, OptionGroup, TransportLeg, Traveler, TripActivity,
-                     counts_q)
+from .models import (ConfirmationLink, Day, Lodging, Meal, Option, OptionGroup, TransportLeg, Traveler,
+                     TripActivity, counts_q)
+from .options import on_it
 
 REFRESH = timedelta(hours=4)
 
@@ -47,10 +49,16 @@ def load(trip):
     found = {}
     for link in ConfirmationLink.objects.filter(confirmation__trip=trip).select_related("confirmation"):
         found.setdefault((link.content_type_id, link.object_id), []).append(link.confirmation)
+    # Who takes each option of a split group (P5): its items are theirs.
+    tracks = {}
+    for row in Option.travelers.through.objects.filter(option__group__trip=trip,
+                                                       option__group__state=OptionGroup.State.SPLIT):
+        tracks.setdefault(row.option_id, []).append(row.traveler_id)
     types = ContentType.objects.get_for_models(TransportLeg, TripActivity, Meal, Lodging)  # cached after first use
     for model, items in ((TransportLeg, legs), (TripActivity, activities), (Meal, meals), (Lodging, stays)):
         for item in items:
             item.cal_confirmations = found.get((types[model].pk, item.pk), [])
+            item.track_ids = tracks.get(item.option_id, [])
     return days, legs, activities, meals, stays
 
 
@@ -62,11 +70,14 @@ def build(trip, viewer=None, mine=False):
     me = Traveler.objects.filter(user=viewer).values_list("pk", flat=True).first() if (mine and viewer) else None
 
     def mine_ok(travelers):
-        ids = {t.pk for t in travelers}
+        ids = {getattr(t, "pk", t) for t in travelers}
         return me is None or not ids or me in ids
 
     def day_travelers(day):
         return list(day.travelers.all()) if day else []
+
+    def on(item, day, own=()):
+        return mine_ok(on_it(own, item.track_ids, day_travelers(day)))
 
     trip_url = f"{settings.SITE_URL.rstrip('/')}{reverse('trips:trip_detail', args=[trip.pk])}"
     now = datetime.now(dt_timezone.utc)
@@ -79,7 +90,7 @@ def build(trip, viewer=None, mine=False):
         cal.add_component(vevent(uid, summary, start, end, location, "\n".join(description), now=now))
 
     for leg in legs:
-        if not mine_ok(day_travelers(by_date.get(leg.date))):
+        if not on(leg, by_date.get(leg.date)):
             continue
         icon = MODE_ICONS.get(leg.mode, "•")
         operator = " ".join(part for part in (leg.operator, leg.service_number) if part)
@@ -96,7 +107,7 @@ def build(trip, viewer=None, mine=False):
 
     for activity in activities:
         day = by_id.get(activity.day_id)
-        if day is None or not day.date or not mine_ok(list(activity.travelers.all()) or day_travelers(day)):
+        if day is None or not day.date or not on(activity, day, activity.travelers.all()):
             continue
         title = f"{ACTIVITY_ICONS.get(activity.kind, '•')} {activity.title}"
         place = activity.poi.name if activity.poi else activity.place_text
@@ -111,7 +122,7 @@ def build(trip, viewer=None, mine=False):
 
     for meal in meals:
         day = by_id.get(meal.day_id)
-        if day is None or not day.date or not mine_ok(day_travelers(day)):
+        if day is None or not day.date or not on(meal, day):
             continue
         start = datetime.combine(day.date, meal.reserved_time)
         lines = [meal.cuisine, *_numbers(meal.cal_confirmations)]
@@ -128,7 +139,7 @@ def build(trip, viewer=None, mine=False):
               [group.prompt], f"group-{group.pk}")
 
     for stay in stays:
-        if stay.check_out <= stay.check_in:
+        if stay.check_out <= stay.check_in or not mine_ok(stay.track_ids):
             continue
         address = " ".join((stay.address or "").split())
         event(f"stay-{stay.pk}", f"🏨 {stay.name}", stay.check_in, stay.check_out, address or stay.name,

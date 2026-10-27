@@ -588,8 +588,10 @@ that matter most:
   reserved meals as **floating** local times (+1 h without an end), planned legs and untimed activities
   all-day, stays check-in → check-out; descriptions carry operator, service number and **confirmation
   numbers** (James's decision) and a link to `trip_detail#<anchor>`; stable UIDs `leg-<pk>@sharebucketlist.com`.
-  `mine`: activity travellers else the day's; legs/meals by the day's; blank = everyone; stays always.
-  12 queries per fetch with the undecided groups and their options (P4; `test_calendar.FeedTests.test_fixed_query_count`). Never public.
+  `mine`: activity travellers, else (an item on a split group's track, day-first P5) its option's travellers, else the
+  day's (`options.on_it`); legs/meals by their track, else the day's; blank = everyone; stays always unless on another
+  person's track. 13 queries per fetch with the undecided groups and their options (P4) and who takes each split option
+  (P5; `test_calendar.FeedTests.test_fixed_query_count`). Never public.
 - **Photos:** each trip has one shared album (`Trip.album`, a `media_app.MediaAlbum`, made on first upload by `Trip.add_photos`; trips 0017; the first photo is the cover). `trips:trip_photos` (`/trips/<pk>/photos/`, linked from the trip header): anyone who can see the trip sees them, `comment` capability adds, the uploader or an editor removes (`Trip.remove_photo` moves the cover on), editors pick the cover. Photos are `Media` attached to the trip, privacy private; never in the public view; a separate page so the detail query count holds. My adventures shows the album cover. The multi-photo upload field (`MultipleImageField`, `MAX_PHOTOS`) lives in `apps.media_app.forms`.
 - **Leg times** are stored UTC with an IANA zone per endpoint; render with the model's
   `*_local_*` helpers or the `trip_time` filters (`|at_zone:`…), never `|date` after them.
@@ -706,7 +708,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
   day / leg / stay / activity / confirmation pickers to the trip.
-- **The detail page** holds a fixed query count (35 here — P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
+- **The detail page** holds a fixed query count (36 here — P5 who takes each option of a split; P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -800,7 +802,7 @@ that matter most:
   (trip, day — a stay group on its first night —, `prompt`, `notes`, `start_time` (places it in the timeline), `order`,
   `state` open / picked / split, `decided_by` / `decided_at`; `pick(option, user)` / `reopen()`, and an open group's
   `save()` clears its chosen option), `Option` (group, title, notes, url, `est_cost` + currency, order, `chosen` — one
-  per group, `option_one_chosen` —, `travelers` for P5) and `Vote` (user + option, `vote_once_per_option`). Every leg,
+  per group, `option_one_chosen` —, `travelers` — who takes it in a split) and `Vote` (user + option, `vote_once_per_option`). Every leg,
   stay, trip activity, meal and section has an optional `option` FK (SET_NULL: deleting a group leaves its items on the
   day). **What counts:** an item outside any option or in a chosen one (`options.counts`; `models.counts_q()` as a
   filter). `apps/trips/options.py` `attach(trip, days, viewer)` (3 queries: groups, options, votes with users) runs first
@@ -810,9 +812,9 @@ that matter most:
   legs, in their currency when one, else home via `budget.rates_for`) and `duration`, each day `open_groups` /
   `picked_groups`, and chosen items `chosen_from`. `count_on_days` adds an open group to the day's ⚠; the banner's
   "N decisions" = open decision tasks + open groups (links to the first group). The calendar feed, the map, the public
-  view and `audit_public_leak` filter with `counts_q`; the feed adds one all-day "Undecided: A / B" per open group (12
-  queries now). The trip page pin is 35 (groups, options, votes; an option mixing currencies adds the two rate queries
-  once); the estimate adds chosen options' own `est_cost`. **Page:** `partials/_option_group.html` (a box: options, their
+  view and `audit_public_leak` filter with `counts_q`; the feed adds one all-day "Undecided: A / B" per open group. The
+  trip page pin is 36 (groups, options, the options' travellers (P5), votes; an option mixing currencies adds the two
+  rate queries once); the estimate adds chosen and split-taken options' own `est_cost`. **Page:** `partials/_option_group.html` (a box: options, their
   items through the usual rows, cost, time, 👍 for `comment`, Pick for editors; timed groups sit in `itinerary.timeline`
   as kind "group", others after it as `day.untimed_groups`) and `_picked_group.html` ("Chosen from: … — X", Considered,
   Reopen). **Views:** `trips:option_vote` (POST toggle, `comment`, 204 for fetch), `option_pick` / `group_reopen`
@@ -829,6 +831,23 @@ that matter most:
   (prompt, summary → notes, options with description + duration · cost as notes; comments and contacts move to the
   day; one with a confirmation is left alone and says so) and open decision to-dos with options → groups on the task's
   day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the choice …".
+- **Split** (day-first plan P5; no migration): `OptionGroup.split(tracks, user)` (option → travellers; state `split`,
+  nothing `chosen`) from `trips:group_split` (`/trips/<pk>/choices/<id>/split/`, editors; `forms.SplitForm`: a radio row
+  per person on `day.roster`, everyone placed once, at least two options taken — else "pick it instead"; prefilled, so
+  it also changes a split; linked as **Split** on an open box and the group page, **Change who goes** on a split one).
+  An option someone takes in a split counts (`options.taken`; `counts_q()` adds `group.state == split` with an `Exists`
+  on its travellers), so Not booked yet, the estimate and the map add every track. `options.attach` gives a split group
+  `tracks` (taken options, `who` "Debbie, John") and `considered`, files the tracks' items in `option.items` and marks
+  them `item.track`, moves a track's notes out of `day.ordered_sections`, and sets `day.split_groups`.
+  `itinerary.timeline` keeps tracked items out of the shared timeline / Any time / Food ideas and adds the group as one
+  entry (kind "split", at its `start_time` or its earliest item's; else `day.untimed_splits`); `itinerary.tracks(group)`
+  gives each track `track_timeline` / `track_any` / `track_food`. `attach_stays` shows a tracked stay in its track on
+  check-in and as `day.track_stays` ("Sleeping (Debbie, John): …") on other nights, never as `day.stay`. Page:
+  `partials/_split_group.html` (columns from `sm`, stacked on a phone). Booklet: `pdf.booklet_context` sets
+  `day.shared_legs` / `shared_activities` / `shared_meals` (tracked items out of the day's tables) and
+  `pdf/_track.html` prints each track — a two-column `.tracks` table for two, stacked `.option`s for more; the
+  snapshot fixture splits Day 4's afternoon between Ada and Bo. History: summary "split: Debbie → Castle; …"; undo
+  reopens.
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
   editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
   plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
@@ -1310,7 +1329,8 @@ Phases P1–P7, one branch each, in order. Status: P1 (city search box and new c
 builder and strip) done on branch `p1-cities`; P2 (the item panel, `trips:day_fragment`, `trips:item_panel`, the meal's
 own page) done on branch `p2-item-panel`; P3 (+ Add, notes, converting phases / callouts / free text) done on branch
 `p3-quick-add`; P4 ("choose one" groups, options and votes; converting choose-your-adventure sections and decision
-to-dos) done on branch `p4-option-groups`.
+to-dos) done on branch `p4-option-groups`; P5 (split: tracks per traveller on the page, in the calendar's "only mine"
+and in the booklet) done on branch `p5-split`.
 
 ### Rules carried over from the itinerary project
 

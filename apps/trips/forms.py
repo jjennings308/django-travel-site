@@ -2370,6 +2370,41 @@ class OptionForm(forms.ModelForm):
 OptionFormSet = inlineformset_factory(OptionGroup, Option, form=OptionForm, extra=2, can_delete=True)
 
 
+class SplitForm(forms.Form):
+    """Split a "choose one" between travellers (day-first plan P5): one radio row per person on the day
+    (``Day.roster``), each placed on exactly one option; at least two options must be taken (one
+    option for everyone is a pick). ``tracks()`` gives option → travellers for ``OptionGroup.split``."""
+
+    def __init__(self, *args, group, travelers, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.group, self.travelers = group, list(travelers)
+        self.options = list(group.options.all())
+        current = {t.pk: o.pk for o in self.options for t in o.travelers.all()}
+        choices = [(o.pk, o.title) for o in self.options]
+        for traveler in self.travelers:
+            self.fields[f"t{traveler.pk}"] = forms.TypedChoiceField(
+                label=traveler.name, choices=choices, coerce=int, widget=forms.RadioSelect,
+                initial=current.get(traveler.pk), error_messages={"required": f"Choose where {traveler.name} goes."})
+
+    def clean(self):
+        cleaned = super().clean()
+        if len(self.travelers) < 2:
+            raise forms.ValidationError("A split needs at least two people on the day.")
+        if not self.errors and len(set(cleaned.values())) < 2:
+            raise forms.ValidationError("Everyone is on one option: pick it instead of splitting.")
+        return cleaned
+
+    def tracks(self):
+        by_pk = {o.pk: o for o in self.options}
+        tracks = {}
+        for traveler in self.travelers:
+            tracks.setdefault(by_pk[self.cleaned_data[f"t{traveler.pk}"]], []).append(traveler)
+        return tracks
+
+    def rows(self):
+        return [(traveler, self[f"t{traveler.pk}"]) for traveler in self.travelers]
+
+
 
 
 class MealPageForm(InOptionMixin, MealForm):

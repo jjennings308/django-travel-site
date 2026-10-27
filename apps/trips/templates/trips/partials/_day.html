@@ -41,6 +41,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
   {% elif day.stay %}
     <div class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay.refs %}{% include "trips/partials/_refs.html" with refs=day.stay.refs %}{% endif %}</div>
   {% endif %}
+  {% for stay in day.track_stays %}<p class="stay-line">Sleeping ({{ stay.track.who }}): <a class="link-quiet font-medium" href="#stay-{{ stay.pk }}">{{ stay.name }}</a></p>{% endfor %}
 
   {% comment %}
     The day's timeline (U3, itinerary.timeline): legs, activities and reserved meals in local
@@ -52,6 +53,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
       {% for entry in day.timeline %}
         {% if entry.kind == "leg" %}{% include "trips/partials/_leg_row.html" with leg=entry.item compact=True time=entry.label %}
         {% elif entry.kind == "group" %}{% include "trips/partials/_option_group.html" with group=entry.item %}
+        {% elif entry.kind == "split" %}{% include "trips/partials/_split_group.html" with group=entry.item %}
         {% elif entry.kind == "activity" %}{% include "trips/partials/_activity_row.html" with activity=entry.item time=entry.label %}
         {% else %}{% include "trips/partials/_meal_row.html" with meal=entry.item time=entry.label %}{% endif %}
       {% endfor %}
@@ -65,8 +67,9 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
     </div>
   {% endif %}
 
-  {# "Choose one" groups (P4): undecided ones without a time, then the decided ones' "Chosen from" line. #}
+  {# "Choose one" groups (P4–P5): undecided ones and splits without a time, then the decided ones' "Chosen from" line. #}
   {% for group in day.untimed_groups %}{% include "trips/partials/_option_group.html" %}{% endfor %}
+  {% for group in day.untimed_splits %}{% include "trips/partials/_split_group.html" %}{% endfor %}
   {% for group in day.picked_groups %}{% include "trips/partials/_picked_group.html" %}{% endfor %}
 
   {% for section in day.ordered_sections %}

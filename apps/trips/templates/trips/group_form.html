@@ -15,7 +15,7 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
     <input type="hidden" name="next" value="{{ next }}">
     <h1 class="page-title mb-1">{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</h1>
     <p class="mb-4 text-zinc-500">Day {{ day.day_number }}{% if day.date %}, {{ day.date|date:"l, F j" }}{% endif %}. Options to choose between; everyone on the trip can 👍 them, and an editor picks one. Until then nothing in them counts: not in the timeline, the budget or the calendar. {% include "partials/_help_link.html" with slug="options-and-votes" label="options and votes" text="How this works" %}</p>
-    {% if group.pk %}<p class="mb-4"><span class="badge badge-mode">{{ group.get_state_display }}</span></p>{% endif %}
+    {% if group.pk %}<p class="mb-4"><span class="badge badge-mode">{{ group.get_state_display }}</span>{% if options|length > 1 %} <a class="link-quiet ml-2 text-sm font-medium" href="{% url 'trips:group_split' trip.pk group.pk %}?next={{ next|urlencode }}" data-split>{% if group.state == "split" %}Change who goes{% else %}Split between people{% endif %}</a>{% endif %}</p>{% endif %}
     {% include "trips/_form_fields.html" with form=form %}
     {{ formset.management_form }}
     {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}

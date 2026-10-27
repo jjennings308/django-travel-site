@@ -516,8 +516,10 @@ def _trip_page_context(request, trip):
         "not_booked": not_booked,
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
+        # An option's own estimate counts once chosen, and for every track of a split (P5).
         "cost_estimate": budget.estimate(trip, _reader_currency(request), extra=[
-            (g.chosen.est_cost, g.chosen.currency) for g in all_groups if g.chosen and g.chosen.est_cost is not None]),
+            (o.est_cost, o.currency) for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks
+            if o.est_cost is not None]),
         "checklist_attention": checklists.attention(trip, checklist_lists),
         "leg_modes": TransportLeg.Mode.choices,
         "trip_comments": comments.get(("trip", trip.pk), []),
@@ -2164,6 +2166,27 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
     return render(request, "trips/group_form.html", {
         "trip": trip, "day": day, "group": group, "form": form, "formset": formset, "next": back,
         "options": options})
+
+
+@login_required
+def group_split(request, pk, group_pk):
+    """Split a "choose one" between the day's travellers (editors; day-first plan P5): each person on
+    one option; every option someone takes counts, as a track of the day. Also changes a split."""
+    from .forms import SplitForm
+    from .models import OptionGroup
+    trip = _readable_trip(request, pk, "edit")
+    group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day")
+                              .prefetch_related("options__travelers"), pk=group_pk)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}")
+    travelers = list(group.day.roster.order_by("name"))
+    form = SplitForm(request.POST or None, group=group, travelers=travelers)
+    if request.method == "POST" and form.is_valid():
+        group.split(form.tracks(), request.user)
+        messages.success(request, f"Split {group.prompt}: " + "; ".join(
+            f"{', '.join(t.name for t in people)} → {option.title}" for option, people in form.tracks().items()) + ".")
+        return redirect(back)
+    return render(request, "trips/group_split.html", {"trip": trip, "group": group, "day": group.day, "form": form,
+                                                      "next": back})
 
 
 @login_required
