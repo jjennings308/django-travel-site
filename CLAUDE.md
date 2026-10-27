@@ -148,6 +148,12 @@ the static manifest resolves `css/dist/styles.css`, else 503 `unavailable` (reas
 never mailed); plain text, no login, `no-store`. `deploy.sh`'s live check requires it; James's uptime
 monitor watches it.
 
+**Emails from scripts and scheduled jobs go to `DJANGO_ADMINS`** (rule set by James 2026-10-27). Any script, cron
+line, systemd timer or management command that needs to tell James something mails Django's `ADMINS` (from
+`DJANGO_ADMINS`) — never a new per-script address setting, never a crontab `MAILTO`. Plan and mechanism:
+`docs/plans/script-emails.md` (`apps/core/job_mail.report`, `manage.py notify_admins`, `sbl_notify` / `fail()` in
+`scripts/lib/sbl_common.sh`, `scripts/run_job.sh` for cron lines). Bodies carry no secrets or personal data.
+
 **Visit statistics:** the shared box's self-hosted Umami (`analytics.tazcomputer.com`, cookieless) via
 `templates/partials/_analytics.html` in both bases. `ANALYTICS_SCRIPT_URL` / `ANALYTICS_WEBSITE_ID` are empty in
 `base.py` (dev and tests never count), filled in by `prod.py` and emptied again by `staging.py`. No SRI (our own
@@ -1448,13 +1454,6 @@ day and in the booklet) done on branch `t1-choice-kinds`; T2 (Pick makes the sta
 branch `t2-pick-makes-item`; T3 (ideas fit choices by kind, the map's Choices layer, catalogue notes under options) done on
 branch `t3-choices-ideas-map`. Complete.
 
-### Typed choices
-
-Plan: `docs/plans/typed-choices.md` (a "choose one" gets a kind — stay, eat, do, travel or any — so each option asks
-only for what's needed to compare, and Pick turns the chosen option into the real stay / meal / activity / journey;
-then ideas and map pins for options). Decisions 2026-10-27. Phases T1–T3, one branch each, in order. Status: not
-started.
-
 ### Country flags and check
 
 Plan: `docs/plans/country-flags.md` (every country's picture is its flag, from flag-icons rendered to PNGs in the repo
@@ -1467,6 +1466,12 @@ Plan: `docs/plans/country-flags.md` (each country's flag, from flag-icons, as it
 check that only reports). Decided 2026-10-27. Phases C1–C2, one branch each, in order. Status: C1 (flags as country
 pictures, `country_flags`) done on branch `c1-country-flags`; C2 (`check_countries`) done on branch `c2-check-countries`.
 Complete.
+
+### Script emails
+
+Plan: `docs/plans/script-emails.md` (every script and scheduled job reports to `DJANGO_ADMINS`: a job mailer, a
+`notify_admins` command for shell scripts, `fail()` mails, a `run_job.sh` wrapper for cron lines, no `MAILTO`).
+Rule set 2026-10-27. One phase, M1. Status: not started.
 
 ### Rules carried over from the itinerary project
 
