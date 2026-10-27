@@ -91,6 +91,50 @@ def fill(idea, item):
     item.save()
 
 
+def choice_kind(idea):
+    """The kind of choice an idea makes (typed-choices T3): its own kind, a note-like idea "Anything"."""
+    return idea.kind if idea.kind in ("stay", "eat", "do", "travel") else "any"
+
+
+def fits(idea, group):
+    """Whether an idea can be an option of ``group``: an "Anything" choice takes any idea, a typed one only an
+    idea of its kind."""
+    return group.kind in ("any", choice_kind(idea))
+
+
+def fill_option(idea, option):
+    """Copy an idea into an option of a typed choice (T3): its notes, and its catalogue link in the field the
+    choice's kind asks for — a stay its place or city, a meal its place, an activity its place, activity or
+    event, a journey its place's name as where to — else the place's name typed. Pick then makes the item
+    from it (T2). ``option`` is saved."""
+    from .models import OptionGroup
+    Kind = OptionGroup.Kind
+    poi, city = place_of(idea)
+    kind = option.group.kind
+    option.notes = option.notes or idea.notes
+    if kind == Kind.STAY:
+        if idea.poi_id:
+            option.poi = idea.poi
+        elif city is not None:
+            option.city = city
+    elif kind == Kind.EAT:
+        option.poi = poi
+        if poi is None and city is not None:
+            option.place_text = city.name
+    elif kind == Kind.DO:
+        if idea.event_id:
+            option.event = idea.event
+        elif idea.activity_id:
+            option.activity = idea.activity
+        elif idea.poi_id:
+            option.poi = idea.poi
+        elif city is not None:
+            option.place_text = city.name
+    elif kind == Kind.TRAVEL:
+        option.to_text = (poi.name if poi is not None else city.name if city is not None else "")[:120]
+    option.save()
+
+
 def _placed_counts(item):
     """Whether what an idea became counts (P4 / P5's rule)."""
     if isinstance(item, Option):

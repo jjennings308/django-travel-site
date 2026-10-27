@@ -49,7 +49,9 @@ The place's city joins the trip's cities. Delete the item later and the idea goe
 
 ## Making an idea an option
 
-When you haven't decided yet, choose **Option of "Afternoon" (Day 4)** for an undecided choice, or **New choice on Day 4**, and click **Add as an option**. The idea becomes an option travellers can vote on ([choices, options and votes](/help/options-and-votes/)); an idea linked to the catalogue also brings its item into the option. Delete the option, or the choice, and the idea goes back on the shelf.
+When you haven't decided yet, choose **Option of "Afternoon" (Day 4)** for an undecided choice, or **New choice on Day 4**, and click **Add as an option**. The idea becomes an option travellers can vote on ([choices, options and votes](/help/options-and-votes/)). Delete the option, or the choice, and the idea goes back on the shelf.
+
+Only choices the idea fits are listed: a choice about where to stay takes stay ideas, one about where to eat takes Food & drink places and eat ideas, and so on ([what a choice is about](/help/options-and-votes/#what-a-choice-is-about)); a choice about **Anything** takes any idea. A new choice made from an idea is about the same kind of thing. The idea's notes and catalogue link go into the option, so it shows its place and, when you pick it, becomes the stay, meal or activity there. On an **Anything** choice an idea linked to the catalogue brings its item into the option instead, as before.
 
 ## Bucket-list goals
 
@@ -65,7 +67,7 @@ When the trip is over, **Tick it off** offers the goals whose idea made it onto 
 
 ## On the map
 
-The trip's **Map** ([the top of the page](/help/reading-your-trip/#the-top-of-the-page)) has an **Ideas** switch, off at first: it shows ideas on the shelf that have a place as faint pins.
+The trip's **Map** ([the top of the page](/help/reading-your-trip/#the-top-of-the-page)) has an **Ideas** switch, off at first: it shows ideas on the shelf that have a place as faint pins. A **Choices** switch does the same for the options of undecided choices.
 
 ## Problems
 

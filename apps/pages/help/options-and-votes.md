@@ -16,7 +16,10 @@ An undecided choice is a box on its day, marked **Undecided**. If it has a time 
 - its title and notes, and a **More ↗** link if it has one;
 - what's in it: journeys, a stay, activities, meals or notes, shown as they would be on the day;
 - its estimated cost (the option's own estimate plus its activities' and journeys' costs; in their currency, or the trip's home currency when they mix) and how long it takes, when that's known;
-- **👍** and how many people voted for it, with their names.
+- **👍** and how many people voted for it, with their names;
+- when it's linked to a catalogue place, activity or event, **ⓘ N notes from the catalogue** ("Closed Mondays", "Book 3 months ahead"), folded: click to read them before you pick ([Good to know notes](/help/places-and-events/#good-to-know-notes)).
+
+On the trip's **Map**, the **Choices** switch (off at first) shows the options of undecided choices that have a place as faint pins, with their votes.
 
 An undecided choice adds one to the day's **⚠** and to **Needs attention** ("N decisions", which links to the first one). The [To do page](/help/bookings-and-confirmations/#the-to-do-page) lists every undecided choice at the top.
 
