@@ -7,7 +7,7 @@ One item's confirmations (trips:item_confirmations): a leg, stay, day's section 
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>Confirmations</span>
   </nav>
   <div class="page-header">

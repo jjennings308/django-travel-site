@@ -36,7 +36,7 @@ Fill in **The trip** and click **Create trip**:
 
 ## The route
 
-The quickest way to lay out a trip: on the trip page click **Set the route** (or **Edit route** next to the route at the top of the page, or **Set the route** under Days on Edit trip). Give each stop a city and its number of nights, in order: Munich 3, Salzburg 2, Vienna 4. Type part of a city's name to find it; the trip's own cities are offered before you type.
+The quickest way to lay out a trip: on the trip page click **Set the route** (or **Edit route** next to the route at the top of the page, or **Set the route** under Days on the trip's Settings). Give each stop a city and its number of nights, in order: Munich 3, Salzburg 2, Vienna 4. Type part of a city's name to find it; the trip's own cities are offered before you type.
 
 Click **Preview** to see what saving would do, then **Save the route**:
 
@@ -57,13 +57,15 @@ A city that isn't in the catalogue yet: type its name and click **Add “Hallsta
 
 ## What to do next
 
-On the trip page, click **Edit trip**, then:
-
-1. **Days**: set the route ([above](#the-route)), or click **Add a day** for each date ([adding a day](/help/adding-a-day/)).
-2. Open each day (its **Edit** link in the Days table) and use **Add to this day**: **+ Stay** for where you sleep ([stays](/help/adding-a-day/#stays)), **+ Leg** for trains, flights and drives ([travel legs](/help/travel-legs/)), and activities, meals and plans.
+1. **The days**: set the route ([above](#the-route)), or add a day for each date on **Settings** ([adding a day](/help/adding-a-day/)).
+2. On the trip page, use **+ Add** at the end of each open day: a stay for where you sleep ([stays](/help/adding-a-day/#stays)), trains, flights and drives ([travel legs](/help/travel-legs/)), activities, meals and notes. Click anything on a day to open it beside the page and change it.
 3. Add confirmation numbers on the thing they confirm, once it's booked ([bookings](/help/bookings-and-confirmations/)).
 
-Edit trip itself holds what belongs to the whole trip: its name, dates, status, cities, travellers, notes and **home currency** (the one you think in, offered first wherever a cost is entered; [currency choices](/help/budget/#currency-choices)), the days, and lists of everything else. **All stays & legs** shows every stay and journey in date order with an **Edit** link, and flags any whose date is outside the trip's days. **Loose confirmations** is for bookings that cover no single item, such as travel insurance.
+**Settings** (at the top of the trip page, for editors) holds what belongs to the whole trip: its name, dates, status, cities, travellers, notes and **home currency** (the one you think in, offered first wherever a cost is entered; [currency choices](/help/budget/#currency-choices)), the days table, **Loose confirmations** (bookings that cover no single item, such as travel insurance), **Contacts & info** and **Checklists**. Every stay and journey in date order is on **Bookings** ([the Bookings page](/help/bookings-and-confirmations/#the-bookings-page)).
+
+## Changing the dates
+
+Change **Start date** or **End date** on **Settings** and save. If the days no longer fit the new dates, the next page lists what to do: **Add a day for** each new date without one (ticked), and **Remove** each day now outside the dates (ticked only when nothing is on it; otherwise it says what would be deleted, such as "2 meals, 1 note"). Journeys and stays aren't deleted with a day. Click **Fit the days**: the days are then numbered again in date order. **Leave them as they are** changes nothing; a day you keep shows under its date, outside the trip's dates.
 
 To let others see or edit the trip, click **People** on the trip page and invite them ([inviting people](/help/sharing-and-access/#inviting-people)).
 

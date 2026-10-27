@@ -48,7 +48,7 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
         {% for leg in legs %}
           <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm">
             <span class="chip">{{ leg.get_mode_display }}</span>
-            <span class="font-medium">{{ leg.origin_city.name }} → {{ leg.destination_city.name }}</span>
+            <a class="link-quiet font-medium" href="{% url 'trips:trip_detail' trip.pk %}?item=leg-{{ leg.pk }}#leg-{{ leg.pk }}">{{ leg.origin_city.name }} → {{ leg.destination_city.name }}</a>
             {% if leg.operator or leg.service_number %}<span class="text-zinc-500">{{ leg.operator }} {{ leg.service_number }}</span>{% endif %}
             <span class="ml-auto text-zinc-500">{% if leg.is_planned %}{{ leg.date|date:"D, M j" }} · planned{% else %}{{ leg.departure_local_date }} {{ leg.departure_local_str }}{% endif %}</span>
           </li>
@@ -61,7 +61,7 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
         {% for stay in stays %}
           <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm">
             <i class="bi bi-house-door-fill text-violet-600"></i>
-            <span class="font-medium">{{ stay.name }}</span>
+            <a class="link-quiet font-medium" href="{% url 'trips:trip_detail' trip.pk %}?item=stay-{{ stay.pk }}#stay-{{ stay.pk }}">{{ stay.name }}</a>
             {% if stay.city %}<span class="text-zinc-500">{{ stay.city.name }}</span>{% endif %}
             {% if stay.latitude is None %}<span class="text-xs text-zinc-400" title="The address wasn't found; the pin sits on the city, or isn't shown without one">{% if stay.city %}pin on the city{% else %}not on the map{% endif %}</span>{% endif %}
             <span class="ml-auto text-zinc-500">{{ stay.check_in|date:"M j" }} – {{ stay.check_out|date:"M j" }}</span>
@@ -69,10 +69,10 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
         {% endfor %}
       </ul>
     {% endif %}
-    {% if not legs and can_edit %}<p class="note mt-4">Tip: give each transport leg a From and To city (Edit trip → Transport) to draw the actual trains, flights and drives between stops.</p>{% endif %}
+    {% if not legs and can_edit %}<p class="note mt-4">Tip: give each journey a From and To city (open it on the trip page) to draw the actual trains, flights and drives between stops.</p>{% endif %}
   {% else %}
     <div class="card mt-6 p-8 text-center text-zinc-500">
-      <p>No cities on this trip yet.{% if can_edit %} Add the cities you're visiting under <a class="link-quiet font-medium" href="{% url 'trips:trip_edit' trip.pk %}">Edit trip</a>, and give each day its city.{% endif %}</p>
+      <p>No cities on this trip yet.{% if can_edit %} <a class="link-quiet font-medium" href="{% url 'trips:trip_route' trip.pk %}">Set the route</a>, or add the cities you're visiting in <a class="link-quiet font-medium" href="{% url 'trips:trip_settings' trip.pk %}">Settings</a>.{% endif %}</p>
     </div>
   {% endif %}
 {% endblock %}

@@ -77,7 +77,7 @@ class FeedTests(CalendarFixture):
         description = str(event["DESCRIPTION"])
         self.assertIn("Lufthansa LH 401", description)
         self.assertIn("Confirmation: GCH7JS (Lufthansa)", description)
-        self.assertIn(f"https://example.test/trips/{self.trip.pk}/#leg-{self.flight.pk}", description)
+        self.assertIn(f"https://example.test/trips/{self.trip.pk}/?item=leg-{self.flight.pk}#leg-{self.flight.pk}", description)
 
     def test_activities_and_meals_are_floating_local_times(self):
         events = self.events(self.feed())

@@ -32,7 +32,7 @@
     {% csrf_token %}
     <div class="flex items-center gap-3">
       <button type="submit" class="btn-danger">Delete day</button>
-      <a class="btn-quiet" href="{% url 'trips:trip_edit' trip.pk %}">Cancel</a>
+      <a class="btn-quiet" href="{% url 'trips:trip_settings' trip.pk %}">Cancel</a>
     </div>
   </form>
 </div>

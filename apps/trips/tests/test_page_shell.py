@@ -60,7 +60,7 @@ class HeaderTests(Fixture):
         self.assertIn(delete, html)  # the editor created the trip
         self.assertIn(reverse("trips:trip_pdf", args=[self.trip.pk]), html)
         html = self.page(self.viewer).content.decode()
-        for link in (share, delete, reverse("trips:trip_edit", args=[self.trip.pk])):
+        for link in (share, delete, reverse("trips:trip_settings", args=[self.trip.pk])):
             self.assertNotIn(link, html)
         self.assertIn("data-trip-menu", html)  # Add to calendar is for everyone (R4)
         self.assertIn(reverse("trips:trip_calendar", args=[self.trip.pk]), html)

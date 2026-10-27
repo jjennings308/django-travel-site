@@ -459,6 +459,10 @@ def trip_detail(request, pk):
     return render(request, "trips/trip_detail.html", context)
 
 
+QUICK_ADD_KINDS = [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note"),
+                   ("options", "Options")]  # + Add's kind buttons (P3; Options, a "choose one", P4)
+
+
 def _trip_page_context(request, trip):
     """Everything the trip page shows, from the prefetched ``trip`` (``_trip_page_queryset``): also
     what one day's fragment (``day_fragment``) and an item's read-only panel (``item_panel``) render,
@@ -517,8 +521,7 @@ def _trip_page_context(request, trip):
         "decision_count": len(open_decisions) + len(open_groups),
         "option_groups": all_groups,
         # + Add's kind buttons (P3; Options, a "choose one", P4).
-        "quick_add_kinds": [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note"),
-                            ("options", "Options")],
+        "quick_add_kinds": QUICK_ADD_KINDS,
         "not_booked": not_booked,
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
@@ -852,11 +855,19 @@ def trip_route(request, pk):
 
 @login_required
 def trip_edit(request, pk):
-    """Change what belongs to the whole trip (edit-by-day plan, E3): name, dates, status, cities,
-    notes and travellers, plus the days table and the trip-wide lists. Stays, legs, to-dos and
-    their confirmations and contacts are added from the day or the item's own page; this page
-    lists every stay and leg with an Edit link, read-only."""
+    """The old Edit trip address: Settings now (day-first plan P7)."""
+    _readable_trip(request, pk, "edit")
+    return redirect("trips:trip_settings", pk=pk)
+
+
+@login_required
+def trip_settings(request, pk):
+    """The trip's settings (day-first plan P7; was Edit trip): name, dates, status, home currency,
+    cities, notes and travellers, plus the days table and the trip-wide lists (loose confirmations,
+    contacts & info, checklists). Everything on a day is added and edited from the trip page. When a
+    save moves the dates so the days no longer fit, the editor is offered the days to add or remove."""
     trip = _readable_trip(request, pk, "edit")
+    before = (trip.start_date, trip.end_date)
     form = TripForm(request.POST or None, instance=trip, user=request.user)
     traveler_form = AddTravelerForm(request.POST or None)
 
@@ -869,6 +880,11 @@ def trip_edit(request, pk):
             _add_new_traveler(trip, traveler_form)
         messages.success(request, f"Saved “{trip.name}”.")
         _warn_if_ready_with_open_tasks(request, trip)
+        if (trip.start_date, trip.end_date) != before:
+            from . import day_fit
+            found = day_fit.plan(trip)
+            if found["missing"] or found["outside"]:
+                return redirect("trips:trip_days_fit", pk=trip.pk)
         return redirect("trips:trip_detail", pk=trip.pk)
 
     from .forms import share_choices
@@ -887,13 +903,48 @@ def trip_edit(request, pk):
             "edit_contacts": trip.contacts.annotate(link_count=Count("item_links")),
             "edit_infos": trip.infos.annotate(link_count=Count("item_links")),
             "edit_checklists": trip.checklists.annotate(item_count=Count("items")),
-            **_edit_trip_stays_and_legs(trip),
+            "loose_confirmations": trip.confirmations.filter(links__isnull=True),
         },
     )
 
 
+@login_required
+def trip_days_fit(request, pk):
+    """Fit the days to the trip's dates (editors; P7): after Settings moves them, add days for the
+    new dates and remove ones now outside — each ticked or not; nothing changes until saved."""
+    from . import day_fit
+    trip = _readable_trip(request, pk, "edit")
+    found = day_fit.plan(trip)
+    settings_url = reverse("trips:trip_settings", args=[trip.pk])
+    if request.method == "POST":
+        add = []
+        for value in request.POST.getlist("add"):
+            try:
+                add.append(date.fromisoformat(value))
+            except ValueError:
+                pass
+        remove = [int(v) for v in request.POST.getlist("remove") if v.isdigit()]
+        made, removed = day_fit.apply(trip, add, remove)
+        if made or removed:
+            messages.success(request, " and ".join(part for part in (
+                f"added {made} day{'s' if made != 1 else ''}" if made else "",
+                f"removed {removed}" if removed else "") if part).capitalize() + ".")
+        return redirect(settings_url + "#days")
+    return render(request, "trips/trip_days_fit.html", {"trip": trip, **found, "settings_url": settings_url})
+
+
+@login_required
+def trip_bookings(request, pk):
+    """Bookings (day-first plan P7): the trip's confirmations, what isn't booked yet and every journey
+    and stay in date order, read-only; each line opens its item on the trip page (in the panel)."""
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    context = _trip_page_context(request, trip)
+    every = _edit_trip_stays_and_legs(Trip.objects.get(pk=trip.pk))
+    return render(request, "trips/trip_bookings.html", {**context, **every})
+
+
 def _edit_trip_stays_and_legs(trip):
-    """Edit trip's read-only "All stays & legs" (E3): every stay and leg in date order with its
+    """Bookings' read-only "All stays & legs" (E3, moved from Edit trip in P7): every stay and leg in date order with its
     confirmation numbers and its day, flagged when no day of the trip has its date; and the loose
     confirmations (insurance, a rail pass). A fixed handful of queries, whatever the trip's size."""
     from django.contrib.contenttypes.models import ContentType
@@ -910,13 +961,14 @@ def _edit_trip_stays_and_legs(trip):
             attached.setdefault((link.content_type_id, link.object_id), []).append(confirmation)
     rows = []
     for leg in trip.transport.all():
-        rows.append({"kind": "leg", "item": leg, "when": leg.date, "day": days_by_date.get(leg.date),
+        rows.append({"kind": "leg", "item": leg, "anchor": f"leg-{leg.pk}", "when": leg.date, "day": days_by_date.get(leg.date),
                      "what": leg.get_mode_display(), "label": f"{leg.origin} → {leg.destination}",
                      "detail": ("planned" + (f" · {leg.est_duration_str}" if leg.est_duration_str else ""))
                      if leg.is_planned else leg.departure_local_str,
                      "confirmations": attached.get((leg_type, leg.pk), [])})
     for stay in trip.lodging.all():
-        rows.append({"kind": "stay", "item": stay, "when": stay.check_in, "day": days_by_date.get(stay.check_in),
+        rows.append({"kind": "stay", "item": stay, "anchor": f"stay-{stay.pk}", "when": stay.check_in,
+                     "day": days_by_date.get(stay.check_in),
                      "what": "Stay", "label": stay.name,
                      "detail": f"{stay.nights} night{'s' if stay.nights != 1 else ''}",
                      "confirmations": attached.get((stay_type, stay.pk), [])})
@@ -1062,7 +1114,7 @@ def day_create(request, trip_pk):
             form.save_m2m()
             messages.success(request, f"Added day {day.day_number}.")
             return redirect(
-                reverse("trips:trip_edit", args=[trip.pk]) + f"#day-{day.pk}"
+                reverse("trips:trip_settings", args=[trip.pk]) + f"#day-{day.pk}"
             )
 
     return render(
@@ -1111,6 +1163,7 @@ def day_edit(request, trip_pk, pk):
             # template can say `st.value` rather than `st.0` — and so an empty
             # value can never reach `{% url %}` and fail to reverse.
             "section_types": _add_section_types(),
+            "quick_add_kinds": QUICK_ADD_KINDS,
             "is_create": False,
             "panel_comments": _target_comments(request.user, "day", day) if _is_panel(request) else None,
         },
@@ -1143,7 +1196,7 @@ def day_delete(request, trip_pk, pk):
             request,
             f"Deleted day {number}, along with its meals and sections.{note}",
         )
-        return redirect(reverse("trips:trip_edit", args=[trip.pk]))
+        return redirect(reverse("trips:trip_settings", args=[trip.pk]))
 
     return render(
         request,
@@ -2283,7 +2336,8 @@ def quick_add(request, pk, day_pk):
         in_option = get_object_or_404(Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"])
     text = " ".join(request.POST.get("text", "").split())[:300]
     kind = request.POST.get("kind", "")
-    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    # Back to the day on the trip page, or to ``next`` (the day page's own + Add, P7).
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
         from .models import OptionGroup
         group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
@@ -2509,9 +2563,10 @@ def _todo_url(trip):
 
 @login_required
 def trip_todo(request, pk):
-    """Every booking task and decision on the trip (anyone who can see it): open ones by priority
-    and due date, then the done ones folded away; each with what it's about and its options.
-    Editors add, edit and tick them off here."""
+    """What's left to do on the trip (anyone who can see it), in order (day-first plan P7): undecided
+    "choose one" groups, then what isn't booked yet, then the hand-written to-dos — open ones by
+    priority and due date, the done ones folded away. Editors add, edit and tick off to-dos here; the
+    rest open on the trip page."""
     from django.db.models import prefetch_related_objects
     from . import booking_tasks
     trip = _readable_trip(request, pk, "view")
@@ -2524,8 +2579,11 @@ def trip_todo(request, pk):
     from .models import OptionGroup
     open_groups = (OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN)
                    .select_related("day").prefetch_related("options").order_by("day__date", "start_time", "order"))
+    # Not booked yet (P7), worked out as on the trip page: only what counts, with its confirmations.
+    page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
+    not_booked = _trip_page_context(request, page_trip)["not_booked"]
     return render(request, "trips/trip_todo.html", {
-        "trip": trip, "can_edit": can_edit, "open_groups": open_groups,
+        "trip": trip, "can_edit": can_edit, "open_groups": open_groups, "not_booked": not_booked,
         "open_tasks": [t for t in tasks if not t.done], "done_tasks": [t for t in tasks if t.done],
     })
 
@@ -2692,7 +2750,7 @@ def item_links(request, pk, kind, item_pk):
     if item_trip_id(item) != trip.pk:
         raise Http404
     here = request.get_full_path()
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    back = _back(request, reverse("trips:trip_settings", args=[trip.pk]) + "#contacts-info")
     context = {"trip": trip, "item_label": item_label(item), "next": back}
     if request.method == "POST":
         action = request.POST.get("action")
@@ -2739,7 +2797,7 @@ def _source_edit(request, pk, form_class, model, source_pk, template, label):
     trip = _readable_trip(request, pk, "edit")
     instance = get_object_or_404(model.objects.filter(trip=trip), pk=source_pk) if source_pk else model(trip=trip)
     form = form_class(request.POST or None, instance=instance, trip=trip)
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    back = _back(request, reverse("trips:trip_settings", args=[trip.pk]) + "#contacts-info")
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             saved = form.save()
@@ -2753,7 +2811,7 @@ def _source_edit(request, pk, form_class, model, source_pk, template, label):
 def _source_delete(request, pk, model, source_pk, label):
     trip = _readable_trip(request, pk, "edit")
     obj = get_object_or_404(model.objects.filter(trip=trip), pk=source_pk)
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#contacts-info")
+    back = _back(request, reverse("trips:trip_settings", args=[trip.pk]) + "#contacts-info")
     if request.method == "POST":
         name = str(obj)
         obj.delete()  # its links go with it (GenericRelation); the items stay
@@ -2802,7 +2860,7 @@ def confirmation_edit(request, pk, confirmation_pk=None):
     if confirmation_pk is not None:
         confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
     form = ConfirmationEditForm(request.POST or None, instance=confirmation or Confirmation(trip=trip), trip=trip)
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#loose-confirmations")
+    back = _back(request, reverse("trips:trip_settings", args=[trip.pk]) + "#loose-confirmations")
     if request.method == "POST" and form.is_valid():
         saved = form.save()
         messages.success(request, f"Saved confirmation {saved.confirmation_number}.")
@@ -2857,7 +2915,7 @@ def item_confirmations(request, pk, kind, item_pk):
     if item_trip_id(item) != trip.pk:
         raise Http404
     here = request.get_full_path()
-    back = _back(request, reverse("trips:trip_edit", args=[trip.pk]) + "#stays-legs")
+    back = _back(request, reverse("trips:trip_bookings", args=[trip.pk]) + "#stays-legs")
     if request.method == "POST":
         before = booking_tasks.confirmed_items(trip)
         action = request.POST.get("action")

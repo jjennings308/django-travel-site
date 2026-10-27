@@ -70,14 +70,15 @@ class PerfReportTests(TestCase):
         out = StringIO()
         call_command("perf_report", trip=trip.pk, runs=1, stdout=out)
         report = out.getvalue()
-        for name in ("trip page", "edit trip", "booklet (HTML only)", "calendar feed", "search", "sitemap.xml"):
+        for name in ("trip page", "settings", "bookings", "booklet (HTML only)", "calendar feed", "search", "sitemap.xml"):
             self.assertIn(name, report)
         self.assertNotRegex(report, r"\s3\d\d\s")  # no redirect was timed
         self.assertEqual(get_user_model().objects.count(), users_before)  # rolled back
 
 
 class EditTripQueryTests(TestCase):
-    """Edit trip's query count doesn't grow with rows (R23); since E3 it lists stays and legs read-only."""
+    """Settings' (was Edit trip) query count doesn't grow with rows (R23); its stays and legs moved to
+    Bookings in day-first P7."""
 
     def setUp(self):
         self.editor = get_user_model().objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
@@ -99,13 +100,15 @@ class EditTripQueryTests(TestCase):
 
     def count(self):
         with CaptureQueriesContext(connection) as ctx:
-            response = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+            response = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk]))
         self.assertEqual(response.status_code, 200)
         return len(ctx.captured_queries)
 
     def test_fixed_query_count(self):
         self.count()  # warm Django's content-type cache, as test_detail's QueryCountTests does
         before = self.count()
-        self.assertEqual(before, 23)  # 60 before edit-by-day E3 took the formsets off the page
+        # 60 before edit-by-day E3 took the formsets off the page; 23 with All stays & legs, which moved
+        # to Bookings in P7 (19).
+        self.assertEqual(before, 19)
         self.add(6)
         self.assertEqual(self.count(), before)

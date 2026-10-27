@@ -114,7 +114,7 @@ class PageTests(ChecklistFixture):
 class EditTests(ChecklistFixture):
     def test_editors_make_and_edit_lists(self):
         self.client.force_login(self.ed)
-        edit_page = self.client.get(reverse("trips:trip_edit", args=[self.trip.pk]))
+        edit_page = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk]))
         self.assertContains(edit_page, "Start from a template")
         response = self.client.post(reverse("trips:checklist_new", args=[self.trip.pk]), {
             "title": "Packing", "kind": "packing",

@@ -634,7 +634,7 @@ class HeaderActionTests(DetailFixture):
 
     def actions(self):
         html = self.get().content.decode()
-        return (reverse("trips:trip_edit", args=[self.trip.pk]) in html,
+        return (reverse("trips:trip_settings", args=[self.trip.pk]) in html,
                 reverse("trips:trip_delete", args=[self.trip.pk]) in html)
 
     def test_viewer_and_commentor_get_neither(self):

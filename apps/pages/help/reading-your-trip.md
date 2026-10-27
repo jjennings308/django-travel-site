@@ -15,8 +15,9 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 
 | Button or link | What it does |
 | --- | --- |
-| **Edit trip** | Change the trip. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). |
+| **Settings** | The trip's name, dates, travellers, cities and trip-wide lists. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). Everything on a day is changed right on the trip page ([open an item](#open-an-item)). |
 | **Download PDF** | The printable booklet ([see below](#booklet)). |
+| **Bookings** · **To do** | Every confirmation, what isn't booked yet, and every journey and stay; and what's left to decide, book and do ([bookings](/help/bookings-and-confirmations/#the-bookings-page)). Click a line there to open it here, beside the page. |
 | **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
@@ -114,6 +115,6 @@ To put the site on your home screen, use your browser's **Add to Home Screen** (
 | --- | --- |
 | A day won't open from a link | Click the day's line to open it, or **Expand all**. |
 | A train shows on the wrong day | A journey appears on the day it leaves. Ask an editor to check its date. |
-| No **Edit trip** button | You can read the trip but not change it. See [sharing and access](/help/sharing-and-access/). |
+| No **Settings** button | You can read the trip but not change it. See [sharing and access](/help/sharing-and-access/). |
 | The trip page doesn't open without a signal | Open it once with a signal (or use **Save for offline**) on that device first. Private or incognito windows don't keep copies. |
 | **Download PDF** says the booklet can't be made yet | Use your browser's **Print** → **Save as PDF** for now, and tell us. |

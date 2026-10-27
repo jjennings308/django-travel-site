@@ -264,7 +264,7 @@ def plan_trip(request, pk):
                 trip.travelers.add(traveler)
             _attach(item, trip, request.user)
         messages.success(request, f"Started “{trip.name}”. Add flights, lodging and the rest here.")
-        return redirect("trips:trip_edit", pk=trip.pk)
+        return redirect("trips:trip_settings", pk=trip.pk)
     return render(request, "bucketlists/plan_trip.html", {
         "form": form, "item": item, "open_trips": _open_trips(request.user, item),
         "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"),

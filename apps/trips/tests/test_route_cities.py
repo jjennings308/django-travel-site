@@ -104,7 +104,7 @@ class SyncTests(Fixture):
         self.trip.cities.set([self.munich])
         for url in (reverse("trips:day_edit", args=[self.trip.pk, day.pk]),
                     reverse("trips:stay_new", args=[self.trip.pk, day.pk]),
-                    reverse("trips:trip_edit", args=[self.trip.pk])):
+                    reverse("trips:trip_settings", args=[self.trip.pk])):
             with self.subTest(url=url):
                 page = self.client.get(url)
                 self.assertContains(page, "data-city-search")

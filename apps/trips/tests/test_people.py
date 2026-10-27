@@ -88,7 +88,7 @@ class PageTests(PeopleFixture):
         self.client.force_login(self.vera)
         self.assertContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), self.url)
         self.client.force_login(self.ed)
-        self.assertContains(self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])), self.url)
+        self.assertContains(self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])), self.url)
 
 
 class RoleAndRemoveTests(PeopleFixture):

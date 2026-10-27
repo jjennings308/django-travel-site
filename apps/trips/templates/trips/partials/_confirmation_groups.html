@@ -1,0 +1,27 @@
+{% comment %}
+The trip's confirmations by kind (views.confirmation_groups), each once: Reference on the trip page and the Bookings page (P7). With elsewhere=True (Bookings) each item link opens it on the trip page, in the panel (?item=).
+{% endcomment %}
+    {% if confirmation_groups %}
+      {# Generated from the confirmations and what they cover (views.confirmation_groups), each once. #}
+      <h3 class="grid-label">Confirmations</h3>
+      {% for title, items in confirmation_groups %}
+        <p class="card-kicker mb-1 mt-3">{{ title }}</p>
+        <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+          {% for item in items %}
+            <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5 scroll-mt-32" id="confirmation-{{ item.pk }}">
+              <span class="font-mono text-base font-semibold tracking-wide text-zinc-900">{{ item.confirmation_number|default:"&mdash;" }}</span>
+              {% if item.provider %}<span class="text-zinc-700">{{ item.provider }}</span>{% endif %}
+              <span class="min-w-0 flex-1 text-zinc-600">
+                {% if item.label %}{{ item.label }}{% if item.description %} · {% endif %}{% endif %}
+                {% if item.anchor %}<a class="link-quiet" href="{% if elsewhere %}{% url 'trips:trip_detail' trip.pk %}?item={{ item.anchor }}{% endif %}#{{ item.anchor }}">{{ item.description }}</a>{% endif %}
+                {% if item.travelers.all %}<span class="text-zinc-500"> · For {% for t in item.travelers.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+              </span>
+              {% if item.url %}<a class="link-quiet font-medium" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Manage booking ↗</a>{% endif %}
+              {% for f in item.files.all %}<a class="link-quiet font-medium" href="{% url 'trips:confirmation_file' trip.pk f.pk %}" target="_blank" rel="noopener" title="{{ f.size_display }}">📎 {{ f.original_name }}</a>{% endfor %}
+              {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:confirmation_edit' trip.pk item.pk %}?next={{ request.path|urlencode }}%23confirmation-{{ item.pk }}">Edit</a>{% endif %}
+              {% if item.notes %}<p class="w-full text-zinc-500">{{ item.notes|linebreaksbr }}</p>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+    {% endif %}

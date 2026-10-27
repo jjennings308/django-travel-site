@@ -3,7 +3,7 @@ summary: Keep phone numbers and trip know-how in one place, and link each to the
 audience: editors
 section: Bookings & contacts
 order: 20
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Contacts and info notes
 
@@ -34,7 +34,7 @@ For something about the whole day, use **+ Contact or note** at the top of the d
 
 ## Their own pages
 
-On **Edit trip**, under **Contacts & info**, click **New contact** or **New info note**, or **Edit** beside one. A contact has **Name**, **Role**, **Phone**, **Email**, **Address**, **Website** and **Notes**; an info note has a **Title**, a **Body** (paragraphs separated by a blank line), a **Link** and an **Order**.
+On the trip's **Settings**, under **Contacts & info**, click **New contact** or **New info note**, or **Edit** beside one. A contact has **Name**, **Role**, **Phone**, **Email**, **Address**, **Website** and **Notes**; an info note has a **Title**, a **Body** (paragraphs separated by a blank line), a **Link** and an **Order**.
 
 Under **Show it on**, tick every item and day it matters for. Untick to unlink. Click **Save**.
 

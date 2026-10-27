@@ -1,0 +1,11 @@
+{% comment %}
+"Not booked yet" (booking_tasks.not_booked, derived, never stored): bookable items with no confirmation and no to-do. On the trip page's Reference, the Bookings page and the To do page (P7). With elsewhere=True each line opens the item on the trip page, in the panel (?item=).
+{% endcomment %}
+<ul class="card divide-y divide-zinc-100 p-0 text-sm" data-not-booked>
+  {% for nb in not_booked %}
+    <li class="flex flex-wrap items-center gap-3 px-4 py-2">
+      <span class="badge badge-mode">{{ nb.what }}</span>
+      <a class="link-quiet font-medium" href="{% if elsewhere %}{% url 'trips:trip_detail' trip.pk %}?item={{ nb.anchor }}{% endif %}#{{ nb.anchor }}">{{ nb.label }}</a> <span class="text-zinc-500">{{ nb.when|date:"M j" }}</span>
+    </li>
+  {% endfor %}
+</ul>

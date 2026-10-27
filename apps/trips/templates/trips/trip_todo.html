@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-The trip's to-dos (trips:trip_todo, edit-by-day plan E2): open ones by priority and due date, then the done ones folded away. Anyone who can see the trip reads it; editors add, edit and tick off here. Linked from the Needs attention banner and Reference.
+What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided choices, then Not booked yet (each opens on the trip page), then the to-dos — open ones by priority and due date, the done ones folded away. Anyone who can see the trip reads it; editors add, edit and tick off here. Linked from the Needs attention banner and Reference.
 {% endcomment %}
 {% block title %}To do — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -14,7 +14,7 @@ The trip's to-dos (trips:trip_todo, edit-by-day plan E2): open ones by priority 
     <h1 class="page-title">To do {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" %}</h1>
     {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}
   </div>
-  <p class="mb-4 text-sm text-zinc-500">Things still to book or decide for this trip, most urgent first. One that's about a journey, stay or activity also shows on it.</p>
+  <p class="mb-4 text-sm text-zinc-500">Choices still to make, bookings with no confirmation, then the to-dos, most urgent first. A to-do about a journey, stay or activity also shows on it.</p>
   {% if open_groups %}
     {# Undecided "choose one" groups on the days (day-first plan P4): decided on the day itself. #}
     <ul class="card mb-4 divide-y divide-zinc-100 p-0 text-sm" data-open-groups>
@@ -23,6 +23,11 @@ The trip's to-dos (trips:trip_todo, edit-by-day plan E2): open ones by priority 
       {% endfor %}
     </ul>
   {% endif %}
+  {% if not_booked %}
+    <h2 class="grid-label mb-2" id="not-booked">Not booked yet</h2>
+    <div class="mb-4">{% include "trips/partials/_not_booked.html" with elsewhere=True %}</div>
+  {% endif %}
+  {% if open_groups or not_booked %}<h2 class="grid-label mb-2">To-dos</h2>{% endif %}
   {% if open_tasks %}
     <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-open-tasks>
       {% for task in open_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}

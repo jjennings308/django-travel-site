@@ -131,7 +131,7 @@ class OwnRatesTests(CurrencyFixture):
 
     def test_edit_trip_no_longer_has_them(self):
         self.client.force_login(self.ed)
-        self.assertNotContains(self.client.get(reverse("trips:trip_edit", args=[self.trip.pk])), 'id="rates"')
+        self.assertNotContains(self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])), 'id="rates"')
 
 
 class EstimateTests(CurrencyFixture):

@@ -92,7 +92,7 @@ python manage.py migrate
   `gh run watch` show it from here. **Dependabot** (`.github/dependabot.yml`) opens one grouped PR a month for
   the pip pins and one for the Actions versions.
 - **Timing:** `manage.py perf_report [--trip <pk>] [--runs 3]` (R23, `apps/pages`) prints queries and median ms
-  for the trip page, Edit trip, the booklet (HTML / PDF), the calendar feed, search, the events calendar, the
+  for the trip page, Settings, Bookings, the booklet (HTML / PDF), the calendar feed, search, the events calendar, the
   sitemap and a city page + What's on, rendered as a staff user inside a rolled-back transaction (nothing
   saved). Run it on dev's copy of production before and after a performance change.
 - Always run tests with `--keepdb` and `--noinput`.
@@ -262,10 +262,10 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   one: change the version, hash the exact file (`curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A`)
   and, since the offline worker caches CDN files, bump the cache name in `core/sw.js` **and**
   `trips/partials/_offline.html` (`sbl-offline-v2-` → `v3`; a test checks they match). Dependabot doesn't cover them.
-- **Edit trip's selects** load each option list once per page (`trips.forms.share_choices`, R23; a
-  ModelChoiceField re-queries on every render), and its All stays & legs list is built in a fixed handful of
-  queries, so the page's count doesn't grow with rows (`test_upkeep.EditTripQueryTests`, pinned at 23; it was
-  60 with the formsets, before edit-by-day E3).
+- **Settings' selects** (was Edit trip) load each option list once per page (`trips.forms.share_choices`, R23; a
+  ModelChoiceField re-queries on every render), so the page's count doesn't grow with rows
+  (`test_upkeep.EditTripQueryTests`, pinned at 19; 60 with the formsets before edit-by-day E3, 23 with All stays &
+  legs, which moved to Bookings in day-first P7).
 - **Dates and times on forms always use the browser's pickers** (rule added 2026-10-23). Every form field
   that takes a date, a time or a date-and-time — model forms, plain forms, formsets, fields added in
   `__init__` — renders as a native picker, never a plain text box:
@@ -306,7 +306,7 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   `resolve`). Lower apps link to a guide only with `{% url 'pages:help_guide' 'slug' as help_url %}{% if
   help_url %}…{% endif %}` — in practice through the shell partial `partials/_help_link.html` (`with
   slug=… anchor=… label=…` gives a round "?"; add `text="How this works"` for a text link; never printed).
-  The trip page has "?" by Days (`#days-at-a-glance`), Reference and Download PDF (`reading-your-trip#…`); Edit trip,
+  The trip page has "?" by Days (`#days-at-a-glance`), Reference and Download PDF (`reading-your-trip#…`); Settings,
   the day page, the leg page, the Confirmations and Contacts & info boxes and the tidy page have "How this
   works"; the account menu has Help. `apps/pages/tests/test_help_links.py` renders those pages and checks
   every `/help/` link and anchor. **A change to a user-facing feature updates its guide in the same PR and
@@ -468,7 +468,7 @@ that matter most:
   creator an editor grant. Delete needs an editor grant *and* `created_by`; `restore` and `manage` (grant editing in the admin) are staff-only.
   Editors also have `invite` (site roadmap R1): the **People** page `trips:trip_people` (`/trips/<pk>/people/`,
   `apps/trips/people_views.py`, rules in `apps/trips/people.py`; linked beside Map · Budget · Photos and from
-  Edit trip) lists everyone with a grant to anyone who can see the trip; editors invite (email + role),
+  Settings) lists everyone with a grant to anyone who can see the trip; editors invite (email + role),
   change roles and remove, never above their own role and never the creator (`people.can_set` /
   `can_remove`); anyone but the creator may leave. Inviting an address with an active account grants at
   once (`people.give_at_least`: creates or raises, never lowers; the usual `trip_access_granted`
@@ -501,8 +501,8 @@ that matter most:
   depends on `trips`. `rewards` is now the catalogue only (browse / detail); its old membership URLs
   redirect to the travel profile by URL name.
 - **Status badge and completion:** `Trip.status` is a hand-set planning stage (Starting → Fleshing out → Confirming → Ready to go). The badge (`trips/partials/_status_badge.html`, `Trip.badge`) shows that stage, or **Completed** once `end_date` has passed (`Trip.is_completed`, derived from the dates, never stored); the trip list puts finished trips under "Past trips". Saving a trip as Ready to go with open booking tasks shows a warning (as the admin already did). A finished trip's page shows the shell partial `partials/_trip_bucket_prompt.html` (`url … as`, no query, so the query pin holds), which posts to `bucketlists:trip_done`: the user's goal linked to the trip goes to its "mark done" page, or one is created for an unlinked trip. Tests that use the fixed 2026 fixture dates pin today with `mock.patch("apps.trips.models.django_timezone.localdate", new=…)`.
-- **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city`. Every city field on the trips forms (a day's, a stay's, a leg's from / to, the route's stops, Edit trip's Cities) is a **type-to-search box** (day-first plan P1): `apps.locations.widgets.CitySearchInput` / `CitySearchMultiple` (Alpine, `locations/city_search.js`) over `locations:city_search` (`/locations/cities/search.json?q=&country=`, `apps/locations/city_search.py`: unaccent + trigram on the name + exact/leading bonus, like `pages.search`, which locations may not import; approved cities plus the member's own pending ones; up to 10; 120 GETs a minute), keeping the id in a hidden input that carries `data-tz` and fires `change` (the leg page's zone fill). Before typing it offers the **This trip** group as chips; without JavaScript it is hidden (`x-cloak`) and the old grouped select (**This trip**, then **Everywhere else**; `forms._leg_city_fields` / `_trip_city_choices`, built once per page and cached on the trip) in a `<noscript>` submits instead — the hidden input is named only by Alpine (`x-bind:name`), so the two never both submit. **Add “X” as a new city** in the box (or `locations:city_new`, `/locations/cities/new/`, the no-JS page; `NewCityForm`: name, country, optional region; 20 an hour) makes a **pending** city (coordinates from `core.geocoding`, else the country's centre; `submit_for_review`), returning one the member can already see instead of a duplicate. The trips forms accept approved cities, the trip's own and the signed-in member's pending ones (`forms._city_choices(trip)`, via `apps.core.current`). **Cities maintain themselves:** `apps/trips/trip_cities.sync(trip)` adds every city a day, stay, leg end, the catalogue place / event of a trip activity, meal or section, or an idea's place (P6) uses; never removes. Called by `SyncsTripCitiesMixin` (day, stay, leg, section, trip activity forms), `day_edit` (meals), Edit trip, the leg quick add, `travel_tables.apply`, `Lodging.fill_day_cities` and the route builder. Edit trip's Cities are chips; `TripForm.clean_cities` refuses to remove one something uses (`trip_cities.used_by`: "Munich is used by Day 3, Hotel Laimer Hof"). "Plan a trip" / adding a goal brings its city through the idea it becomes (P6). Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
-- **Route builder and strip** (day-first plan P1; `apps/trips/route.py`): `trips:trip_route` (`/trips/<pk>/route/`, editors; linked from the strip, Edit trip's Days and, on a trip with no day cities, "Set the route" on the trip page) — `RouteFormSet` rows of city + nights (three blank rows more after each Preview), starting from `route.initial_stops(days)`. `route.plan` lays them over the trip's dates (the travel day belongs to the next city, the last city also has the departure day; a longer route is cut at the end unless **Extend** moves `end_date`, a shorter one leaves the last days blank) and lists days to fill (missing `Day` rows are made), days kept because they have another city (unless **Replace**), legs and stays; Preview saves nothing. `route.apply` (one transaction, `changes.batch("Route set: …")`): days' cities, a planned leg per travel day (`mode` "other", cities, names and zones from the cities; skipped when that day already has a leg between them) and a placeholder stay per city ("Stay in Munich", no address, so it shows in Not booked yet; skipped when a stay overlaps those nights), then `trip_cities.sync`. The **route strip** above the Needs attention banner, "Munich (3) → Salzburg (2)", is `route.runs(days)` (consecutive days with one city, blank days skipped; no queries), each linking to `#day-N`, with Edit route for editors. Not in the booklet.
+- **Places:** `Trip.cities` (M2M to catalogue cities) and `Day.city`. Every city field on the trips forms (a day's, a stay's, a leg's from / to, the route's stops, Settings' Cities) is a **type-to-search box** (day-first plan P1): `apps.locations.widgets.CitySearchInput` / `CitySearchMultiple` (Alpine, `locations/city_search.js`) over `locations:city_search` (`/locations/cities/search.json?q=&country=`, `apps/locations/city_search.py`: unaccent + trigram on the name + exact/leading bonus, like `pages.search`, which locations may not import; approved cities plus the member's own pending ones; up to 10; 120 GETs a minute), keeping the id in a hidden input that carries `data-tz` and fires `change` (the leg page's zone fill). Before typing it offers the **This trip** group as chips; without JavaScript it is hidden (`x-cloak`) and the old grouped select (**This trip**, then **Everywhere else**; `forms._leg_city_fields` / `_trip_city_choices`, built once per page and cached on the trip) in a `<noscript>` submits instead — the hidden input is named only by Alpine (`x-bind:name`), so the two never both submit. **Add “X” as a new city** in the box (or `locations:city_new`, `/locations/cities/new/`, the no-JS page; `NewCityForm`: name, country, optional region; 20 an hour) makes a **pending** city (coordinates from `core.geocoding`, else the country's centre; `submit_for_review`), returning one the member can already see instead of a duplicate. The trips forms accept approved cities, the trip's own and the signed-in member's pending ones (`forms._city_choices(trip)`, via `apps.core.current`). **Cities maintain themselves:** `apps/trips/trip_cities.sync(trip)` adds every city a day, stay, leg end, the catalogue place / event of a trip activity, meal or section, or an idea's place (P6) uses; never removes. Called by `SyncsTripCitiesMixin` (day, stay, leg, section, trip activity forms), `day_edit` (meals), Settings, the leg quick add, `travel_tables.apply`, `Lodging.fill_day_cities` and the route builder. Settings' Cities are chips; `TripForm.clean_cities` refuses to remove one something uses (`trip_cities.used_by`: "Munich is used by Day 3, Hotel Laimer Hof"). "Plan a trip" / adding a goal brings its city through the idea it becomes (P6). Recommendations count the countries of the user's upcoming trips. Cities are never in the public view. The free-text `destination` stays for display and the public title.
+- **Route builder and strip** (day-first plan P1; `apps/trips/route.py`): `trips:trip_route` (`/trips/<pk>/route/`, editors; linked from the strip, Settings' Days and, on a trip with no day cities, "Set the route" on the trip page) — `RouteFormSet` rows of city + nights (three blank rows more after each Preview), starting from `route.initial_stops(days)`. `route.plan` lays them over the trip's dates (the travel day belongs to the next city, the last city also has the departure day; a longer route is cut at the end unless **Extend** moves `end_date`, a shorter one leaves the last days blank) and lists days to fill (missing `Day` rows are made), days kept because they have another city (unless **Replace**), legs and stays; Preview saves nothing. `route.apply` (one transaction, `changes.batch("Route set: …")`): days' cities, a planned leg per travel day (`mode` "other", cities, names and zones from the cities; skipped when that day already has a leg between them) and a placeholder stay per city ("Stay in Munich", no address, so it shows in Not booked yet; skipped when a stay overlaps those nights), then `trip_cities.sync`. The **route strip** above the Needs attention banner, "Munich (3) → Salzburg (2)", is `route.runs(days)` (consecutive days with one city, blank days skipped; no queries), each linking to `#day-N`, with Edit route for editors. Not in the booklet.
 - **Budget in one currency** (site roadmap R10; core 0001, trips 0040): `core.ExchangeRate` (date, currency,
   `per_euro`) holds the ECB's daily reference rates, fetched by `manage.py fetch_rates [--history 90d|all]`
   (production cron after ~16:00 CET; outbound HTTPS to www.ecb.europa.eu). `apps.core.rates.Rates(currencies,
@@ -517,7 +517,7 @@ that matter most:
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
   → `Rates`; unknown currency → None); the site makes no live exchange-rate calls and `requests` is gone from
   `requirements.txt`.
-- **Currency choices** (edit-by-day plan E4; trips 0045): `Trip.home_currency` (Edit trip → The trip, `TripForm`'s
+- **Currency choices** (edit-by-day plan E4; trips 0045): `Trip.home_currency` (Settings → The trip, `TripForm`'s
   select of the current one, the creator's, `HOME_CURRENCY_CHOICES` and Other…, no queries; `Trip.save()` fills a blank
   one from the creator's `AccountSettings.preferred_currency`, else USD; 0045 set existing trips from their creators).
   Every currency field on the trip's forms (stay, leg — also `LegEditForm` —, trip activity, task option, confirmation,
@@ -561,7 +561,7 @@ that matter most:
   `done`/`total`), `attention` (empty boxes on documents lists from 14 days before the start to the end →
   the Needs attention banner's "N documents not ticked"), `trips:checklist_tick` (`comment`; form POST, 204 for Alpine's
   background `X-Requested-With: fetch`), and editors' `checklist_new` / `_edit` (items formset) / `_delete` /
-  `_from_template`, reached from Edit trip's Checklists section. Per-person items use `trip.travelers`
+  `_from_template`, reached from Settings' Checklists section. Per-person items use `trip.travelers`
   (none → acts shared). Templates: `apps/trips/checklist_templates/*.md` (header `title` / `kind` /
   `summary`, then `- item` lines, `- [each] …` per person; parsed strictly by the tests). Shown in
   Reference (`partials/_checklist.html`) and the booklet's Reference. Not in the change history. Never public.
@@ -642,7 +642,7 @@ that matter most:
   Editing: `trips:leg_edit` (grouped Route / Schedule / Details / Placement / Return, `next`
   checked with `url_has_allowed_host_and_scheme`), `trips:leg_delete`, `trips:leg_quick_add` (a
   planned leg typed like a table row on a day, cities matched by name), `trips:day_add_travel`.
-  Edit trip lists every leg read-only under All stays & legs (E3; its Transport formset is gone).
+  Bookings lists every leg read-only under Getting around & stays (E3 on Edit trip; moved in P7).
 - **Round trips:** a leg's own page (`LegEditForm`, extending `TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
@@ -686,16 +686,28 @@ that matter most:
   tasks may point at one (`BookingTask.activity`; `bookingtask_one_item` allows at most one of leg / stay
   / activity), suggestions match an activity whose title the task names, and "Not booked yet" includes
   bookable kinds (not "other") with no confirmation and no task.
-- **The view page is for reading; adding is on the day page or the item's own page; Edit trip holds
-  trip-level things** (edit-by-day plan E3). The trip page has no add forms or "Add …" links (items keep
-  their small Edit link). Stays, legs, activities, meals, sections and to-dos are added from **Add to this
-  day** on the day page (the leg quick add `partials/_leg_quick_add.html` is there) or **+ Add** on the trip page (P3) and edited on their own
-  pages, where their confirmations and contacts are added too. Edit trip (`views.trip_edit`, no formsets) has
-  The trip, Days, **All stays & legs** (`#stays-legs`, `views._edit_trip_stays_and_legs`: every stay and leg in
-  date order with its day, confirmation chips and Edit → `stay_edit` / `leg_edit`; strays flagged "Not on any
-  day" / "Outside the trip's days"; the "Turn “A → B” table rows into legs" link), **Loose confirmations**
-  (`#loose-confirmations`, "Add a loose confirmation"), Contacts & info and Checklists. The day page links each
-  section and meal to its confirmations; the section page too.
+- **One page to read and edit; trip-wide pages are views; Settings holds trip-level things** (day-first plan
+  P2–P7, replacing edit-by-day E3's "the view page is for reading"). On the trip page a click on an item opens it in
+  the **item panel** (P2), each open day ends with **+ Add** (P3), "choose one" groups sit in their days (P4–P5) and
+  ideas wait on the **Ideas shelf** (P6). Stays, legs, activities, meals, notes and to-dos are added there (or on the
+  day page, `day_edit`, the no-JS fallback, whose Add to this day starts with the same one-line + Add, posting
+  `next` back to itself — `quick_add` honours `next`, P7) and edited on their own pages, where their confirmations and
+  contacts are added too. **Settings** (`trips:trip_settings`, `/trips/<pk>/settings/`, editors; `views.trip_settings`;
+  the old `trip_edit` URL redirects; template `trip_form.html`, shared with New trip) has The trip (a save that moves
+  the dates so the days don't fit goes to `trips:trip_days_fit`, `apps/trips/day_fit.py`: `plan` = dates without a day
+  and days outside the dates with what's on them; `apply(trip, add, remove)` makes / deletes them (empty ones ticked,
+  journeys and stays aren't tied to a day) and `renumber`s every day in date order, one history line), Days (`#days`),
+  a pointer to Bookings, **Loose confirmations** (`#loose-confirmations`), Contacts & info and Checklists; the header
+  button is **Settings** (`data-settings-link`). The **trip-wide views** are read-only and open items on the trip
+  page: a link `trip_detail?item=<anchor>#<anchor>` opens the item's day (hash script) and the item itself in the panel
+  (`panel.js` reads `?item=`): **Bookings** (`trips:trip_bookings`, `/trips/<pk>/bookings/`, anyone who can see the
+  trip; the page context plus `views._edit_trip_stays_and_legs`: the confirmations (`partials/_confirmation_groups.html`,
+  shared with Reference, `elsewhere=True`), Not booked yet (`partials/_not_booked.html`, shared too) and **Getting around
+  & stays** (`#stays-legs`: every stay and leg in date order with its day and confirmation chips, strays flagged, the
+  "Turn “A → B” table rows into journeys" link)); **To do** (choices, then Not booked yet, then the to-dos; to-dos keep
+  their own pages); the map page's lists; the calendar feed's links. The header links Bookings · To do · Map · Budget ·
+  Photos · People · History; the jump bar gains **Ideas** while the shelf has any. Budget keeps its own costs and rates.
+  The booklet has no links.
 - **Booking tasks point at their item** (trips 0025, Phase E): `BookingTask.leg` / `stay` (optional,
   SET_NULL, at most one — `bookingtask_one_item`; Phase F adds `booking`). `apps/trips/booking_tasks.py`
   works from the trip page's prefetches (no query): `attach` gives legs/stays `open_tasks` ("Still to
@@ -714,8 +726,8 @@ that matter most:
   one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
-  so add no print styling): a header (title, dates · nights · status; Edit trip and Download PDF;
-  Map · Budget · Photos links; a ⋯ menu, Alpine, with Add to calendar, Tidy suggestions (editors), Share /
+  so add no print styling): a header (title, dates · nights · status; Settings and Download PDF;
+  Bookings · To do · Map · Budget · Photos links; a ⋯ menu, Alpine, with Add to calendar, Tidy suggestions (editors), Share /
   the shared link / Stop sharing and Delete), the **Needs attention** banner (`#needs-attention`, only when
   something does: not booked, to do, decisions, documents not ticked, not on any day, tables to convert,
   each linking to its list), a sticky jump bar (Days · Reference), then:
@@ -870,15 +882,15 @@ that matter most:
   `changes.TRACKED` ("idea": title, notes) and the Your data export; never public, not in the booklet or calendar.
   `bucketlists:trip_done` offers only goals whose idea is `counted` (or linked without an idea).
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
-  editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
-  plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
+  editors to `trips:day_edit` (opened in the panel, P2), the day's workshop and the no-JS place where things on a day
+  are added: **Add to this day** (first the one-line + Add, as on the trip page (P7); then a leg via the inline quick add, a stay, an activity, a meal via the meal formset
   `#meals`, a section — Note, Travel notes, Choose your adventure (P3) — and a contact or note for
   the whole day; a to-do from its item's page), **On this day** (`views._day_workshop`: the day's stays — Check out / Check in / Sleeping —
   then the day's items in the trip page's order —
   `itinerary.timeline`, then sections, then food ideas — each with its confirmation numbers and linked
   contacts/notes and Edit / Confirmations / Contacts & info, via `partials/_workshop_row.html`; every
   link comes back to the day page), then the day details and meals form. Saving the day returns to
-  `next` when it's on this site (Edit trip's days table passes its own address), else to
+  `next` when it's on this site (Settings' days table passes its own address), else to
   `trip_detail#day-N`, which opens that day (`views._day_back`). Saving a section returns to the day
   page's `#on-this-day`.
 - **Tidy suggestions** (trip-page UX plan, U7; trips 0033 `TidyDismissal`): `apps/trips/tidy.py` is pure
@@ -929,7 +941,7 @@ that matter most:
   the trip has, create a contact or note on the spot, or remove — never deletes) on the leg and
   stay and activity pages and reached from the day page (sections, meals, the whole day)
   and the section page; each contact/note has its own page with ticks for its items
-  (`trips:contact_new/edit/delete`, `trips:info_new/edit/delete`, `forms.linkable_choices`); Edit trip
+  (`trips:contact_new/edit/delete`, `trips:info_new/edit/delete`, `forms.linkable_choices`); Settings
   lists them under Contacts & info. Never public;
   `trip_leak_finders` also forbids contact phones and emails.
 - **Day assembly is shared** (`apps/trips/itinerary.py`, trip-page UX plan U1): pure functions over
@@ -1352,7 +1364,8 @@ own page) done on branch `p2-item-panel`; P3 (+ Add, notes, converting phases / 
 `p3-quick-add`; P4 ("choose one" groups, options and votes; converting choose-your-adventure sections and decision
 to-dos) done on branch `p4-option-groups`; P5 (split: tracks per traveller on the page, in the calendar's "only mine"
 and in the booklet) done on branch `p5-split`; P6 (the Ideas shelf, Add to a trip, goals as ideas, Save for someday) done
-on branch `p6-ideas`.
+on branch `p6-ideas`; P7 (Settings, fitting days to new dates, the Bookings page, To do with Not booked yet, trip-wide
+views opening items in the panel) done on branch `p7-settings`. Complete.
 
 ### Rules carried over from the itinerary project
 

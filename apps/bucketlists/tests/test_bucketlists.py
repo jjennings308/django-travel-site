@@ -259,7 +259,7 @@ class LifecycleTests(BucketFixture):
         response = self.client.post(url, {"name": "Oktoberfest 2027", "destination": "Testville, Testland",
                                           "start_date": "2027-09-18", "end_date": "2027-10-03"})
         trip = Trip.objects.get()
-        self.assertRedirects(response, reverse("trips:trip_edit", args=[trip.pk]))
+        self.assertRedirects(response, reverse("trips:trip_settings", args=[trip.pk]))
         self.assertEqual((trip.created_by, trip.start_date), (self.alice, date(2027, 9, 18)))
         self.assertEqual(TripGrant.objects.get(trip=trip).role, TripRole.EDITOR)
         self.assertTrue(trip.travelers.filter(user=self.alice).exists())

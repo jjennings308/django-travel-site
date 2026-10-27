@@ -3,7 +3,7 @@ summary: Packing lists, travel documents and things to do before you go, ticked 
 audience: everyone
 section: Trips
 order: 35
-updated: 2026-10-23
+updated: 2026-10-27
 
 # Checklists
 
@@ -21,7 +21,7 @@ From two weeks before the trip until it ends, the **Needs attention** banner at 
 
 You need editor access.
 
-1. Click **Edit trip** and go to **Checklists** at the bottom.
+1. Click **Settings** at the top of the trip page and go to **Checklists** at the bottom.
 2. Either pick one under **Start from a template** and click **Add it**, or click **New checklist**.
 3. Give it a title and a kind (Packing, Documents, Before you go or Other), and fill in the items. Tick **Each person** for things every traveller does themselves.
 4. Click **Save**. Save again to get more empty rows; tick **Remove** to take an item off.
@@ -41,6 +41,6 @@ Change any template list as you like once it's added. **Delete this checklist** 
 
 | Problem | What to do |
 | --- | --- |
-| No box for someone on an "each person" item | They're not on the trip's travellers list. An editor adds them on **Edit trip**. |
+| No box for someone on an "each person" item | They're not on the trip's travellers list. An editor adds them on the trip's **Settings**. |
 | Clicking a box does nothing | You can read the trip but not comment on it. Ask an editor to make you a commentor. |
-| No **Checklists** section on the trip page | The trip has none yet. An editor adds one on **Edit trip**. |
+| No **Checklists** section on the trip page | The trip has none yet. An editor adds one on the trip's **Settings**. |

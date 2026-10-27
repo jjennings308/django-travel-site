@@ -7,7 +7,7 @@ Make or edit a checklist (trips:checklist_new / checklist_edit, editors; site ro
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>Checklist</span>
   </nav>
   <form method="post" class="card p-6" novalidate>
@@ -39,7 +39,7 @@ Make or edit a checklist (trips:checklist_new / checklist_edit, editors; site ro
     </fieldset>
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <button type="submit" class="btn">Save</button>
-      <a class="btn-quiet" href="{% url 'trips:trip_edit' trip.pk %}#checklists">Cancel</a>
+      <a class="btn-quiet" href="{% url 'trips:trip_settings' trip.pk %}#checklists">Cancel</a>
     </div>
   </form>
   {% if checklist %}

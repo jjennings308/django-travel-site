@@ -120,7 +120,7 @@ class TripWideReviewTests(Fixture):
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
     def test_link_on_edit_trip_while_arrow_rows_remain(self):
-        edit = reverse("trips:trip_edit", args=[self.trip.pk])
+        edit = reverse("trips:trip_bookings", args=[self.trip.pk])  # moved from Edit trip with All stays & legs (P7)
         detail = reverse("trips:trip_detail", args=[self.trip.pk])
         self.client.force_login(self.viewer)
         self.assertNotContains(self.client.get(detail), self.url)

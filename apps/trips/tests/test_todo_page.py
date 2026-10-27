@@ -50,7 +50,7 @@ class TodoPageTests(Fixture):
         TaskOption.objects.create(task=task, title="Window", chosen=True)
         html = self.get(self.viewer).content.decode()
         detail = reverse("trips:trip_detail", args=[self.trip.pk])
-        self.assertIn(f'href="{detail}#leg-{self.leg.pk}">Day 4 · Munich → Salzburg</a>', html)
+        self.assertIn(f'href="{detail}?item=leg-{self.leg.pk}#leg-{self.leg.pk}">Day 4 · Munich → Salzburg</a>', html)
         self.assertIn("Decide: Seats", html)
         self.assertIn("✓ Window", html)
 

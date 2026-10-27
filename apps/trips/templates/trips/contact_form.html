@@ -7,7 +7,7 @@ A contact's own page (trips:contact_edit / contact_new, U4): its details and whi
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>{% if obj %}{{ obj.name }}{% else %}New contact{% endif %}</span>
   </nav>
   <form method="post" class="card p-6" novalidate>

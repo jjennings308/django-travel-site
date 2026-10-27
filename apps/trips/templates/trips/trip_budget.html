@@ -114,7 +114,7 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
     <form method="post" class="card p-6" novalidate>
       {% csrf_token %}
       <h2 class="form-section-title">Add a cost</h2>
-      {% if not everyone %}<p class="note">Add travellers to the trip first (Edit trip), so there's someone to pay and share.</p>{% endif %}
+      {% if not everyone %}<p class="note">Add travellers to the trip first (Settings), so there's someone to pay and share.</p>{% endif %}
       {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
       {% include "trips/_form_fields.html" with form=form %}
       <button type="submit" class="btn">Add cost</button>

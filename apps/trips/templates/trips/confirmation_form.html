@@ -8,7 +8,7 @@ A booking reference's own details (trips:confirmation_edit / confirmation_new). 
 {% block content %}
   <nav class="crumbs">
     <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_edit' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>Confirmation</span>
   </nav>
   <form method="post" class="card p-6" novalidate>

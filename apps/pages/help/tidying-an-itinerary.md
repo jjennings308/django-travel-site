@@ -3,7 +3,7 @@ summary: Turn travel tables into real journeys, and use the clean-up suggestions
 audience: editors
 section: Trips
 order: 50
-updated: 2026-10-26
+updated: 2026-10-27
 
 # Tidying an itinerary
 
@@ -13,7 +13,7 @@ An itinerary written as a document often lists journeys in tables and repeats bo
 
 A table on a day with rows like "Butzbach → Frankfurt Hbf" can become real journeys ([travel legs](/help/travel-legs/)).
 
-1. On **Edit trip**, under **All stays & legs**, click **Turn “A → B” table rows into legs** (shown while any table has such rows). For just one table, open it from the day's page and click **Turn them into legs**.
+1. On the trip's **Bookings** page, under **Getting around & stays**, click **Turn “A → B” table rows into journeys** (shown while any table has such rows). For just one table, open it from the day's page and click **Turn them into legs**.
 2. Each row shows what it will become:
     - **Create planned leg**: a new journey on that day, with the row's rough time, operator and notes.
     - **Link to existing leg**: the day already has this journey; the row is removed and the leg shown in its place.
