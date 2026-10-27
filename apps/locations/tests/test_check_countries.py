@@ -163,6 +163,23 @@ class CheckTests(TestCase):
         self.assertIn("RESTCOUNTRIES_API_KEY isn't set", err)
         urlopen.assert_not_called()
 
+    @override_settings(ADMINS=["James <james@example.com>"])
+    def test_email_sends_the_differences_and_exits_0(self):
+        from django.core import mail
+        out, _, code, _ = self.run_check("--email")
+        self.assertEqual(code, 0)  # reported by mail: scripts/run_job.sh doesn't send it again
+        message, = mail.outbox
+        self.assertEqual(message.subject, "[ShareBucketList job] check_countries: 1 to look at")
+        self.assertIn("ZW currency_code: ours ZWL, theirs ZWG", message.body)
+        self.assertIn("Emailed to DJANGO_ADMINS.", out)
+
+    @override_settings(ADMINS=["James <james@example.com>"])
+    def test_email_with_nothing_to_report_sends_nothing(self):
+        from django.core import mail
+        Country.objects.filter(iso_code="ZW").update(currency_code="ZWG", currency_name="Zimbabwe Gold")
+        _, _, code, _ = self.run_check("--email")
+        self.assertEqual((code, mail.outbox), (0, []))
+
     def test_nothing_is_saved(self):
         with CaptureQueriesContext(connection) as ctx:
             self.run_check()

@@ -1,11 +1,53 @@
-# Shared helpers for the production scripts (sync_dev_from_prod.sh, backup_prod.sh).
+# Shared helpers for the production scripts (sync_dev_from_prod.sh, backup_prod.sh, sync_staging_from_prod.sh,
+# run_job.sh).
 # Source it; it defines functions and the SSH command only, and runs nothing.
 #
 # The caller sets LOG (a file) before calling log/fail, and PROD_HOST before sbl_ssh.
 
 # One timestamped line to stdout and $LOG.
 log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG"; }
-fail() { log "FAILED: $*"; exit 1; }
+# Log the failure, email it to DJANGO_ADMINS with the log's last 30 lines (sbl_notify), and exit 1.
+fail() {
+  log "FAILED: $*"
+  { echo "FAILED: $*"; echo; echo "Host: $(hostname)  Log: $LOG"; echo "Last 30 lines:"; tail -n 30 "$LOG" 2>/dev/null; } \
+    | sbl_notify "$(basename "$0") failed"
+  exit 1
+}
+
+# Email stdin to DJANGO_ADMINS (script-emails plan M1). The rule: scripts and jobs tell James through DJANGO_ADMINS,
+# never another address setting or a crontab MAILTO. Bodies hold counts, steps, paths and log tails: no secrets or
+# personal data.
+#   sbl_notify SUBJECT < body
+# With the app on this machine ($SBL_NOTIFY_APP, else $APP: manage.py and .venv), through `manage.py notify_admins`,
+# so its .env and mail settings are used (settings: $SBL_NOTIFY_SETTINGS, else $DJANGO_SETTINGS_MODULE, else
+# manage.py's default). Without it (the backup machine), DJANGO_ADMINS and SERVER_EMAIL from that .env and
+# `sendmail -t`. If neither works, one log line and carry on: a script never fails because of its own report.
+sbl_notify_how() {  # prints "manage.py", "sendmail" or "none"
+  local app="${SBL_NOTIFY_APP:-${APP:-}}"
+  if [ -n "$app" ] && [ -f "$app/manage.py" ] && [ -x "$app/.venv/bin/python" ]; then echo manage.py; return; fi
+  if [ -n "$app" ] && [ -r "$app/.env" ] && [ -n "$(envval DJANGO_ADMINS "$app/.env")" ] && command -v sendmail >/dev/null 2>&1; then
+    echo sendmail; return
+  fi
+  echo none
+}
+sbl_notify() {
+  local subject="$1" app="${SBL_NOTIFY_APP:-${APP:-}}" body how
+  body="$(cat)"
+  how="$(sbl_notify_how)"
+  if [ "$how" = manage.py ]; then
+    local settings="${SBL_NOTIFY_SETTINGS:-${DJANGO_SETTINGS_MODULE:-}}"
+    printf '%s\n' "$body" | ( cd "$app" && env ${settings:+DJANGO_SETTINGS_MODULE="$settings"} \
+      "$app/.venv/bin/python" manage.py notify_admins --subject "$subject" ) >/dev/null 2>&1 && return 0
+  elif [ "$how" = sendmail ]; then
+    local to from
+    to="$(envval DJANGO_ADMINS "$app/.env")"
+    from="$(envval SERVER_EMAIL "$app/.env")"
+    printf 'To: %s\n%sSubject: [ShareBucketList job] %s\n\n%s\n' "$to" "${from:+From: $from
+}" "$subject" "$body" | sendmail -t && return 0
+  fi
+  if [ -n "${LOG:-}" ]; then log "could not email DJANGO_ADMINS ($subject)"; else echo "could not email DJANGO_ADMINS ($subject)" >&2; fi
+  return 0
+}
 
 # Read one value from an .env file without sourcing it (values contain spaces).
 #   envval NAME [file]   (default: $APP/.env)

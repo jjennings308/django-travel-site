@@ -83,8 +83,12 @@ it's staging. `STAGING_BASIC_AUTH` in `.env` must be `staging:<that password>`, 
 Add to james's crontab (`crontab -e`), after the production backups have run:
 
 ```
-15 5 * * * bash /var/www/travel_site_staging/scripts/sync_staging_from_prod.sh
+15 5 * * * bash /var/www/travel_site/scripts/run_job.sh sync_staging -- bash /var/www/travel_site_staging/scripts/sync_staging_from_prod.sh
 ```
+
+A failure is emailed to `DJANGO_ADMINS` (the sync's own `fail()`, and `run_job.sh` for anything else). Put
+`DJANGO_SETTINGS_MODULE=config.settings.prod` at the top of the crontab; see `scripts/README.md` → "Scheduled jobs and
+their emails".
 
 ## Day to day
 

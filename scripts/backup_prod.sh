@@ -15,10 +15,13 @@
 #   files/YYYY-MM-DD/private_uploads/   previous day's (--link-dest), so each day is complete
 #   backup.log                  one line per run
 # Retention: 14 daily, 8 weekly, 12 monthly (sbl_keep), for dumps and snapshots alike.
-# A failed run exits 1 (the unit shows failed in the journal) and prunes nothing.
+# A failed run exits 1 (the unit shows failed in the journal), prunes nothing and emails DJANGO_ADMINS (fail()).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# The clone this runs from: a failure is emailed to DJANGO_ADMINS through its manage.py when it has a .venv, else
+# with sendmail and DJANGO_ADMINS / SERVER_EMAIL from its .env (sbl_notify; script-emails plan M1).
+APP="${SBL_APP:-$(cd "$HERE/.." && pwd)}"
 PROD_HOST="${SBL_PROD_HOST:-james@tazcomputer.com}"
 PROD_APP="${SBL_PROD_APP:-/var/www/travel_site}"
 ROOT="${SBL_BACKUP_ROOT:-$HOME/backups/sharebucketlist}"
@@ -45,6 +48,11 @@ if [ "${1:-}" = "--check" ]; then
     say "production files readable" "ok"
   elif [ "$ok" = 1 ]; then say "production files readable" "FAILED (.env, uploads/ or private_uploads/)"; ok=0; fi
   say "backups go to" "$ROOT ($(df -h "$(dirname "$ROOT")" 2>/dev/null | awk 'NR==2 {print $4 " free"}'))"
+  case "$(sbl_notify_how)" in
+    manage.py) say "failures are emailed" "to DJANGO_ADMINS via $APP/manage.py notify_admins" ;;
+    sendmail) say "failures are emailed" "to DJANGO_ADMINS via sendmail ($APP/.env)" ;;
+    *) say "failures are emailed" "NOT — set DJANGO_ADMINS (and SERVER_EMAIL) in $APP/.env and install sendmail, or give $APP a .venv" ;;
+  esac
   [ "$ok" = 1 ] && { echo "Ready."; exit 0; } || { echo "Not ready; fix the lines above."; exit 1; }
 fi
 

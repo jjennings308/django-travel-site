@@ -1,6 +1,6 @@
 # Plan: scripts and scheduled jobs email DJANGO_ADMINS
 
-Status: planning only (2026-10-27). Rule set by James 2026-10-27: **any script or scheduled job that needs to
+Status: M1 done (2026-10-27, branch `m1-script-emails`). Rule set by James 2026-10-27: **any script or scheduled job that needs to
 tell James something emails the addresses in `DJANGO_ADMINS`** (Django's `ADMINS`), never a new per-script address
 setting or a crontab `MAILTO`. One phase, M1, branch `m1-script-emails`.
 
@@ -14,6 +14,14 @@ setting or a crontab `MAILTO`. One phase, M1, branch `m1-script-emails`.
 - Only web errors reach `ADMINS` (`apps.core.alerts.AlertEmailHandler`).
 
 ## M1 (branch `m1-script-emails`)
+
+Done. As built: `report()` uses `send_mail` (from `SERVER_EMAIL` to `ADMINS`) rather than `mail_admins`, which would
+add prod's "[ShareBucketList error]" prefix; `run_job.sh` keeps one log file per run in `~/logs/sbl-jobs/NAME/` (so
+"60 days" is deleting files by age) rather than one growing `NAME.log`; `check_countries --email` exits 0 once it has
+mailed, so the wrapper doesn't mail the same differences twice (use it without `--report-on 1`); the staging sync
+reports through production's app and settings (`SBL_NOTIFY_APP` / `SBL_NOTIFY_SETTINGS`) because staging's mail only
+goes to the console; `backup_prod.sh` takes its clone as `APP` so it can find a `.venv` or `.env`; `--check` shows how
+failures will be mailed, without failing the check when they can't be.
 
 1. **One mailer for jobs:** `apps/core/job_mail.py` with `report(subject, body)` → `django.core.mail.mail_admins`
    (subject prefixed `[ShareBucketList job] `, so not the error prefix; `fail_silently=True`, a failure logged as a
