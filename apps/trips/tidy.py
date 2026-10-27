@@ -9,8 +9,8 @@ Snapshot shape (plain dicts and lists)::
 
     {"notes": str,
      "days": [{"id", "number", "date",
-               "sections": [{"id", "type", "title", "summary", "highlights": [...],
-                             "paragraphs": [...], "text", "columns": [...], "rows": [[...]]}],
+               "sections": [{"id", "type", "title", "tone", "paragraphs": [...],   # notes
+                             "columns": [...], "rows": [[...]]}],                 # tables
                "legs": [{"id", "origin", "destination"}],
                "stays": [{"id", "name"}],              # checking in or out that day
                "meals": [{"id", "name", "notes", "type", "time"}],   # time "HH:MM" or None
@@ -20,6 +20,12 @@ Snapshot shape (plain dicts and lists)::
      "tasks": [{"id", "title", "item": {"kind", "id", "label"} | None}],
      "known_numbers": [str],                          # confirmation numbers (never phones)
      "contact_phones": [str]}                         # digits of contacts already recorded
+
+Sections are notes (day-first P3; the old phases, callouts and free text were retired in
+retire-old-section-types S2), read the way the rules were first written: a note with a tone and one
+paragraph reads as a **callout** (its paragraph is the callout's text), a note with a heading and no
+paragraphs as a **phase** (``meal_phase``), any other note's paragraphs as narrative lines. The kind names
+and keys below are unchanged, so dismissals made before still match.
 
 Kinds (``Suggestion.kind``):
 
@@ -115,15 +121,25 @@ def _extra_after(line, match_end):
     return line[match_end:].strip(" .;,—–-")
 
 
+# ---- how a note reads -------------------------------------------------------------------------
+def _is_callout(section):
+    """A note with a tone and one paragraph reads as a callout."""
+    return section["type"] == "note" and bool(section.get("tone")) and len(section.get("paragraphs") or []) == 1
+
+
+def _callout_text(section):
+    return section["paragraphs"][0] if _is_callout(section) else ""
+
+
+def _is_heading_only(section):
+    """A note with a heading and nothing under it reads as a phase."""
+    return section["type"] == "note" and not section.get("paragraphs")
+
+
 # ---- 1. a narrative line repeats one of the day's items --------------------------------------
 def _narrative_lines(section):
-    """(field, index, text) for every line of prose in a section."""
-    if section["type"] == "phase":
-        if section.get("summary"):
-            yield "summary", None, section["summary"]
-        for i, line in enumerate(section.get("highlights") or []):
-            yield "highlights", i, line
-    elif section["type"] == "free_text":
+    """(field, index, text) for every line of prose in a note (not a callout-like one)."""
+    if section["type"] == "note" and not _is_callout(section):
         for i, line in enumerate(section.get("paragraphs") or []):
             yield "paragraphs", i, line
 
@@ -185,9 +201,9 @@ def _repeats_item(day, section):
 
 # ---- 2. a callout repeats an open task -------------------------------------------------------
 def _callout_task(day, section, tasks):
-    if section["type"] != "callout":
+    if not _is_callout(section):
         return
-    text = f"{section.get('title') or ''} {section.get('text') or ''}"
+    text = f"{section.get('title') or ''} {_callout_text(section)}"
     words = _words(text)
     best, best_overlap = None, 1
     for task in tasks:
@@ -206,10 +222,10 @@ def _callout_task(day, section, tasks):
     yield Suggestion(
         key=_key("callout_task", section["id"], best["id"], text),
         kind="callout_task", day=day["number"], where=section.get("title") or "Callout",
-        before=(section.get("text") or "").strip(), after=f"(task: {best['title']})",
+        before=_callout_text(section).strip(), after=f"(task: {best['title']})",
         confidence="high" if titled else "low", actions=actions,
         change={"op": "callout", "section": section["id"], "task": best["id"], "item": best.get("item"),
-                "title": section.get("title") or "", "text": section.get("text") or ""})
+                "title": section.get("title") or "", "text": _callout_text(section)})
 
 
 # ---- 3. phone numbers typed into text --------------------------------------------------------
@@ -293,9 +309,9 @@ def clock_time(text, meal_type=""):
 
 
 def _meal_phase(day, section):
-    if section["type"] != "phase" or section.get("summary") or section.get("highlights"):
+    if not _is_heading_only(section):
         return
-    heading = section.get("heading") or section.get("title") or ""
+    heading = section.get("title") or ""
     words = [w.lower() for w in re.findall(r"[A-Za-z]+", heading) if w.lower() not in ("am", "pm", "and")]
     if len(words) != 1 or words[0] not in MEAL_WORDS:
         return  # only "<time> — Dinner": a phase with more words is narrative, not a placeholder
@@ -329,35 +345,35 @@ def _fold(text):
 
 
 def _catalogue_note(day, section):
-    if section["type"] != "callout" or not (section.get("text") or "").strip():
+    if not _callout_text(section).strip():
         return
-    said = _fold(f"{section.get('title') or ''} {section.get('text') or ''}")
+    said = _fold(f"{section.get('title') or ''} {_callout_text(section)}")
     named = [t for t in day.get("catalogue", []) if len(_fold(t["name"])) >= 4
              and re.search(r"(?<!\w)" + re.escape(_fold(t["name"])) + r"(?!\w)", said)]
     if not named:
         return
     target = max(named, key=lambda t: len(t["name"]))  # "Marburg Castle Museum" over "Marburg Castle"
     title = re.sub(r"^[^\w]+", "", section.get("title") or "").strip()
-    text = section["text"].strip()
+    text = _callout_text(section).strip()
     if title and _fold(title) not in _fold(text) and _fold(title) != _fold(target["name"]) \
             and not BOOK_TITLE.fullmatch(title):  # the title adds something ("Cash only: …")
         text = f"{title}: {text}"
     yield Suggestion(
-        key=_key("catalogue_note", section["id"], target["kind"], target["id"], section["text"]),
+        key=_key("catalogue_note", section["id"], target["kind"], target["id"], _callout_text(section)),
         kind="catalogue_note", day=day["number"], where=section.get("title") or "Callout",
-        before=section["text"].strip(),
+        before=_callout_text(section).strip(),
         after=f"This looks like a note about {target['name']}: a catalogue note on it, shown on every trip "
               "that goes there (once staff approve it)",
         actions=[("to_catalogue", f"Move it to the catalogue as a note on {target['name']}")],
-        change={"op": "to_catalogue", "section": section["id"], "target": target, "text": section["text"],
+        change={"op": "to_catalogue", "section": section["id"], "target": target, "text": _callout_text(section),
                 "note": text, "tone": CALLOUT_TONES.get(section.get("tone") or "", "tip")})
 
 
 # ---- 6. "Day N" written on another day -------------------------------------------------------
 def _day_slips(day, section):
     texts = [line for _f, _i, line in _narrative_lines(section)]
-    if section["type"] == "callout":
-        texts.append(section.get("text") or "")
+    if _is_callout(section):
+        texts.append(_callout_text(section))
     for text in texts:
         for match in DAY_REF.finditer(text):
             number = int(match.group(1))
@@ -385,7 +401,7 @@ def suggest(snapshot, dismissed=()):
             out += list(_meal_phase(day, section))
             out += list(_catalogue_note(day, section))
             for field_name, index, line in list(_narrative_lines(section)) + (
-                    [("text", None, section.get("text") or "")] if section["type"] == "callout" else []):
+                    [("text", None, _callout_text(section))] if _is_callout(section) else []):
                 for number in _phones(line, known):
                     named = _match_item(line, day)
                     if named and named[0] in ("meal", "activity"):

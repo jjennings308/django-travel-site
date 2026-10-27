@@ -28,7 +28,7 @@ class Fixture(TestCase):
                                             check_out=self.days[3].date)
         self.leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Augsburg", destination="Munich",
                                                date=self.days[1].date, est_duration=timedelta(minutes=35))
-        self.section = Section.objects.create(day=self.days[1], section_type="free_text", title="Oktoberfest",
+        self.section = Section.objects.create(day=self.days[1], section_type="note", title="Oktoberfest",
                                               content={"paragraphs": ["Tents open at 10."]})
         self.desk = Contact.objects.create(trip=self.trip, name="Front desk", role="Hotel", phone="+44 151 236 1964",
                                            email="desk@example.com")

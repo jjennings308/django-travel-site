@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from apps.trips import tidy, tidying
+from apps.trips import day_first, tidy, tidying
 from apps.trips.models import (BookingTask, Contact, Day, ItemLink, Lodging, Meal, Section, TaskOption,
                                TidyDismissal, TransportLeg, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
@@ -24,8 +24,12 @@ def plain_day(number, **parts):
 
 
 def section(pk, type_, title="", **content):
-    base = {"id": pk, "type": type_, "title": title, "summary": "", "highlights": [], "paragraphs": [], "text": "",
-            "columns": [], "rows": []}
+    """A snapshot section as ``tidying.snapshot`` sends it. Written the old way (a phase, callout or free text)
+    for readability, it arrives as the note it became (retire-old-section-types S2)."""
+    if type_ in day_first.RETIRED:
+        title, content = day_first.as_note(type_, title, content)
+        type_ = "note"
+    base = {"id": pk, "type": type_, "title": title, "tone": "", "paragraphs": [], "columns": [], "rows": []}
     base.update(content)
     return base
 
@@ -49,12 +53,12 @@ class DetectorTests(SimpleTestCase):
                                                       "A quiet afternoon"])])
         found = {s.before: s for s in self.run_on([day]) if s.kind == "repeats_item"}
         self.assertEqual(found["Check out Hotel Hessischer Hof after breakfast"].confidence, "high")
-        self.assertEqual(found["Train Butzbach → Frankfurt Hbf (~45 min on RE30)"].change["item"], {"kind": "leg", "id": 1})
-        lebkuchen = found["Lebkuchen Schmidt — Nuremberg gingerbread, pick up tins"]
+        self.assertEqual(found["• Train Butzbach → Frankfurt Hbf (~45 min on RE30)"].change["item"], {"kind": "leg", "id": 1})
+        lebkuchen = found["• Lebkuchen Schmidt — Nuremberg gingerbread, pick up tins"]
         self.assertEqual((lebkuchen.confidence, lebkuchen.change["extra"]),
                          ("high", "Nuremberg gingerbread, pick up tins"))
-        self.assertEqual(found["Thames walk: Borough Market → Tate Modern → Tower Bridge"].confidence, "low")
-        self.assertNotIn("A quiet afternoon", found)
+        self.assertEqual(found["• Thames walk: Borough Market → Tate Modern → Tower Bridge"].confidence, "low")
+        self.assertNotIn("• A quiet afternoon", found)
 
     def test_callout_repeating_a_task(self):
         day = plain_day(4, sections=[
@@ -143,11 +147,11 @@ class Fixture(TestCase):
                                                destination="Augsburg Hbf", date=self.day.date)
         Lodging.objects.create(trip=self.trip, name="Hotel Hessischer Hof", check_in=date(2027, 9, 18),
                                check_out=self.day.date)
-        self.phase = Section.objects.create(day=self.day, section_type="phase", title="Morning", content={
-            "summary": "Check out Hotel Hessischer Hof after breakfast",
-            "highlights": ["ICE Frankfurt Hbf → Augsburg (~2.5 hrs) — book 6 seats together", "Coffee first"]})
-        self.callout = Section.objects.create(day=self.day, section_type="callout", title="📅 Book", order=1, content={
-            "tone": "info", "text": "ICE Frankfurt → Augsburg: book seat reservations for 6 people together"})
+        self.phase = Section.objects.create(day=self.day, section_type="note", title="Morning", content={
+            "tone": "", "paragraphs": ["Check out Hotel Hessischer Hof after breakfast",
+                                       "ICE Frankfurt Hbf → Augsburg (~2.5 hrs) — book 6 seats together", "Coffee first"]})
+        self.callout = Section.objects.create(day=self.day, section_type="note", title="📅 Book", order=1, content={
+            "tone": "tip", "paragraphs": ["ICE Frankfurt → Augsburg: book seat reservations for 6 people together"]})
         self.task = BookingTask.objects.create(trip=self.trip, title="ICE train seats Frankfurt→Augsburg (6 people)",
                                                leg=self.leg)
         self.url = reverse("trips:trip_tidy", args=[self.trip.pk])
@@ -169,8 +173,8 @@ class ApplyTests(Fixture):
                                                             phone.key: "contact"})
         self.assertEqual((len(applied), skipped), (3, []))
         self.phase.refresh_from_db()
-        self.assertEqual(self.phase.content["highlights"], ["Coffee first"])
-        self.assertEqual(self.phase.content["summary"], "Check out Hotel Hessischer Hof after breakfast")  # not ticked
+        self.assertEqual(self.phase.content["paragraphs"],
+                         ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"])  # only the ticked line went
         self.leg.refresh_from_db()
         self.assertIn("book 6 seats together", self.leg.notes)
         self.assertFalse(Section.objects.filter(pk=self.callout.pk).exists())
@@ -190,21 +194,21 @@ class ApplyTests(Fixture):
             with self.assertRaises(RuntimeError):
                 tidying.apply(self.trip, found, chosen)
         self.phase.refresh_from_db()
-        self.assertEqual(len(self.phase.content["highlights"]), 2)
+        self.assertEqual(len(self.phase.content["paragraphs"]), 3)
         self.assertTrue(Section.objects.filter(pk=self.callout.pk).exists())
 
     def test_stale_suggestion_is_skipped(self):
         found = self.suggestions()
         ice = next(s for s in found if s.kind == "repeats_item" and s.before.startswith("ICE"))
-        self.phase.content = {**self.phase.content, "highlights": ["Changed by hand", "Coffee first"]}
+        self.phase.content = {**self.phase.content, "paragraphs": ["Changed by hand", "Coffee first"]}
         self.phase.save()
         applied, skipped = tidying.apply(self.trip, found, {ice.key: "remove"})
         self.assertEqual((applied, len(skipped)), ([], 1))
 
     def test_meal_phase_sets_the_time_and_removes_the_phase(self):
         meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
-        phase = Section.objects.create(day=self.day, section_type="phase", title="~7pm — Dinner", order=5,
-                                       content={"heading": "~7pm — Dinner", "summary": "", "highlights": []})
+        phase = Section.objects.create(day=self.day, section_type="note", title="~7pm — Dinner", order=5,
+                                       content={"tone": "", "paragraphs": []})
         [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
         applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
         self.assertEqual((len(applied), skipped), (1, []))
@@ -216,8 +220,8 @@ class ApplyTests(Fixture):
     def test_meal_phase_stale_when_the_meal_got_a_time(self):
         from datetime import time
         meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
-        phase = Section.objects.create(day=self.day, section_type="phase", title="~7pm — Dinner", order=5,
-                                       content={"heading": "~7pm — Dinner"})
+        phase = Section.objects.create(day=self.day, section_type="note", title="~7pm — Dinner", order=5,
+                                       content={})
         [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
         Meal.objects.filter(pk=meal.pk).update(reserved_time=time(20, 0))
         applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
@@ -248,8 +252,7 @@ class PageTests(Fixture):
         self.client.post(self.url, {f"pick-{ice.key}": "on", f"act-{ice.key}": "remove",
                                     f"act-{summary.key}": "remove"})  # an unticked action is ignored
         self.phase.refresh_from_db()
-        self.assertEqual(self.phase.content["highlights"], ["Coffee first"])
-        self.assertEqual(self.phase.content["summary"], "Check out Hotel Hessischer Hof after breakfast")
+        self.assertEqual(self.phase.content["paragraphs"], ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"])
 
     def test_permissions_and_trip_page_link(self):
         self.client.force_login(self.viewer)
@@ -273,8 +276,8 @@ class CommandTests(Fixture):
         self.assertEqual(Section.objects.count(), 2)
         self.cmd("--apply")
         self.phase.refresh_from_db()
-        self.assertEqual(self.phase.content["highlights"], ["Coffee first"])  # exact leg match, removed
-        self.assertEqual(self.phase.content["summary"], "")  # exact stay match, removed
+        # The exact stay and leg matches are removed; "Coffee first" stays.
+        self.assertEqual(self.phase.content["paragraphs"], ["Coffee first"])
         self.assertFalse(Section.objects.filter(pk=self.callout.pk).exists())  # "📅 Book" callout, deleted
         self.assertFalse(Contact.objects.exists())  # phones are never applied by the command
         self.trip.refresh_from_db()

@@ -40,7 +40,7 @@ class Fixture(TestCase):
                                         reserved_time=time(19, 30))
         self.tour = TripActivity.objects.create(trip=self.trip, day=self.day, kind="entry", title="Castle museum",
                                                 poi=self.castle)
-        self.section = Section.objects.create(day=self.day, section_type="free_text", title="The walk", order=1,
+        self.section = Section.objects.create(day=self.day, section_type="note", title="The walk", order=1,
                                               activity=self.walk, content={"paragraphs": ["Up the hill."]})
 
     def note(self, **values):

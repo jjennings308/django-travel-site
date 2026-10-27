@@ -92,24 +92,14 @@ class DetailFixture(TestCase):
 
 
 class SectionLayoutTests(DetailFixture):
-    def test_phase_renders_heading_summary_and_highlights(self):
-        section(
-            self.day,
-            Section.Type.PHASE,
-            {
-                "heading": "Morning",
-                "summary": "We start early.",
-                "highlights": ["Hike up", "Swim"],
-            },
-        )
+    def test_a_note_renders_its_heading_and_bullets(self):
+        """What a phase became (retire-old-section-types S2): the heading, then "• " paragraphs."""
+        section(self.day, Section.Type.NOTE, {"tone": "", "paragraphs": ["We start early.", "• Hike up", "• Swim"]},
+                title="Morning")
         html = self.get().content.decode()
-        self.assertIn("Morning", html)
-        self.assertIn("We start early.", html)
-        self.assertIn("Hike up", html)
-        self.assertIn("Swim", html)
-        # Prose sections are cards now; the grid-backed ones (logistics, CYA,
-        # meals) keep a plain wrapper so their row cards are never nested.
-        self.assertIn('<div class="section card">', html)
+        for text in ("Morning", "We start early.", "• Hike up", "• Swim"):
+            self.assertIn(text, html)
+        self.assertIn('<div class="section card prose-block">', html)
 
     def test_logistics_table_renders_a_header_and_every_row(self):
         section(
@@ -121,44 +111,14 @@ class SectionLayoutTests(DetailFixture):
         for cell in ("Time", "Stop", "Details", "9:00", "Taos", "Drive", "13:00", "Gorge", "Lunch"):
             self.assertIn(cell, html)
 
-    def test_callout_renders_its_tone_and_text(self):
-        section(
-            self.day,
-            Section.Type.CALLOUT,
-            {"tone": "warning", "text": "The road closes at dusk."},
-        )
+    def test_a_toned_note_renders_as_a_callout(self):
+        section(self.day, Section.Type.NOTE, {"tone": "warning", "paragraphs": ["The road closes at dusk."]})
         html = self.get().content.decode()
         self.assertIn("callout-warning", html)
         self.assertIn("The road closes at dusk.", html)
 
-    def test_choose_your_adventure_renders_every_option(self):
-        section(
-            self.day,
-            Section.Type.CHOOSE_YOUR_ADVENTURE,
-            {
-                "prompt": "Pick one",
-                "options": [
-                    {"title": "Rafting", "description": "Class III.", "duration": "3 hrs", "cost": "$85"},
-                    {"title": "Hot springs", "description": "Soak."},
-                ],
-            },
-        )
-        html = self.get().content.decode()
-        self.assertIn("Pick one", html)
-        self.assertIn("Rafting", html)
-        self.assertIn("Class III.", html)
-        self.assertIn("3 hrs", html)
-        self.assertIn("$85", html)
-        # Second option has no duration/cost keys at all.
-        self.assertIn("Hot springs", html)
-        self.assertIn("Soak.", html)
-
-    def test_free_text_renders_every_paragraph(self):
-        section(
-            self.day,
-            Section.Type.FREE_TEXT,
-            {"paragraphs": ["First thought.", "Second thought."]},
-        )
+    def test_a_plain_note_renders_every_paragraph(self):
+        section(self.day, Section.Type.NOTE, {"paragraphs": ["First thought.", "Second thought."]})
         html = self.get().content.decode()
         self.assertIn("First thought.", html)
         self.assertIn("Second thought.", html)
@@ -180,14 +140,12 @@ class SectionLayoutTests(DetailFixture):
 class MissingKeyToleranceTests(DetailFixture):
     """The payload contract says renderers must tolerate absent keys.
 
-    The importer adds keys over time and Europe already emits
-    choose_your_adventure payloads carrying heading/summary/highlights that the
-    documented shape does not list, so neither a missing key nor a surplus one
-    may raise.
+    The importer adds keys over time (a note keeps the keys of the section it
+    was converted from), so neither a missing key nor a surplus one may raise.
     """
 
-    def test_phase_with_only_a_heading(self):
-        section(self.day, Section.Type.PHASE, {"heading": "Bare"})
+    def test_note_with_only_a_heading(self):
+        section(self.day, Section.Type.NOTE, {}, title="Bare")
         self.assertEqual(self.get().status_code, 200)
 
     def test_logistics_table_with_no_rows(self):
@@ -198,27 +156,11 @@ class MissingKeyToleranceTests(DetailFixture):
         section(self.day, Section.Type.LOGISTICS_TABLE, {"rows": [["only"]]})
         self.assertEqual(self.get().status_code, 200)
 
-    def test_callout_with_no_tone_falls_back(self):
-        section(self.day, Section.Type.CALLOUT, {"text": "No tone given."})
+    def test_note_with_an_unknown_tone_reads_as_plain(self):
+        section(self.day, Section.Type.NOTE, {"tone": "loud", "paragraphs": ["No such tone."]})
         html = self.get().content.decode()
-        self.assertIn("callout-info", html)
-        self.assertIn("No tone given.", html)
-
-    def test_choose_your_adventure_with_surplus_keys(self):
-        # Exactly what the Europe importer emits.
-        section(
-            self.day,
-            Section.Type.CHOOSE_YOUR_ADVENTURE,
-            {
-                "prompt": "Afternoon",
-                "heading": "Afternoon",
-                "summary": "",
-                "highlights": [],
-                "options": [{"title": "Only a title"}],
-            },
-        )
-        html = self.get().content.decode()
-        self.assertIn("Only a title", html)
+        self.assertNotIn("callout-", html.split('id="day-1"')[1].split("</details>")[0])
+        self.assertIn("No such tone.", html)
 
     def test_empty_content_object(self):
         for kind in Section.Type.values:

@@ -293,7 +293,7 @@ class TripDeleteTests(TripEditingFixture):
             trip=self.trip, day_number=1, date=date(2026, 9, 12)
         )
         section = Section.objects.create(
-            day=day, section_type=Section.Type.FREE_TEXT, content={}
+            day=day, section_type=Section.Type.NOTE, content={}
         )
         self.own(self.alice)
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)

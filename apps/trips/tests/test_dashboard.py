@@ -178,13 +178,13 @@ class DashboardStatsTests(TestCase):
             trip=self.europe, day_number=1, date=self.start
         )
         Section.objects.create(
-            day=day, section_type=Section.Type.CALLOUT, content={"text": "a"}
+            day=day, section_type=Section.Type.NOTE, content={"tone": "tip", "paragraphs": ["a"]}
         )
         Section.objects.create(
-            day=day, section_type=Section.Type.CALLOUT, content={"text": "b"}
+            day=day, section_type=Section.Type.NOTE, content={"paragraphs": ["b"]}
         )
         Section.objects.create(
-            day=day, section_type=Section.Type.FREE_TEXT, content={}
+            day=day, section_type=Section.Type.TRAVEL, content={}
         )
         Meal.objects.create(
             day=day, name="Cafe", meal_type=Meal.MealType.LUNCH, price_range="$$"
@@ -204,9 +204,9 @@ class DashboardStatsTests(TestCase):
         by_type = {
             row["value"]: row["count"] for row in stats["sections_by_type"]
         }
-        self.assertEqual(by_type[Section.Type.CALLOUT], 2)
-        self.assertEqual(by_type[Section.Type.FREE_TEXT], 1)
-        self.assertEqual(by_type[Section.Type.PHASE], 0)
+        self.assertEqual(by_type[Section.Type.NOTE], 2)
+        self.assertEqual(by_type[Section.Type.TRAVEL], 1)
+        self.assertEqual(by_type[Section.Type.LOGISTICS_TABLE], 0)
 
     def test_roster_linkage_is_counted(self):
         Traveler.objects.create(name="Unlinked Person")

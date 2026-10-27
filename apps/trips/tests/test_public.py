@@ -76,9 +76,10 @@ class PublicFixture(TestCase):
         # Prose that must never be published, one row per model.
         Section.objects.create(
             day=cls.day,
-            section_type=Section.Type.PHASE,
+            section_type=Section.Type.NOTE,
             order=1,
-            content={"heading": "Departure", "summary": "James and Regan leave together"},
+            title="Departure",
+            content={"tone": "", "paragraphs": ["James and Regan leave together"]},
         )
         Meal.objects.create(
             day=cls.day,
@@ -410,8 +411,8 @@ class PublicQueryCountTests(PublicFixture):
             Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER)
             for index in range(2):
                 Section.objects.create(
-                    day=day, section_type=Section.Type.CALLOUT, order=index,
-                    content={"tone": "info", "text": "x"},
+                    day=day, section_type=Section.Type.NOTE, order=index,
+                    content={"tone": "tip", "paragraphs": ["x"]},
                 )
         # Four: the trip, then one query per prefetch level. Fixed regardless of
         # how long the trip is, which is the property the prefetch comment is

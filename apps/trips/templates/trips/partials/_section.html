@@ -8,18 +8,7 @@ One section of a day on the trip page (inside trips/partials/_day.html), and in 
   newer importers add keys. A missing one renders as nothing rather
   than raising, which is what the fallback branches below rely on.
 {% endcomment %}
-{% if section.section_type == "phase" %}
-  <div class="section card">
-    <h3 class="section-title">{{ section.icon|default:"" }} {{ section.content.heading|default:section.title }}</h3>
-    {% if section.content.summary %}<p class="mb-2">{{ section.content.summary }}</p>{% endif %}
-    {% if section.content.highlights %}
-      <ul class="mb-2 ml-5 list-disc text-zinc-700">
-        {% for item in section.content.highlights %}<li>{{ item }}</li>{% endfor %}
-      </ul>
-    {% endif %}
-  </div>
-
-{% elif section.section_type == "travel" %}
+{% if section.section_type == "travel" %}
   {# Its placed legs are in the timeline now (U3); here only its intro and reference rows. #}
   {% if section.content.intro or section.content.rows %}
   <div class="section">
@@ -67,33 +56,6 @@ One section of a day on the trip page (inside trips/partials/_day.html), and in 
     </div>
   </div>
 
-{% elif section.section_type == "callout" %}
-  <div class="section callout callout-{{ section.content.tone|default:'info' }}">
-    {% if section.title %}<span class="font-semibold">{{ section.title }}:</span> {% endif %}
-    {{ section.content.text }}
-  </div>
-
-{% elif section.section_type == "choose_your_adventure" %}
-  <div class="section">
-    <h3 class="grid-label">{{ section.content.prompt|default:section.title }}</h3>
-    {% if section.content.summary %}<p class="mb-2">{{ section.content.summary }}</p>{% endif %}
-    <div class="card-grid">
-      {% for option in section.content.options %}
-        <div class="card">
-          <p class="card-title">{{ option.title }}</p>
-          {% if option.description %}<p class="mt-1 text-sm">{{ option.description }}</p>{% endif %}
-          {% if option.duration or option.cost %}
-            <p class="mt-1 text-sm text-zinc-500">
-              {% if option.duration %}{{ option.duration }}{% endif %}
-              {% if option.duration and option.cost %}&middot;{% endif %}
-              {% if option.cost %}{{ option.cost }}{% endif %}
-            </p>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-
 {% elif section.section_type == "note" %}
   {# A note (day-first plan P3): with a tone it reads like the old callouts, without one like free text. #}
   {% if section.note_style %}
@@ -104,12 +66,6 @@ One section of a day on the trip page (inside trips/partials/_day.html), and in 
       {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
     </div>
   {% endif %}
-
-{% elif section.section_type == "free_text" %}
-  <div class="section card prose-block">
-    <h3 class="section-title">{{ section.icon|default:"" }} {{ section.title }}</h3>
-    {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
-  </div>
 
 {% else %}
   {% comment %}

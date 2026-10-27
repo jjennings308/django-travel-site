@@ -6,34 +6,23 @@ Anything whose *shape* changes from day to day is JSON in ``Section.content``.
 Section payload shapes by ``section_type``
 -------------------------------------------
 
-``phase``
-    A phase header/introduction block.
-    ``{"heading": str, "summary": str, "highlights": [str, ...]}``
-
 ``logistics_table``
     A two-column table of logistics (times, costs, who-to-ask-for).
     ``{"columns": [str, ...], "rows": [[cell, ...], ...]}``
     ``rows`` is positional and must line up with ``columns``.
 
-``callout``
-    A highlighted warning or tip.
-    ``{"tone": "info" | "warning" | "critical", "text": str}``
-
-``choose_your_adventure``
-    Several interchangeable options the traveler picks between.
-    ``{"prompt": str, "options": [{"title": str, "description": str,
-    "duration": str, "cost": str}, ...]}``
-
-``free_text``
-    Prose, as authored.
-    ``{"paragraphs": [str, ...]}``
+``travel``
+    Intro and reference rows for the legs placed in it (``TransportLeg.section``).
+    ``{"intro"?: str, "columns"?: [str, ...], "rows"?: [[cell, ...], ...]}``
 
 ``note``
-    What the page offers instead of the three above (day-first plan P3): an optional heading (the
-    section's ``title``), a tone and paragraphs. With a tone it reads like a callout, without one like
-    free text; a paragraph starting "• " is a bullet. Old phases, callouts and free text are converted
-    to it on review (``apps/trips/day_first.py``).
+    An optional heading (the section's ``title``), a tone and paragraphs (day-first plan P3). With a
+    tone it is drawn as a callout; a paragraph starting "• " is a bullet.
     ``{"tone": "" | "tip" | "warning" | "critical", "paragraphs": [str, ...]}``
+
+Phases, callouts, free text and "choose your adventure" sections were retired (retire-old-section-types
+S2, trips 0051): notes and "choose one" groups replace them. Word documents still parse into them, and
+``apps/trips/day_first.py`` maps them on import and when an old history snapshot is restored.
 
 Every payload is a JSON *object*, never a bare list or string, so new keys can
 be added later without a migration. Renderers should tolerate missing keys and
@@ -1263,18 +1252,12 @@ class Section(models.Model):
     """
 
     class Type(models.TextChoices):
-        PHASE = "phase", "Phase"
         LOGISTICS_TABLE = "logistics_table", "Logistics table"
         # "This day's legs go here": renders its TransportLegs (``section.legs``) as rows,
         # then leftover reference rows. Payload {"intro"?, "columns"?, "rows"?}.
         TRAVEL = "travel", "Travel"
-        CALLOUT = "callout", "Callout"
-        CHOOSE_YOUR_ADVENTURE = "choose_your_adventure", "Choose your adventure"
-        FREE_TEXT = "free_text", "Free text"
         NOTE = "note", "Note"
 
-    #: Section types the page no longer offers: converted to notes on review (P3).
-    OLD_NOTE_TYPES = (Type.PHASE, Type.CALLOUT, Type.FREE_TEXT)
     #: A note's tone → the callout style it is drawn with (on the page and in the booklet).
     NOTE_TONE_STYLES = {"tip": "info", "warning": "warning", "critical": "critical"}
 
@@ -1327,26 +1310,9 @@ class Section(models.Model):
         day page rather than one cell of it.
         """
         content = self.content if isinstance(self.content, dict) else {}
-
-        def text(*keys):
-            """First of `keys` that is a non-empty string, trimmed."""
-            for key in keys:
-                value = content.get(key)
-                if isinstance(value, str) and value.strip():
-                    return " ".join(value.split())
-            return ""
-
-        if self.section_type == self.Type.PHASE:
-            return text("heading")[:90]
-        if self.section_type == self.Type.CALLOUT:
-            return text("text")[:90]
         if self.section_type == self.Type.NOTE:
             paragraphs = [p for p in content.get("paragraphs") or [] if isinstance(p, str)]
             return " ".join(" ".join(paragraphs).split())[:90] or self.title[:90]
-        if self.section_type == self.Type.FREE_TEXT:
-            paragraphs = content.get("paragraphs")
-            count = len(paragraphs) if isinstance(paragraphs, list) else 0
-            return f"{count} paragraph{'' if count == 1 else 's'}"
         if self.section_type == self.Type.LOGISTICS_TABLE:
             rows = content.get("rows")
             count = len(rows) if isinstance(rows, list) else 0
@@ -1360,10 +1326,6 @@ class Section(models.Model):
             if count:
                 parts.append(f"{count} reference row{'' if count == 1 else 's'}")
             return " · ".join(parts)
-        if self.section_type == self.Type.CHOOSE_YOUR_ADVENTURE:
-            options = content.get("options")
-            count = len(options) if isinstance(options, list) else 0
-            return f"{count} option{'' if count == 1 else 's'}"
         return ""
 
 

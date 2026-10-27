@@ -284,7 +284,7 @@ class DayDeleteTests(DayEditingFixture):
 
     def test_get_only_confirms(self):
         Meal.objects.create(day=self.day, name="Café Central")
-        Section.objects.create(day=self.day, section_type="phase", content={})
+        Section.objects.create(day=self.day, section_type="note", content={})
         self.client.force_login(self.alice)
         response = self.client.get(self.url())
         self.assertEqual(response.status_code, 200)
@@ -294,7 +294,7 @@ class DayDeleteTests(DayEditingFixture):
 
     def test_post_deletes_the_day_and_its_content(self):
         Meal.objects.create(day=self.day, name="Café Central")
-        section = Section.objects.create(day=self.day, section_type="phase", content={})
+        section = Section.objects.create(day=self.day, section_type="note", content={})
         self.client.force_login(self.alice)
         response = self.client.post(self.url())
         self.assertEqual(response.status_code, 302)
@@ -323,12 +323,12 @@ class SectionViewTests(DayEditingFixture):
         super().setUp()
         self.section = Section.objects.create(
             day=self.day,
-            section_type=Section.Type.CALLOUT,
-            content={"tone": "info", "text": "Original text"},
+            section_type=Section.Type.NOTE,
+            content={"tone": "tip", "paragraphs": ["Original text"]},
             order=0,
         )
 
-    def create_url(self, section_type=Section.Type.CALLOUT):
+    def create_url(self, section_type=Section.Type.NOTE):
         return reverse("trips:section_create", args=[self.trip.pk, self.day.pk, section_type])
 
     def edit_url(self, section=None):
@@ -338,14 +338,14 @@ class SectionViewTests(DayEditingFixture):
 
     # -- creating ---------------------------------------------------------
 
-    def test_an_editor_can_add_a_callout(self):
+    def test_an_editor_can_add_a_note(self):
         self.client.force_login(self.alice)
         response = self.client.post(
-            self.create_url(), {"title": "Tip", "icon": "", "order": "", "tone": "warning", "text": "Book ahead"}
+            self.create_url(), {"title": "Tip", "icon": "", "order": "", "tone": "warning", "paragraphs": "Book ahead"}
         )
         self.assertEqual(response.status_code, 302)
         section = Section.objects.get(title="Tip")
-        self.assertEqual(section.content, {"tone": "warning", "text": "Book ahead"})
+        self.assertEqual(section.content, {"tone": "warning", "paragraphs": ["Book ahead"]})
         self.assertEqual(section.day, self.day)
 
     def test_the_type_comes_from_the_url_not_the_post(self):
@@ -355,18 +355,27 @@ class SectionViewTests(DayEditingFixture):
         self.client.force_login(self.alice)
         self.client.post(
             self.create_url(),
-            {"section_type": Section.Type.PHASE, "tone": "info", "text": "Hi"},
+            {"section_type": Section.Type.TRAVEL, "tone": "tip", "paragraphs": "Hi"},
         )
         created = Section.objects.exclude(pk=self.section.pk).get()
-        self.assertEqual(created.section_type, Section.Type.CALLOUT)
+        self.assertEqual(created.section_type, Section.Type.NOTE)
 
     def test_an_unknown_type_in_the_url_is_404(self):
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.create_url("interpretive_dance")).status_code, 404)
 
+    def test_retired_types_and_tables_are_404(self):
+        """Retire-old-section-types S2: only Note and Travel notes are made from the create URL."""
+        self.client.force_login(self.alice)
+        for kind in ("phase", "callout", "free_text", "choose_your_adventure", "logistics_table"):
+            self.assertEqual(self.client.get(self.create_url(kind)).status_code, 404, kind)
+            self.assertEqual(self.client.post(self.create_url(kind), {"title": "x"}).status_code, 404, kind)
+        self.assertEqual(Section.objects.count(), 1)
+        self.assertEqual(self.client.get(self.create_url(Section.Type.TRAVEL)).status_code, 200)
+
     def test_a_new_section_defaults_to_the_end_of_the_day(self):
         self.client.force_login(self.alice)
-        response = self.client.get(self.create_url(Section.Type.PHASE))
+        response = self.client.get(self.create_url(Section.Type.NOTE))
         self.assertEqual(response.context["section"].order, 1)
 
     # -- editing ----------------------------------------------------------
@@ -375,21 +384,21 @@ class SectionViewTests(DayEditingFixture):
         self.client.force_login(self.alice)
         response = self.client.post(
             self.edit_url(),
-            {"title": "Tip", "icon": "⚠", "order": "2", "tone": "critical", "text": "Watch out"},
+            {"title": "Tip", "icon": "⚠", "order": "2", "tone": "critical", "paragraphs": "Watch out"},
         )
         self.assertEqual(response.status_code, 302)
         self.section.refresh_from_db()
-        self.assertEqual(self.section.content, {"tone": "critical", "text": "Watch out"})
+        self.assertEqual(self.section.content, {"tone": "critical", "paragraphs": ["Watch out"]})
         self.assertEqual(self.section.icon, "⚠")
 
     def test_an_invalid_tone_writes_nothing(self):
         self.client.force_login(self.alice)
         response = self.client.post(
-            self.edit_url(), {"title": "T", "order": "", "tone": "purple", "text": "x"}
+            self.edit_url(), {"title": "T", "order": "", "tone": "purple", "paragraphs": "x"}
         )
         self.assertEqual(response.status_code, 200)
         self.section.refresh_from_db()
-        self.assertEqual(self.section.content["text"], "Original text")
+        self.assertEqual(self.section.content["paragraphs"], ["Original text"])
 
     def test_a_bad_title_writes_nothing(self):
         # The metadata and the payload are one save, so a long title must not
@@ -397,17 +406,17 @@ class SectionViewTests(DayEditingFixture):
         self.client.force_login(self.alice)
         response = self.client.post(
             self.edit_url(),
-            {"title": "x" * 300, "order": "", "tone": "info", "text": "Changed"},
+            {"title": "x" * 300, "order": "", "tone": "tip", "paragraphs": "Changed"},
         )
         self.assertEqual(response.status_code, 200)
         self.section.refresh_from_db()
-        self.assertEqual(self.section.content["text"], "Original text")
+        self.assertEqual(self.section.content["paragraphs"], ["Original text"])
 
     def test_a_section_on_another_day_is_404(self):
         other_day = Day.objects.create(
             trip=self.trip, day_number=2, date=date(2027, 9, 26)
         )
-        theirs = Section.objects.create(day=other_day, section_type="phase", content={})
+        theirs = Section.objects.create(day=other_day, section_type="note", content={})
         self.client.force_login(self.alice)
         url = reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, theirs.pk])
         self.assertEqual(self.client.get(url).status_code, 404)
@@ -503,118 +512,6 @@ class LogisticsTableFormTests(TestCase):
         self.assertEqual(form.to_content(), content)
 
 
-class ChooseYourAdventureFormTests(TestCase):
-    OPTION_KEYS = ("letter", "title", "description", "duration", "cost")
-
-    def payload(self, content=None, rows=0, **overrides):
-        """A posted payload for a given stored `content`.
-
-        Every stored option becomes a posted row, plus `rows` more, so a test can
-        add options the way the page does. `overrides` sets individual fields —
-        `overrides={"options-1-DELETE": "on"}` or
-        `overrides={"options-0-cost": ""}`.
-        """
-        content = content or {}
-        stored = content.get("options") or []
-        total = max(len(stored), rows)
-        data = {"prompt": content.get("prompt", "Pick one")}
-        for index in range(total):
-            option = stored[index] if index < len(stored) else {}
-            for key in self.OPTION_KEYS:
-                data[f"options-{index}-{key}"] = option.get(key, "")
-        data["options-TOTAL_FORMS"] = total
-        data["options-INITIAL_FORMS"] = len(stored)
-        data["options-MIN_NUM_FORMS"] = 0
-        data["options-MAX_NUM_FORMS"] = 1000
-        data.update(overrides)
-        return section_payload_form("choose_your_adventure", data=data, content=content)
-
-    def test_a_half_typed_option_is_rejected_rather_than_saved_partially(self):
-        # The regression: `clean()` used to forward only `non_form_errors`, so a
-        # missing `title` did not invalidate the section and the option was
-        # written to `content` without it — a save that looked like it worked.
-        content = {
-            "prompt": "Which castle?",
-            "options": [
-                {"letter": "A", "title": "Neuschwanstein", "description": "The famous one"},
-                {"letter": "B", "title": "Linderhof", "description": "Quieter"},
-            ],
-        }
-        form = self.payload(content, **{"options-1-title": ""})
-        self.assertFalse(form.is_valid())
-        self.assertIn("Fix the highlighted options.", form.non_field_errors())
-        self.assertIn("title", form.options.forms[1].errors)
-
-    def test_the_untouched_blank_option_row_is_still_accepted(self):
-        # The other side of the same fix: `extra=1` always renders one empty row,
-        # and Django gives it `empty_permitted=True`, so refusing to save because
-        # of it would break every save of this type.
-        content = {
-            "prompt": "Which castle?",
-            "options": [
-                {"letter": "A", "title": "Neuschwanstein", "description": "The famous one"},
-                {"letter": "B", "title": "Linderhof", "description": "Quieter"},
-            ],
-        }
-        form = self.payload(content, rows=1)
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.to_content(), content)
-
-    def test_options_round_trip_including_the_letter_key(self):
-        # `letter` is in the data but not in the module docstring's shape, which
-        # is exactly why option keys are read off the data.
-        content = {
-            "prompt": "Which castle?",
-            "options": [
-                {"letter": "A", "title": "Neuschwanstein", "description": "The famous one"},
-                {"letter": "B", "title": "Linderhof", "description": "Quieter"},
-            ],
-        }
-        form = self.payload(content)
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.to_content(), content)
-
-    def test_the_blank_extra_row_is_not_saved_as_an_option(self):
-        content = {
-            "prompt": "Pick one",
-            "options": [{"letter": "A", "title": "One", "description": "First"}],
-        }
-        form = self.payload(content)
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(len(form.to_content()["options"]), 1)
-
-    def test_a_deleted_option_goes_away(self):
-        content = {
-            "prompt": "Pick one",
-            "options": [
-                {"letter": "A", "title": "One", "description": "First"},
-                {"letter": "B", "title": "Two", "description": "Second"},
-            ],
-        }
-        form = self.payload(content, **{"options-1-DELETE": "on"})
-        self.assertTrue(form.is_valid(), form.errors)
-        options = form.to_content()["options"]
-        self.assertEqual([o["title"] for o in options], ["One"])
-
-    def test_an_unknown_option_key_survives(self):
-        content = {
-            "prompt": "Pick one",
-            "options": [{"title": "One", "description": "First", "booking_url": "http://x"}],
-        }
-        form = self.payload(content)
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.to_content()["options"][0]["booking_url"], "http://x")
-
-    def test_clearing_a_cost_removes_the_key(self):
-        content = {
-            "prompt": "Pick one",
-            "options": [{"title": "One", "description": "First", "cost": "£20"}],
-        }
-        form = self.payload(content, **{"options-0-cost": ""})
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertNotIn("cost", form.to_content()["options"][0])
-
-
 class BlankOrderTests(DayEditingFixture):
     """A blank `order` must fall back to the model default, not to NULL.
 
@@ -645,11 +542,11 @@ class BlankOrderTests(DayEditingFixture):
     def test_a_blank_section_order_saves(self):
         self.client.force_login(self.alice)
         url = reverse(
-            "trips:section_create", args=[self.trip.pk, self.day.pk, Section.Type.CALLOUT]
+            "trips:section_create", args=[self.trip.pk, self.day.pk, Section.Type.NOTE]
         )
         response = self.client.post(
             url,
-            {"title": "Tip", "icon": "", "order": "", "tone": "info", "text": "x"},
+            {"title": "Tip", "icon": "", "order": "", "tone": "tip", "paragraphs": "x"},
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Section.objects.get(title="Tip").order, 0)
@@ -707,38 +604,13 @@ class SectionRoundTripTests(TestCase):
             name: (field.value() if hasattr(field, "value") else field)
             for name, field in form.initial.items()
         }
-        if hasattr(form, "options"):
-            keys = ("letter", "title", "description", "duration", "cost")
-            for index, option_form in enumerate(form.options.forms):
-                for key in keys:
-                    data[f"options-{index}-{key}"] = option_form.initial.get(key, "")
-            data["options-TOTAL_FORMS"] = len(form.options.forms)
-            # The *stored* count, not the rendered count: `extra=1` renders one
-            # blank row more than was saved, and the page posts
-            # INITIAL_FORMS=len(stored) with TOTAL_FORMS=len(stored)+1. Claiming
-            # the blank row already existed told the formset it was a real option
-            # missing its title, which is exactly how an invalid option could be
-            # saved — the helper had been hiding it.
-            data["options-INITIAL_FORMS"] = len(content.get("options") or [])
         reposted = section_payload_form(section_type, data=data, content=content)
         self.assertTrue(reposted.is_valid(), reposted.errors)
         return reposted.to_content()
 
-    def test_phase(self):
-        content = {
-            "heading": "Day 3 — Marburg",
-            "summary": "A walking day along the Lahn.",
-            "highlights": ["Sandstone quarries", "Landgrave's tomb"],
-        }
-        self.assertEqual(self.republish("phase", content), content)
-
-    def test_callout(self):
-        content = {"tone": "warning", "text": "Tents sell out in January."}
-        self.assertEqual(self.republish("callout", content), content)
-
-    def test_free_text(self):
-        content = {"paragraphs": ["First paragraph.", "Second paragraph."]}
-        self.assertEqual(self.republish("free_text", content), content)
+    def test_note(self):
+        content = {"tone": "warning", "paragraphs": ["Tents sell out in January.", "• Book early"]}
+        self.assertEqual(self.republish("note", content), content)
 
     def test_two_column_logistics_table(self):
         content = {"columns": ["Detail", "Info"], "rows": [["Lunch", "€€"]]}
@@ -758,47 +630,18 @@ class SectionRoundTripTests(TestCase):
         }
         self.assertEqual(self.republish("logistics_table", content), content)
 
-    def test_choose_your_adventure_with_letters(self):
-        content = {
-            "prompt": "Which castle?",
-            "options": [
-                {"letter": "A", "title": "Neuschwanstein", "description": "The famous one"},
-                {"letter": "B", "title": "Linderhof", "description": "Quieter"},
-            ],
-        }
-        self.assertEqual(self.republish("choose_your_adventure", content), content)
-
-    def test_choose_your_adventure_with_extra_known_keys(self):
-        # duration/cost are in the docstring's shape but not in the imported
-        # rows, so they have to survive a save as well.
-        content = {
-            "prompt": "Pick",
-            "options": [
-                {
-                    "letter": "A",
-                    "title": "Rafting",
-                    "description": "Class III",
-                    "duration": "3 hrs",
-                    "cost": "£40",
-                }
-            ],
-        }
-        self.assertEqual(self.republish("choose_your_adventure", content), content)
-
     def test_an_unknown_top_level_key_survives_every_type(self):
         for section_type, content in (
-            ("phase", {"heading": "H", "summary": "S"}),
-            ("callout", {"tone": "info", "text": "T"}),
-            ("free_text", {"paragraphs": ["P"]}),
+            ("note", {"tone": "tip", "paragraphs": ["P"]}),
             ("logistics_table", {"columns": ["A"], "rows": [["b"]]}),
-            ("choose_your_adventure", {"prompt": "P", "options": []}),
+            ("travel", {"intro": "I", "columns": ["A"], "rows": [["b"]]}),
         ):
             with self.subTest(section_type=section_type):
                 stored = dict(content, booking_url="https://example.com", version=3)
                 self.assertEqual(self.republish(section_type, stored), stored)
 
     def test_a_missing_optional_key_is_not_invented(self):
-        # The importers omit `highlights` when a phase has none. Adding an empty
-        # list would render differently from omitting the key.
-        content = {"heading": "H", "summary": "S"}
-        self.assertEqual(self.republish("phase", content), content)
+        # Travel notes made from a table have no intro. Adding an empty one would
+        # render differently from omitting the key.
+        content = {"columns": ["Leg"], "rows": [["A → B"]]}
+        self.assertEqual(self.republish("travel", content), content)

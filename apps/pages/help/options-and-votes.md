@@ -58,7 +58,7 @@ To put something already on the day into an option, open it (its panel or page) 
 
 ## From older trips
 
-Trips planned before choices have **Choose your adventure** sections and **decision** to-dos instead. **Needs attention** offers **N to convert to notes and choices**: each becomes a choice on its day, with its options. A decision's chosen option stays picked, and the to-do is ticked off with a note saying where it went. A decision with no day goes on its journey's, stay's or activity's day, else Day 1 (flagged to check). A Choose your adventure with a confirmation number on it becomes a note instead, listing its options, so the confirmation stays with it. New to-dos can't be decisions any more: make a choice instead.
+Trips planned before choices had **Choose your adventure** sections and **decision** to-dos instead. Every Choose your adventure has been turned into a choice on its day (one with a confirmation number on it became a note listing its options, so the confirmation stays with it), and a Word itinerary imported now makes choices straight away. An open decision to-do with options is still offered: **Needs attention** shows **N decisions to turn into choices**, and each becomes a choice on its day, with its options. A decision's chosen option stays picked, and the to-do is ticked off with a note saying where it went. A decision with no day goes on its journey's, stay's or activity's day, else Day 1 (flagged to check). New to-dos can't be decisions any more: make a choice instead.
 
 ## In the PDF
 

@@ -72,8 +72,8 @@ class AddFromTheDayTests(Fixture):
             "action": "new_info", "info-title": "Bayern Ticket rules", "return_to": self.url})
         self.assertEqual(ItemLink.objects.get().target, self.day)
 
-        response = self.client.post(reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "free_text"]),
-                                    {"title": "Afternoon stroll", "order": "", "icon": "", "paragraphs": "Old town."})
+        response = self.client.post(reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "note"]),
+                                    {"title": "Afternoon stroll", "order": "", "icon": "", "tone": "", "paragraphs": "Old town."})
         self.assertTrue(response["Location"].startswith(self.url))
         self.assertEqual(Section.objects.get().day, self.day)
 
@@ -85,7 +85,7 @@ class AddFromTheDayTests(Fixture):
         TripActivity.objects.create(trip=self.trip, day=self.day, title="Early tour", start_time=time(9, 0))
         Meal.objects.create(day=self.day, name="Dinner at 7", meal_type="dinner", reserved_time=time(19, 0))
         Meal.objects.create(day=self.day, name="Café idea", meal_type="lunch")
-        Section.objects.create(day=self.day, section_type="free_text", title="Notes", content={"paragraphs": ["x"]})
+        Section.objects.create(day=self.day, section_type="note", title="Notes", content={"paragraphs": ["x"]})
         self.client.force_login(self.editor)
         html = self.client.get(self.url).content.decode()
         listing = html[html.index('id="on-this-day"'):]

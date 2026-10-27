@@ -56,7 +56,7 @@ class SyncTests(Fixture):
         Meal.objects.create(day=day, name="Lunch", meal_type="lunch", poi=POI.objects.create(
             name="Café", slug="cafe", city=bonn, latitude=0, longitude=0, approval_status=APPROVED))
         category, _ = ActivityCategory.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
-        Section.objects.create(day=day, section_type="free_text", title="Fest", event=Event.objects.create(
+        Section.objects.create(day=day, section_type="note", title="Fest", event=Event.objects.create(
             name="Fest", slug="fest", description="d", category=category, start_date=day.date, end_date=day.date,
             city=innsbruck, approval_status=APPROVED))
         self.trip.cities.set([self.vienna])  # on the trip without being used

@@ -21,7 +21,7 @@ class AddANoteTests(TestCase):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
             self.users[role] = user
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
-        self.section = Section.objects.create(day=self.day, section_type="free_text", title="Afternoon",
+        self.section = Section.objects.create(day=self.day, section_type="note", title="Afternoon",
                                               content={"paragraphs": ["Stroll."]})
         self.task = BookingTask.objects.create(trip=self.trip, title="ICE seats")
         self.links = [reverse("trips:comment_create", args=[kind, pk])

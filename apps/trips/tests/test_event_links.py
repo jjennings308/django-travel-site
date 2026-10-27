@@ -56,7 +56,7 @@ class Fixture(TestCase):
 class ChoiceTests(Fixture):
     def test_events_during_the_trip_in_its_cities_first(self):
         self.assertEqual(list(catalogue_events(self.trip)), [self.okto27, self.berlin_fest])
-        for form in (SectionForm(instance=Section(day=self.day, section_type="free_text"), trip=self.trip),
+        for form in (SectionForm(instance=Section(day=self.day, section_type="note"), trip=self.trip),
                      TripActivityForm(instance=TripActivity(trip=self.trip, day=self.day), trip=self.trip)):
             with self.subTest(form=type(form).__name__):
                 self.assertEqual(list(form.fields["event"].queryset), [self.okto27, self.berlin_fest])
@@ -68,7 +68,7 @@ class NotesTests(Fixture):
         CatalogueNote.objects.create(poi=self.wiesn, text="Cash only in the tents", approval_status=APPROVED)
         CatalogueNote.objects.create(activity=self.okto, text="Reserve a tent table", approval_status=APPROVED)
         CatalogueNote.objects.create(event=self.okto27, text="Opening day is the busiest", approval_status=APPROVED)
-        Section.objects.create(day=self.day, section_type="free_text", title="The Wiesn", event=self.okto27,
+        Section.objects.create(day=self.day, section_type="note", title="The Wiesn", event=self.okto27,
                                content={"paragraphs": ["Beer."]})
         TripActivity.objects.create(trip=self.trip, day=self.day, kind="table", title="Tent table", event=self.okto27)
         self.client.force_login(self.editor)
@@ -84,7 +84,7 @@ class NotesTests(Fixture):
 
 class SuggestionTests(Fixture):
     def test_a_section_named_for_the_activity_on_an_event_day_is_offered_the_event(self):
-        section = Section.objects.create(day=self.day, section_type="free_text", title="Oktoberfest",
+        section = Section.objects.create(day=self.day, section_type="note", title="Oktoberfest",
                                          content={"paragraphs": ["Beer."]})
         self.client.force_login(self.editor)
         page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]))
@@ -95,7 +95,7 @@ class SuggestionTests(Fixture):
         self.assertEqual(section.event, self.okto27)
 
     def test_not_this_one_and_events_outside_the_trip_are_refused(self):
-        section = Section.objects.create(day=self.day, section_type="free_text", title="Oktoberfest",
+        section = Section.objects.create(day=self.day, section_type="note", title="Oktoberfest",
                                          content={"paragraphs": ["Beer."]})
         self.client.force_login(self.editor)
         link = reverse("trips:catalogue_link", args=[self.trip.pk, self.day.pk, "section", section.pk])
@@ -110,7 +110,7 @@ class SuggestionTests(Fixture):
 
 class CountTests(Fixture):
     def test_an_event_counts_its_trips_and_they_count_for_its_activity_and_venue(self):
-        Section.objects.create(day=self.day, section_type="free_text", event=self.okto27)
+        Section.objects.create(day=self.day, section_type="note", event=self.okto27)
         TripActivity.objects.create(trip=self.trip, day=self.day, kind="table", title="Tent", event=self.okto27)
         other = Trip.objects.create(name="Second", start_date=date(2027, 9, 20), end_date=date(2027, 9, 21))
         TripActivity.objects.create(trip=other, title="Tent", event=self.okto27,

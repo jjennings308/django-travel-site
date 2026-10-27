@@ -98,8 +98,8 @@ class Fixture(TestCase):
         self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Chimayo", check_in=date(2026, 9, 12),
                                            check_out=date(2026, 9, 13))
         self.meal = Meal.objects.create(day=self.day, name="Rancho de Chimayó", meal_type=Meal.MealType.DINNER)
-        self.tour = Section.objects.create(day=self.day, section_type="phase", title="Georgia O'Keeffe Landscape Tour",
-                                           content={"heading": "Georgia O'Keeffe Landscape Tour"})
+        self.tour = Section.objects.create(day=self.day, section_type="note", title="Georgia O'Keeffe Landscape Tour",
+                                           content={"tone": "", "paragraphs": []})
         self.sara = Traveler.objects.create(name="Sara Test")
         self.trip.travelers.add(self.sara)
         self.other = Trip.objects.create(name="Other", start_date=date(2026, 1, 1), end_date=date(2026, 1, 2))

@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Converting a trip's phases, callouts and free text to notes (trips:trip_convert, day-first plan P3; apps/trips/day_first.py). Every section starts ticked; nothing changes until the ticked ones are converted, in one transaction.
+Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, day-first plan P4; apps/trips/day_first.py). Every one starts ticked; nothing changes until the ticked ones are converted, in one transaction.
 {% endcomment %}
 {% block title %}Convert — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -12,10 +12,10 @@ Converting a trip's phases, callouts and free text to notes (trips:trip_convert,
   </nav>
   <div class="page-header">
     <div>
-      <h1 class="page-title">Convert to notes and choices</h1>
-      <p class="page-subtitle">A day now holds travel, stays, things to do, places to eat, notes and “choose one” groups. Phases, callouts and free text become notes (a phase's heading, summary and highlights, a callout's text and tone, free text's paragraphs). “Choose your adventure” sections and decision to-dos become choices you can vote on and pick (a chosen option stays picked). Nothing is lost. {{ count }} to convert.</p>
+      <h1 class="page-title">Turn decisions into choices</h1>
+      <p class="page-subtitle">Decision to-dos with options become “choose one” groups on their days, which everyone can vote on and an editor picks (a chosen option stays picked); the to-do is ticked off with a note saying where it went. Nothing is lost. {{ count }} to convert.</p>
     </div>
-    <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="adding-a-day" anchor="notes" label="notes" text="How this works" %}<a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a></p>
+    <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="options-and-votes" anchor="from-older-trips" label="older trips" text="How this works" %}<a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a></p>
   </div>
 
   {% if groups %}

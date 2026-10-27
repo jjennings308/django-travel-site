@@ -56,9 +56,9 @@ class CommentFixture(TestCase):
         )
         self.section = Section.objects.create(
             day=self.day,
-            section_type=Section.Type.CALLOUT,
+            section_type=Section.Type.NOTE,
             title="Bring a jumper",
-            content={"tone": "info", "text": "It is cold up there."},
+            content={"tone": "tip", "paragraphs": ["It is cold up there."]},
         )
 
         # cara holds no grant, so she cannot reach the trip at all.
