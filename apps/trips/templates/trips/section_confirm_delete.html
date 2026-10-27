@@ -19,6 +19,7 @@
 
   <form method="post" class="mt-6 border-t border-zinc-100 pt-5">
     {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     <div class="flex items-center gap-3">
       <button type="submit" class="btn-danger">Delete section</button>
       <a class="btn-quiet" href="{% url 'trips:day_edit' trip.pk day.pk %}">Cancel</a>

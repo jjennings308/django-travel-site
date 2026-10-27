@@ -629,7 +629,7 @@ def city_search(request):
 def country_options(request):
     """Approved countries, for the box's "Add a new city" form."""
     countries = Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by("name")
-    return JsonResponse({"countries": [{"id": c.pk, "name": c.name, "flag": c.flag} for c in countries]})
+    return JsonResponse({"countries": [{"id": c.pk, "name": c.name} for c in countries]})
 
 
 def _wants_json(request):

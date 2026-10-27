@@ -60,7 +60,14 @@ Contacts and tips linked to a hotel, train or activity appear right under it: a 
 
 A meal, activity or plan that's linked to a place or activity in the catalogue also shows that place's **notes** under it, such as "Cash only" or "Closed Mon, Tue", marked "From <place> · checked Oct 2026" ([Good to know notes](/help/places-and-events/#good-to-know-notes)). Two kinds of note also warn you, on the trip page and in the PDF: **⚠ <place> is closed on Mondays** when the meal or activity falls on a day it's closed, and **Book by <date>** when it needs booking ahead (worked out from the day, such as 3 months before). Both count in the day's ⚠ and in **Needs attention** (a book-by date once it's within 30 days or overdue); editors can turn a book-by date into a to-do with **Add as a to-do**. They print in the PDF too. Editors can click **Not for this trip** to hide one on this trip only; it's listed under the item as hidden, with **show** to bring it back.
 
-Editors also see **Edit this day** at the top of each open day, and **Edit** beside each journey, activity and meal.
+## Open an item
+
+Click a journey, stay, activity, meal or part of the write-up to open it in a **panel** beside the page (on a phone it fills the screen). Click **×** or press Esc to close it.
+
+- **If you can edit the trip**, the panel is the item's own page, with tabs: **Details** (what it is, when and where), **Booking** (confirmation numbers, tickets and to-dos for it), **People** (who's on it, for activities and days), **Contacts** (phone numbers and notes linked to it) and, for a day or a part of the write-up, **Comments**. Change something and save: the panel says **Saved** and stays open, and the day on the page updates. Deleting the item closes the panel. **Edit this day** at the top of each open day opens the day's own details the same way, and **Edit** beside each item does too.
+- **If you can read the trip**, the panel shows the item as the page does, with its notes where it has them.
+
+A journey moved to another date reloads the page at its new day. The rest of the page (Needs attention, the route, Reference) catches up the next time you open it. Without JavaScript, or with Ctrl/⌘-click, **Edit** opens the item's own page as before.
 
 ## Reference
 

@@ -50,7 +50,7 @@ class SearchTests(Fixture):
         row = self.client.get(reverse("locations:city_search"), {"q": "munchen"}).json()["results"][0]
         self.assertEqual({k: row[k] for k in ("id", "name", "country", "timezone", "flag", "pending")},
                          {"id": self.munich.pk, "name": "München", "country": "Germany", "timezone": "Europe/Berlin",
-                          "flag": "🇩🇪", "pending": False})
+                          "flag": "de", "pending": False})
         self.assertEqual(set(row), {"id", "name", "label", "region", "country", "flag", "timezone", "lat", "lng",
                                     "pending"})
 

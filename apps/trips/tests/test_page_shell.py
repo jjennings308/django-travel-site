@@ -35,7 +35,7 @@ class Fixture(TestCase):
             return self.client.get(self.url)
 
     def opened(self, response):
-        return re.findall(r'<details class="day day-fold" id="(day-\d+)" open>', response.content.decode())
+        return re.findall(r'<details class="day day-fold" id="(day-\d+)" open[ >]', response.content.decode())
 
 
 class OpenDayTests(Fixture):

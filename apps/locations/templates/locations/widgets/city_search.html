@@ -23,7 +23,7 @@
     </template>
     <template x-for="(city, i) in results" :key="city.id">
       <button type="button" class="block w-full rounded px-2 py-1.5 text-left hover:bg-zinc-100" :class="i === active && 'bg-zinc-100'" @click="pick(city)" role="option">
-        <span x-text="city.flag"></span> <span class="font-medium" x-text="city.name"></span><span class="text-zinc-500" x-text="[city.region, city.country].filter(Boolean).join(', ') ? ' · ' + [city.region, city.country].filter(Boolean).join(', ') : ''"></span>
+        <span class="fi" :class="city.flag && 'fi-' + city.flag" aria-hidden="true"></span> <span class="font-medium" x-text="city.name"></span><span class="text-zinc-500" x-text="[city.region, city.country].filter(Boolean).join(', ') ? ' · ' + [city.region, city.country].filter(Boolean).join(', ') : ''"></span>
         <span class="text-xs text-amber-700" x-show="city.pending"> · awaiting review</span>
       </button>
     </template>
@@ -34,7 +34,7 @@
     <p class="card-kicker mb-2">A new city</p>
     <label class="mb-2 block">Name <input type="text" class="{{ widget.search.text_class }}" x-model="draft.name"></label>
     <label class="mb-2 block">Country
-      <select class="{{ widget.search.text_class }}" x-model="draft.country" @change="loadRegions()"><option value="">---------</option><template x-for="c in countries" :key="c.id"><option :value="c.id" x-text="c.flag + ' ' + c.name"></option></template></select>
+      <select class="{{ widget.search.text_class }}" x-model="draft.country" @change="loadRegions()"><option value="">---------</option><template x-for="c in countries" :key="c.id"><option :value="c.id" x-text="c.name"></option></template></select>
     </label>
     <label class="mb-2 block" x-show="regions.length">Region (optional)
       <select class="{{ widget.search.text_class }}" x-model="draft.region"><option value="">---------</option><template x-for="r in regions" :key="r.id"><option :value="r.id" x-text="r.name"></option></template></select>

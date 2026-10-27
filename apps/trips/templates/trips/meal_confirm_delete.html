@@ -1,0 +1,15 @@
+{% extends "trips/base_trips.html" %}
+{% block title %}Delete {{ meal.name }} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-xl{% endblock %}
+{% block content %}
+  <form method="post" class="card p-6">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-2">Delete {{ meal.name }}?</h1>
+    <p class="mb-4 text-zinc-600">Its confirmations are kept (they just stop covering it).</p>
+    <div class="flex gap-3">
+      <button type="submit" class="btn-danger">Delete</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

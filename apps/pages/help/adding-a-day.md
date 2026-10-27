@@ -87,7 +87,7 @@ When a meal's name or a section's title is the name of one catalogue place or ac
 
 Open the trip page. Your day appears in two places:
 
-- **Days:** the day itself, folded to its summary: its date, city and theme, then where you sleep, travel and highlights. Click it to open it and check the timeline, write-up and food ideas.
+- **Days:** the day itself, folded to its summary: its date, city and theme, then where you sleep, travel and highlights. Click it to open it and check the timeline, write-up and food ideas. To fix something there, click it: it opens in a panel beside the page, where you can change and save it without leaving the trip ([open an item](/help/reading-your-trip/#open-an-item)). A meal has its own page too now, with its confirmations and contacts.
 - **Download PDF:** the printed booklet gives the day its own section, with its stay, legs, activities and meals.
 
 ## Tips and troubleshooting

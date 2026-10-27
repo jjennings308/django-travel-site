@@ -36,7 +36,7 @@ class Fixture(TestCase):
 class LinkAndAccessTests(Fixture):
     def test_edit_this_day_for_editors_only(self):
         self.assertIn(self.url + "?next=", self.trip_page(self.editor))
-        self.assertNotIn(self.url, self.trip_page(self.viewer))
+        self.assertNotIn(self.url + "?next=", self.trip_page(self.viewer))  # (the day's fragment URL starts the same)
 
     def test_viewers_and_commentors_403_strangers_404(self):
         for user in (self.viewer, self.commentor):

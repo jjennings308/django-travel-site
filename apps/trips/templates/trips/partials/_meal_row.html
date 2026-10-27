@@ -1,13 +1,13 @@
 {% comment %}
-A meal with a reservation time, as a timeline row on its day (U3). Pass meal= and time=. Meals are edited on the day page.
+A meal with a reservation time, as a timeline row on its day (U3). Pass meal= and time=. Edited on its own page (trips:meal_edit), in the panel on the trip page (P2).
 {% endcomment %}
-<div class="timeline-row" id="meal-{{ meal.pk }}">
+<div class="timeline-row" id="meal-{{ meal.pk }}" data-panel="{% if can_edit %}{% url 'trips:meal_edit' trip.pk meal.day_id meal.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'meal' meal.pk %}{% endif %}">
   <div class="timeline-time">{{ time }}</div>
   <div class="min-w-0">
     <p><span aria-hidden="true">🍽</span> <span class="font-medium text-zinc-900">{{ meal.name }}</span>
       <span class="text-zinc-500">{{ meal.get_meal_type_display }}{% if meal.cuisine %} · {{ meal.cuisine }}{% endif %}{% if meal.price_range %} · {{ meal.price_range }}{% endif %}</span>
       {% for c in meal.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}
-      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:day_edit' trip.pk meal.day_id %}">Edit</a>{% endif %}
+      {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:meal_edit' trip.pk meal.day_id meal.pk %}?next={{ request.path|urlencode }}%23meal-{{ meal.pk }}" data-panel-link>Edit</a>{% endif %}
     </p>
     {% include "trips/partials/_catalogue_link.html" with item=meal %}
     {% include "trips/partials/_trip_notes.html" with item=meal %}

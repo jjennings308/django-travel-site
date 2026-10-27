@@ -66,7 +66,7 @@ def as_json(city):
         "label": str(city),
         "region": city.region.name if city.region_id else "",
         "country": city.country.name,
-        "flag": city.country.flag,
+        "flag": (city.country.iso_code or "").lower(),  # a flag-icons code: <span class="fi fi-de">
         "timezone": city.timezone,
         "lat": float(city.latitude) if city.latitude is not None else None,
         "lng": float(city.longitude) if city.longitude is not None else None,

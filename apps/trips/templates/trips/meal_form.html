@@ -1,0 +1,26 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+One meal on its own page (trips:meal_edit, day-first plan P2): its details, then its confirmations and contacts & info, as a leg's or an activity's page. The day page's Meals form edits the same rows together.
+{% endcomment %}
+{% block title %}{{ meal.name }} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs" data-panel-hide>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
+    <span>{{ meal.name }}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate data-panel-tab="details">
+    {% csrf_token %}
+    <h1 class="page-title mb-1">{{ meal.name }}</h1>
+    <p class="mb-4 text-zinc-500">Day {{ day.day_number }}{% if day.date %}, {{ day.date|date:"l, F j" }}{% endif %}. A reservation time puts it in the day's timeline; without one it's a food idea.</p>
+    {% include "trips/_form_fields.html" with form=form %}
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:meal_delete' trip.pk day.pk meal.pk %}?next={{ next|urlencode }}">Delete this meal</a>
+    </div>
+  </form>
+  <div data-panel-tab="booking">{% include "trips/partials/_item_confirmations.html" with return_to=request.get_full_path %}</div>
+  <div data-panel-tab="contacts">{% include "trips/partials/_item_links.html" with return_to=request.get_full_path %}</div>
+{% endblock %}

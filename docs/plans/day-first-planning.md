@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -100,6 +100,12 @@ keeps adding the goal's cities (they are not "used" by anything until P6's ideas
 - Help: the guide on starting a trip and adding a day (route builder, city search); bump `updated`.
 
 ### P2 — Edit in place: the item panel
+
+Done (branch `p2-item-panel`). As built: plain `fetch` (no htmx, so no CDN pin or offline-worker change); a meal got its
+own page (`trips:meal_edit`) since it had none; the day fragment is the trip page's context rendered for one day, so it
+costs the page's 32 queries (stays and legs span days); readers open a day's panel from nothing yet (its notes stay
+inline on the day), editors through Edit this day; the People tab appears only where the item has travellers (activities,
+days).
 
 - On the trip page, an editor's click on an item (leg, stay, activity, meal, section, day header) opens a **side
   panel** (a full-screen sheet below `sm`) with that item's existing page — `leg_edit`, `stay_edit`,

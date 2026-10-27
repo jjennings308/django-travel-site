@@ -14,7 +14,7 @@ without a template edit.
 <div class="field-grid">
 {% for field in form.visible_fields %}
   {% if not hide_fields or field.name not in hide_fields %}
-    <div class="mb-4">
+    <div class="mb-4" data-panel-tab="{% if field.name == 'travelers' %}people{% else %}details{% endif %}">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
       {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
