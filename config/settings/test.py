@@ -18,3 +18,4 @@ GEOCODING_ENABLED = False  # never call OpenStreetMap from a test
 COUNTRY_FLAGS_ENABLED = False  # no flag files in uploads/; the flag tests turn it on with a temporary MEDIA_ROOT
 RATELIMIT_ENABLED = False  # tests sign in hundreds of times; test_ratelimit turns it back on
 LEGAL_ACCEPTANCE_REQUIRED = False  # test users never "accept"; test_legal_versions turns it back on
+RESTCOUNTRIES_API_KEY = ""  # never call REST Countries from a test (the client tests patch urlopen)

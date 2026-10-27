@@ -1,6 +1,6 @@
 # Plan: a flag picture for every country, and a monthly country check
 
-Status: C1 done (2026-10-27, branch `c1-country-flags`); C2 not started. Decided by James 2026-10-27. Two phases, one branch each, in order: C1 (flags),
+Status: C1 done (2026-10-27, branch `c1-country-flags`); C2 done (2026-10-27, branch `c2-check-countries`). Decided by James 2026-10-27. Two phases, one branch each, in order: C1 (flags),
 C2 (the monthly check). Read with `CLAUDE.md` → "Pictures", "Pictures first", "SEO basics" and "Currency choices".
 
 ## Why
@@ -73,6 +73,13 @@ so it gained **Use the flag** only; every country `import_countries` seeds has a
   `pg_dump` first, then `country_flags`.
 
 ## C2 — The monthly country check (branch `c2-check-countries`)
+
+Done. As built: the API couldn't be called from Claude Code's session, so the client follows the published docs
+(`data.objects` / `data.meta.more`, `response_fields`, pages of 100, Bearer header) and reads `currencies` — documented
+only as "object" — either keyed by code or as a list of `{"code", "name"}`; check the first real run's output for an
+unreadable shape. A name matches their common, official or an alternate name. "Theirs we don't have" (territories
+mostly) is listed but doesn't make the exit 1, or every month would; ours they don't know does. A 404 for
+`--country` reads as "not known".
 
 - **Settings.** `RESTCOUNTRIES_API_KEY = os.environ.get("RESTCOUNTRIES_API_KEY", "")` in `config/settings/base.py`;
   `RESTCOUNTRIES_API_KEY=` (empty) in `.env.example` with a one-line comment. Empty in tests and CI. Never log it,

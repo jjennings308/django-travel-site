@@ -239,6 +239,9 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until 
 # Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
 GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODING_ENABLED = os.environ.get("GEOCODING_ENABLED", "1") == "1"
+# REST Countries, read only by the monthly `check_countries` report (country-flags plan C2; locations.restcountries):
+# sent as a Bearer header, never in a URL or a log; empty in tests and CI.
+RESTCOUNTRIES_API_KEY = os.environ.get("RESTCOUNTRIES_API_KEY", "")
 # A new country gets its flag as its picture (country-flags plan C1, locations.flags); off in tests, which
 # turn it on with a temporary MEDIA_ROOT so no flag files land in uploads/.
 COUNTRY_FLAGS_ENABLED = True

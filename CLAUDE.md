@@ -79,6 +79,13 @@ python manage.py migrate
 **Production backups** (site roadmap R2) live on the homelab machine popsicletoes.us, not here: `scripts/backup_prod.sh` (daily 02:30, user timer `deploy/backup/sbl-backup.*`) dumps production over SSH (read-only), checks the dump, and keeps `~/backups/sharebucketlist/db/YYYY-MM-DD.dump` plus `files/YYYY-MM-DD/{uploads,private_uploads}` rsync snapshots hard-linked to the day before; retention 14 daily / 8 weekly / 12 monthly (`sbl_keep` in `scripts/lib/sbl_common.sh`, tested by `apps.core.tests.test_backup_scripts`); `--check` verifies the machine's prerequisites. Shared helpers (`log`, `fail`, `envval`, `sbl_ssh`, `sbl_dump_prod`) are in `scripts/lib/sbl_common.sh`, used by both scripts. **Restore drill** monthly on the dev machine: `scripts/restore_check.sh <dump>` (throwaway `postgres:17` container, `migrate --check`, row counts; POSTGRES_* in the environment win over `.env`, so dev is never touched). Set-up and restore steps: `scripts/README.md`. No off-site copy yet (decided 2026-10-18).
 
 **Seed reference data** with the idempotent management commands in `apps/locations/management/commands/`. Run them in dependency order: `import_countries`, then `import_regions`, then `import_cities`, then `import_national_parks` / `import_sports_venues`, then `populate_flag_emojis`, then `country_flags` (each country's flag as its picture: country-flags plan C1, `apps/locations/flags.py`; `--dry-run`, `--country XX`; idempotent; a photo a country had stays in `Media`, listed). Imported rows are marked approved automatically.
+`manage.py check_countries [--country XX]` (country-flags plan C2; monthly cron on production, `scripts/README.md`) compares
+our countries with REST Countries (`apps/locations/restcountries.py`, `urllib`, `RESTCOUNTRIES_API_KEY` as a Bearer header,
+never in a URL or log; three requests a run with `response_fields`, 429 waits and retries, 401 / 403 stop) on name
+(their common / official / alternates), ISO-3, currency code (ours one of theirs; others noted) and name, calling code
+(ignoring + / spaces / dashes) and continent; prints the differences, ours they don't know and theirs we don't have;
+exit 0 / 1 (something differs) / 2 (API error or no key). **Stores nothing** (their terms: three days at most) and
+shows nothing on the site (else they ask for a credit).
 
 ## Testing
 - `manage.py test` uses `config/settings/test.py` (when `DJANGO_SETTINGS_MODULE` isn't set): MD5 password
@@ -1458,7 +1465,8 @@ forbid keeping their data — C2). Decided 2026-10-27. Phases C1–C2, one branc
 
 Plan: `docs/plans/country-flags.md` (each country's flag, from flag-icons, as its picture; a monthly REST Countries
 check that only reports). Decided 2026-10-27. Phases C1–C2, one branch each, in order. Status: C1 (flags as country
-pictures, `country_flags`) done on branch `c1-country-flags`.
+pictures, `country_flags`) done on branch `c1-country-flags`; C2 (`check_countries`) done on branch `c2-check-countries`.
+Complete.
 
 ### Rules carried over from the itinerary project
 

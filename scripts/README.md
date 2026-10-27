@@ -64,3 +64,19 @@ dev database nor production is touched. It ends with `OK` or `RESTORE CHECK FAIL
 **Restoring production for real** is James's call, after a `pg_dump` of whatever is there now.
 Restore the dump with `pg_restore --clean --if-exists --no-owner -d travel_site`, copy the
 day's `files/` back with `rsync`, then restart the app.
+
+## Monthly country check (production cron)
+
+`manage.py check_countries` compares our countries with REST Countries (name, ISO-3 code, currency code and name,
+calling code, continent) and prints where they differ, then exits 1; nothing differing exits 0, and an API problem
+(including a missing `RESTCOUNTRIES_API_KEY` in `.env`) exits 2. It stores nothing — their terms allow keeping their
+data three days at most — so read the mail and edit a country by hand (or by CSV import) if you agree. Three API
+requests a run (the free plan allows 1,000 a month). On production, in James's crontab, with `MAILTO` set so cron
+mails the output:
+
+```
+MAILTO=you@example.com
+17 6 1 * * cd /var/www/travel_site && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py check_countries
+```
+
+`--country ZW` checks one country (one request).
