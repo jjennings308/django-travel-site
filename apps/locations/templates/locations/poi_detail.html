@@ -12,7 +12,7 @@
 {% block content %}
 <div class="py-6">
     <!-- Header -->
-    <div class="sbl-card shadow-sm mb-6 overflow-hidden">
+    <div class="sbl-card shadow-sm mb-6 overflow-hidden relative">
         {% if poi.featured_media %}
             <div class="relative" style="height: 400px;">
                 {% if poi.featured_media.media_type == 'video' %}
@@ -35,7 +35,7 @@
             </div>
         {% endif %}
         
-        <span class="sbl-badge absolute top-0 right-0 m-4 text-base {% if poi.approval_status == 'approved' %} sbl-badge-success {% elif poi.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif poi.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
+        <span class="sbl-badge absolute top-0 left-0 z-10 m-4 text-base shadow {% if poi.approval_status == 'approved' %} sbl-badge-success {% elif poi.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif poi.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
             {{ poi.get_approval_status_display }}
         </span>
     </div>
