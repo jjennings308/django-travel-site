@@ -42,11 +42,6 @@
 <section class="mb-8">
   <h2 class="mb-4 {{ h2 }}">Quick Access</h2>
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {% if user.is_superuser or user.can_access_staff %}
-        {% include "pages/partials/dashboard_card.html" with title="Staff dashboard" description="Site stats and what needs attention" url_name="pages:staff_dashboard" icon="bi-clipboard-data" color="primary" %}
-        {% if user.is_staff %}{% include "pages/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}{% endif %}
-        {% endif %}
-        
         {% include "pages/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
         
         {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:trip_list" icon="bi-airplane" color="primary" %}
@@ -56,6 +51,12 @@
         {% include "pages/partials/dashboard_card.html" with title="Activities" description="Find things to do" url_name="activities:activity_list" icon="bi-activity" color="success" %}
         
         {% include "pages/partials/dashboard_card.html" with title="Locations" description="Explore destinations" url_name="locations:dashboard" icon="bi-geo-alt" color="info" %}
+
+        {# Staff-only cards last, after everyone's own. #}
+        {% if user.is_superuser or user.can_access_staff %}
+        {% include "pages/partials/dashboard_card.html" with title="Staff dashboard" description="Site stats and what needs attention" url_name="pages:staff_dashboard" icon="bi-clipboard-data" color="primary" %}
+        {% if user.is_staff %}{% include "pages/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}{% endif %}
+        {% endif %}
     </div>
 </section>
 

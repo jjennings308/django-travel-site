@@ -30,6 +30,19 @@ class StaffDashboardTests(TestCase):
                                               continent="Europe", approval_status=ApprovalStatus.APPROVED)
         self.client.force_login(self.staff)
 
+    def test_staff_cards_come_last_on_the_dashboard(self):
+        self.staff.is_staff = True
+        self.staff.save()
+        def quick_access():
+            html = self.client.get(reverse("pages:dashboard")).content.decode()
+            start = html.index("Quick Access")
+            return html[start:html.index("</section>", start)]
+        cards = quick_access()
+        self.assertLess(cards.index(reverse("locations:dashboard")), cards.index(URL))
+        self.assertLess(cards.index(URL), cards.index(reverse("admin:index")))
+        self.client.force_login(self.member)
+        self.assertNotIn(URL, quick_access())
+
     def test_access(self):
         self.client.logout()
         self.assertRedirects(self.client.get(URL), f"{reverse('login')}?next={URL}", fetch_redirect_response=False)
