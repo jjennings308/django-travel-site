@@ -1463,12 +1463,6 @@ day and in the booklet) done on branch `t1-choice-kinds`; T2 (Pick makes the sta
 branch `t2-pick-makes-item`; T3 (ideas fit choices by kind, the map's Choices layer, catalogue notes under options) done on
 branch `t3-choices-ideas-map`. Complete.
 
-### Country flags and check
-
-Plan: `docs/plans/country-flags.md` (every country's picture is its flag, from flag-icons rendered to PNGs in the repo
-— C1; a monthly `check_countries` that compares our countries with REST Countries and only reports, since their terms
-forbid keeping their data — C2). Decided 2026-10-27. Phases C1–C2, one branch each, in order. Status: not started.
-
 ### Country flags
 
 Plan: `docs/plans/country-flags.md` (each country's flag, from flag-icons, as its picture; a monthly REST Countries
