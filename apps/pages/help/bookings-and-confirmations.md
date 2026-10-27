@@ -1,5 +1,5 @@
 title: Bookings and confirmations
-summary: Add confirmation numbers, tickets and booking documents to journeys, stays and activities, keep track of what's still to book, and record a decision between options.
+summary: Add confirmation numbers, tickets and booking documents to journeys, stays and activities, and keep track of what's still to book.
 audience: editors
 section: Bookings & contacts
 order: 10
@@ -65,9 +65,9 @@ When you add the first confirmation to something that has open tasks, the site a
 
 ## The To do page
 
-**To do** (at the top of the trip page) lists what's left, in order: choices still to make (**Decide:** …), then **Not booked yet**, then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg") and a decision shows its options. Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
+**To do** (at the top of the trip page) lists what's left, in order: choices still to make (**Decide:** …), then **Not booked yet**, then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg"). Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
 
-Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**), **Options** and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
+Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**) and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
 
 ## The Bookings page
 
@@ -77,17 +77,9 @@ Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done ye
 
 When a place's note says to book ahead, such as Arches' timed entry 3 months ahead, the trip shows **Book by <date>** under the item. Click **Add as a to-do**: a to-do opens filled in with "Book ahead: <place>", the book-by date as its due date, and the booking link. Save it, and the trip page says "a to-do covers it" instead of warning you.
 
-## Decisions with options
+## Choosing between options
 
-Choosing between options is now a **choice** on a day, which everyone can vote on and an editor picks ([choices, options and votes](/help/options-and-votes/)); new to-dos are bookings. The To do page lists undecided choices at the top. A decision to-do from before still works as below, and **Needs attention** offers to convert it into a choice.
-
-Some tasks are a choice, such as which hotel to book. Make the task a decision by giving it options:
-
-1. In Reference, under the task, click **Add options** (or **Options (n)** once it has some).
-2. For each option, fill in its title, and if you like a detail, a link and an estimated cost.
-3. Tick **Chosen** on the one you pick, or **Not decided yet**, and click **Save**.
-
-The task now reads **Decide:** with its options, the chosen one ticked. Choosing doesn't book or add anything. To add the choice to the trip, use **Add as a stay** (opens a new stay filled in, on the task's day or else Day 1; change its dates there) or **Add as an activity** (pick a day; opens a new activity filled in). Nothing is saved until you save that page.
+Choosing between options, such as which hotel to book, is a **choice** on a day: everyone can vote, and an editor picks one ([choices, options and votes](/help/options-and-votes/)). The To do page lists undecided choices at the top. Older trips' decision to-dos have been turned into choices.
 
 ## Problems
 

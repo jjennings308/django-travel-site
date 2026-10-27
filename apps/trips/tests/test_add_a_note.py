@@ -1,5 +1,6 @@
-"""Starting a note on a day, a plan section or a task from the trip page (before, only the trip
-itself had an "Add a comment" until something already had a note)."""
+"""Starting a comment on a day, a plan section or a task from the trip page (before, only the trip
+itself had an "Add a comment" until something already had one). Called "notes" until the help refresh
+renamed them, so they don't clash with + Add's Note items."""
 from datetime import date
 from unittest import mock
 
@@ -35,7 +36,7 @@ class AddANoteTests(TestCase):
     def test_links_for_commentors_and_editors_not_viewers(self):
         for role in (TripRole.COMMENTOR, TripRole.EDITOR):
             html = self.page(role)
-            self.assertIn("Add a note to this day", html)
+            self.assertIn("Add a comment to this day", html)
             for link in self.links:
                 self.assertIn(link, html)
         html = self.page(TripRole.VIEWER)
@@ -50,7 +51,7 @@ class AddANoteTests(TestCase):
         self.assertEqual(location, reverse("trips:trip_detail", args=[self.trip.pk]) + f"#comment-{comment.pk}")
         html = self.page(TripRole.COMMENTOR)
         self.assertIn(f'id="comment-{comment.pk}"', html)
-        self.assertIn("Notes on this day", html)
-        self.assertNotIn("Add a note to this day", html)  # its thread's Add a comment takes over
+        self.assertIn("Comments on this day", html)
+        self.assertNotIn("Add a comment to this day", html)  # its thread's Add a comment takes over
         day_html = html[html.index('id="day-1"'):html.index('id="reference"')]
         self.assertIn(f'id="comment-{comment.pk}"', day_html)  # inside the day, so the page opens it

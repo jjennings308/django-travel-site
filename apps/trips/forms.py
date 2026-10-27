@@ -1717,7 +1717,7 @@ class CommentForm(forms.ModelForm):
             "body": forms.Textarea(
                 attrs={
                     "rows": 4,
-                    "placeholder": "Add a note for the group",
+                    "placeholder": "Add a comment for the group",
                 }
             )
         }

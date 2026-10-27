@@ -18,7 +18,7 @@ An item read-only in the item panel (trips:item_panel, day-first plan P2): reade
   </div>
   {% if panel_comments is not None %}
     <div data-panel-tab="comments">
-      {% include "trips/_comments.html" with comment_kind=kind comment_pk=item.pk comments=panel_comments can_comment=can_comment heading="Notes" %}
+      {% include "trips/_comments.html" with comment_kind=kind comment_pk=item.pk comments=panel_comments can_comment=can_comment heading="Comments" %}
     </div>
   {% endif %}
 {% endblock %}

@@ -21,7 +21,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
-When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions** (undecided [choices](/help/options-and-votes/) and decision to-dos), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
+When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions** (undecided [choices](/help/options-and-votes/)), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
 
 The bar under the title jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
 
@@ -78,7 +78,7 @@ A journey moved to another date reloads the page at its new day. The rest of the
 The home of the trip's confirmations, contacts and to-dos. Everything elsewhere on the page links here.
 
 - **Confirmations**, grouped as Flights, Trains, Stays, Activities, Meals and Other. Each shows the number in large type (easy to read out at a desk), who it's with, what it covers (click to jump to it), who it's for, and **Manage booking ↗** when there's a link. Insurance and passes are under Other.
-- **Still to book**: tasks, most urgent first, each saying what it's for and on which day. A decision reads **Decide:** with its options, the chosen one ticked. **All to-dos** opens the trip's [To do page](/help/bookings-and-confirmations/#the-to-do-page), where editors add and tick them off.
+- **Still to book**: tasks, most urgent first, each saying what it's for and on which day. **All to-dos** opens the trip's [To do page](/help/bookings-and-confirmations/#the-to-do-page), where editors add and tick them off.
 - **Not booked yet**: flights, trains, stays and bookable activities that have no confirmation and no task yet.
 - **Contacts**: name, role, phone (tap to call), email, website and address, with **On:** links to the days they matter.
 - **Info**: the trip's know-how, such as ticket rules or a tent guide, with **On:** links.

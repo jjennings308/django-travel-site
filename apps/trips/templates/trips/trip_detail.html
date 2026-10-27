@@ -248,8 +248,8 @@
             {% endif %}
             {% if can_edit %}<p class="mt-1 text-xs"><a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23still-to-book">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a></p>{% endif %}
             {% with thread=comments_by_target.task|dictkey:task.pk %}
-              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Notes on this task" %}
-              {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a note</a></p>{% endif %}
+              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Comments on this task" %}
+              {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a comment</a></p>{% endif %}
             {% endwith %}
           </li>
         {% endfor %}
@@ -327,7 +327,7 @@
     what they wrote. See `_trip_comments` for why this is one query.
   {% endcomment %}
   <div class="no-print">
-    {% include "trips/_comments.html" with comment_kind="trip" comment_pk=trip.pk comments=trip_comments can_comment=can_comment heading="Trip notes" %}
+    {% include "trips/_comments.html" with comment_kind="trip" comment_pk=trip.pk comments=trip_comments can_comment=can_comment heading="Comments on this trip" %}
   </div>
   {% include "trips/partials/_offline.html" %}
 {% endblock %}

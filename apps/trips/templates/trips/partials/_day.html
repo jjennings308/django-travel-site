@@ -139,11 +139,11 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
   {% with day_threads=comments_by_target.day|dictkey:day.pk %}
     {% if day_threads %}
       <div class="no-print">
-        {% include "trips/_comments.html" with comment_kind="day" comment_pk=day.pk comments=day_threads can_comment=can_comment heading="Notes on this day" %}
+        {% include "trips/_comments.html" with comment_kind="day" comment_pk=day.pk comments=day_threads can_comment=can_comment heading="Comments on this day" %}
       </div>
     {% elif can_comment %}
       {# Start the day's first note; once it has one, its thread above takes over. #}
-      <p class="no-print mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:comment_create' 'day' day.pk %}#body">Add a note to this day</a></p>
+      <p class="no-print mt-4 text-sm"><a class="link-quiet font-medium" href="{% url 'trips:comment_create' 'day' day.pk %}#body">Add a comment to this day</a></p>
     {% endif %}
   {% endwith %}
 
@@ -152,7 +152,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
       {% with thread=section_threads|dictkey:section.pk %}
         {% if thread %}
           <div class="no-print">
-            {% include "trips/_comments.html" with comment_kind="section" comment_pk=section.pk comments=thread can_comment=can_comment heading=section.title|add:" — notes" %}
+            {% include "trips/_comments.html" with comment_kind="section" comment_pk=section.pk comments=thread can_comment=can_comment heading=section.title|add:" — comments" %}
           </div>
         {% endif %}
       {% endwith %}

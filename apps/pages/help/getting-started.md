@@ -3,7 +3,7 @@ summary: What ShareBucketList is for, how a goal becomes a trip, and the first t
 audience: everyone
 section: Getting started
 order: 1
-updated: 2026-10-19
+updated: 2026-10-27
 
 # Getting started
 
@@ -18,6 +18,8 @@ ShareBucketList keeps the things you want to do someday and the trips you take t
 | 3. Pick a date | Choose when, or the event date for an activity | **My dates** |
 | 4. Plan | Turn goals into a trip: days, journeys, stays, bookings | **Trips** |
 | 5. Done | Tick goals off, add photos, rate what you did | **My adventures** |
+
+When you take a goal to a trip (**Plan a trip** or **Add to this trip** on the goal), it lands on the trip's **Ideas** shelf, where everyone on the trip can see it and vote, and an editor puts it on a day ([ideas and goals](/help/ideas-and-goals/)). The quick way to lay out the trip's cities is **Set the route**: list the cities and how many nights in each, and the days, journeys between them and a stay in each fill themselves in ([starting a trip](/help/starting-a-trip/#the-route)).
 
 ## Your first three things
 
