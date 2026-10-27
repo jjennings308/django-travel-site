@@ -28,6 +28,13 @@ Section payload shapes by ``section_type``
     Prose, as authored.
     ``{"paragraphs": [str, ...]}``
 
+``note``
+    What the page offers instead of the three above (day-first plan P3): an optional heading (the
+    section's ``title``), a tone and paragraphs. With a tone it reads like a callout, without one like
+    free text; a paragraph starting "• " is a bullet. Old phases, callouts and free text are converted
+    to it on review (``apps/trips/day_first.py``).
+    ``{"tone": "" | "tip" | "warning" | "critical", "paragraphs": [str, ...]}``
+
 Every payload is a JSON *object*, never a bare list or string, so new keys can
 be added later without a migration. Renderers should tolerate missing keys and
 fall back to omitting the block rather than raising.
@@ -1258,6 +1265,12 @@ class Section(models.Model):
         CALLOUT = "callout", "Callout"
         CHOOSE_YOUR_ADVENTURE = "choose_your_adventure", "Choose your adventure"
         FREE_TEXT = "free_text", "Free text"
+        NOTE = "note", "Note"
+
+    #: Section types the page no longer offers: converted to notes on review (P3).
+    OLD_NOTE_TYPES = (Type.PHASE, Type.CALLOUT, Type.FREE_TEXT)
+    #: A note's tone → the callout style it is drawn with (on the page and in the booklet).
+    NOTE_TONE_STYLES = {"tip": "info", "warning": "warning", "critical": "critical"}
 
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
     linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
@@ -1286,6 +1299,12 @@ class Section(models.Model):
     def __str__(self):
         return self.title or self.get_section_type_display()
 
+    @property
+    def note_style(self):
+        """A note's callout style ("info" / "warning" / "critical"), or "" for a plain note."""
+        content = self.content if isinstance(self.content, dict) else {}
+        return self.NOTE_TONE_STYLES.get(content.get("tone") or "", "")
+
     def content_summary(self):
         """A short, type-appropriate label for the section list.
 
@@ -1312,6 +1331,9 @@ class Section(models.Model):
             return text("heading")[:90]
         if self.section_type == self.Type.CALLOUT:
             return text("text")[:90]
+        if self.section_type == self.Type.NOTE:
+            paragraphs = [p for p in content.get("paragraphs") or [] if isinstance(p, str)]
+            return " ".join(" ".join(paragraphs).split())[:90] or self.title[:90]
         if self.section_type == self.Type.FREE_TEXT:
             paragraphs = content.get("paragraphs")
             count = len(paragraphs) if isinstance(paragraphs, list) else 0

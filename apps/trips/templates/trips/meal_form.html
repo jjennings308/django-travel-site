@@ -10,6 +10,15 @@ One meal on its own page (trips:meal_edit, day-first plan P2): its details, then
     <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
     <span>{{ meal.name }}</span>
   </nav>
+  {% with suggestion=meal.catalogue_suggestion %}{% if suggestion %}
+    {# A catalogue place matching the meal's name (R18; P3: offered on the meal's page as on the day page, never linked by itself). #}
+    <form method="post" action="{% url 'trips:catalogue_link' trip.pk day.pk 'meal' meal.pk %}" class="callout-info mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm" data-panel-tab="details" data-catalogue-suggestion>
+      {% csrf_token %}<input type="hidden" name="target_kind" value="poi"><input type="hidden" name="target" value="{{ suggestion.target.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <span>Looks like the catalogue place <span class="font-medium">{{ suggestion.target.name }}</span>{% if suggestion.target.city %}, {{ suggestion.target.city.name }}{% endif %}</span>
+      <button class="link-quiet font-medium" type="submit">Link</button>
+      <button class="link-quiet font-medium" type="submit" name="dismiss" value="1">Not this one</button>
+    </form>
+  {% endif %}{% endwith %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details">
     {% csrf_token %}
     <h1 class="page-title mb-1">{{ meal.name }}</h1>
