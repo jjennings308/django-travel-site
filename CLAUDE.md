@@ -1367,6 +1367,13 @@ and in the booklet) done on branch `p5-split`; P6 (the Ideas shelf, Add to a tri
 on branch `p6-ideas`; P7 (Settings, fitting days to new dates, the Bookings page, To do with Not booked yet, trip-wide
 views opening items in the panel) done on branch `p7-settings`. Complete.
 
+### Retire old section types
+
+Plan: `docs/plans/retire-old-section-types.md` (phases, callouts, free text and choose-your-adventure sections are
+converted on every trip — S1, `convert_day_first --all` — then removed from the model, importers, forms, templates,
+Tidy and history restore — S2; logistics tables stay). Decided 2026-10-27. Status: not started. S2 merges only after
+S1 has run on production.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
