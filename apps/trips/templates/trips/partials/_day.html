@@ -103,6 +103,24 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
     </div>
   {% endif %}
 
+  {% if can_edit %}
+    {% comment %}
+      + Add (day-first plan P3; views.quick_add, apps/trips/quick_add.py): one line, Enter guesses the kind ("Train Munich → Salzburg 9:15", "Hotel Laimer Hof 3 nights", "Dinner Augustiner 7:30pm", "Tour of the salt mine 10am", anything else a note); a kind button forces it. The item opens in the panel; without JavaScript, on its own page.
+    {% endcomment %}
+    <form method="post" action="{% url 'trips:quick_add' trip.pk day.pk %}" class="quick-add no-print mt-4 rounded-lg border border-dashed border-zinc-300 p-3" data-quick-add>
+      {% csrf_token %}
+      <label class="card-kicker" for="quick-add-{{ day.pk }}">+ Add to Day {{ day.day_number }}</label>
+      <input type="text" name="text" id="quick-add-{{ day.pk }}" maxlength="300" autocomplete="off" class="mt-1 w-full" placeholder="“Train Munich → Salzburg 9:15”, “Dinner Augustiner 7:30pm”, “Hotel Laimer Hof 3 nights”…">
+      {# The first button is what Enter presses: no kind, so the line is read for one. #}
+      <button type="submit" class="sr-only" tabindex="-1">Add</button>
+      <p class="mt-2 flex flex-wrap items-center gap-1.5 text-sm"><span class="text-zinc-500">Or add as:</span>
+        {% for value, label in quick_add_kinds %}<button type="submit" name="kind" value="{{ value }}" class="chip hover:border-zinc-400">{{ label }}</button>{% endfor %}
+        {% include "partials/_help_link.html" with slug="adding-a-day" anchor="add-to-a-day" label="+ Add" %}
+      </p>
+      <p class="mt-1 text-sm text-red-700" data-quick-add-error hidden></p>
+    </form>
+  {% endif %}
+
   {% comment %}
     Per-day and per-section threads, inside the day they belong to.
 

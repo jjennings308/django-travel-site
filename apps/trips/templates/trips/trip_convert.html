@@ -1,0 +1,46 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Converting a trip's phases, callouts and free text to notes (trips:trip_convert, day-first plan P3; apps/trips/day_first.py). Every section starts ticked; nothing changes until the ticked ones are converted, in one transaction.
+{% endcomment %}
+{% block title %}Turn into notes — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-4xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Turn into notes</span>
+  </nav>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Turn sections into notes</h1>
+      <p class="page-subtitle">A day now holds five kinds of thing: travel, stays, things to do, places to eat and notes. These older sections become notes: a phase's heading, summary and highlights, a callout's text and tone (shown the same way), free text's paragraphs. Nothing is lost. {{ count }} section{{ count|pluralize }}.</p>
+    </div>
+    <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="adding-a-day" anchor="notes" label="notes" text="How this works" %}<a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a></p>
+  </div>
+
+  {% if groups %}
+    <form method="post">
+      {% csrf_token %}
+      {% for day, items in groups %}
+        <h2 class="section-title mt-6 mb-2">Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"D M j" }}{% endif %}</h2>
+        <ul class="card divide-y divide-zinc-100 p-0 text-sm">
+          {% for item in items %}
+            {% with before=item.before after=item.after %}
+            <li class="grid gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[auto_1fr_1fr]" data-convert-row>
+              <label class="flex items-start gap-2 font-medium"><input type="checkbox" name="section" value="{{ item.section.pk }}" checked> Convert</label>
+              <div class="min-w-0 text-zinc-500"><span class="badge badge-mode">{{ before.0 }}</span>{% for line in before.1 %}<p class="mt-1">{{ line }}</p>{% endfor %}</div>
+              <div class="min-w-0 text-zinc-800"><span class="badge badge-mode">→ {{ after.0 }}</span>{% for line in after.1 %}<p class="mt-1">{{ line }}</p>{% endfor %}</div>
+            </li>
+            {% endwith %}
+          {% endfor %}
+        </ul>
+      {% endfor %}
+      <div class="mt-4 flex gap-3">
+        <button type="submit" class="btn">Turn the ticked sections into notes</button>
+        <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <p class="empty-state">Nothing left to convert: every section is a note, travel notes or a choice.</p>
+  {% endif %}
+{% endblock %}

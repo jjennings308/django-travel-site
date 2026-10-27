@@ -1,5 +1,5 @@
 title: How to add a day to your trip
-summary: Add a day, fill in its details, then add legs, activities and meals to it.
+summary: Add a day, fill in its details, then add travel, stays, things to do, meals and notes with one line each.
 audience: editors
 section: Trips
 order: 20
@@ -48,9 +48,29 @@ Only the date and day number are required; leave the rest blank if you don't kno
 
 The **City** box finds any city in the catalogue as you type, with the trip's own cities offered before you type ([finding a city](/help/starting-a-trip/#finding-a-city)); a city that isn't listed can be added from it. Whatever you pick joins the trip's cities. The same goes for a stay's city and a journey's From and To cities. A day covered by a stay picks up the stay's city automatically when the city is left blank. To set many days' cities at once, use [the route](/help/starting-a-trip/#the-route).
 
-## Add what happens that day
+## Add to a day
 
-A new day starts empty; you fill it from its **day page**. To get there, either click the day's **Edit** link in the Days table on Edit trip, or open the day on the trip page and click **Edit this day**.
+The quickest way: open the day on the trip page and type one line in **+ Add to Day N** at the end of the day, then press Enter. The site works out what it is from the words and makes a rough version on that day, then opens it in the panel beside the page so you can fill in the rest ([open an item](/help/reading-your-trip/#open-an-item)):
+
+| You type | You get |
+| --- | --- |
+| Train Munich → Salzburg 9:15 | **Travel**: a planned train from Munich to Salzburg on that day, "Around 09:15" in its notes. "Fly PIT -> ATL ~2h", "Drive Taos to Angel Fire ~45 min" and "Train to Salzburg" (from the day's city) work too. |
+| Hotel Laimer Hof 3 nights | **Stay**: checking in that day, out three days later, in the day's city. Also "Stay at …", "Hostel …", "Airbnb …". |
+| Dinner Augustiner 7:30pm | **Eat**: dinner at Augustiner with a 7:30 PM table, so it's on the timeline. Breakfast, brunch, lunch, coffee, drinks work the same; without a time it's a food idea. If the name matches a restaurant in the catalogue, its page offers to link it. |
+| Tour of the salt mine 10am | **Do**: an activity at 10 AM. "Tickets …", "Museum …", "Visit …", or anything with a time. |
+| Bring euros for the tents | **Note**: anything else becomes a note on the day. |
+
+The words don't need to be exact, and nothing is guessed that you didn't type. If it guesses wrong, use a button instead of Enter: **Travel**, **Stay**, **Do**, **Eat** or **Note** makes that kind whatever the words say. Without JavaScript, the new item opens on its own page.
+
+## Notes
+
+A **note** is the day's text: an optional heading, the text (one paragraph per line; start a line with • for a bullet) and a **tone**. None reads as plain text; **Tip**, **Warning** and **Critical** stand out in colour on the page and in the PDF.
+
+Trips made before notes have phases, callouts and free text instead. They still show and edit as before; **Needs attention** on the trip page offers **N sections to turn into notes**, which lists each one, ticked, as it is now and as a note. A phase's heading, summary and highlights (as • lines), a callout's text and tone, and free text's paragraphs all carry over; untick any you'd rather leave, then click **Turn the ticked sections into notes**.
+
+## Add from the day page
+
+A new day can also be filled from its **day page**. To get there, either click the day's **Edit** link in the Days table on Edit trip, or open the day on the trip page and click **Edit this day**.
 
 At the top of the day page, **Add to this day** has a button for each kind of thing:
 
@@ -61,7 +81,7 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 | + Activity | A tour, timed entry, ticket, table booking or car hire | Kind, title, provider, start and end time, place, cost, notes. |
 | + Meal | A restaurant or food stop | Name, meal type, cuisine, price range, why it's recommended. Give it a **Reservation time** only if a table is booked. |
 | + Contact or note | A phone number or tip for the whole day | A contact (name, phone, email) or an info note (title and text). |
-| Section buttons | The day's write-up | **Phase** (a part of the day, e.g. "Morning — check out"), **Callout** (a tip or warning), **Free text**, **Travel notes** (a heading for the day's journeys, with an intro and rows for things like ticket prices), **Choose your adventure** (options to pick from). |
+| Section buttons | The day's write-up | **Note** (a heading, a tone and text: a part of the day, a tip or a warning; [notes](#notes)), **Travel notes** (a heading for the day's journeys, with an intro and rows for things like ticket prices), **Choose your adventure** (options to pick from). |
 
 Everything you add appears under **On this day**, in the same order as on the trip page. Each item has its own **Confirmations** and **Contacts & info** links for booking numbers and phone numbers.
 
@@ -101,4 +121,4 @@ Open the trip page. Your day appears in two places:
 | Need to change a day | Edit trip → Days → **Edit**, change the fields, then click **Save day**. |
 | Need to remove a day | On **Edit trip**, in the Days table, click the day's **Delete** link and confirm. This permanently removes the day with its meals and sections; booking tasks that pointed at it are kept. |
 
-Tip: add a **Phase** for each part of the day first (Morning, Afternoon, Evening). Then add the legs, activities and meals with times, so the timeline and the write-up line up.
+Tip: add a **Note** with a heading for each part of the day first (Morning, Afternoon, Evening). Then add the legs, activities and meals with times, so the timeline and the write-up line up.

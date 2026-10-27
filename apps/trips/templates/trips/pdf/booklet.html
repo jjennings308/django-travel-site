@@ -154,6 +154,15 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
             <div class="option"><strong>{% if option.letter %}{{ option.letter }}. {% endif %}{{ option.title }}</strong>{% if option.duration or option.cost %} <span class="muted small">{{ option.duration }}{% if option.duration and option.cost %} · {% endif %}{{ option.cost }}</span>{% endif %}{% if option.description %}<br>{{ option.description }}{% endif %}</div>
           {% endfor %}
         </div>
+      {% elif section.section_type == "note" %}
+        {% if section.note_style %}
+          <div class="callout {{ section.note_style }}">{% if section.title %}<strong>{{ section.title }}:</strong> {% endif %}{% for paragraph in section.content.paragraphs %}{{ paragraph }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+        {% else %}
+          <div class="block">
+            {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}
+            {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+          </div>
+        {% endif %}
       {% elif section.section_type == "free_text" %}
         <div class="block">
           {% if section.title %}<h3>{{ section.title }}</h3>{% endif %}

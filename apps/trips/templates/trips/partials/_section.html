@@ -94,6 +94,17 @@ One section of a day on the trip page (inside trips/partials/_day.html), and in 
     </div>
   </div>
 
+{% elif section.section_type == "note" %}
+  {# A note (day-first plan P3): with a tone it reads like the old callouts, without one like free text. #}
+  {% if section.note_style %}
+    <div class="section callout callout-{{ section.note_style }}">{% if section.title %}<span class="font-semibold">{{ section.title }}:</span> {% endif %}{% for paragraph in section.content.paragraphs %}{{ paragraph }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+  {% else %}
+    <div class="section card prose-block">
+      {% if section.title %}<h3 class="section-title">{{ section.icon|default:"" }} {{ section.title }}</h3>{% endif %}
+      {% for paragraph in section.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
 {% elif section.section_type == "free_text" %}
   <div class="section card prose-block">
     <h3 class="section-title">{{ section.icon|default:"" }} {{ section.title }}</h3>

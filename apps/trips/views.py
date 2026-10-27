@@ -138,12 +138,11 @@ def _days_with_counts(trip):
 
 
 def _add_section_types():
-    """The day page's section buttons (E6): Phase, Callout, Free text, Travel notes, Choose your
-    adventure. A logistics table is no longer offered; an old one still renders and edits, and its
-    page turns it into legs or travel notes."""
+    """The day page's section buttons: Note, Travel notes, Choose your adventure (day-first plan P3;
+    phases, callouts and free text became notes, and a choice becomes an option group in P4). A
+    logistics table is not offered either (E6); old sections of every type still render and edit."""
     labels = {Section.Type.TRAVEL: "Travel notes"}
-    order = (Section.Type.PHASE, Section.Type.CALLOUT, Section.Type.FREE_TEXT, Section.Type.TRAVEL,
-             Section.Type.CHOOSE_YOUR_ADVENTURE)
+    order = (Section.Type.NOTE, Section.Type.TRAVEL, Section.Type.CHOOSE_YOUR_ADVENTURE)
     return [{"value": value, "label": labels.get(value, Section.Type(value).label)} for value in order]
 
 
@@ -217,7 +216,7 @@ def catalogue_link(request, trip_pk, day_pk, kind, item_pk):
         messages.success(request, f"Linked to {getattr(item, target_kind).name} in the catalogue.")
     else:
         messages.error(request, "That isn't a catalogue place or activity in this trip's cities.")
-    return redirect(reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day")
+    return redirect(_back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day"))
 
 
 def _day_sections(day):
@@ -468,6 +467,9 @@ def _trip_page_context(request, trip):
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
+    # Old phases, callouts and free text still to turn into notes (P3): from the prefetch, no query.
+    from .day_first import pending
+    notes_pending = len(pending(s for d in trip.days.all() for s in d.ordered_sections)) if "edit" in capabilities else 0
     # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
     # day and the day to open on arrival — all from the rows above, no queries.
     days = list(trip.days.all())
@@ -497,6 +499,9 @@ def _trip_page_context(request, trip):
         "closed_items": note_warnings["closed"],
         "book_ahead_items": note_warnings["book_ahead"],
         "travel_tables_pending": travel_tables_pending,
+        "notes_pending": notes_pending,
+        # + Add's kind buttons (P3): Options comes with option groups (P4).
+        "quick_add_kinds": [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note")],
         "not_booked": not_booked,
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
@@ -2054,6 +2059,79 @@ def activity_delete(request, pk, day_pk, activity_pk):
                   {"trip": trip, "day": day, "activity": activity, "next": back})
 
 
+# ---- + Add: one line on a day (day-first plan, P3) --------------------------------------------
+@login_required
+@require_POST
+def quick_add(request, pk, day_pk):
+    """Make a rough item on a day from one typed line (``apps/trips/quick_add.py``; a kind button
+    forces the kind), then send the editor to its page: as JSON for the trip page's panel (``{"url",
+    "anchor"}``), else a redirect to the page, which comes back to the day."""
+    from datetime import timedelta
+    from django.db.models import Max
+    from django.http import JsonResponse
+    from apps.approval_system.models import ApprovalStatus
+    from apps.locations.models import City
+    from . import currencies, quick_add as parser
+    from .logistics import match_city
+    trip, day = _editable_day(request, pk, day_pk)
+    wants_json = request.headers.get("X-Requested-With") == "fetch"
+    text = " ".join(request.POST.get("text", "").split())[:300]
+    kind = request.POST.get("kind", "")
+    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    if not text and kind not in parser.KINDS:
+        if wants_json:
+            return JsonResponse({"error": "Type what to add, or pick a kind."}, status=400)
+        messages.error(request, "Type what to add, or pick a kind.")
+        return redirect(back)
+    found = parser.parse(text, kind=kind or None)
+
+    def next_order(queryset):
+        return (queryset.aggregate(m=Max("order"))["m"] or 0) + 1
+
+    if found["kind"] == "travel":
+        own = list(trip.cities.all())
+        catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
+        origin = found["origin"] or (day.city.name if day.city_id else "")
+        origin_city = (match_city(origin, own) or match_city(origin, catalogue)) if origin else None
+        destination_city = ((match_city(found["destination"], own) or match_city(found["destination"], catalogue))
+                            if found["destination"] else None)
+        item = TransportLeg.objects.create(
+            trip=trip, date=day.date, mode=found["mode"], origin=origin[:120], destination=found["destination"][:120],
+            origin_city=origin_city, destination_city=destination_city,
+            origin_timezone=getattr(origin_city, "timezone", "") or "",
+            destination_timezone=getattr(destination_city, "timezone", "") or "",
+            est_duration=found["duration"], notes=found["notes"],
+            currency=currencies.default_for(trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]),
+            order=next_order(trip.transport.filter(date=day.date)))
+        url, anchor = reverse("trips:leg_edit", args=[trip.pk, item.pk]), f"leg-{item.pk}"
+        label = f"{item.origin} → {item.destination}".strip()
+    elif found["kind"] == "stay":
+        item = Lodging.objects.create(
+            trip=trip, name=found["name"][:200], check_in=day.date, check_out=day.date + timedelta(days=found["nights"]),
+            city=day.city, currency=currencies.default_for(trip, [day.city_id]))
+        item.fill_day_cities()
+        url, anchor, label = reverse("trips:stay_edit", args=[trip.pk, item.pk]), f"stay-{item.pk}", item.name
+    elif found["kind"] == "eat":
+        item = Meal.objects.create(day=day, name=found["name"][:200], meal_type=found["meal_type"],
+                                   reserved_time=found["time"], order=next_order(day.meals.all()))
+        url, anchor, label = reverse("trips:meal_edit", args=[trip.pk, day.pk, item.pk]), f"meal-{item.pk}", item.name
+    elif found["kind"] == "do":
+        item = TripActivity.objects.create(
+            trip=trip, day=day, title=found["title"][:200], kind=found["activity_kind"], start_time=found["time"],
+            currency=currencies.default_for(trip, [day.city_id]), order=next_order(day.activities.all()))
+        url, anchor = reverse("trips:activity_edit", args=[trip.pk, day.pk, item.pk]), f"activity-{item.pk}"
+        label = item.title
+    else:
+        item = Section.objects.create(day=day, section_type=Section.Type.NOTE, order=next_order(day.sections.all()),
+                                      content={"tone": "", "paragraphs": [found["text"]] if found["text"] else []})
+        url, anchor, label = reverse("trips:section_edit", args=[trip.pk, day.pk, item.pk]), f"section-{item.pk}", "a note"
+    trip_cities.sync(trip)
+    messages.success(request, f"Added {label or 'it'} to Day {day.day_number}.")
+    if wants_json:
+        return JsonResponse({"url": url, "anchor": anchor})
+    return redirect(f"{url}?next={quote(back)}")
+
+
 # ---- a meal on its own page (day-first plan P2: the item panel opens it) ---------------------
 @login_required
 def meal_edit(request, pk, day_pk, meal_pk):
@@ -2069,6 +2147,8 @@ def meal_edit(request, pk, day_pk, meal_pk):
         trip_cities.sync(trip)
         messages.success(request, f"Saved {meal.name}.")
         return redirect(back)
+    from . import catalogue_links
+    catalogue_links.attach_suggestions(trip, [meal], [])  # "Looks like the catalogue place …" (offered, never linked)
     return render(request, "trips/meal_form.html", {
         "trip": trip, "day": day, "meal": meal, "form": form, "next": back,
         **_item_confirmations_context(request, trip, "meal", meal),
@@ -2187,6 +2267,27 @@ def stay_delete(request, pk, stay_pk):
         messages.success(request, f"Deleted {name}. Its confirmations are kept.")
         return redirect(back)
     return render(request, "trips/stay_confirm_delete.html", {"trip": trip, "stay": stay, "next": back})
+
+
+# ---- converting old sections to the day-first kinds (day-first plan, P3) -----------------------
+@login_required
+def trip_convert(request, pk):
+    """Review converting this trip's phases, callouts and free text to notes (editors; linked from the
+    Needs attention banner while any are left). Every section starts ticked; nothing changes until
+    the ticked ones are converted, in one transaction (``apps/trips/day_first.py``)."""
+    from . import day_first
+    trip = _readable_trip(request, pk, "edit")
+    if request.method == "POST":
+        ids = [int(value) for value in request.POST.getlist("section") if value.isdigit()]
+        count = day_first.apply(trip, ids) if ids else 0
+        if count:
+            messages.success(request, f"Turned {count} section{'s' if count != 1 else ''} into notes.")
+        else:
+            messages.info(request, "Nothing was ticked, so nothing changed.")
+        return redirect("trips:trip_convert", pk=trip.pk)
+    groups = day_first.plan(trip)
+    return render(request, "trips/trip_convert.html", {
+        "trip": trip, "groups": groups, "count": sum(len(items) for _day, items in groups)})
 
 
 # ---- content clean-up review (trip-page UX plan, U7) -----------------------------------------

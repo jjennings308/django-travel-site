@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -127,6 +127,11 @@ days).
 - Help: `reading-your-trip`, `adding-a-day` (editing on the trip page); bump `updated`.
 
 ### P3 — One-line add and five kinds of item
+
+Done (branch `p3-quick-add`). As built: the Options button comes with option groups (P4); a typed time on a leg goes in
+its notes ("Around 09:15") because a planned leg has no times; a catalogue match is offered on a new meal's own page;
+`import_itinerary --apply` converts a new trip's sections to notes; tidy reads notes as the types they replaced; the
+booklet changed only where a phase's highlights print as "• " lines instead of a list.
 
 - Each open day ends with **+ Add** (editors): one text box plus kind buttons **Travel · Stay · Do · Eat · Note ·
   Options**. Typing then Enter guesses the kind and makes a rough item on that day, then opens it in the panel:

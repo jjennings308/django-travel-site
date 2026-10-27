@@ -167,6 +167,11 @@ class Command(BaseCommand):
                 # New itineraries start as legs (trip-items plan, Phase D): the same
                 # conversion as the trip page's review, with its automatic choices.
                 converted = travel_tables.convert_automatically(trip)
+            # And their phases, callouts and free text start as notes (day-first plan, P3).
+            from apps.trips import day_first
+            notes = day_first.apply(trip)
+        if notes:
+            self.stdout.write(f"Notes: {notes} phases, callouts and free-text sections became notes.")
         if converted and (converted["created"] or converted["linked"]):
             self.stdout.write(
                 f"Travel tables: made {len(converted['created'])} planned legs, linked "

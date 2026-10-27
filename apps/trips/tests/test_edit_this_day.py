@@ -52,7 +52,7 @@ class AddFromTheDayTests(Fixture):
         page = self.client.get(self.url).content.decode()
         for href in (reverse("trips:activity_new", args=[self.trip.pk, self.day.pk]),
                      reverse("trips:item_links", args=[self.trip.pk, "day", self.day.pk]),
-                     reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "free_text"]),
+                     reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "note"]),
                      reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]), 'href="#meals"'):
             self.assertIn(href, page)
 

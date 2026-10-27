@@ -153,6 +153,9 @@ def build_trip():
                               currency="EUR", url="https://example.com/augusta", order=1, chosen=True)
     TaskOption.objects.create(task=decide, title="Steigenberger Drei Mohren", est_cost=Decimal("210"), currency="EUR",
                               order=2)
+    # Day-first plan P3: the trip's phase, callout and free text as they are once converted to notes.
+    from apps.trips import day_first
+    day_first.apply(trip)
     return trip
 
 

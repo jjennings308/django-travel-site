@@ -90,7 +90,7 @@
     body.innerHTML = html;
     state.current = url;
     var page = body.querySelector("[data-panel-page]");
-    heading.textContent = page ? page.dataset.panelTitle.split(" — ")[0] : "";
+    heading.textContent = page ? page.dataset.panelTitle.split(" — ")[0].replace(/\s+/g, " ").trim() : "";
     body.querySelectorAll(".crumbs, [data-panel-hide]").forEach(function (el) { el.hidden = true; });
     runScripts(body);
     buildTabs();
@@ -160,15 +160,17 @@
     return load(state.origin).then(refreshDays);
   }
 
-  function open(href, opener) {
+  // ``where`` ({anchor, dayId}) is for an item that isn't on the page yet (+ Add); else both come
+  // from the opener: the item it is or sits in, and the day around it.
+  function open(href, opener, where) {
     state.opener = opener;
     state.deleted = false;
     state.tab = null;
     state.origin = entryUrl(href);
     var item = opener.closest("[data-panel]");
-    state.anchor = item ? item.id : "";
     var day = opener.closest("details.day-fold");
-    state.dayId = day ? day.id : "";
+    state.anchor = where ? where.anchor : item ? item.id : "";
+    state.dayId = where ? where.dayId : day ? day.id : "";
     panel.hidden = false;
     if (window.matchMedia("(max-width: 639px)").matches) document.body.style.overflow = "hidden";
     body.innerHTML = '<p class="text-sm text-zinc-500">Loading…</p>';
@@ -192,6 +194,36 @@
     if (!row || event.target.closest("a, button, input, select, textarea, label, summary, form")) return;
     if (String(window.getSelection ? window.getSelection() : "").length) return;  // selecting text, not opening
     open(row.dataset.panel, row);
+  });
+
+  // + Add (P3): the line is posted, the new item made on its day; the day is refreshed and the item
+  // opens in the panel. Without JavaScript the form posts and lands on the item's own page.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form.matches("form[data-quick-add]")) return;
+    event.preventDefault();
+    var error = form.querySelector("[data-quick-add-error]");
+    var data;
+    try { data = new FormData(form, event.submitter); } catch (e) {
+      data = new FormData(form);
+      if (event.submitter && event.submitter.name) data.append(event.submitter.name, event.submitter.value);
+    }
+    var day = form.closest("details.day-fold");
+    request(form.getAttribute("action"), { method: "POST", body: data })
+      .then(function (response) { return response.json().then(function (json) { return { ok: response.ok, json: json }; }); })
+      .then(function (result) {
+        if (!result.ok) { error.textContent = result.json.error || "That wasn't added."; error.hidden = false; return; }
+        error.hidden = true;
+        form.reset();
+        state.dayId = day ? day.id : "";
+        state.anchor = "";
+        state.deleted = true;  // no reload for an item the old day didn't have
+        refreshDays().then(function () {
+          var fresh = document.getElementById(state.dayId) || document.body;
+          open(result.json.url, fresh, { anchor: result.json.anchor, dayId: state.dayId });
+        });
+      })
+      .catch(function () { error.textContent = "That wasn't added. Try again."; error.hidden = false; });
   });
 
   panel.querySelector("[data-panel-close]").addEventListener("click", close);

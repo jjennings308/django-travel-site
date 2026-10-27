@@ -1554,6 +1554,26 @@ class FreeTextPayloadForm(PayloadForm):
         )
 
 
+class NotePayloadForm(PayloadForm):
+    """A note (day-first plan P3): the page's one kind of text on a day. The heading is the section's
+    title (``SectionForm``); a tone makes it stand out like the old callouts."""
+
+    TONES = (("", "None"), ("tip", "Tip"), ("warning", "Warning"), ("critical", "Critical"))
+    tone = forms.ChoiceField(choices=TONES, required=False,
+                             help_text="Tip, Warning and Critical stand out on the page and in the booklet.")
+    paragraphs = forms.CharField(
+        label="Text", required=False, widget=forms.Textarea(attrs={"rows": 6}),
+        help_text="One paragraph per line. Start a line with • for a bullet.")
+
+    payload_keys = ("tone", "paragraphs")
+
+    def initial_from_content(self, content):
+        return {"tone": content.get("tone", ""), "paragraphs": _list_to_lines(content.get("paragraphs"))}
+
+    def managed_content(self):
+        return {"tone": self.cleaned_data["tone"], "paragraphs": _lines_to_list(self.cleaned_data["paragraphs"])}
+
+
 class LogisticsTablePayloadForm(PayloadForm):
     """The two-list table: ``columns`` then ``rows``.
 
@@ -1801,6 +1821,7 @@ SECTION_PAYLOAD_FORMS = {
     Section.Type.CALLOUT: CalloutPayloadForm,
     Section.Type.CHOOSE_YOUR_ADVENTURE: ChooseYourAdventurePayloadForm,
     Section.Type.FREE_TEXT: FreeTextPayloadForm,
+    Section.Type.NOTE: NotePayloadForm,
 }
 
 

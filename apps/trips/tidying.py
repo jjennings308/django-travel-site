@@ -27,11 +27,11 @@ def snapshot(trip):
         for s in (s for s in sections if s.day_id == day.pk):
             c = s.content if isinstance(s.content, dict) else {}
             plain_sections.append({
-                "id": s.pk, "type": s.section_type, "title": s.title, "heading": c.get("heading") or "",
+                "id": s.pk, "type": _tidy_type(s), "title": s.title, "heading": c.get("heading") or "",
                 "summary": c.get("summary") or "", "highlights": list(c.get("highlights") or []),
                 "paragraphs": list(c.get("paragraphs") or []), "text": c.get("text") or "",
                 "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []],
-                "tone": c.get("tone") or ""})
+                "tone": c.get("tone") or "", **_note_fields(s)})
         plain_days.append({
             "id": day.pk, "number": day.day_number, "date": day.date, "sections": plain_sections,
             "legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination}
@@ -112,8 +112,45 @@ def _section(trip, pk):
     return section
 
 
+def _tidy_type(section):
+    """The type tidy reads a section as. A note (day-first plan P3) reads as what it replaced: a toned
+    one-paragraph note as a callout, an empty one (a heading only) as a phase, the rest as free text."""
+    if section.section_type != "note":
+        return section.section_type
+    content = section.content if isinstance(section.content, dict) else {}
+    paragraphs = content.get("paragraphs") or []
+    if content.get("tone") and len(paragraphs) == 1:
+        return "callout"
+    return "free_text" if paragraphs else "phase"
+
+
+def _note_fields(section):
+    """A note's fields in the shape of the type it reads as (``_tidy_type``)."""
+    if section.section_type != "note":
+        return {}
+    content = section.content if isinstance(section.content, dict) else {}
+    kind = _tidy_type(section)
+    if kind == "callout":
+        return {"text": content["paragraphs"][0]}
+    if kind == "phase":
+        return {"heading": section.title}
+    return {}
+
+
+def _callout_text(section):
+    """A callout's text, or a callout-like note's one paragraph; None for anything else."""
+    content = section.content if isinstance(section.content, dict) else {}
+    if section.section_type == "callout":
+        return content.get("text", "")
+    if section.section_type == "note" and _tidy_type(section) == "callout":
+        return content["paragraphs"][0]
+    return None
+
+
 def _remove_from_content(section, field, line, replacement=None):
     content = dict(section.content or {})
+    if section.section_type == "note" and field in ("summary", "text"):
+        field = "paragraphs"  # a note's lines are its paragraphs
     if field == "summary" or field == "text":
         if (content.get(field) or "") != line:
             raise Stale("the text changed")
@@ -159,7 +196,7 @@ def _to_catalogue(trip, c, user):
     if user is None:
         raise Stale("moving a note to the catalogue needs a person to submit it")
     section = _section(trip, c["section"])
-    if section.section_type != "callout" or (section.content or {}).get("text", "") != c["text"]:
+    if _callout_text(section) != c["text"]:
         raise Stale("the callout changed")
     target = c["target"]
     model, field = KINDS[target["kind"]]
@@ -185,7 +222,7 @@ def _apply_one(trip, s, action, user=None):
             _append_notes(_item(trip, c["item"]), c["extra"])
     elif op == "callout":
         section = _section(trip, c["section"])
-        if (section.content or {}).get("text", "") != c["text"]:
+        if _callout_text(section) != c["text"]:
             raise Stale("the callout changed")
         if action == "to_info" and c.get("item"):
             title = re.sub(r"^[^\w]+", "", c["title"]).strip() or "Note"
@@ -198,7 +235,9 @@ def _apply_one(trip, s, action, user=None):
             section = _section(trip, place["id"])
             content = section.content or {}
             field = place["field"]
-            if field in ("summary", "text"):
+            if section.section_type == "note" and field in ("summary", "text"):
+                current = _callout_text(section) or ""
+            elif field in ("summary", "text"):
                 current = content.get(field) or ""
             else:
                 items = content.get(field) or []
@@ -252,8 +291,8 @@ def _apply_one(trip, s, action, user=None):
     elif op == "meal_phase":
         section = _section(trip, c["section"])
         content = section.content or {}
-        if (section.section_type != "phase" or content.get("summary") or content.get("highlights")
-                or (content.get("heading") or section.title) != c["heading"]):
+        if _tidy_type(section) != "phase" or content.get("summary") or content.get("highlights") \
+                or content.get("paragraphs") or (content.get("heading") or section.title) != c["heading"]:
             raise Stale("the phase changed")
         meal = Meal.objects.filter(day__trip=trip, day_id=section.day_id, pk=c["meal"]).first()
         if meal is None:

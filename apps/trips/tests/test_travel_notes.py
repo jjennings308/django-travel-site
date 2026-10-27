@@ -31,10 +31,10 @@ class DayPageTests(Fixture):
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])).content.decode()
         add = html[html.index('id="add"'):html.index('id="on-this-day"')]
-        labels = [label for label in ("+ Phase", "+ Callout", "+ Free text", "+ Travel notes", "+ Choose your adventure")
-                  if label in add]
-        self.assertEqual(labels, ["+ Phase", "+ Callout", "+ Free text", "+ Travel notes", "+ Choose your adventure"])
-        self.assertLess(add.index("+ Free text"), add.index("+ Travel notes"))
+        labels = [label for label in ("+ Note<", "+ Phase", "+ Callout", "+ Free text", "+ Travel notes",
+                                      "+ Choose your adventure") if label in add]
+        # Phases, callouts and free text are notes now (day-first plan P3).
+        self.assertEqual(labels, ["+ Note<", "+ Travel notes", "+ Choose your adventure"])
         self.assertNotIn("Logistics table", add)
         self.assertIn(reverse("trips:section_create", args=[self.trip.pk, self.day.pk, "travel"]), add)
 

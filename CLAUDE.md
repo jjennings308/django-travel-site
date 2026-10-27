@@ -687,7 +687,7 @@ that matter most:
 - **The view page is for reading; adding is on the day page or the item's own page; Edit trip holds
   trip-level things** (edit-by-day plan E3). The trip page has no add forms or "Add …" links (items keep
   their small Edit link). Stays, legs, activities, meals, sections and to-dos are added from **Add to this
-  day** on the day page (the leg quick add `partials/_leg_quick_add.html` is there) and edited on their own
+  day** on the day page (the leg quick add `partials/_leg_quick_add.html` is there) or **+ Add** on the trip page (P3) and edited on their own
   pages, where their confirmations and contacts are added too. Edit trip (`views.trip_edit`, no formsets) has
   The trip, Days, **All stays & legs** (`#stays-legs`, `views._edit_trip_stays_and_legs`: every stay and leg in
   date order with its day, confirmation chips and Edit → `stay_edit` / `leg_edit`; strays flagged "Not on any
@@ -773,10 +773,33 @@ that matter most:
   `trips:meal_edit` / `meal_delete` (`/trips/<pk>/days/<day_pk>/meals/<id>/`; confirmations and contacts & info like a
   leg's; the day page's Meals formset still edits them together). `section_edit` / `section_delete` honour `next`.
   Panel URLs carry a query string, so the offline worker never caches them; every item page still works on its own.
+- **+ Add and five kinds** (day-first plan P3): each open day on the trip page ends, for editors, with **+ Add to Day N**
+  (`partials/_day.html`, a form with `data-quick-add`): one line, Enter (an `sr-only` first submit button, no kind) or a
+  kind button (Travel / Stay / Do / Eat / Note; Options comes with P4) → `trips:quick_add` (`/trips/<pk>/days/<day_pk>/add/`,
+  POST, editors). `apps/trips/quick_add.py` is pure (reuses `logistics`' arrow / mode / rough time): `parse(text, kind)` →
+  `travel` (mode, origin / destination — "Train to X" leaves from the day's city —, `duration`, a typed time only as
+  "Around 09:15" in its notes: a planned leg has no times), `stay` (name, `nights`), `eat` (meal type from the first word,
+  else from the time; `time` = `reserved_time`), `do` (activity kind from the first word; `time` = `start_time`), else
+  `note`. The view makes it on the day (cities matched like `leg_quick_add`, currency `default_for`, `order` last + 1,
+  `trip_cities.sync`) and answers `{"url", "anchor"}` to `fetch` (`panel.js` refreshes the day and opens the item in the
+  panel) or redirects to the item's page with `next` = the day. A new meal's page offers its catalogue match ("Looks like
+  the catalogue place …", `catalogue_links.attach_suggestions`; `catalogue_link` now honours `next`), never links it.
+  **Notes:** `Section.Type.NOTE` (trips 0048, choices only): title = optional heading, payload `{"tone": "" | tip | warning
+  | critical, "paragraphs"}` (`NotePayloadForm`; a "• " paragraph is a bullet), drawn as a callout of `note_style`
+  (`Section.NOTE_TONE_STYLES`: tip → info) or else like free text, on the page and in the booklet. Add to this day offers
+  Note, Travel notes and Choose your adventure. **Converting** `Section.OLD_NOTE_TYPES` (phase, callout, free text):
+  `apps/trips/day_first.py` (`plan` / `apply(trip, ids)`, one transaction, one history line; a phase's heading becomes
+  the title, summary and highlights (as "• ") paragraphs; a callout's tone kept, info → tip; other payload keys kept) via
+  `trips:trip_convert` (`/trips/<pk>/convert/`, editors, every row ticked; Needs attention's "N sections to turn into
+  notes", counted from the prefetch), `manage.py convert_day_first --trip <pk> [--apply]` and `import_itinerary --apply`
+  (a new trip's sections become notes; the parsers still emit the old types). Old types still render and edit. **Tidy**
+  reads a note as what it replaced (`tidying._tidy_type`: a toned one-paragraph note as a callout, a heading-only one as a
+  phase, else free text) and applies to it (`_callout_text`, paragraphs for "text" / "summary"). The booklet snapshot's
+  fixture converts its phase, callout and free text: only the phase's highlights changed, from a list to "• " lines.
 - **Edit this day** (trip-page UX plan, U5): each day on the trip page has an "Edit this day" link for
   editors to `trips:day_edit`, the day's workshop and the place where things on a day are added (edit-by-day
   plan): **Add to this day** (a leg via the inline quick add, a stay, an activity, a meal via the meal formset
-  `#meals`, a section — Phase, Callout, Free text, Travel notes, Choose your adventure — and a contact or note for
+  `#meals`, a section — Note, Travel notes, Choose your adventure (P3) — and a contact or note for
   the whole day; a to-do from its item's page), **On this day** (`views._day_workshop`: the day's stays — Check out / Check in / Sleeping —
   then the day's items in the trip page's order —
   `itinerary.timeline`, then sections, then food ideas — each with its confirmation numbers and linked
@@ -1251,7 +1274,8 @@ shelf linked to bucket-list goals; cities found by search, kept in step automati
 builder; trip-wide pages become read-only views and Edit trip becomes Settings). Decisions answered 2026-10-26.
 Phases P1–P7, one branch each, in order. Status: P1 (city search box and new cities, `trip_cities.sync`, the route
 builder and strip) done on branch `p1-cities`; P2 (the item panel, `trips:day_fragment`, `trips:item_panel`, the meal's
-own page) done on branch `p2-item-panel`.
+own page) done on branch `p2-item-panel`; P3 (+ Add, notes, converting phases / callouts / free text) done on branch
+`p3-quick-add`.
 
 ### Rules carried over from the itinerary project
 
