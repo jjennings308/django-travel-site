@@ -454,8 +454,10 @@ def trip_detail(request, pk):
     # The Ideas shelf (day-first plan P6): two queries, the whole page only (not a day's fragment).
     from . import ideas
     all_ideas = ideas.load(trip, request.user)
-    context.update({"ideas": [idea for idea in all_ideas if idea.on_shelf], "idea_count": len(all_ideas),
-                    "idea_kinds": ideas.KINDS})
+    shelf = [idea for idea in all_ideas if idea.on_shelf]
+    for idea in shelf:  # "Add as an option" offers the undecided choices its kind fits (typed-choices T3)
+        idea.fitting_groups = [group for group in context["open_groups"] if ideas.fits(idea, group)]
+    context.update({"ideas": shelf, "idea_count": len(all_ideas), "idea_kinds": ideas.KINDS})
     return render(request, "trips/trip_detail.html", context)
 
 
@@ -1894,6 +1896,8 @@ def trip_map_data(request, pk):
         })
     from .ideas import map_features
     features += map_features(trip)  # the Ideas layer (P6): faint pins, off by default
+    from .options import map_features as choice_features
+    features += choice_features(trip)  # the Choices layer (typed-choices T3): faint pins, off by default
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 

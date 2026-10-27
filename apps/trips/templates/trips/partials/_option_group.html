@@ -12,6 +12,7 @@ An undecided "choose one" group on its day (day-first plan P4; apps/trips/option
       <div class="rounded-lg border border-zinc-200 p-3 scroll-mt-32" id="option-{{ option.pk }}" data-option>
         <p class="font-medium text-zinc-900">{{ option.title }}</p>
         {% with line=option.kind_line %}{% if line %}<p class="mt-0.5 text-sm text-zinc-700" data-option-line>{% if option.poi_id %}<a class="link-quiet" href="{% url 'locations:poi_detail' option.poi.slug %}">{{ line }}</a>{% else %}{{ line }}{% endif %}</p>{% endif %}{% endwith %}
+        {% if option.trip_notes %}<details class="mt-1 text-sm" data-option-notes><summary class="cursor-pointer text-zinc-600">ⓘ {{ option.trip_notes|length }} note{{ option.trip_notes|length|pluralize }} from the catalogue</summary>{% include "trips/partials/_trip_notes.html" with item=option %}</details>{% endif %}
         {% if option.notes %}<p class="mt-1 text-sm text-zinc-600">{{ option.notes|linebreaksbr }}</p>{% endif %}
         {% if option.url %}<p class="mt-1 text-sm"><a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">More ↗</a></p>{% endif %}
         {% with items=option.items %}

@@ -58,7 +58,7 @@ def load(trip):
     from django.db.models import Prefetch
     from .models import Option, Vote
     # An option's catalogue link (typed-choices T1) comes with it, so its line costs no query.
-    options = Option.objects.select_related("poi", "activity", "event", "city")
+    options = Option.objects.select_related("poi", "activity", "event__related_activity", "event__poi", "city")
     return list(OptionGroup.objects.filter(trip=trip)
                 .prefetch_related(Prefetch("options", queryset=options), "options__travelers",
                                   Prefetch("options__votes", queryset=Vote.objects.select_related("user"))))
@@ -337,3 +337,38 @@ def make_for(group):
         if item is not None:
             items.append(item)
     return items
+
+
+def map_features(trip):
+    """The trip map's **Choices** layer (typed-choices T3; off by default): a faint pin per option of an undecided
+    typed choice that has a place — its catalogue place, its event's or activity's venue, else its city's centre —
+    with the choice's prompt and the option's votes. One query."""
+    from django.db.models import Count
+    from django.urls import reverse
+    from .models import Option, OptionGroup
+    options = (Option.objects.filter(group__trip=trip, group__state=OptionGroup.State.OPEN)
+               .exclude(group__kind=OptionGroup.Kind.ANY)
+               .select_related("group__day", "poi", "city", "event__poi", "event__city", "activity__venue",
+                               "activity__city")
+               .annotate(votes_n=Count("votes")).order_by("group__day__day_number", "group_id", "order"))
+    features = []
+    for option in options:
+        poi = option.poi or (option.event.poi if option.event_id and option.event.poi_id else None) or (
+            option.activity.venue if option.activity_id and option.activity.venue_id else None)
+        city = option.city or (option.event.city if option.event_id else None) or (
+            option.activity.city if option.activity_id else None) or (poi.city if poi is not None else None)
+        spot = poi if poi is not None and poi.latitude is not None else city
+        if spot is None or spot.latitude is None or spot.longitude is None:
+            continue
+        group = option.group
+        votes = f" · 👍 {option.votes_n}" if option.votes_n else ""
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(spot.longitude), float(spot.latitude)]},
+            "properties": {
+                "layer": "choices", "marker": "idea", "name": option.title,
+                "subtitle": f"Day {group.day.day_number} · {group.prompt}: undecided{votes}",
+                "url": reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}",
+            },
+        })
+    return features

@@ -876,6 +876,15 @@ that matter most:
   "anchor"}` for fetch); `group_split` makes one per track. Reopen deletes nothing (the item stays in its option, not
   counting). History: the pick's own "choice" line (undo reopens) and an "Added …" line for the item, not batched,
   so the pick stays undoable.
+  **Ideas, map and notes** (T3): `ideas.fits(idea, group)` (a typed choice takes ideas of its kind —
+  `ideas.choice_kind` —, "Anything" any); the shelf's **Add as an option** lists only fitting open choices
+  (`idea.fitting_groups`, set in `trip_detail`), `idea_option` refuses one that doesn't fit, a new choice from an idea
+  gets its kind, and on a typed choice `ideas.fill_option` copies the idea's notes and catalogue link into the option's
+  own fields (no item; Pick makes it) — on "Anything" the item still comes along. The trip map's **Choices** layer
+  (`options.map_features`, one query in `trip_map_data`, switch off by default): a faint pin per option of an open typed
+  choice with a place, "Day N · prompt: undecided · 👍 n". Catalogue notes reach an open choice's options in the trip's
+  one notes query (`trip_notes.items_of` adds `day.open_groups`' options; `options.load` select_relates the event's
+  activity and venue), folded under the option "ⓘ N notes from the catalogue".
 - **Split** (day-first plan P5; no migration): `OptionGroup.split(tracks, user)` (option → travellers; state `split`,
   nothing `chosen`) from `trips:group_split` (`/trips/<pk>/choices/<id>/split/`, editors; `forms.SplitForm`: a radio row
   per person on `day.roster`, everyone placed once, at least two options taken — else "pick it instead"; prefilled, so
@@ -1415,7 +1424,8 @@ Plan: `docs/plans/typed-choices.md` (a "choose one" knows what it decides — st
 only for that kind's fields, and Pick turns the winner into the real item; ideas and the map later). Decisions
 2026-10-27. Phases T1–T3, one branch each, in order. Status: T1 (kinds and the options' fields, the kind's line on the
 day and in the booklet) done on branch `t1-choice-kinds`; T2 (Pick makes the stay, meal, activity or journey) done on
-branch `t2-pick-makes-item`.
+branch `t2-pick-makes-item`; T3 (ideas fit choices by kind, the map's Choices layer, catalogue notes under options) done on
+branch `t3-choices-ideas-map`. Complete.
 
 ### Typed choices
 

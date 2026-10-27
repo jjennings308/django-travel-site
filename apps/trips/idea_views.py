@@ -120,9 +120,12 @@ def idea_place(request, pk, idea_pk):
 @login_required
 @require_POST
 def idea_option(request, pk, idea_pk):
-    """Add an idea as an option (editors): of an undecided "choose one" (``group``), or of a new one on
-    a day (``day``, with ``prompt``). An idea linked to the catalogue also gets its item inside the
-    option, so the link and its notes come along. Opens the group's page."""
+    """Add an idea as an option (editors): of an undecided "choose one" (``group``) whose kind fits the idea's
+    (``ideas.fits``; "Anything" takes any idea), or of a new one on a day (``day``, with ``prompt``), which
+    gets the idea's kind (typed-choices T3). On a typed choice the idea's notes and catalogue link go into
+    the option's own fields (``ideas.fill_option``; Pick makes the item); on an "Anything" choice an idea
+    linked to the catalogue gets its item inside the option, so the link and its notes come along. Opens
+    the group's page."""
     trip, idea = _idea_of(request, pk, idea_pk, "edit")
     # The shelf's one select sends "group-<id>" (an undecided choice) or "day-<id>" (a new one there).
     where, _, number = request.POST.get("target", "").partition("-")
@@ -131,13 +134,21 @@ def idea_option(request, pk, idea_pk):
     if group_pk:
         group = get_object_or_404(OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN),
                                   pk=group_pk if str(group_pk).isdigit() else 0)
+        if not ideas.fits(idea, group):
+            messages.error(request, f"“{group.prompt}” is a choice about {group.get_kind_display().lower()}: "
+                                    f"“{idea.title}” doesn't fit it.")
+            return redirect(_shelf(trip, idea))
     else:
         day = get_object_or_404(Day.objects.filter(trip=trip), pk=day_pk if str(day_pk).isdigit() else 0)
         prompt = " ".join(request.POST.get("prompt", "").split())[:200] or f"{idea.title} or …"
-        group = OptionGroup.objects.create(trip=trip, day=day, prompt=prompt, order=day.option_groups.count())
+        group = OptionGroup.objects.create(trip=trip, day=day, prompt=prompt, order=day.option_groups.count(),
+                                           kind=ideas.choice_kind(idea))
     option = Option.objects.create(group=group, title=idea.title[:200], notes=idea.notes,
                                    order=(group.options.aggregate(m=Max("order"))["m"] or 0) + 1)
-    if idea.target is not None:
+    if group.kind != OptionGroup.Kind.ANY:
+        ideas.fill_option(idea, option)
+        trip_cities.sync(trip)
+    elif idea.target is not None:
         item, *_ = _make_on_day(trip, group.day, parser.parse(idea.title, kind=idea.kind))
         ideas.fill(idea, item)
         item.option = option

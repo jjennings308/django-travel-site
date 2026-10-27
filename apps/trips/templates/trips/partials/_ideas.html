@@ -1,5 +1,5 @@
 {% comment %}
-The Ideas shelf (day-first plan P6; apps/trips/ideas.py): ideas with no day yet, shared by everyone on the trip. Anyone who may comment adds and votes; editors put one on a day or add it as an option of a "choose one". Bucket-list goals behind an idea and "Save for someday" come from bucketlists through shell partials (url … as), so trips doesn't depend on it. Pass ideas= (on the shelf), idea_count=, days=, open_groups=.
+The Ideas shelf (day-first plan P6; apps/trips/ideas.py): ideas with no day yet, shared by everyone on the trip. Anyone who may comment adds and votes; editors put one on a day or add it as an option of a "choose one". Bucket-list goals behind an idea and "Save for someday" come from bucketlists through shell partials (url … as), so trips doesn't depend on it. Pass ideas= (on the shelf; each with fitting_groups, the undecided choices its kind fits — typed-choices T3), idea_count=, days=.
 {% endcomment %}
 <details class="about-fold scroll-mt-32" id="ideas"{% if ideas and not days %} open{% endif %} data-ideas>
   <summary class="day-summary"><span class="font-semibold text-zinc-900">Ideas</span>{% if ideas %} <span class="text-zinc-500">· {{ ideas|length }}</span>{% endif %}</summary>
@@ -45,7 +45,7 @@ The Ideas shelf (day-first plan P6; apps/trips/ideas.py): ideas with no day yet,
                 {% csrf_token %}
                 <label class="sr-only" for="idea-{{ idea.pk }}-target">Option of</label>
                 <select name="target" id="idea-{{ idea.pk }}-target" class="w-auto min-w-0 max-w-full">
-                  {% for group in open_groups %}<option value="group-{{ group.pk }}">Option of “{{ group.prompt }}” (Day {{ group.day.day_number }})</option>{% endfor %}
+                  {% for group in idea.fitting_groups %}<option value="group-{{ group.pk }}">Option of “{{ group.prompt }}” (Day {{ group.day.day_number }})</option>{% endfor %}
                   {% for day in days %}<option value="day-{{ day.pk }}">New choice on Day {{ day.day_number }}</option>{% endfor %}
                 </select>
                 <button type="submit" class="btn-quiet px-3 py-1">Add as an option</button>

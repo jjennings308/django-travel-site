@@ -1,6 +1,6 @@
 # Plan: typed choices (a "choose one" knows what it's choosing)
 
-Status: T1 done (2026-10-27, branch `t1-choice-kinds`); T2 done (2026-10-27, branch `t2-pick-makes-item`). Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
+Status: T1 done (2026-10-27, branch `t1-choice-kinds`); T2 done (2026-10-27, branch `t2-pick-makes-item`); T3 done (2026-10-27, branch `t3-choices-ideas-map`); the plan is complete. Decisions by James 2026-10-27 ("your call" — listed below). Phases T1–T3, one
 branch each, in order. Read with `CLAUDE.md` → Trips → "'Choose one' groups and votes", "Split", "Ideas shelf" and
 "+ Add and five kinds", and `docs/plans/day-first-planning.md` (P4–P6).
 
@@ -94,6 +94,11 @@ deleted made item is made again on the next pick. The pick opens the new item th
 - Help: `options-and-votes` ("Picking a stay, meal or activity adds it to the day"); bump `updated`.
 
 ### T3 — Ideas and the map
+
+Done (branch `t3-choices-ideas-map`). As built: on an "Anything" choice an idea still brings its item into the option
+(as P6 did); a travel option takes the idea's place or city name as where to; a choice the idea doesn't fit is refused
+with a message rather than a 404; the notes add no query (the trip's one notes query takes the options too), so the
+trip page pin is unchanged; the Choices pins use the Ideas layer's faint marker.
 
 - **Ideas → Add as an option**: offers the open choices whose kind fits the idea's kind (any always fits) and
   copies the idea's title, notes and catalogue link into the option's fields (`ideas.fill` gains an option branch);

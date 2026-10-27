@@ -7,7 +7,8 @@ activity's, then that activity's venue's; then the item's own place. ``attach`` 
 trip page's prefetch (the days' ``ordered_meals`` / ``ordered_activities`` / ``ordered_sections``) and loads
 every note in **one** query, with whether this trip hides it ("Not for this trip", ``TripHiddenNote``):
 ``item.trip_notes`` (shown) and ``item.hidden_trip_notes`` (for editors, to show again). Each note carries
-``from_name``, the place or activity it comes from.
+``from_name``, the place or activity it comes from. An undecided choice's options linked to the catalogue
+(typed-choices T3) get theirs in the same query, shown folded under the option ("2 notes").
 """
 from django.db.models import Exists, OuterRef, Q
 
@@ -38,11 +39,15 @@ def _sources(item):
 
 
 def items_of(days):
-    """Every meal, trip activity and section of these days (the trip page's prefetched lists)."""
+    """Every meal, trip activity and section of these days (the trip page's prefetched lists), and the
+    options of their undecided choices (typed-choices T3: a catalogue-linked option shows its notes while
+    you decide; ``options.attach`` runs first and sets ``day.open_groups``)."""
     for day in days:
         yield from getattr(day, "ordered_meals", [])
         yield from getattr(day, "ordered_activities", [])
         yield from getattr(day, "ordered_sections", [])
+        for group in getattr(day, "open_groups", []):
+            yield from getattr(group, "option_list", [])
 
 
 def attach(trip, days):
