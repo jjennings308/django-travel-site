@@ -41,12 +41,12 @@ Only the date and day number are required; leave the rest blank if you don't kno
 | --- | --- | --- |
 | Day number | Pre-filled with the next free number. Two days on one trip can't share a number. | 5 |
 | Date | The calendar date of this day. Required. | Sep 21, 2027 |
-| City | Where you *spend* the day, not where you sleep. The list shows the trip's cities. | Munich (even if you sleep in Augsburg) |
+| City | Where you *spend* the day, not where you sleep. Type to find it; the trip's cities are offered first. | Munich (even if you sleep in Augsburg) |
 | Theme | A one-line summary shown as the day's title. | Oktoberfest — Munich day trip |
 | Meals included | Tick only if meals are already covered by the trip price, such as on a tour. | Unticked |
 | Travelers | Leave blank when the whole group is together. Pick names only on days the group splits. | Debbie, James, John, Regan |
 
-The **City** list starts with the trip's own cities (**This trip**), then every other city in the catalogue (**Everywhere else**). Picking one from Everywhere else adds it to the trip. The same goes for a stay's city and a journey's From and To cities. A day covered by a stay picks up the stay's city automatically when the city is left blank.
+The **City** box finds any city in the catalogue as you type, with the trip's own cities offered before you type ([finding a city](/help/starting-a-trip/#finding-a-city)); a city that isn't listed can be added from it. Whatever you pick joins the trip's cities. The same goes for a stay's city and a journey's From and To cities. A day covered by a stay picks up the stay's city automatically when the city is left blank. To set many days' cities at once, use [the route](/help/starting-a-trip/#the-route).
 
 ## Add what happens that day
 
@@ -96,7 +96,7 @@ Open the trip page. Your day appears in two places:
 | --- | --- |
 | "Day N already exists on this trip." | Pick an unused day number. Each day of a trip needs its own number. |
 | No **Edit trip** button | You have view-only access. Ask the trip's owner to make you an editor. |
-| The city you want isn't in the list | It isn't in the catalogue yet: add it under Places, or leave the city blank. |
+| The city you want isn't found | It isn't in the catalogue yet: click **Add “…” as a new city** in the box, or leave the city blank. |
 | A train or flight shows on the wrong day | Edit the leg and correct its date. A leg appears on the day whose date matches its departure. |
 | Need to change a day | Edit trip → Days → **Edit**, change the fields, then click **Save day**. |
 | Need to remove a day | On **Edit trip**, in the Days table, click the day's **Delete** link and confirm. This permanently removes the day with its meals and sections; booking tasks that pointed at it are kept. |

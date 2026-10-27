@@ -25,6 +25,7 @@ from django.utils import timezone as django_timezone
 
 from apps.core.widgets import CurrencySelect, DateInput, DateTimeLocalInput, TimeInput
 from apps.locations.models import POI, City
+from apps.locations.widgets import CitySearchInput, CitySearchMultiple
 
 from . import currencies
 from .models import (
@@ -541,37 +542,29 @@ class DayAdminForm(forms.ModelForm):
 # ---------------------------------------------------------------------------
 
 
-def _city_choices():
-    """Approved catalogue cities, for the trip's and a day's city fields."""
+def _city_choices(trip=None):
+    """Catalogue cities for the trip's and a day's city fields: approved ones, the trip's own (a city
+    a member added is pending until staff review it) and the signed-in member's pending submissions,
+    so a city just added from the city box is usable at once (day-first plan, P1)."""
     from apps.approval_system.models import ApprovalStatus
-    return (City.objects.filter(approval_status=ApprovalStatus.APPROVED)
-            .select_related("region", "country").order_by("country__name", "name"))
-
-
-class CitySelect(forms.Select):
-    """A city select whose options carry ``data-tz`` (the city's IANA zone), so the leg page can
-    fill a blank zone as a city is picked (edit-by-day plan E5)."""
-
-    def __init__(self, *args, zones=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.zones = zones or {}
-
-    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
-        zone = self.zones.get(str(getattr(value, "value", value)))
-        if zone:
-            option["attrs"]["data-tz"] = zone
-        return option
+    from apps.core.current import get_user
+    q = models.Q(approval_status=ApprovalStatus.APPROVED)
+    user = get_user()
+    if user is not None:
+        q |= models.Q(submitted_by=user, approval_status=ApprovalStatus.PENDING)
+    if trip is not None and trip.pk:
+        q |= models.Q(pk__in=trip.cities.values("pk"))
+    return City.objects.filter(q).select_related("region", "country").order_by("country__name", "name")
 
 
 def _trip_city_choices(trip):
-    """(grouped choices, {pk: zone}) for a trip's city selects: **This trip** (its cities) first, then
-    **Everywhere else** — the same list on every row and page (E5; before, a blank row listed every
-    city and a filled one only the trip's). Two queries, cached on the trip object."""
+    """(grouped choices, {pk: zone}) for a trip's city boxes: **This trip** (its cities) first, then
+    **Everywhere else** — the same list on every row and page (E5). The box shows This trip as chips;
+    the list is its no-JavaScript fallback. Two queries, cached on the trip object."""
     cached = getattr(trip, "_city_select", None) if trip is not None else None
     if cached is not None:
         return cached
-    cities = list(_city_choices())
+    cities = list(_city_choices(trip))
     zones = {str(city.pk): city.timezone for city in cities if city.timezone}
     own = set(trip.cities.values_list("pk", flat=True)) if trip is not None and trip.pk else set()
     if own:
@@ -586,33 +579,30 @@ def _trip_city_choices(trip):
 
 
 def _leg_city_fields(form, trip, names=("origin_city", "destination_city")):
-    """A leg's from / to, a stay's city or a day's city: any approved catalogue city, grouped as the
-    trip's own first, then everywhere else (``_trip_city_choices``). Picking one from everywhere else
-    adds it to the trip's cities when the form saves (``JoinsTripCitiesMixin``)."""
+    """A leg's from / to, a stay's city or a day's city: a type-to-search city box
+    (``locations.widgets.CitySearchInput``) over any catalogue city, the trip's own offered first.
+    Whatever is picked joins the trip's cities when the form saves (``SyncsTripCitiesMixin``)."""
     if names[0] not in form.fields:
         return
     choices, zones = _trip_city_choices(trip)
     for name in names:
         field = form.fields[name]
-        field.queryset = _city_choices()
-        field.widget = CitySelect(zones=zones, attrs=field.widget.attrs)
+        field.queryset = _city_choices(trip)
+        field.widget = CitySearchInput(zones=zones, attrs=field.widget.attrs)
         field.choices = choices
 
 
-class JoinsTripCitiesMixin:
-    """After saving, add the form's chosen cities to its trip's cities (E5): a city picked from
-    "Everywhere else" becomes one of the trip's."""
-
-    trip_city_fields = ()
+class SyncsTripCitiesMixin:
+    """After saving, bring the trip's cities up to date (``trip_cities.sync``): a city picked from
+    "Everywhere else", or the city of a catalogue place, becomes one of the trip's."""
 
     def save(self, commit=True):
         obj = super().save(commit)
-        trip = getattr(self, "trip", None) or getattr(obj, "trip", None)
+        trip = (getattr(self, "trip", None) or getattr(obj, "trip", None)
+                or getattr(getattr(obj, "day", None), "trip", None))
         if commit and trip is not None:
-            chosen = [self.cleaned_data.get(name) for name in self.trip_city_fields]
-            chosen = [city for city in chosen if city is not None]
-            if chosen:
-                trip.cities.add(*chosen)
+            from . import trip_cities
+            trip_cities.sync(trip)
         return obj
 
 
@@ -652,8 +642,14 @@ class TripForm(forms.ModelForm):
             label="Home currency", help_text=Trip._meta.get_field("home_currency").help_text,
             widget=CurrencySelect([self.instance.home_currency, preferred, *HOME_CURRENCY_CHOICES], styled=False))
         if "cities" in self.fields:
-            self.fields["cities"].queryset = _city_choices()
+            # Chips: type to add, × to remove (day-first plan, P1); a city something on the trip
+            # uses can't be removed (clean_cities). The trip's cities also fill themselves in.
+            trip = self.instance if self.instance.pk else None
+            self.fields["cities"].queryset = _city_choices(trip)
             self.fields["cities"].label_from_instance = str  # "Kansas City, KS, US" tells same names apart
+            self.fields["cities"].widget = CitySearchMultiple(attrs={"size": 6})
+            self.fields["cities"].help_text = ("Filled in from the days, stays and legs as you plan; add others "
+                                               "you're thinking of.")
 
     class Meta:
         model = Trip
@@ -676,10 +672,25 @@ class TripForm(forms.ModelForm):
             # it is the one that works without JavaScript, and the traveler
             # count is small enough that it stays readable.
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
-            "cities": forms.SelectMultiple(attrs={"size": 6}),
             "start_date": DateInput(styled=False),
             "end_date": DateInput(styled=False),
         }
+
+    def clean_cities(self):
+        cities = self.cleaned_data.get("cities")
+        if not self.instance.pk or cities is None:
+            return cities
+        from . import trip_cities
+        kept = {city.pk for city in cities}
+        removed = [city for city in self.instance.cities.all() if city.pk not in kept]
+        if removed:
+            used = trip_cities.used_by(self.instance)
+            refused = [f"{city.name} is used by {', '.join(used[city.pk][:3])}"
+                       f"{' and more' if len(used[city.pk]) > 3 else ''}"
+                       for city in removed if city.pk in used]
+            if refused:
+                raise forms.ValidationError("; ".join(refused) + ". Change those first.")
+        return cities
 
     def clean(self):
         cleaned_data = super().clean()
@@ -752,10 +763,8 @@ class LocatingStayMixin:
         return stay
 
 
-class LodgingForm(JoinsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
+class LodgingForm(SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
     """One place to stay. Check-out has to follow check-in."""
-
-    trip_city_fields = ("city",)
 
     class Meta:
         model = Lodging
@@ -796,7 +805,7 @@ class LodgingForm(JoinsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
         return cleaned_data
 
 
-class TransportLegForm(JoinsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm):
+class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm):
     """One transport leg, entered by local times like the admin inline.
 
     Same conversion as the admin — see ``LocalLegTimeMixin``. Two deliberate
@@ -816,8 +825,6 @@ class TransportLegForm(JoinsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
         return ZoneNameField(label_example=label_example,
                              help_text=f"Filled in from the city; change it for an airport in another zone. "
                                        f"An IANA zone name, e.g. {label_example}.")
-
-    trip_city_fields = ("origin_city", "destination_city")
 
     class Meta:
         model = TransportLeg
@@ -1198,7 +1205,7 @@ TripRateFormSet = inlineformset_factory(Trip, TripRate, form=TripRateForm, extra
 # ---------------------------------------------------------------------------
 
 
-class DayForm(JoinsTripCitiesMixin, forms.ModelForm):
+class DayForm(SyncsTripCitiesMixin, forms.ModelForm):
     """One day of a trip.
 
     Blank ``travelers`` means the whole group is together, which is the common
@@ -1206,8 +1213,6 @@ class DayForm(JoinsTripCitiesMixin, forms.ModelForm):
     list is narrowed to the trip's own travelers so a roster naming a stranger
     is not selectable at all.
     """
-
-    trip_city_fields = ("city",)
 
     class Meta:
         model = Day
@@ -1812,7 +1817,7 @@ def section_payload_form(section_type, *args, content=None, **kwargs):
     return form_class(*args, content=content, **kwargs)
 
 
-class SectionForm(BlankOrderFallbackMixin, forms.ModelForm):
+class SectionForm(SyncsTripCitiesMixin, BlankOrderFallbackMixin, forms.ModelForm):
     """The relational half of a ``Section``: title, icon, order.
 
     ``section_type`` and ``content`` are deliberately absent. The type is chosen
@@ -2167,7 +2172,7 @@ class ConfirmationEditForm(forms.ModelForm):
         currencies.setup(self, "currency", trip, currencies.confirmation_city_ids(self.instance))
 
 
-class TripActivityForm(forms.ModelForm):
+class TripActivityForm(SyncsTripCitiesMixin, forms.ModelForm):
     """An activity on a day (``trips:activity_new`` / ``activity_edit``): a tour, timed entry,
     ticket, table or car hire. The place is a catalogue POI in one of the trip's cities (else
     typed), the travellers are the trip's own."""
@@ -2237,3 +2242,25 @@ def share_choices(*forms_or_formsets):
                 if key not in lists:
                     lists[key] = list(field.choices)
                 field.choices = lists[key]
+
+
+class RouteStopForm(forms.Form):
+    """One stop on the route builder (``trips:trip_route``, day-first plan P1): a city and its nights.
+    A row with no city is ignored."""
+
+    city = forms.ModelChoiceField(queryset=City.objects.none(), required=False)
+    nights = forms.IntegerField(min_value=1, max_value=90, required=False,
+                                widget=forms.NumberInput(attrs={"class": "w-20"}))
+
+    def __init__(self, *args, trip=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        _leg_city_fields(self, trip, names=("city",))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("city") and not cleaned.get("nights"):
+            self.add_error("nights", "How many nights?")
+        return cleaned
+
+
+RouteFormSet = formset_factory(RouteStopForm, extra=3)

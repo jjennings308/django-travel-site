@@ -151,9 +151,6 @@ def apply(trip, plans, chosen):
                         notes=data.get("notes") or "", est_duration=data.get("duration"), order=row["row"],
                         section=section if data["date"] == day_date else None)
                     created.append(leg)
-                    for city in (leg.origin_city, leg.destination_city):
-                        if city is not None:
-                            trip.cities.add(city)
                 placed.append(leg)
             notes = [t["note"] for t in section_plan.totals if t["note"]]
             if notes and placed:
@@ -172,6 +169,9 @@ def apply(trip, plans, chosen):
                 content.pop("rows", None)
             section.content = content
             section.save(update_fields=["content"])
+        if created:
+            from .trip_cities import sync
+            sync(trip)
     return {"created": created, "linked": linked, "sections": converted}
 
 

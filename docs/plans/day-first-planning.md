@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: planning only (2026-10-26). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -58,6 +58,11 @@ Trip finishes → goal's "mark done" prompt        └ Considered (unchosen, kep
 ## Phases
 
 ### P1 — Cities: search, route builder, cities that maintain themselves
+
+Done (branch `p1-cities`). As built: the search endpoint is `/locations/cities/search.json` (the app is mounted at
+`/locations/`, not `/places/`); a route's planned legs use mode "Other" (a leg always has a mode); a city added from the
+box gets coordinates from a lookup, else its country's centre, and no time zone until staff fill it in; "Plan a trip"
+keeps adding the goal's cities (they are not "used" by anything until P6's ideas).
 
 - **City search endpoint** `locations:city_search` (`/places/cities/search.json?q=&country=`): approved cities (plus
   the member's own pending ones), ranked like `pages.search` (unaccent, trigram on the name, leading-match bonus),

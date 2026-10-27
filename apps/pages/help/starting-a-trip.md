@@ -1,5 +1,5 @@
 title: Starting a trip
-summary: Create a trip from scratch or from a bucket-list goal, then add who's going, the cities, the dates and where you'll stay.
+summary: Create a trip from scratch or from a bucket-list goal, set its route (cities and nights), then add who's going and where you'll stay.
 audience: editors
 section: Getting started
 order: 20
@@ -28,17 +28,38 @@ Fill in **The trip** and click **Create trip**:
 | --- | --- |
 | Name | What you call the trip, such as "James & Regan — Taos". Only people on the trip see it. |
 | Destination | Where it is, such as "Taos / Angel Fire, New Mexico". A shared link uses this, never the name. |
-| Cities | The catalogue cities the trip visits. Days and journeys pick their city from this list. |
+| Cities | The catalogue cities the trip visits, as chips: type to add one, × to remove it. You rarely need to: every city a day, stay or journey uses is added by itself, and a city something uses can't be removed ("Munich is used by Day 3, Hotel Laimer Hof"). |
 | Start date, End date | The first and last day. |
 | Travelers | Who's going. Use **Add a traveler** below if a name is missing. |
 | Budget, Structure, Status | The budget level, the kind of trip, and how far planning has got (Starting → Fleshing out → Confirming → Ready to go). |
 | Notes | Anything for the whole trip. |
 
+## The route
+
+The quickest way to lay out a trip: on the trip page click **Set the route** (or **Edit route** next to the route at the top of the page, or **Set the route** under Days on Edit trip). Give each stop a city and its number of nights, in order: Munich 3, Salzburg 2, Vienna 4. Type part of a city's name to find it; the trip's own cities are offered before you type.
+
+Click **Preview** to see what saving would do, then **Save the route**:
+
+- Each day gets its city. The day you travel belongs to the next city, and the last city also has the day you leave. Days the trip doesn't have yet are made.
+- A day that already has a different city (a day trip) is kept, unless you tick **Replace days that already have a different city**.
+- Ticked by default: a **planned leg** on each travel day ("Munich → Salzburg", no times yet; skipped where that day already has one), and a **stay to book** in each city ("Stay in Munich"; skipped where a stay already covers those nights). Both show under **Not booked yet** until you fill them in.
+- When the nights don't add up to the trip, the preview says so. A longer route stops at the trip's last day unless you tick **Extend the trip to fit the route**; a shorter one leaves the last days without a city.
+
+Need more stops? **Preview** adds three more rows. Clear a stop's city to drop it. Saving is one line in the trip's [history](/help/trip-history/).
+
+The route then shows at the top of the trip page as "Munich (3) → Salzburg (2) → Vienna (4)", each city linking to its first day.
+
+## Finding a city
+
+Every city box on the trip's pages (a day's city, a stay's, a journey's From and To, the route) works the same way: type part of the name and pick it from the list. Accents and small typos don't matter ("munchen" finds München). Before you type, the trip's own cities are offered as buttons.
+
+A city that isn't in the catalogue yet: type its name and click **Add “Hallstatt” as a new city**, then pick its country (and region, if you like). You can use it straight away; others see it once staff have reviewed it. Without JavaScript the box is a plain list, with a **City not listed? Add it** link.
+
 ## What to do next
 
 On the trip page, click **Edit trip**, then:
 
-1. **Days**: click **Add a day** for each date ([adding a day](/help/adding-a-day/)).
+1. **Days**: set the route ([above](#the-route)), or click **Add a day** for each date ([adding a day](/help/adding-a-day/)).
 2. Open each day (its **Edit** link in the Days table) and use **Add to this day**: **+ Stay** for where you sleep ([stays](/help/adding-a-day/#stays)), **+ Leg** for trains, flights and drives ([travel legs](/help/travel-legs/)), and activities, meals and plans.
 3. Add confirmation numbers on the thing they confirm, once it's booked ([bookings](/help/bookings-and-confirmations/)).
 
@@ -52,5 +73,6 @@ To let others see or edit the trip, click **People** on the trip page and invite
 | --- | --- |
 | No **New trip** button | Your account can't start trips: it isn't verified yet (use the link in your sign-up email), or staff have stopped it. [Contact us](/contact/) if you think that's wrong. |
 | "The end date cannot be before the start date." | Swap the dates. |
-| A city isn't in the **Cities** list | It isn't in the catalogue yet. Add it under **Places**, or ask the site's staff. |
+| A city isn't found | It isn't in the catalogue yet: add it from the city box ([finding a city](#finding-a-city)). |
+| A city won't come off the trip's **Cities** | Something still uses it (the message names what). Change those first. |
 | A day has no city after adding a stay | The stay needs a city, and the day only gets one if it had none. |
