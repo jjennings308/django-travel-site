@@ -1434,6 +1434,12 @@ only for what's needed to compare, and Pick turns the chosen option into the rea
 then ideas and map pins for options). Decisions 2026-10-27. Phases T1–T3, one branch each, in order. Status: not
 started.
 
+### Country flags and check
+
+Plan: `docs/plans/country-flags.md` (every country's picture is its flag, from flag-icons rendered to PNGs in the repo
+— C1; a monthly `check_countries` that compares our countries with REST Countries and only reports, since their terms
+forbid keeping their data — C2). Decided 2026-10-27. Phases C1–C2, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
