@@ -34,6 +34,7 @@
         <a class="btn-quiet px-3 py-1.5" href="#meals">+ Meal</a>
         <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:item_links' trip.pk 'day' day.pk %}?next={{ request.path|urlencode }}">+ Contact or note</a>
         {% for st in section_types %}<a class="btn-quiet px-3 py-1.5" href="{% url 'trips:section_create' trip.pk day.pk st.value %}">+ {{ st.label }}</a>{% endfor %}
+        <a class="btn-quiet px-3 py-1.5" href="{% url 'trips:group_new' trip.pk day.pk %}?next={{ request.path|urlencode }}" data-add-choice>+ Choose one</a>
         <div class="w-full" x-show="leg" x-cloak>{% include "trips/partials/_leg_quick_add.html" with section=None next=request.path %}</div>
       </div>
       <p class="note mt-2">A confirmation, or a contact for one item, is added from that item's row below. A contact or note for the whole day shows in its Good to know.</p>

@@ -413,7 +413,10 @@ class QueryCountTests(DetailFixture):
         # - the rewards context processor's query on every page (removed in R11)
         # - UserTimezoneMiddleware's own query: since R21 it reads the same AccountSettings row as
         #   UserThemeMiddleware (it used to read the deprecated UserPreferences) = 31.
-        with self.assertNumQueries(32):  # 31 + the catalogue notes of its linked items (catalogue-notes N2)
+        # 32 = 31 + the catalogue notes of its linked items (catalogue-notes N2); 35 = 32 + the "choose one"
+        # groups, their options and the options' votes with who voted (day-first plan P4), however many.
+        # (An option mixing currencies adds the two rate queries once, as the cost estimate does.)
+        with self.assertNumQueries(35):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 
@@ -552,6 +555,14 @@ class QueryCountTests(DetailFixture):
         for n, currency in enumerate(["EUR", "GBP", "EUR"]):
             Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n,
                                         currency=currency)
+        # "Choose one" groups (day-first plan P4) on several days, with items in their options and votes.
+        from apps.trips.models import Option, OptionGroup, Vote
+        for day in list(self.trip.days.all())[:4]:
+            group = OptionGroup.objects.create(trip=self.trip, day=day, prompt="Afternoon")
+            for n in range(2):
+                option = Option.objects.create(group=group, title=f"Option {n}", est_cost=10, currency="EUR")
+                TripActivity.objects.create(trip=self.trip, day=day, title=f"In option {n}", option=option)
+                Vote.objects.create(user=self.reader, option=option)
 
 
 class DayFragmentQueryTests(QueryCountTests):
@@ -564,7 +575,7 @@ class DayFragmentQueryTests(QueryCountTests):
     def test_one_day_holds_a_fixed_query_count(self):
         self.fill()
         day = self.trip.days.get(day_number=5)
-        with self.assertNumQueries(32):  # the page's 32: every day is assembled (stays and legs span days)
+        with self.assertNumQueries(35):  # the page's 35: every day is assembled (stays and legs span days)
             response = self.client.get(reverse("trips:day_fragment", args=[self.trip.pk, day.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="day-5" open')

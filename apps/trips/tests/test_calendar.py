@@ -124,12 +124,16 @@ class FeedTests(CalendarFixture):
         token = TripCalendarToken.for_user(self.trip, self.viewer)
         url = reverse("trips:trip_calendar_feed", args=[token.token])
         # token+trip+user, the grant, days, day travellers, legs, activities, their travellers,
-        # meals, stays, confirmation links
-        with self.assertNumQueries(10):
+        # meals, stays, confirmation links, and (day-first plan P4) the undecided groups and their options
+        from apps.trips.models import Option, OptionGroup
+        group = OptionGroup.objects.create(trip=self.trip, day=self.d1, prompt="Afternoon")
+        Option.objects.create(group=group, title="Castle")
+        with self.assertNumQueries(12):
             self.client.get(url)
         TripActivity.objects.create(trip=self.trip, day=self.d1, title="More", start_time=time(9, 0))
         Meal.objects.create(day=self.d3, name="More", meal_type="lunch", reserved_time=time(12, 0))
-        with self.assertNumQueries(10):
+        OptionGroup.objects.create(trip=self.trip, day=self.d3, prompt="Dinner")
+        with self.assertNumQueries(12):
             self.client.get(url)
 
 

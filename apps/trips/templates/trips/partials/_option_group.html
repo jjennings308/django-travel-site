@@ -1,0 +1,49 @@
+{% comment %}
+An undecided "choose one" group on its day (day-first plan P4; apps/trips/options.py): each option with its items, estimated cost and time, 👍 and who voted. Editors pick one (its items then count as the day's), add or edit options. Pass group=.
+{% endcomment %}
+<div class="option-group section card border-amber-200 scroll-mt-32" id="group-{{ group.pk }}" data-option-group>
+  <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <p class="card-title"><span aria-hidden="true">🔀</span> {{ group.prompt }} <span class="badge badge-medium">Undecided</span></p>
+    {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ request.path|urlencode }}%23group-{{ group.pk }}" data-panel-link>Edit · + Option</a>{% endif %}
+  </div>
+  {% if group.notes %}<p class="mt-1 text-sm text-zinc-600">{{ group.notes|linebreaksbr }}</p>{% endif %}
+  <div class="mt-3 grid gap-3 sm:grid-cols-2">
+    {% for option in group.option_list %}
+      <div class="rounded-lg border border-zinc-200 p-3 scroll-mt-32" id="option-{{ option.pk }}" data-option>
+        <p class="font-medium text-zinc-900">{{ option.title }}</p>
+        {% if option.notes %}<p class="mt-1 text-sm text-zinc-600">{{ option.notes|linebreaksbr }}</p>{% endif %}
+        {% if option.url %}<p class="mt-1 text-sm"><a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">More ↗</a></p>{% endif %}
+        {% with items=option.items %}
+          {% if items.legs or items.stays or items.activities or items.meals or items.sections %}
+            <div class="mt-2">
+              {% for leg in items.legs %}{% include "trips/partials/_leg_row.html" with leg=leg compact=True time=leg.departure_local_str|default:"" %}{% endfor %}
+              {% for stay in items.stays %}<p class="text-sm" id="stay-{{ stay.pk }}" data-panel="{% if can_edit %}{% url 'trips:stay_edit' trip.pk stay.pk %}{% else %}{% url 'trips:item_panel' trip.pk 'stay' stay.pk %}{% endif %}">🛏 <span class="font-medium">{{ stay.name }}</span> <span class="text-zinc-500">{{ stay.check_in|date:"M j" }}–{{ stay.check_out|date:"M j" }}{% if stay.nightly_rate %} · {{ stay.nightly_rate }} {{ stay.currency }}/night{% endif %}</span></p>{% endfor %}
+              {% for activity in items.activities %}{% include "trips/partials/_activity_row.html" with activity=activity time=activity.time_range|default:"" %}{% endfor %}
+              {% for meal in items.meals %}{% include "trips/partials/_meal_row.html" with meal=meal time=meal.reserved_time|time:"g:i A"|default:"" %}{% endfor %}
+              {% for section in items.sections %}{% include "trips/partials/_section.html" with section=section %}{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {% if option.cost %}<span class="text-zinc-600">{% if option.cost.approx %}≈ {% endif %}{{ option.cost.currency }} {{ option.cost.total }}</span>{% endif %}
+          {% if option.duration %}<span class="text-zinc-600">{{ option.duration }}</span>{% endif %}
+          {% if can_comment %}
+            <form method="post" action="{% url 'trips:option_vote' trip.pk option.pk %}" class="inline" data-vote>
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#group-{{ group.pk }}">
+              <button type="submit" class="chip {% if option.voted %}border-accent-600 text-accent-700{% endif %}" aria-pressed="{% if option.voted %}true{% else %}false{% endif %}" title="{% if option.voted %}Take back your 👍{% else %}Vote for this{% endif %}">👍 {{ option.vote_count }}</button>
+            </form>
+          {% elif option.vote_count %}<span class="chip">👍 {{ option.vote_count }}</span>{% endif %}
+          {% if option.voters %}<span class="text-xs text-zinc-500">{{ option.voters|join:", " }}</span>{% endif %}
+          {% if can_edit %}
+            <form method="post" action="{% url 'trips:option_pick' trip.pk option.pk %}" class="ml-auto inline">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#day-{{ day.day_number }}">
+              <button type="submit" class="btn-quiet px-3 py-1" data-pick>Pick</button>
+            </form>
+          {% endif %}
+        </p>
+      </div>
+    {% empty %}
+      <p class="note">No options yet.{% if can_edit %} Add them with Edit · + Option.{% endif %}</p>
+    {% endfor %}
+  </div>
+</div>

@@ -381,9 +381,12 @@ class EuropeImportTests(TestCase):
     def test_sections_and_meals_are_written(self):
         run_import(self.path, apply=True)
         # phase(Departure) + logistics_table(leg) + callout
-        # + phase(Morning) + phase(Options) + choose_your_adventure
-        # + phase(Afternoon)
-        self.assertEqual(Section.objects.count(), 7)
+        # + phase(Morning) + phase(Options) + phase(Afternoon), as notes; the choose_your_adventure
+        # became a "choose one" group with its options (day-first plan P4)
+        self.assertEqual(Section.objects.count(), 6)
+        self.assertEqual(Section.objects.filter(section_type="note").count(), 5)
+        from apps.trips.models import OptionGroup
+        self.assertEqual(OptionGroup.objects.get().options.count() > 1, True)
         self.assertEqual(Meal.objects.count(), 2)
 
     def test_lodging_and_contacts_are_written(self):

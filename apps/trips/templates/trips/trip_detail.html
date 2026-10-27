@@ -78,19 +78,19 @@
     <p class="mb-4 text-sm" data-route-strip><a class="link-quiet font-medium" href="{% url 'trips:trip_route' trip.pk %}">Set the route</a> <span class="text-zinc-500">— the cities and nights, in order; the days fill themselves in.</span></p>
   {% endif %}
 
-  {% if not_booked or open_tasks or open_decisions or stray_legs or travel_tables_pending or notes_pending or checklist_attention or closed_items or book_ahead_items %}
+  {% if not_booked or open_tasks or decision_count or stray_legs or travel_tables_pending or notes_pending or checklist_attention or closed_items or book_ahead_items %}
     {# Needs attention (days-as-overview plan): one banner under the header, each count linking to its list. #}
     <p class="callout-warning mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm scroll-mt-32" id="needs-attention">
       <span class="card-kicker">Needs attention</span>
       {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
       {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="{% url 'trips:trip_todo' trip.pk %}">{{ open_tasks|length }} to do</a>{% endif %}
-      {% if open_decisions %}<a class="link-quiet font-medium text-amber-700" href="{% url 'trips:trip_todo' trip.pk %}">{{ open_decisions|length }} decision{{ open_decisions|length|pluralize }}</a>{% endif %}
+      {% if decision_count %}<a class="link-quiet font-medium text-amber-700" data-decisions href="{% if open_groups %}#group-{{ open_groups.0.pk }}{% else %}{% url 'trips:trip_todo' trip.pk %}{% endif %}">{{ decision_count }} decision{{ decision_count|pluralize }}</a>{% endif %}
       {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
       {% if closed_items %}<a class="link-quiet font-medium text-amber-700" href="#{{ closed_items.0.anchor }}" data-closed-days>{{ closed_items|length }} closed on {{ closed_items|length|pluralize:"its day,their days" }}</a>{% endif %}
       {% if book_ahead_items %}<a class="link-quiet font-medium text-amber-700" href="#{{ book_ahead_items.0.anchor }}" data-book-ahead>{{ book_ahead_items|length }} to book ahead</a>{% endif %}
       {% if stray_legs %}<a class="link-quiet font-medium text-amber-700" href="#stray-legs">{{ stray_legs|length }} not on any day</a>{% endif %}
       {% if travel_tables_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_travel_review' trip.pk %}">Tables to turn into legs</a>{% endif %}
-      {% if notes_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}" data-convert-link>{{ notes_pending }} section{{ notes_pending|pluralize }} to turn into notes</a>{% endif %}
+      {% if notes_pending %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}" data-convert-link>{{ notes_pending }} to convert to notes and choices</a>{% endif %}
     </p>
   {% endif %}
 

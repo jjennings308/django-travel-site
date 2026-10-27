@@ -112,7 +112,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import BooleanField, Case, Q, Value, When
 from django.utils import timezone as django_timezone
 
@@ -883,6 +883,9 @@ class TransportLeg(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     notes = models.TextField(blank=True)
 
+    # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
+    option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="legs")
+
     class Meta:
         ordering = ["trip", "date", models.F("departure_at").asc(nulls_last=True), "order", "id"]
         verbose_name_plural = "transport legs"
@@ -1064,6 +1067,9 @@ class Lodging(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     geocoded_address = models.TextField(blank=True, editable=False,
                                         help_text="The address last looked up (found or not), so it isn't looked up again")
+
+    # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
+    option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="stays")
 
     class Meta:
         ordering = ["check_in"]
@@ -1292,6 +1298,9 @@ class Section(models.Model):
     event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
                               related_name="trip_sections")
 
+    # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
+    option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="sections")
+
     class Meta:
         ordering = ["day", "order", "id"]
         indexes = [models.Index(fields=["day", "order"])]
@@ -1400,6 +1409,9 @@ class Meal(models.Model):
     poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_meals",
                             verbose_name="place")
 
+    # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
+    option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="meals")
+
     class Meta:
         ordering = ["day", "order", "id"]
 
@@ -1450,6 +1462,9 @@ class TripActivity(models.Model):
     linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
                                   related_query_name="activity_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
+
+    # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
+    option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="activities")
 
     class Meta:
         ordering = ["day", models.F("start_time").asc(nulls_last=True), "order", "id"]
@@ -1975,6 +1990,114 @@ class TaskOption(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class OptionGroup(models.Model):
+    """"Choose one" on a day (day-first plan, P4): a dinner, an afternoon, a whole day or where to
+    stay, with its ``Option``s. Travellers vote; an editor **picks** one (its items count as the day's,
+    the others fold into Considered and can be reopened) or, in P5, **splits** the group between
+    travellers. Picking never deletes. A stay group sits on its first night. Converted from "Choose
+    your adventure" sections and decision to-dos (``day_first``)."""
+
+    class State(models.TextChoices):
+        OPEN = "open", "Undecided"
+        PICKED = "picked", "Picked"
+        SPLIT = "split", "Split"
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="option_groups")
+    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="option_groups")
+    prompt = models.CharField(max_length=200, help_text="What's being decided: “Afternoon”, “Where to stay in Munich”.")
+    notes = models.TextField(blank=True)
+    start_time = models.TimeField(null=True, blank=True, help_text="Places it in the day's timeline.")
+    order = models.PositiveSmallIntegerField(default=0)
+    state = models.CharField(max_length=8, choices=State.choices, default=State.OPEN)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "trips_optiongroup"
+        ordering = ["start_time", "order", "id"]
+
+    def __str__(self):
+        return self.prompt
+
+    def save(self, *args, **kwargs):
+        # An open group has no chosen option: reopening (or undoing a pick) clears it.
+        super().save(*args, **kwargs)
+        if self.state == self.State.OPEN:
+            self.options.filter(chosen=True).update(chosen=False)
+
+    @property
+    def is_open(self):
+        return self.state == self.State.OPEN
+
+    def chosen_option(self):
+        return next((o for o in self.options.all() if o.chosen), None)
+
+    def summary(self):
+        """"Undecided" or the pick, for the history and the calendar."""
+        if self.state == self.State.PICKED:
+            chosen = self.options.filter(chosen=True).first()
+            return f"picked {chosen.title}" if chosen else "picked"
+        return self.get_state_display().lower()
+
+    def pick(self, option, user=None):
+        """Choose ``option`` (one of this group's): its items count as the day's."""
+        from django.utils import timezone as tz
+        with transaction.atomic():
+            self.options.exclude(pk=option.pk).filter(chosen=True).update(chosen=False)
+            Option.objects.filter(pk=option.pk).update(chosen=True)
+            self.state, self.decided_by, self.decided_at = self.State.PICKED, user, tz.now()
+            self.save(update_fields=["state", "decided_by", "decided_at"])
+
+    def reopen(self):
+        self.state, self.decided_by, self.decided_at = self.State.OPEN, None, None
+        self.save(update_fields=["state", "decided_by", "decided_at"])
+
+
+class Option(models.Model):
+    """One choice in an ``OptionGroup``: a title, notes and an estimated cost, and the items made for it
+    (legs, stays, activities, meals, notes with ``option`` set to it), which count only once it's
+    chosen. ``travelers`` is who takes it when a group is split (P5)."""
+
+    group = models.ForeignKey(OptionGroup, on_delete=models.CASCADE, related_name="options")
+    title = models.CharField(max_length=200)
+    notes = models.TextField(blank=True)
+    url = models.URLField(blank=True, verbose_name="link")
+    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    currency = models.CharField(max_length=3, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    chosen = models.BooleanField(default=False)
+    travelers = models.ManyToManyField(Traveler, blank=True, related_name="options")
+
+    class Meta:
+        db_table = "trips_option"
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["group"], condition=Q(chosen=True), name="option_one_chosen"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class Vote(models.Model):
+    """👍 on an option (P4; ideas join in P6): one per person, seen by everyone on the trip."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trip_votes")
+    option = models.ForeignKey(Option, on_delete=models.CASCADE, related_name="votes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "trips_vote"
+        constraints = [models.UniqueConstraint(fields=["user", "option"], name="vote_once_per_option")]
+
+
+def counts_q(prefix=""):
+    """The "what counts" rule as a filter (P4): an item outside any option, or in a chosen one."""
+    return Q(**{f"{prefix}option__isnull": True}) | Q(**{f"{prefix}option__chosen": True})
 
 
 class TidyDismissal(models.Model):

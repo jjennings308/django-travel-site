@@ -50,8 +50,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        trips = Trip.objects.live().prefetch_related(
-            "days__meals", "days__sections", "travelers", "confirmations",
+        from django.db.models import Prefetch
+        from apps.trips.models import Meal, Section, counts_q
+        trips = Trip.objects.live().prefetch_related(  # as the public view does: only what counts (P4)
+            Prefetch("days__meals", queryset=Meal.objects.filter(counts_q())),
+            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())), "travelers", "confirmations",
             "lodging", "transport",
         )
         if options["trip_ids"]:

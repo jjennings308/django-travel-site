@@ -20,7 +20,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | **Map** · **Budget** · **Photos** | The trip's map, its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
-When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions**, **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
+When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions** (undecided [choices](/help/options-and-votes/) and decision to-dos), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
 
 The bar under the title jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
 
@@ -59,6 +59,8 @@ An open day reads from top to bottom:
 Contacts and tips linked to a hotel, train or activity appear right under it: a **☎** line with a phone number you can tap to call, or an **ⓘ** line you tap to read.
 
 A meal, activity or plan that's linked to a place or activity in the catalogue also shows that place's **notes** under it, such as "Cash only" or "Closed Mon, Tue", marked "From <place> · checked Oct 2026" ([Good to know notes](/help/places-and-events/#good-to-know-notes)). Two kinds of note also warn you, on the trip page and in the PDF: **⚠ <place> is closed on Mondays** when the meal or activity falls on a day it's closed, and **Book by <date>** when it needs booking ahead (worked out from the day, such as 3 months before). Both count in the day's ⚠ and in **Needs attention** (a book-by date once it's within 30 days or overdue); editors can turn a book-by date into a to-do with **Add as a to-do**. They print in the PDF too. Editors can click **Not for this trip** to hide one on this trip only; it's listed under the item as hidden, with **show** to bring it back.
+
+An undecided **choice** ("Afternoon: castle or museum?") is a box on its day with each option, what's in it, its cost and its 👍 votes; nothing in it is on the timeline until an editor picks one ([choices, options and votes](/help/options-and-votes/)).
 
 ## Open an item
 

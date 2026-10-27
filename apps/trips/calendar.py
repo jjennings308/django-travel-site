@@ -24,7 +24,8 @@ from django.urls import reverse
 from apps.core.ical import DOMAIN, calendar, vevent
 
 from .itinerary import ACTIVITY_ICONS, MODE_ICONS
-from .models import ConfirmationLink, Day, Lodging, Meal, TransportLeg, Traveler, TripActivity
+from .models import (ConfirmationLink, Day, Lodging, Meal, OptionGroup, TransportLeg, Traveler, TripActivity,
+                     counts_q)
 
 REFRESH = timedelta(hours=4)
 
@@ -37,11 +38,12 @@ def _numbers(confirmations):
 def load(trip):
     """Everything the feed needs, in a fixed number of queries."""
     days = list(trip.days.prefetch_related("travelers"))
-    legs = list(TransportLeg.objects.filter(trip=trip))
-    activities = list(TripActivity.objects.filter(day__trip=trip).select_related("poi")
+    # Only what counts (day-first plan P4): nothing in an undecided or unchosen option.
+    legs = list(TransportLeg.objects.filter(counts_q(), trip=trip))
+    activities = list(TripActivity.objects.filter(counts_q(), day__trip=trip).select_related("poi")
                       .prefetch_related(Prefetch("travelers", queryset=Traveler.objects.only("pk"))))
-    meals = list(Meal.objects.filter(day__trip=trip).exclude(reserved_time=None))
-    stays = list(Lodging.objects.filter(trip=trip))
+    meals = list(Meal.objects.filter(counts_q(), day__trip=trip).exclude(reserved_time=None))
+    stays = list(Lodging.objects.filter(counts_q(), trip=trip))
     found = {}
     for link in ConfirmationLink.objects.filter(confirmation__trip=trip).select_related("confirmation"):
         found.setdefault((link.content_type_id, link.object_id), []).append(link.confirmation)
@@ -115,6 +117,15 @@ def build(trip, viewer=None, mine=False):
         lines = [meal.cuisine, *_numbers(meal.cal_confirmations)]
         event(f"meal-{meal.pk}", f"🍽 {meal.get_meal_type_display()}: {meal.name}", start,
               start + timedelta(hours=1), "", lines, f"meal-{meal.pk}")
+
+    # An undecided "choose one" is one all-day event naming its options (P4).
+    for group in OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN).prefetch_related("options"):
+        day = by_id.get(group.day_id)
+        if day is None or not day.date or not mine_ok(day_travelers(day)):
+            continue
+        titles = " / ".join(option.title for option in group.options.all()) or "no options yet"
+        event(f"group-{group.pk}", f"🔀 Undecided: {titles}", day.date, day.date + timedelta(days=1), "",
+              [group.prompt], f"group-{group.pk}")
 
     for stay in stays:
         if stay.check_out <= stay.check_in:

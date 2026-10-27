@@ -29,6 +29,8 @@ from apps.locations.widgets import CitySearchInput, CitySearchMultiple
 
 from . import currencies
 from .models import (
+    Option,
+    OptionGroup,
     TripExpense,
     TripRate,
     BookingTask,
@@ -592,6 +594,33 @@ def _leg_city_fields(form, trip, names=("origin_city", "destination_city")):
         field.choices = choices
 
 
+def option_choices(trip, day):
+    """The options an item on ``day`` may belong to (its "In option" field): those of the day's groups."""
+    if trip is None or day is None:
+        return Option.objects.none()
+    return Option.objects.filter(group__trip=trip, group__day=day).select_related("group").order_by(
+        "group__order", "group_id", "order", "id")
+
+
+class InOptionMixin:
+    """Gives an item's form an "In option" select (P4): one of the options on its day, or none (it's
+    simply on the day). Set ``option_day`` before ``setup_option``; the field is dropped when the day has
+    no options, so forms and their query counts are unchanged until a day has a group."""
+
+    def setup_option(self, trip, day):
+        if "option" not in self.fields:
+            return
+        choices = option_choices(trip, day)
+        if not choices.exists() and not self.instance.option_id:
+            del self.fields["option"]
+            return
+        field = self.fields["option"]
+        field.queryset = choices
+        field.label = "In option"
+        field.label_from_instance = lambda o: f"{o.group.prompt}: {o.title}"
+        field.help_text = "Part of a “choose one” on this day: it counts once that option is picked."
+
+
 class SyncsTripCitiesMixin:
     """After saving, bring the trip's cities up to date (``trip_cities.sync``): a city picked from
     "Everywhere else", or the city of a catalogue place, becomes one of the trip's."""
@@ -763,7 +792,7 @@ class LocatingStayMixin:
         return stay
 
 
-class LodgingForm(SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
+class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
     """One place to stay. Check-out has to follow check-in."""
 
     class Meta:
@@ -779,6 +808,7 @@ class LodgingForm(SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
             "nightly_rate",
             "currency",
             "notes",
+            "option",
         ]
         widgets = {
             "address": forms.Textarea(attrs={"rows": 2}),
@@ -792,6 +822,8 @@ class LodgingForm(SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         trip = self.instance.trip if self.instance.trip_id else None
         _leg_city_fields(self, trip, names=("city",))
+        check_in = self.instance.check_in or self.initial.get("check_in")
+        self.setup_option(trip, trip.days.filter(date=check_in).first() if trip and check_in else None)
         if trip is not None:  # home + the city's local currency (E4)
             currencies.setup(self, "currency", trip, [self.initial.get("city") or self.instance.city_id],
                              given_initial=given)
@@ -1147,6 +1179,10 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
                 self.fields[name].queryset = self.fields[name].queryset.filter(trip=trip)
         # Kind defaults to "book" when a post leaves it out (older forms, the admin inline, scripts).
         self.fields["kind"].required = False
+        # Decisions are "choose one" groups on a day now (day-first plan P4): a new to-do is a booking;
+        # an existing decision keeps its kind (and its options page) for its history.
+        if self.instance.kind != BookingTask.Kind.DECIDE:
+            self.fields["kind"].choices = [(BookingTask.Kind.BOOK, BookingTask.Kind.BOOK.label)]
         # `order` has a model default of 0 but is not blank, so a ModelForm
         # would make it a *required* field — asking somebody to type 0 into a
         # sort column to save a booking task. Left blank it falls back to the
@@ -1838,7 +1874,7 @@ def section_payload_form(section_type, *args, content=None, **kwargs):
     return form_class(*args, content=content, **kwargs)
 
 
-class SectionForm(SyncsTripCitiesMixin, BlankOrderFallbackMixin, forms.ModelForm):
+class SectionForm(InOptionMixin, SyncsTripCitiesMixin, BlankOrderFallbackMixin, forms.ModelForm):
     """The relational half of a ``Section``: title, icon, order.
 
     ``section_type`` and ``content`` are deliberately absent. The type is chosen
@@ -1854,7 +1890,7 @@ class SectionForm(SyncsTripCitiesMixin, BlankOrderFallbackMixin, forms.ModelForm
 
     class Meta:
         model = Section
-        fields = ["title", "icon", "poi", "activity", "event", "order"]
+        fields = ["title", "icon", "poi", "activity", "event", "order", "option"]
         widgets = {
             "icon": forms.TextInput(
                 attrs={"placeholder": "emoji or short label", "autocomplete": "off"}
@@ -1867,6 +1903,7 @@ class SectionForm(SyncsTripCitiesMixin, BlankOrderFallbackMixin, forms.ModelForm
         if trip is None and self.instance.day_id:
             trip = self.instance.day.trip
         _setup_catalogue_fields(self, trip)
+        self.setup_option(trip, self.instance.day if self.instance.day_id else None)
 
 
 class CommentForm(forms.ModelForm):
@@ -2121,7 +2158,7 @@ class LegProposalForm(forms.Form):
 LegProposalFormSet = formset_factory(LegProposalForm, extra=0)
 
 
-class LegEditForm(TransportLegForm):
+class LegEditForm(InOptionMixin, TransportLegForm):
     """One leg on its own page (``trips:leg_edit``): everything the formset row has, plus
     where on its day it's shown (``section``: a travel section of the leg's day) and its
     order among same-day legs without times."""
@@ -2132,12 +2169,12 @@ class LegEditForm(TransportLegForm):
         ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
                       "est_duration", "order")),
         ("Details", ("operator", "service_number", "cost", "currency", "notes")),
-        ("Placement", ("section",)),
+        ("Placement", ("section", "option")),
         ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date")),
     )
 
     class Meta(TransportLegForm.Meta):
-        fields = TransportLegForm.Meta.fields + ["section", "order"]
+        fields = TransportLegForm.Meta.fields + ["section", "order", "option"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2152,6 +2189,8 @@ class LegEditForm(TransportLegForm):
         self.fields["section"].label = "Shown on its day under"
         self.fields["section"].label_from_instance = lambda sec: f"Day {sec.day.day_number}: {sec.title or 'Travel'}"
         self.fields["order"].help_text = "Order among this day's legs that have no times yet (lower first)."
+        trip = leg.trip if leg.trip_id else None
+        self.setup_option(trip, trip.days.filter(date=leg.date).first() if trip and leg.date else None)
 
     def grouped(self):
         """[(heading, [bound fields])] for the fieldsets, skipping names this form lacks."""
@@ -2193,7 +2232,7 @@ class ConfirmationEditForm(forms.ModelForm):
         currencies.setup(self, "currency", trip, currencies.confirmation_city_ids(self.instance))
 
 
-class TripActivityForm(SyncsTripCitiesMixin, forms.ModelForm):
+class TripActivityForm(InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
     """An activity on a day (``trips:activity_new`` / ``activity_edit``): a tour, timed entry,
     ticket, table or car hire. The place is a catalogue POI in one of the trip's cities (else
     typed), the travellers are the trip's own."""
@@ -2201,7 +2240,7 @@ class TripActivityForm(SyncsTripCitiesMixin, forms.ModelForm):
     class Meta:
         model = TripActivity
         fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "event", "place_text", "travelers",
-                  "est_cost", "currency", "notes", "order"]
+                  "est_cost", "currency", "notes", "order", "option"]
         widgets = {
             "start_time": TimeInput(styled=False),
             "end_time": TimeInput(styled=False),
@@ -2214,6 +2253,7 @@ class TripActivityForm(SyncsTripCitiesMixin, forms.ModelForm):
 
     def __init__(self, *args, trip, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setup_option(trip, self.instance.day if self.instance.day_id else None)
         from apps.approval_system.models import ApprovalStatus
         cities = list(trip.cities.values_list("pk", flat=True))
         self.fields["poi"].queryset = (POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED)
@@ -2285,3 +2325,61 @@ class RouteStopForm(forms.Form):
 
 
 RouteFormSet = formset_factory(RouteStopForm, extra=3)
+
+
+# ---------------------------------------------------------------------------
+# "Choose one" groups (day-first plan, P4)
+# ---------------------------------------------------------------------------
+class OptionGroupForm(forms.ModelForm):
+    """What's being decided on a day; its options are the formset below it."""
+
+    class Meta:
+        model = OptionGroup
+        fields = ["prompt", "start_time", "notes", "order"]
+        widgets = {"start_time": TimeInput(styled=False), "notes": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
+
+
+class OptionForm(forms.ModelForm):
+    """One option: a title, notes, a link and an estimated cost. Its legs, stays, activities, meals and
+    notes are those items with ``option`` set to it (each item's own page)."""
+
+    class Meta:
+        model = Option
+        fields = ["title", "notes", "url", "est_cost", "currency", "order"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, trip=None, city_ids=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+        if trip is not None:
+            currencies.setup(self, "currency", trip, city_ids)
+        else:
+            self.fields["currency"].required = False
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
+
+
+OptionFormSet = inlineformset_factory(OptionGroup, Option, form=OptionForm, extra=2, can_delete=True)
+
+
+
+
+class MealPageForm(InOptionMixin, MealForm):
+    """A meal on its own page (``trips:meal_edit``): the day page's meal fields plus "In option" (P4),
+    which the Meals formset leaves out so its rows cost no extra queries."""
+
+    class Meta(MealForm.Meta):
+        fields = MealForm.Meta.fields + ["option"]
+
+    def __init__(self, *args, trip=None, **kwargs):
+        super().__init__(*args, trip=trip, **kwargs)
+        self.setup_option(trip or (self.instance.day.trip if self.instance.day_id else None),
+                          self.instance.day if self.instance.day_id else None)

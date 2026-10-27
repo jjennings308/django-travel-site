@@ -1,0 +1,66 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): what's being decided, when, and its options; under each saved option, the items in it, and a one-line add straight into it (trips:quick_add with option=). An item can also be put in an option from its own page ("In option").
+{% endcomment %}
+{% block title %}{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %} — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <span>Day {{ day.day_number }}</span><span>/</span>
+    <span>{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</span>
+  </nav>
+  <form method="post" class="card p-6" novalidate data-panel-tab="details">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <h1 class="page-title mb-1">{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</h1>
+    <p class="mb-4 text-zinc-500">Day {{ day.day_number }}{% if day.date %}, {{ day.date|date:"l, F j" }}{% endif %}. Options to choose between; everyone on the trip can 👍 them, and an editor picks one. Until then nothing in them counts: not in the timeline, the budget or the calendar. {% include "partials/_help_link.html" with slug="options-and-votes" label="options and votes" text="How this works" %}</p>
+    {% if group.pk %}<p class="mb-4"><span class="badge badge-mode">{{ group.get_state_display }}</span></p>{% endif %}
+    {% include "trips/_form_fields.html" with form=form %}
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}
+    <h2 class="form-section-title mt-2 mb-3">Options</h2>
+    <div class="space-y-4">
+      {% for option_form in formset %}
+        <fieldset class="rounded-lg border border-zinc-200 p-4" data-option-form>
+          {{ option_form.id }}
+          <div class="grid gap-3 sm:grid-cols-3">
+            {% for field in option_form.visible_fields %}{% if field.name != "DELETE" %}
+              <div class="{% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
+            {% endif %}{% endfor %}
+          </div>
+          {% if option_form.instance.pk %}<label class="mt-2 flex items-center gap-2 text-sm text-zinc-600">{{ option_form.DELETE }} Remove this option (anything in it stays on the day)</label>{% endif %}
+        </fieldset>
+      {% endfor %}
+    </div>
+    <p class="mt-2 text-xs text-zinc-500">Two empty rows each time; save and the page shows more.</p>
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn">Save</button>
+      <a class="btn-quiet" href="{{ next }}">Cancel</a>
+      {% if group.pk %}<a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:group_delete' trip.pk group.pk %}?next={{ next|urlencode }}">Delete this choice</a>{% endif %}
+    </div>
+  </form>
+
+  {% if options %}
+    <section class="card mt-6 p-6" data-panel-tab="details">
+      <h2 class="form-section-title mb-3">What's in each option</h2>
+      {% for option in options %}
+        <div class="mb-5" id="option-{{ option.pk }}">
+          <p class="font-medium">{{ option.title }}{% if option.chosen %} <span class="badge badge-mode">Picked</span>{% endif %}</p>
+          <ul class="mt-1 space-y-1 text-sm">
+            {% for leg in option.legs.all %}<li>{{ leg.icon|default:"🚆" }} <a class="link-quiet" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.get_full_path|urlencode }}">{{ leg.origin }} → {{ leg.destination }}</a></li>{% endfor %}
+            {% for stay in option.stays.all %}<li>🛏 <a class="link-quiet" href="{% url 'trips:stay_edit' trip.pk stay.pk %}?next={{ request.get_full_path|urlencode }}">{{ stay.name }}</a></li>{% endfor %}
+            {% for activity in option.activities.all %}<li>🎟 <a class="link-quiet" href="{% url 'trips:activity_edit' trip.pk activity.day_id activity.pk %}?next={{ request.get_full_path|urlencode }}">{{ activity.title }}</a></li>{% endfor %}
+            {% for meal in option.meals.all %}<li>🍽 <a class="link-quiet" href="{% url 'trips:meal_edit' trip.pk meal.day_id meal.pk %}?next={{ request.get_full_path|urlencode }}">{{ meal.name }}</a></li>{% endfor %}
+            {% for section in option.sections.all %}<li>📝 <a class="link-quiet" href="{% url 'trips:section_edit' trip.pk section.day_id section.pk %}?next={{ request.get_full_path|urlencode }}">{{ section.title|default:section.content_summary }}</a></li>{% endfor %}
+          </ul>
+          <form method="post" action="{% url 'trips:quick_add' trip.pk day.pk %}" class="mt-2 flex gap-2" data-add-to-option>
+            {% csrf_token %}<input type="hidden" name="option" value="{{ option.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="text" name="text" maxlength="300" class="min-w-0 flex-1" placeholder="Add to this option: “Train Munich → Salzburg 17:05”, “Dinner Augustiner 7pm”…" aria-label="Add to {{ option.title }}">
+            <button type="submit" class="btn-quiet">Add</button>
+          </form>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+{% endblock %}

@@ -50,6 +50,7 @@ from .forms import (
 )
 from . import budget, checklists, itinerary, route, trip_cities, trip_notes
 from .models import (
+    counts_q,
     TripExpense,
     BookingTask,
     Comment,
@@ -461,15 +462,20 @@ def _trip_page_context(request, trip):
     # is a query, and this page pins its query count (QueryCountTests).
     # The same query also brings the reader's grant, for the ⋯ menu's change-email switch (R7).
     capabilities, my_grant = trip.capabilities_and_grant(request.user)
+    # "Choose one" groups (day-first plan P4): items in an undecided or unchosen option leave the
+    # prefetched lists here, so everything below counts only what's decided. Three queries.
+    from . import options as option_groups
+    all_groups = option_groups.load(trip)
+    open_groups = option_groups.attach(trip, list(trip.days.all()), request.user, groups=all_groups)
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     from . import booking_tasks
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
-    # Old phases, callouts and free text still to turn into notes (P3): from the prefetch, no query.
-    from .day_first import pending
-    notes_pending = len(pending(s for d in trip.days.all() for s in d.ordered_sections)) if "edit" in capabilities else 0
+    # Old content still to convert (phases, callouts, free text, choices, decisions; P3–P4): no query.
+    from .day_first import pending_count
+    notes_pending = pending_count(trip) if "edit" in capabilities else 0
     # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
     # day and the day to open on arrival — all from the rows above, no queries.
     days = list(trip.days.all())
@@ -478,6 +484,7 @@ def _trip_page_context(request, trip):
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
     open_decisions = [task for task in open_tasks if task.kind == task.Kind.DECIDE]
     itinerary.overview(days, not_booked, open_tasks)
+    option_groups.count_on_days(days)
     itinerary.timeline(days)
     itinerary.attach_links(trip, days)
     trip_notes.attach(trip, days)  # catalogue notes under linked items (catalogue-notes N2): one query
@@ -500,12 +507,17 @@ def _trip_page_context(request, trip):
         "book_ahead_items": note_warnings["book_ahead"],
         "travel_tables_pending": travel_tables_pending,
         "notes_pending": notes_pending,
-        # + Add's kind buttons (P3): Options comes with option groups (P4).
-        "quick_add_kinds": [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note")],
+        "open_groups": open_groups,
+        "decision_count": len(open_decisions) + len(open_groups),
+        "option_groups": all_groups,
+        # + Add's kind buttons (P3; Options, a "choose one", P4).
+        "quick_add_kinds": [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note"),
+                            ("options", "Options")],
         "not_booked": not_booked,
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
-        "cost_estimate": budget.estimate(trip, _reader_currency(request)),
+        "cost_estimate": budget.estimate(trip, _reader_currency(request), extra=[
+            (g.chosen.est_cost, g.chosen.currency) for g in all_groups if g.chosen and g.chosen.est_cost is not None]),
         "checklist_attention": checklists.attention(trip, checklist_lists),
         "leg_modes": TransportLeg.Mode.choices,
         "trip_comments": comments.get(("trip", trip.pk), []),
@@ -554,11 +566,21 @@ def _find_on_days(context, kind, item_pk):
         return day, day
     if kind == "stay":
         stay = next((s for s in trip.lodging.all() if s.pk == item_pk), None)
-        day = next((d for d in days if stay is not None and d.date == stay.check_in), None)
-        return stay, day
+        if stay is not None:
+            return stay, next((d for d in days if d.date == stay.check_in), None)
     if kind == "leg":
         leg = next((leg for leg in trip.transport.all() if leg.pk == item_pk), None)
-        return leg, getattr(leg, "on_day", None)
+        if leg is not None:
+            return leg, getattr(leg, "on_day", None)
+    # An item inside an option (P4) has left the day's lists: it's in its option's items.
+    plural = {"leg": "legs", "stay": "stays", "activity": "activities", "meal": "meals", "section": "sections"}[kind]
+    for group in context.get("option_groups", []):
+        for option in group.option_list:
+            for item in option.items[plural]:
+                if item.pk == item_pk:
+                    return item, next((d for d in days if d.pk == group.day_id), None)
+    if kind in ("leg", "stay"):
+        return None, None
     for day in days:
         items = {"activity": getattr(day, "ordered_activities", []), "meal": getattr(day, "ordered_meals", []),
                  "section": getattr(day, "ordered_sections", [])}[kind]
@@ -602,6 +624,8 @@ def trip_pdf(request, pk):
     from .pdf import PdfUnavailable, booklet_context, render_pdf
 
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    from . import options as option_groups
+    option_groups.attach(trip, list(trip.days.all()), request.user)  # only what counts, as on the page (P4)
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     booking_tasks.attach(trip)
@@ -1505,8 +1529,11 @@ def public_trip_detail(request, token):
     """
     # ``public_token`` is unique, so this is one row or none; the token having
     # been set at all is what means "this trip has a public page".
+    # Only what counts (day-first plan P4): nothing in an undecided or unchosen option is public.
     trip = get_object_or_404(
-        Trip.objects.public(token).prefetch_related("days__meals", "days__sections")
+        Trip.objects.public(token).prefetch_related(
+            Prefetch("days__meals", queryset=Meal.objects.filter(counts_q())),
+            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())))
     )
     return render(
         request,
@@ -1725,7 +1752,7 @@ def _trip_stops(trip):
             stops[-1]["days"] += 1
         else:
             stops.append({"city": day.city, "first": day, "last": day, "days": 1})
-    legs = list(trip.transport.filter(origin_city__isnull=False, destination_city__isnull=False)
+    legs = list(trip.transport.filter(counts_q(), origin_city__isnull=False, destination_city__isnull=False)
                 .select_related("origin_city__country", "destination_city__country"))  # Meta order: date, then time
     shown = {s["city"].pk for s in stops}
     others = {}
@@ -1769,7 +1796,7 @@ def trip_map_data(request, pk):
 
     features = [feature(s["city"], order=n, subtitle=when(s), layer="cities") for n, s in enumerate(stops, start=1)]
     features += [feature(c, subtitle=f"{c.country.name} · on this trip", layer="cities") for c in others]
-    for stay in trip.lodging.select_related("city").order_by("check_in"):
+    for stay in trip.lodging.filter(counts_q()).select_related("city").order_by("check_in"):  # what counts (P4)
         # Name, place and dates only: never the confirmation number, rate or notes.
         position = stay.map_position
         if position is None:
@@ -2059,6 +2086,101 @@ def activity_delete(request, pk, day_pk, activity_pk):
                   {"trip": trip, "day": day, "activity": activity, "next": back})
 
 
+# ---- "choose one" groups and votes (day-first plan, P4) ----------------------------------------
+def _option_of(request, pk, option_pk, action):
+    from .models import Option
+    trip = _readable_trip(request, pk, action)
+    option = get_object_or_404(Option.objects.filter(group__trip=trip).select_related("group__day"), pk=option_pk)
+    return trip, option
+
+
+@login_required
+@require_POST
+def option_vote(request, pk, option_pk):
+    """👍 an option, or take it back (anyone who may comment). 204 for a background ``fetch``."""
+    from django.http import HttpResponse
+    from .models import Vote
+    trip, option = _option_of(request, pk, option_pk, "comment")
+    vote, made = Vote.objects.get_or_create(user=request.user, option=option)
+    if not made:
+        vote.delete()
+    if request.headers.get("X-Requested-With") == "fetch":
+        return HttpResponse(status=204)
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{option.group_id}"))
+
+
+@login_required
+@require_POST
+def option_pick(request, pk, option_pk):
+    """Pick an option (editors): its items count as the day's; the others are kept as Considered."""
+    trip, option = _option_of(request, pk, option_pk, "edit")
+    option.group.pick(option, request.user)
+    messages.success(request, f"Picked {option.title} for {option.group.prompt}.")
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{option.group.day.day_number}"))
+
+
+@login_required
+@require_POST
+def group_reopen(request, pk, group_pk):
+    """Undecide a group (editors): its options are open again, nothing is deleted."""
+    from .models import OptionGroup
+    trip = _readable_trip(request, pk, "edit")
+    group = get_object_or_404(OptionGroup.objects.filter(trip=trip), pk=group_pk)
+    group.reopen()
+    messages.success(request, f"{group.prompt} is undecided again.")
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}"))
+
+
+@login_required
+def group_edit(request, pk, group_pk=None, day_pk=None):
+    """A "choose one" group's own page (editors): what's being decided, when, and its options; each
+    option lists the items in it (added to an option from the item's own page, "In option")."""
+    from .forms import OptionFormSet, OptionGroupForm
+    from .models import OptionGroup
+    trip = _readable_trip(request, pk, "edit")
+    if group_pk is not None:
+        group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day"), pk=group_pk)
+        day = group.day
+    else:
+        day = get_object_or_404(trip.days.all(), pk=day_pk)
+        group = OptionGroup(trip=trip, day=day, prompt=request.GET.get("prompt", "")[:200],
+                            order=day.option_groups.count())
+    form = OptionGroupForm(request.POST or None, instance=group)
+    formset = OptionFormSet(request.POST or None, instance=group, prefix="options",
+                            form_kwargs={"trip": trip, "city_ids": [day.city_id]})
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
+    if request.method == "POST" and form.is_valid() and formset.is_valid():
+        with transaction.atomic():
+            group = form.save()
+            formset.instance = group
+            formset.save()
+        messages.success(request, f"Saved {group.prompt}.")
+        if group_pk is None:  # stay on its page: options and their items come next
+            return redirect(reverse("trips:group_edit", args=[trip.pk, group.pk]) + "?next=" + quote(back))
+        return redirect(back)
+    options = []
+    if group.pk:
+        options = list(group.options.prefetch_related("legs", "stays", "activities", "meals", "sections"))
+    return render(request, "trips/group_form.html", {
+        "trip": trip, "day": day, "group": group, "form": form, "formset": formset, "next": back,
+        "options": options})
+
+
+@login_required
+def group_delete(request, pk, group_pk):
+    """Delete a group and its options (editors). Items in its options stay, as plain items on the day."""
+    from .models import OptionGroup
+    trip = _readable_trip(request, pk, "edit")
+    group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day"), pk=group_pk)
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{group.day.day_number}")
+    if request.method == "POST":
+        prompt = group.prompt
+        group.delete()
+        messages.success(request, f"Deleted {prompt}. Anything that was in its options is now simply on the day.")
+        return redirect(back)
+    return render(request, "trips/group_confirm_delete.html", {"trip": trip, "group": group, "next": back})
+
+
 # ---- + Add: one line on a day (day-first plan, P3) --------------------------------------------
 @login_required
 @require_POST
@@ -2074,10 +2196,24 @@ def quick_add(request, pk, day_pk):
     from . import currencies, quick_add as parser
     from .logistics import match_city
     trip, day = _editable_day(request, pk, day_pk)
-    wants_json = request.headers.get("X-Requested-With") == "fetch"
+    # JSON for the trip page's + Add; from inside the panel (?panel=1) the usual redirects.
+    wants_json = request.headers.get("X-Requested-With") == "fetch" and not _is_panel(request)
+    from .models import Option
+    in_option = None
+    if request.POST.get("option", "").isdigit():  # added straight into an option (the group's page, P4)
+        in_option = get_object_or_404(Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"])
     text = " ".join(request.POST.get("text", "").split())[:300]
     kind = request.POST.get("kind", "")
     back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
+    if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
+        from .models import OptionGroup
+        group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
+                                           order=day.option_groups.count())
+        url = reverse("trips:group_edit", args=[trip.pk, group.pk])
+        messages.success(request, f"Added “{group.prompt}” to Day {day.day_number}: add its options.")
+        if wants_json:
+            return JsonResponse({"url": url, "anchor": f"group-{group.pk}"})
+        return redirect(f"{url}?next={quote(back)}")
     if not text and kind not in parser.KINDS:
         if wants_json:
             return JsonResponse({"error": "Type what to add, or pick a kind."}, status=400)
@@ -2125,10 +2261,15 @@ def quick_add(request, pk, day_pk):
         item = Section.objects.create(day=day, section_type=Section.Type.NOTE, order=next_order(day.sections.all()),
                                       content={"tone": "", "paragraphs": [found["text"]] if found["text"] else []})
         url, anchor, label = reverse("trips:section_edit", args=[trip.pk, day.pk, item.pk]), f"section-{item.pk}", "a note"
+    if in_option is not None:
+        item.option = in_option
+        item.save(update_fields=["option"])
     trip_cities.sync(trip)
-    messages.success(request, f"Added {label or 'it'} to Day {day.day_number}.")
+    messages.success(request, f"Added {label or 'it'} to {in_option.title if in_option else f'Day {day.day_number}'}.")
     if wants_json:
         return JsonResponse({"url": url, "anchor": anchor})
+    if in_option is not None:
+        return redirect(_back(request, f"{url}?next={quote(back)}"))
     return redirect(f"{url}?next={quote(back)}")
 
 
@@ -2137,10 +2278,10 @@ def quick_add(request, pk, day_pk):
 def meal_edit(request, pk, day_pk, meal_pk):
     """One meal on its own page (editors): its details, confirmations and contacts & info. Meals
     are still also edited together in the day page's Meals form."""
-    from .forms import MealForm
+    from .forms import MealPageForm
     trip, day = _editable_day(request, pk, day_pk)
     meal = get_object_or_404(Meal.objects.filter(day=day), pk=meal_pk)
-    form = MealForm(request.POST or None, instance=meal, trip=trip)
+    form = MealPageForm(request.POST or None, instance=meal, trip=trip)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#meal-{meal.pk}")
     if request.method == "POST" and form.is_valid():
         meal = form.save()
@@ -2272,16 +2413,17 @@ def stay_delete(request, pk, stay_pk):
 # ---- converting old sections to the day-first kinds (day-first plan, P3) -----------------------
 @login_required
 def trip_convert(request, pk):
-    """Review converting this trip's phases, callouts and free text to notes (editors; linked from the
-    Needs attention banner while any are left). Every section starts ticked; nothing changes until
-    the ticked ones are converted, in one transaction (``apps/trips/day_first.py``)."""
+    """Review converting this trip's old content (editors; linked from the Needs attention banner while
+    any is left): phases, callouts and free text to notes (P3); choose-your-adventure sections and
+    decision to-dos to "choose one" groups (P4). Everything starts ticked; nothing changes until the
+    ticked ones are converted, in one transaction (``apps/trips/day_first.py``)."""
     from . import day_first
     trip = _readable_trip(request, pk, "edit")
     if request.method == "POST":
-        ids = [int(value) for value in request.POST.getlist("section") if value.isdigit()]
-        count = day_first.apply(trip, ids) if ids else 0
+        keys = [value for value in request.POST.getlist("item") if value.startswith(("section-", "task-"))]
+        count = day_first.apply(trip, keys) if keys else 0
         if count:
-            messages.success(request, f"Turned {count} section{'s' if count != 1 else ''} into notes.")
+            messages.success(request, f"Converted {count} item{'s' if count != 1 else ''}.")
         else:
             messages.info(request, "Nothing was ticked, so nothing changed.")
         return redirect("trips:trip_convert", pk=trip.pk)
@@ -2340,8 +2482,11 @@ def trip_todo(request, pk):
     booking_tasks.attach(trip)  # item / item_day / item_info; "Looks like" suggestions stay on the trip page
     tasks = sorted(trip.booking_tasks.all(),
                    key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk))
+    from .models import OptionGroup
+    open_groups = (OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN)
+                   .select_related("day").prefetch_related("options").order_by("day__date", "start_time", "order"))
     return render(request, "trips/trip_todo.html", {
-        "trip": trip, "can_edit": can_edit,
+        "trip": trip, "can_edit": can_edit, "open_groups": open_groups,
         "open_tasks": [t for t in tasks if not t.done], "done_tasks": [t for t in tasks if t.done],
     })
 

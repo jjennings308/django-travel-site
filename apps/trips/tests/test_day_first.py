@@ -70,7 +70,7 @@ class ConvertTests(Fixture):
         page = self.client.get(url)
         self.assertContains(page, "data-convert-row", count=3)
         self.assertContains(page, "• Coffee")
-        self.client.post(url, {"section": [self.phase.pk, self.prose.pk]})
+        self.client.post(url, {"item": [f"section-{self.phase.pk}", f"section-{self.prose.pk}"]})
         self.assertEqual(Section.objects.filter(section_type="note").count(), 2)
         self.client.force_login(self.viewer)
         self.assertEqual(self.client.get(url).status_code, 403)
@@ -78,12 +78,12 @@ class ConvertTests(Fixture):
     def test_needs_attention_links_it_for_editors(self):
         self.client.force_login(self.editor)
         trip_page = reverse("trips:trip_detail", args=[self.trip.pk])
-        self.assertContains(self.client.get(trip_page), "3 sections to turn into notes")
+        self.assertContains(self.client.get(trip_page), "3 to convert to notes and choices")
         self.client.force_login(self.viewer)
-        self.assertNotContains(self.client.get(trip_page), "to turn into notes")
+        self.assertNotContains(self.client.get(trip_page), "to convert to notes")
         day_first.apply(self.trip)
         self.client.force_login(self.editor)
-        self.assertNotContains(self.client.get(trip_page), "to turn into notes")
+        self.assertNotContains(self.client.get(trip_page), "to convert to notes")
 
     def test_the_command(self):
         out = StringIO()

@@ -186,7 +186,13 @@ def timeline(days):
                               "label": _fmt(meal.reserved_time)})
             else:
                 day.food_ideas.append(meal)
-        rank = {"leg": 0, "activity": 1, "meal": 2}
+        # Undecided "choose one" groups (day-first plan P4) with a time sit in the timeline as a box;
+        # the others are shown after it (``day.open_groups``, set by ``options.attach``).
+        for group in getattr(day, "open_groups", []):
+            if group.start_time:
+                timed.append({"kind": "group", "item": group, "time": group.start_time, "label": _fmt(group.start_time)})
+        day.untimed_groups = [g for g in getattr(day, "open_groups", []) if not g.start_time]
+        rank = {"leg": 0, "activity": 1, "meal": 2, "group": 3}
         timed.sort(key=lambda e: (e["time"], rank[e["kind"]]))
         day.timeline = timed
         day.any_time = any_time  # legs first (Meta order), then activities

@@ -1,6 +1,6 @@
 # Plan: day-first planning (one page to read and edit, options inside the day)
 
-Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
+Status: P1 done (2026-10-26, branch `p1-cities`); P2 done (2026-10-26, branch `p2-item-panel`); P3 done (2026-10-26, branch `p3-quick-add`); P4 done (2026-10-26, branch `p4-option-groups`). Decisions answered by James 2026-10-26 (listed below). Phases P1–P7, one
 branch each, in order. Read with `CLAUDE.md` → Trips (especially "The web trip page is laid out for the web",
 "Edit this day", "Decisions are tasks with options", "Confirmations attach like comments", "Places", "Currency
 choices") and → Bucket lists. Builds on the finished Edit by day plan (`docs/plans/edit-by-day.md`): its item pages
@@ -157,6 +157,12 @@ booklet changed only where a phase's highlights print as "• " lines instead of
 - Help: `adding-a-day` rewritten around + Add; bump `updated`.
 
 ### P4 — Option groups and votes
+
+Done (branch `p4-option-groups`). As built: `Vote` has only `option` for now (P6 adds `idea` and the check constraint);
+options have no comments of their own (talk about a choice in the day's notes); an option's cost is shown in its own
+currency when its costs share one, else converted to the home currency; a decided group prints "Prompt: chosen" in the
+booklet so a choice with no items isn't lost; undoing a reopen isn't offered (pick again on the day); a
+choose-your-adventure section with a confirmation stays as it is; the day page gained **+ Choose one**.
 
 - **Models** (trips 00xx):
   - `OptionGroup`: trip, day (FK; a stay group sits on its first night), `prompt` ("Afternoon", "Where to stay in
