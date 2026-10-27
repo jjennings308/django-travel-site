@@ -1219,6 +1219,14 @@ N3 (closed-day and book-by warnings, Add as a to-do) done on branch `n3-note-war
 done on branch `n4-events-on-trips`; N5 (the tidy suggestion to move a trip's callouts to the catalogue) done on
 branch `n5-tidy-to-catalogue`. Complete.
 
+### Day-first planning
+
+Plan: `docs/plans/day-first-planning.md` (the trip page becomes the one place to read and edit — items open in a side
+panel, + Add takes one line, five kinds of item; option groups inside a day with votes, pick and split; an Ideas
+shelf linked to bucket-list goals; cities found by search, kept in step automatically and laid out by a route
+builder; trip-wide pages become read-only views and Edit trip becomes Settings). Decisions answered 2026-10-26.
+Phases P1–P7, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
