@@ -1226,15 +1226,8 @@ Plan: `docs/plans/day-first-planning.md` (the trip page becomes the one place to
 panel, + Add takes one line, five kinds of item; option groups inside a day with votes, pick and split; an Ideas
 shelf linked to bucket-list goals; cities found by search, kept in step automatically and laid out by a route
 builder; trip-wide pages become read-only views and Edit trip becomes Settings). Decisions answered 2026-10-26.
-Phases P1–P7, one branch each, in order. Status: not started.
-
-### Day-first planning
-
-Plan: `docs/plans/day-first-planning.md` (cities that maintain themselves and a route builder; edit in place in a side
-panel; one-line add and five kinds of item; option groups with votes and split; an ideas shelf linked to bucket lists;
-trip-wide pages as read-only views and Edit trip as Settings). Decisions answered 2026-10-26. Phases P1–P7, one branch
-each, in order. Status: P1 (city search box and new cities, `trip_cities.sync`, the route builder and strip) done on
-branch `p1-cities`.
+Phases P1–P7, one branch each, in order. Status: P1 (city search box and new cities, `trip_cities.sync`, the route
+builder and strip) done on branch `p1-cities`.
 
 ### Rules carried over from the itinerary project
 
