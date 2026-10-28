@@ -1485,6 +1485,13 @@ to-dos; converting merges into a matching choice and keeps the to-do as the book
 `d2-remove-decision-todos` — merge only after D1's `convert_day_first --all --apply` has run on production (0054
 refuses while an open to-do has options). Complete.
 
+### Booking to-dos
+
+Plan: `docs/plans/booking-todos.md` (a to-do covers several items through `TaskLink`, like confirmations — round
+trips and connections pre-ticked, "Same booking as the way out" on the return trip; then Reference's Still to book
+and Not booked yet become one **To book** list whose rows open in the panel, with Mark done in place, quick actions
+and a "No booking needed" flag). Decided 2026-10-28. Phases K1–K2, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
