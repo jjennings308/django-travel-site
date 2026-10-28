@@ -710,6 +710,11 @@ class TripForm(forms.ModelForm):
             required=False,  # blank: Trip.save() takes the creator's preferred currency
             label="Home currency", help_text=Trip._meta.get_field("home_currency").help_text,
             widget=CurrencySelect([self.instance.home_currency, preferred, *HOME_CURRENCY_CHOICES], styled=False))
+        # The daily food allowance's currency (budget-estimates B2): blank = the home currency.
+        self.fields["food_allowance_currency"] = currencies.CurrencyField(
+            required=False, label="Daily food currency", help_text="Blank: the trip's home currency.",
+            widget=CurrencySelect([self.instance.food_allowance_currency or self.instance.home_currency, preferred,
+                                   *HOME_CURRENCY_CHOICES], allow_blank=True, styled=False))
         if "cities" in self.fields:
             # Chips: type to add, × to remove (day-first plan, P1); a city something on the trip
             # uses can't be removed (clean_cities). The trip's cities also fill themselves in.
@@ -733,6 +738,8 @@ class TripForm(forms.ModelForm):
             "structure",
             "status",
             "home_currency",
+            "food_allowance",
+            "food_allowance_currency",
             "notes",
         )
         widgets = {

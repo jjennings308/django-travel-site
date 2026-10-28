@@ -504,7 +504,7 @@ def _trip_page_context(request, trip):
         item.anchor = itinerary.anchor(item)
     opened = itinerary.open_day(days, django_timezone.localdate())
     checklist_lists = checklists.attach(trip)
-    return {
+    context = {
         "trip": trip,
         "days": days,
         "open_day_pk": opened.pk if opened else None,
@@ -524,10 +524,6 @@ def _trip_page_context(request, trip):
         "to_book": _to_book_urls(trip, to_book, "edit" in capabilities),
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
-        # Booked where a costed confirmation covers it, else each item's estimate on its basis (budget-estimates
-        # B1: no double count); an option's own estimate counts once chosen, and for every track of a split (P5).
-        "cost_estimate": costs.planned_total(trip, _reader_currency(request), options=[
-            o for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks]),
         "checklist_attention": checklists.attention(trip, checklist_lists),
         "leg_modes": TransportLeg.Mode.choices,
         "trip_comments": comments.get(("trip", trip.pk), []),
@@ -541,6 +537,10 @@ def _trip_page_context(request, trip):
         "my_grant": my_grant,
         "offline_debug": settings.DEBUG,
     }
+    # The plan's total and how much of it is booked (budget-estimates B1–B2: costs.plan, the Budget page's rule —
+    # booked where a costed confirmation covers it, else each item's estimate; chosen options count, open ones not).
+    context["cost_estimate"] = costs.planned_total(context, _reader_currency(request))
+    return context
 
 
 def _is_panel(request):
@@ -1757,16 +1757,18 @@ def trip_budget(request, pk, rate_formset=None):
     settle_in_one = request.GET.get("settle") == "1"
     if expenses and currencies != [target]:
         one = in_one_currency(expenses, target, rates_for(trip, currencies, [e.spent_on for e in expenses]))
-    lodging_estimate = {}
-    for stay in trip.lodging.all():
-        if stay.nightly_rate:
-            lodging_estimate[stay.currency] = lodging_estimate.get(stay.currency, 0) + stay.nightly_rate * stay.nights
     summary = summarize(one["rows"], everyone) if (one and settle_in_one) else summarize(expenses, everyone)
+    # The Plan (budget-estimates B2): what the trip should cost, what's booked, what's paid, by category and per
+    # person, from the trip page's own context (only what counts, its confirmations and choices), in ``target``.
+    # A fixed number of queries per page, however many items (test_budget pins it).
+    page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
+    budget_plan = costs.plan(_trip_page_context(request, page_trip), target, expenses)
     return render(request, "trips/trip_budget.html", {
         "trip": trip, "expenses": expenses, "summary": summary, "form": form,
-        "target": target, "currencies": currencies, "one": one, "settle_in_one": settle_in_one and one,
-        "can_edit": can_edit, "everyone": everyone, "lodging_estimate": sorted(lodging_estimate.items()),
-        "own_rates": own_rates, "rate_formset": rate_formset,
+        "target": target, "one": one,
+        "currencies": sorted(set(currencies) | {target, (trip.home_currency or "USD").upper(), _reader_currency(request)}),
+        "settle_in_one": settle_in_one and one, "can_edit": can_edit, "everyone": everyone,
+        "own_rates": own_rates, "rate_formset": rate_formset, "plan": budget_plan,
     })
 
 

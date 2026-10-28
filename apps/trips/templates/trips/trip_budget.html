@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Trip budget: costs, totals per currency, each traveller's share and who owes whom (trips.budget.summarize). Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
+Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page's context): rows by category — each item's estimate on its basis, a costed booking once over what it covers, chosen options, the daily food allowance; undecided choices as a range outside the totals — with Planned / of which booked / Paid / Left to pay per category and overall, and each traveller's share against what they've paid, all in ?in= (the reader's currency by default). Rows open the item on the trip page (?item=), where its cost is edited; the plan itself is read-only here. Then Spent: the costs (trips.budget.summarize), totals per currency, who owes whom, and the trip's own rates. Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
 {% endcomment %}
 {% block title %}Budget — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
@@ -13,10 +13,75 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
   </nav>
   <div class="page-header">
     <div>
-      <h1 class="page-title">Budget</h1>
-      <p class="page-subtitle">{{ expenses|length }} cost{{ expenses|length|pluralize }}{% if summary %} · each currency is totalled separately{% endif %}</p>
+      <h1 class="page-title">Budget {% include "partials/_help_link.html" with slug="budget" anchor="the-plan" label="the plan" %}</h1>
+      <p class="page-subtitle">The plan, then what's been spent.</p>
     </div>
   </div>
+
+  {# ------------------------------------------------------------------ the plan (B2) #}
+  <section class="mb-8" id="plan" data-plan>
+    <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <h2 class="day-heading">Plan</h2>
+      <form method="get" class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2"><span class="card-kicker">In</span>
+          <select name="in" onchange="this.form.submit()">{% for c in currencies %}<option value="{{ c }}"{% if c == target %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+        </label>
+        <noscript><button type="submit" class="btn-quiet">Show</button></noscript>
+      </form>
+    </div>
+    {% if plan.categories %}
+      <dl class="card mb-4 grid grid-cols-2 gap-4 p-4 sm:grid-cols-4" data-plan-totals>
+        <div><dt class="card-kicker">Planned</dt><dd class="text-lg font-semibold tabular-nums">{% if plan.approx %}≈ {% endif %}{{ target }} {{ plan.totals.planned|floatformat:"2g" }}</dd></div>
+        <div><dt class="card-kicker">Of which booked</dt><dd class="text-lg tabular-nums">{{ target }} {{ plan.totals.booked|floatformat:"2g" }}</dd></div>
+        <div><dt class="card-kicker">Paid</dt><dd class="text-lg tabular-nums">{{ target }} {{ plan.totals.paid|floatformat:"2g" }}</dd></div>
+        <div><dt class="card-kicker">Left to pay</dt><dd class="text-lg tabular-nums">{{ target }} {{ plan.totals.left|floatformat:"2g" }}</dd></div>
+      </dl>
+      {% for category in plan.categories %}
+        <details class="card mb-3 p-0" open x-data x-init="$el.open = window.matchMedia('(min-width: 640px)').matches" data-plan-category="{{ category.key }}">
+          <summary class="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3">
+            <span class="font-semibold">{{ category.name }}</span>
+            <span class="text-sm tabular-nums text-zinc-600">{{ target }} {{ category.planned|floatformat:"2g" }} planned · {{ category.booked|floatformat:"2g" }} booked · {{ category.paid|floatformat:"2g" }} paid · <strong>{{ category.left|floatformat:"2g" }} left</strong></span>
+          </summary>
+          <div class="scroll-x border-t border-zinc-100">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-zinc-500"><th class="px-4 py-2 font-medium">What</th><th class="px-4 py-2 font-medium">Day</th><th class="px-4 py-2 text-right font-medium">Estimated</th><th class="px-4 py-2 text-right font-medium">Booked</th><th class="px-4 py-2 text-right font-medium">Per person</th><th class="px-4 py-2 font-medium">Status</th></tr></thead>
+              <tbody>
+                {% for row in category.rows %}
+                  <tr class="border-t border-zinc-100{% if row.range %} text-zinc-500{% endif %}" data-plan-row>
+                    <td class="px-4 py-2">{% if row.anchor %}<a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}?item={{ row.anchor }}#{{ row.anchor }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}{% if row.line %} <span class="cursor-help text-zinc-400" title="{{ row.line }}" aria-label="{{ row.line }}" data-plan-line>ⓘ</span>{% endif %}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-zinc-500">{% if row.day %}Day {{ row.day.day_number }}{% endif %}</td>
+                    <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.range %}{{ row.range.0|floatformat:"2g" }}–{{ row.range.1|floatformat:"2g" }}{% elif row.estimated is not None %}{{ row.estimated|floatformat:"2g" }}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.booked is not None %}{{ row.booked|floatformat:"2g" }}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.per_person is not None %}{{ row.per_person|floatformat:"2g" }}{% if row.people %} <span class="text-xs text-zinc-500">({{ row.people }})</span>{% endif %}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-zinc-600">{% if row.status == "no plan" %}<span class="text-amber-700">No plan yet</span>{% elif row.status == "undecided" %}Undecided, not counted{% else %}{{ row.status|capfirst }}{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
+      {% if plan.missing %}<p class="mb-3 text-xs text-amber-700">Not converted (no rate): {{ plan.missing|join:", " }}. They're left out of the totals.</p>{% endif %}
+      {% if plan.unpriced %}<p class="mb-3 text-xs text-zinc-500">{{ plan.unpriced }} estimate{{ plan.unpriced|pluralize }} without a total yet (people, nights or rooms not set).</p>{% endif %}
+      {% if plan.people %}
+        <div class="card p-0" data-plan-people>
+          <div class="scroll-x">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-zinc-500"><th class="px-4 py-2 font-medium">Traveller</th><th class="px-4 py-2 text-right font-medium">Share of the plan</th><th class="px-4 py-2 text-right font-medium">Paid so far</th></tr></thead>
+            <tbody>
+              {% for p in plan.people %}<tr class="border-t border-zinc-100"><td class="px-4 py-2">{{ p.person.name }}</td><td class="px-4 py-2 text-right tabular-nums">{{ target }} {{ p.share|floatformat:"2g" }}</td><td class="px-4 py-2 text-right tabular-nums">{{ target }} {{ p.paid|floatformat:"2g" }}</td></tr>{% endfor %}
+            </tbody>
+          </table>
+          </div>
+          {% if plan.unassigned %}<p class="border-t border-zinc-100 px-4 py-2 text-xs text-zinc-500">{{ target }} {{ plan.unassigned|floatformat:"2g" }} isn't split by name (a cost for a number of people rather than named ones).</p>{% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="note">Nothing priced yet. Give journeys, stays, activities and meals a cost on their pages, or a daily food amount in Settings, and the plan adds up here.</p>
+    {% endif %}
+  </section>
+
+  <h2 class="day-heading mb-3" id="spent">Spent <span class="text-sm font-normal text-zinc-500">{{ expenses|length }} cost{{ expenses|length|pluralize }}{% if summary %} · each currency is totalled separately{% endif %}</span></h2>
 
   {% if expenses %}
     {# One currency (R10): every cost converted at its own date's rate; settle-up only on request. #}
@@ -84,11 +149,6 @@ Trip budget: costs, totals per currency, each traveller's share and who owes who
   {% empty %}
     <p class="note">No costs yet.{% if can_edit %} Add the first one below.{% endif %}</p>
   {% endfor %}
-
-  {% if lodging_estimate %}
-    <p class="mb-6 text-sm text-zinc-500">Lodging on file (nightly rate × nights, an estimate, not counted above):
-      {% for currency, amount in lodging_estimate %}{{ currency }} {{ amount|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
-  {% endif %}
 
   {% if expenses %}
     <section class="card mb-6 overflow-x-auto p-0">
