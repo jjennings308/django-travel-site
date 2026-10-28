@@ -9,8 +9,8 @@ from django.urls import reverse
 from apps.trips import calendar, changes, day_first
 from apps.trips.booking_tasks import not_booked
 from apps.trips.forms import BookingTaskForm, TripActivityForm
-from apps.trips.models import (BookingTask, Comment, Confirmation, Day, Lodging, Option, OptionGroup, Section,
-                               TaskOption, TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripRole, Vote)
+from apps.trips.models import (Comment, Confirmation, Day, Lodging, Option, OptionGroup, Section,
+                               TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripRole, Vote)
 
 User = get_user_model()
 
@@ -224,9 +224,7 @@ class EditingTests(Fixture):
         page = self.client.get(reverse("trips:trip_todo", args=[self.trip.pk]))
         self.assertContains(page, "Decide: <a")
         self.assertContains(page, "Castle / Deutsches Museum")
-        self.assertEqual([value for value, _ in BookingTaskForm(trip=self.trip).fields["kind"].choices], ["book"])
-        old = BookingTask.objects.create(trip=self.trip, title="Which hotel", kind="decide")
-        self.assertIn("decide", [v for v, _ in BookingTaskForm(instance=old, trip=self.trip).fields["kind"].choices])
+        self.assertNotIn("kind", BookingTaskForm(trip=self.trip).fields)  # every to-do books (retire-decision-todos D2)
 
     def test_readers_open_an_item_in_an_option(self):
         self.client.force_login(self.viewer)
@@ -256,32 +254,6 @@ class ConvertTests(Fixture):
         self.assertEqual(content, {"source": "docx", "tone": "",
                                    "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]})
 
-    def test_a_decision_todo_becomes_a_picked_group_on_its_day(self):
-        stay_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19))
-        stay = Lodging.objects.create(trip=self.trip, name="Augusta", check_in=stay_day.date, check_out=date(2027, 9, 21))
-        task = BookingTask.objects.create(trip=self.trip, title="Augsburg hotel", kind="decide", stay=stay)
-        TaskOption.objects.create(task=task, title="Augusta", detail="Old town", url="https://example.com/a",
-                                  est_cost=140, currency="EUR", chosen=True, order=0)
-        TaskOption.objects.create(task=task, title="Drei Mohren", est_cost=210, currency="EUR", order=1)
-        loose = BookingTask.objects.create(trip=self.trip, title="Which tour", kind="decide")
-        TaskOption.objects.create(task=loose, title="Bike")
-        plan = dict(day_first.plan(self.trip))
-        self.assertEqual(plan[self.day][-1].flag, "no day of its own: put on Day 1, check it")
-        day_first.apply(self.trip, [f"task-{task.pk}"])
-        group = OptionGroup.objects.get(prompt="Augsburg hotel")
-        self.assertEqual((group.day, group.state), (stay_day, "picked"))
-        chosen = group.options.get(chosen=True)
-        self.assertEqual((chosen.title, chosen.notes, chosen.url, chosen.est_cost), ("Augusta", "Old town",
-                                                                                      "https://example.com/a", 140))
-        task.refresh_from_db()
-        self.assertEqual((task.done, task.kind), (False, "book"))  # stays as the booking to-do (D1)
-        self.assertIn("Options moved to the choice “Augsburg hotel” on Day 2.", task.notes)
-        self.assertEqual(task.options.count(), 0)
-
-    def test_the_banner_counts_them(self):
-        task = BookingTask.objects.create(trip=self.trip, title="Hotel?", kind="decide")
-        TaskOption.objects.create(task=task, title="A")
-        self.assertIn("1 decision to turn into choices", self.page())
 
 
 class BookletTests(Fixture):

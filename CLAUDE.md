@@ -758,7 +758,7 @@ that matter most:
   (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
   to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
   day / leg / stay / activity / confirmation pickers to the trip.
-- **The detail page** holds a fixed query count (38 here — P6 the Ideas shelf and its votes (the page only; the day fragment stays at 36); P5 who takes each option of a split; P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
+- **The detail page** holds a fixed query count (37 here — D2 removed the decision to-dos' options; P6 the Ideas shelf and its votes (the page only; the day fragment stays at 35); P5 who takes each option of a split; P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -866,7 +866,7 @@ that matter most:
   see only what counts; it gives each option `items`, `vote_count`, `voters`, `voted`, `cost` (option + activities +
   legs, in their currency when one, else home via `budget.rates_for`) and `duration`, each day `open_groups` /
   `picked_groups`, and chosen items `chosen_from`. `count_on_days` adds an open group to the day's ⚠; the banner's
-  "N decisions" = open decision tasks + open groups (links to the first group). The calendar feed, the map, the public
+  "N decisions" = open groups (links to the first group). The calendar feed, the map, the public
   view and `audit_public_leak` filter with `counts_q`; the feed adds one all-day "Undecided: A / B" per open group. The
   trip page pin is 36 (groups, options, the options' travellers (P5), votes; an option mixing currencies adds the two
   rate queries once); the estimate adds chosen and split-taken options' own `est_cost`. **Page:** `partials/_option_group.html` (a box: options, their
@@ -879,24 +879,13 @@ that matter most:
   from their own form's **In option** (`forms.InOptionMixin`: the options of its day's groups; the field is dropped when
   the day has none, so pages that had no groups keep their query counts; the meal page uses `MealPageForm`, the day's
   Meals formset doesn't). `OptionGroup` is in `changes.TRACKED` ("choice": prompt, decision, time); undoing a pick
-  reopens, undoing a reopen isn't offered. The To do page lists open groups first; new to-dos can't be "decide" (an
-  existing decision keeps its kind and options page). **Booklet:** an open group prints "Prompt — undecided" with each
-  option and its items; a picked one prints "Prompt: chosen (cost — notes)" and its items with the day's. **Converting**
-  open decision to-dos with options (`day_first.plan` / `apply(trip, keys)`, keys `task-<id>`, one transaction and history
-  line; `trips:trip_convert`, `/trips/<pk>/convert/`, editors, every row ticked; Needs attention's "N decisions to turn into
-  choices", `pending_count` from the prefetch; `manage.py convert_day_first --trip <pk> | --all [--apply] [--tick-off]`): groups on
-  the task's day, else its item's, else Day 1 (flagged), the chosen option picked. **Since retire-decision-todos D1** a
-  conversion **merges** into an open group on the task's own (or item's) day — never the Day 1 fallback — that looks
-  like the same decision (`day_first.match_group`: prompt and title share a word outside `STOP_WORDS`, through
-  `catalogue_links.match_keys`, or an option title in common; two matches → asked on the page, the command skips it):
-  only missing options are added and a chosen one is picked (with Pick's item on a typed group) while the group is
-  open, else noted "Earlier choice: …"; a select per row switches merge / new (`target-task-<id>`). The to-do becomes a
-  plain `book` to-do, its `TaskOption`s deleted, "Options moved to the choice “…” on Day N" in its notes, still open
-  unless **Tick it off instead** (`tick-task-<id>` / `--tick-off`). **Make it a choice** (editors; an open to-do with
-  options, in Reference, `_task_row` and the to-do page) opens `trip_convert?task=<id>&next=…`; **Add options** /
-  **Make it a decision…** and the chosen option's "Add as a stay / activity" links are gone, and `task_options` is
-  read-only, by URL only, until D2. (S1 also converted choose-your-adventure sections here — to groups, or to a note on the same row when one
-  had a confirmation — before S2 retired the type.)
+  reopens, undoing a reopen isn't offered. The To do page lists open groups first. **Booklet:** an open group prints "Prompt — undecided" with each
+  option and its items; a picked one prints "Prompt: chosen (cost — notes)" and its items with the day's. (S1 converted
+  choose-your-adventure sections into groups — or a note on the same row when one had a confirmation — before S2
+  retired the type; decision to-dos were converted into groups, merging into a matching one, by retire-decision-todos
+  D1 and removed in D2: trips 0054 wrote any options left on done to-dos into their notes, "Options considered: A;
+  B (chosen)", and refuses while an open one has options; 0055 dropped `TaskOption` and `BookingTask.kind`. Every
+  to-do is a booking to-do; `convert_day_first`, `trips:trip_convert`, `task_options` and `option_add` are gone.)
 - **Typed choices** (typed-choices plan T1; trips 0052): `OptionGroup.kind` any (default; choices before T1) / stay /
   eat / do / travel, with the kind's shared fields `nights` (stay), `meal_type` + `start_time` (eat), `start_time` /
   `end_time` (do), `mode` (travel). `Option` gains a catalogue link (at most one of `poi` / `activity` / `event` /
@@ -1005,16 +994,6 @@ that matter most:
   `TidyDismissal` (the suggestion's stable key). `manage.py tidy_trip --trip <pk> [--apply]`: dry run
   lists everything; `--apply` applies only high-confidence kinds 1–2, never phones, notes, tables or
   slips. No detection runs on the trip page.
-- **Decisions are tasks with options** (trip-page UX plan, U6; trips 0032; superseded by "choose one" groups in day-first
-  P4 — new to-dos can't be decisions and the review page converts old ones): `BookingTask.kind` is
-  `book` (default) or `decide`; a decision's `TaskOption`s (title, detail, url, est_cost + currency,
-  order; at most one `chosen` per task — partial unique index `taskoption_one_chosen`) are edited on
-  `trips:task_options` (`/trips/<pk>/tasks/<id>/options/`, editors; saving options makes a task a
-  decision; the chosen radio is separate from the rows). Reference → Still to book shows "Decide: …"
-  with its options (chosen ✓) and Needs attention counts decisions; the booklet prints them too.
-  Choosing creates nothing: `trips:option_add` redirects to the day's new-stay page (the task's day, else
-  Day 1) or new-activity page, pre-filled (`?from_option=`);
-  nothing is saved until that page is. The trip page prefetches `booking_tasks__options` (one query).
 - **Contacts and info notes link to items** (trip-page UX plan, U4; trips 0031): `TripInfo` (trip-wide
   know-how: title, body paragraphs, url, order) and `Contact` (now with `address`, `url`) are the
   *sources*; `ItemLink` links one to a *target* of the same trip — a leg, stay, activity, meal, a
@@ -1501,8 +1480,10 @@ left convert into choices on their day, merging into a choice that already exist
 D1; then `TaskOption`, `BookingTask.kind`, the options page and the convert page are removed — D2). Decided 2026-10-28.
 Phases D1–D2, one branch each, in order; merge D2 only after D1 has run on production. Status: D1 (no new decision
 to-dos; converting merges into a matching choice and keeps the to-do as the booking to-do) done on branch
-`d1-decisions-to-choices` — James then runs `convert_day_first --all` (dry run) on dev, fixes the ambiguous ones on
-the page, and on production `pg_dump` + `convert_day_first --all --apply`.
+`d1-decisions-to-choices`; D2 (`TaskOption`, `BookingTask.kind`, the options, add-as and convert pages and
+`convert_day_first` removed; trips 0054 / 0055; detail pin 38 → 37, day fragment 36 → 35) done on branch
+`d2-remove-decision-todos` — merge only after D1's `convert_day_first --all --apply` has run on production (0054
+refuses while an open to-do has options). Complete.
 
 ### Rules carried over from the itinerary project
 

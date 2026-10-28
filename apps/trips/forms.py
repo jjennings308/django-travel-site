@@ -41,7 +41,6 @@ from .models import (
     Contact,
     ItemLink,
     TripInfo,
-    TaskOption,
     Day,
     Lodging,
     Meal,
@@ -1133,30 +1132,6 @@ class TripInfoForm(_LinksMixin, forms.ModelForm):
         return self.cleaned_data.get("order") or 0
 
 
-class TaskOptionForm(forms.ModelForm):
-    """One option of a decision (``trips:task_options``, U6). Which one is chosen is a separate
-    radio on the page, so a submit can't choose two."""
-
-    class Meta:
-        model = TaskOption
-        fields = ["title", "detail", "url", "est_cost", "currency", "order"]
-        widgets = {"detail": forms.Textarea(attrs={"rows": 2})}
-
-    def __init__(self, *args, task=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["order"].required = False
-        if task is not None:  # home + the task's item's local currency (E4); task_options passes it
-            currencies.setup(self, "currency", task.trip, currencies.task_city_ids(task))
-        else:
-            self.fields["currency"].required = False
-
-    def clean_order(self):
-        return self.cleaned_data.get("order") or 0
-
-
-TaskOptionFormSet = inlineformset_factory(BookingTask, TaskOption, form=TaskOptionForm, extra=2, can_delete=True)
-
-
 class QuickContactForm(forms.Form):
     """Create a contact from an item's Contacts & info block."""
     name = forms.CharField(max_length=200)
@@ -1183,7 +1158,6 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         model = BookingTask
         fields = [
             "title",
-            "kind",
             "priority",
             "due",
             "due_note",
@@ -1198,9 +1172,6 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "due": DateInput(styled=False)}
         labels = {"leg": "About leg", "stay": "About stay", "activity": "About activity"}
-
-    def clean_kind(self):
-        return self.cleaned_data.get("kind") or BookingTask.Kind.BOOK
 
     def clean(self):
         cleaned = super().clean()
@@ -1218,12 +1189,6 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             # this trip's own things: a hand-written POST naming another trip's day or leg is refused.
             for name in self.trip_scoped_fields:
                 self.fields[name].queryset = self.fields[name].queryset.filter(trip=trip)
-        # Kind defaults to "book" when a post leaves it out (older forms, the admin inline, scripts).
-        self.fields["kind"].required = False
-        # Decisions are "choose one" groups on a day now (day-first plan P4): a new to-do is a booking;
-        # an existing decision keeps its kind (and its options page) for its history.
-        if self.instance.kind != BookingTask.Kind.DECIDE:
-            self.fields["kind"].choices = [(BookingTask.Kind.BOOK, BookingTask.Kind.BOOK.label)]
         # `order` has a model default of 0 but is not blank, so a ModelForm
         # would make it a *required* field — asking somebody to type 0 into a
         # sort column to save a booking task. Left blank it falls back to the

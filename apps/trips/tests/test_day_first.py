@@ -1,10 +1,8 @@
 """The retired section types as notes and groups, and decision to-dos turned into choices
 (docs/plans/day-first-planning.md P3–P4; docs/plans/retire-old-section-types.md S1–S2)."""
 from datetime import date, time
-from io import StringIO
 
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase
@@ -13,7 +11,7 @@ from django.urls import reverse
 from apps.core.testing import RestoringTransactionTestCase
 from apps.trips import changes, day_first, tidying
 from apps.trips.forms import NotePayloadForm
-from apps.trips.models import (BookingTask, Day, Meal, Section, TaskOption, Trip, TripChange, TripGrant,
+from apps.trips.models import (BookingTask, Day, Meal, Section, Trip, TripChange, TripGrant,
                                TripRole)
 
 User = get_user_model()
@@ -107,60 +105,6 @@ class RestoreTests(Fixture):
                          ("note", "Pick", ["• Lake"]))
 
 
-class DecisionTests(Fixture):
-    def setUp(self):
-        super().setUp()
-        self.task = BookingTask.objects.create(trip=self.trip, title="Which hotel?", kind="decide", day=self.day)
-        TaskOption.objects.create(task=self.task, title="Augusta", order=0, chosen=True)
-        TaskOption.objects.create(task=self.task, title="Drei Mohren", order=1)
-
-    def test_the_review_page(self):
-        self.client.force_login(self.editor)
-        url = reverse("trips:trip_convert", args=[self.trip.pk])
-        page = self.client.get(url)
-        self.assertContains(page, "data-convert-row", count=1)
-        self.assertContains(page, "Turn decisions into choices")
-        self.client.post(url, {"item": [f"task-{self.task.pk}", "section-1"]})
-        self.assertEqual(self.trip.option_groups.get().state, "picked")
-        self.client.force_login(self.viewer)
-        self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_needs_attention_links_it_for_editors(self):
-        self.client.force_login(self.editor)
-        trip_page = reverse("trips:trip_detail", args=[self.trip.pk])
-        self.assertContains(self.client.get(trip_page), "1 decision to turn into choices")
-        self.client.force_login(self.viewer)
-        self.assertNotContains(self.client.get(trip_page), "to turn into choices")
-        day_first.apply(self.trip)
-        self.client.force_login(self.editor)
-        self.assertNotContains(self.client.get(trip_page), "to turn into choices")
-
-    def test_the_command_for_one_trip_and_all(self):
-        out = StringIO()
-        call_command("convert_day_first", trip=self.trip.pk, stdout=out)
-        self.assertIn("Dry run", out.getvalue())
-        self.assertFalse(self.trip.option_groups.exists())
-        other = Trip.objects.create(name="Coast", start_date=date(2027, 10, 1), end_date=date(2027, 10, 2))
-        other_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 10, 1))
-        task = BookingTask.objects.create(trip=other, title="Boat?", kind="decide", day=other_day)
-        TaskOption.objects.create(task=task, title="Yes")
-        out = StringIO()
-        call_command("convert_day_first", "--all", stdout=out)
-        self.assertIn("2 trips, 2 with something to convert, 2 items.", out.getvalue())
-        before = TripChange.objects.count()
-        call_command("convert_day_first", "--all", "--apply", stdout=StringIO())
-        self.assertEqual(TripChange.objects.count(), before + 2)  # one history line per trip
-        self.assertTrue(other.option_groups.filter(prompt="Boat?").exists())
-        out = StringIO()
-        call_command("convert_day_first", "--all", stdout=out)
-        self.assertIn("0 with something to convert", out.getvalue())
-
-    def test_trip_or_all_not_both(self):
-        from django.core.management.base import CommandError
-        with self.assertRaises(CommandError):
-            call_command("convert_day_first", "--all", "--trip", str(self.trip.pk), stdout=StringIO())
-        with self.assertRaises(CommandError):
-            call_command("convert_day_first", stdout=StringIO())
 
 
 class NoteTests(Fixture):

@@ -21,7 +21,7 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.locations.models import POI, City, Country
 from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Option, OptionGroup, Section,
-                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TaskOption, TripInfo, TripRole)
+                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -153,11 +153,8 @@ def build_trip():
     BookingTask.objects.create(trip=trip, title="Hotel Augusta deposit", priority=1, stay=augusta,
                                due=date(2027, 8, 1))
     BookingTask.objects.create(trip=trip, title="Already done", done=True)
-    decide = BookingTask.objects.create(trip=trip, title="Augsburg accommodation", kind="decide", priority=1)
-    TaskOption.objects.create(task=decide, title="Hotel Augusta", detail="Old town, 6 rooms", est_cost=Decimal("140"),
-                              currency="EUR", url="https://example.com/augusta", order=1, chosen=True)
-    TaskOption.objects.create(task=decide, title="Steigenberger Drei Mohren", est_cost=Decimal("210"), currency="EUR",
-                              order=2)
+    BookingTask.objects.create(trip=trip, title="Augsburg accommodation", priority=1,
+                               notes="Options moved to the choice “Augsburg accommodation” on Day 1.")
     # Day-first plan P5: a split afternoon on Day 4, Ada and Bo on their own tracks.
     afternoon = OptionGroup.objects.create(trip=trip, day=d4, prompt="Augsburg afternoon")
     puppets = Option.objects.create(group=afternoon, title="Puppet museum", est_cost=Decimal("12"), currency="EUR",
@@ -174,8 +171,12 @@ def build_trip():
                           place_text="Anneliese-Pohl-Allee 7", order=0)
     Option.objects.create(group=where, title="Old town flat", est_cost=Decimal("80"), currency="EUR", nights=3,
                           place_text="Markt 12", notes="3-night minimum", order=1)
-    # Its decision to-dos as "choose one" groups (P4); the to-do stays as the booking to-do (retire-decision-todos D1).
-    day_first.apply(trip)
+    # A choice on Day 1, picked: what a converted decision to-do became (P4, retire-decision-todos D1).
+    day_first.make_group(trip, d1, "Augsburg accommodation", "", [
+        {"title": "Hotel Augusta", "notes": "Old town, 6 rooms", "url": "https://example.com/augusta",
+         "est_cost": Decimal("140"), "currency": "EUR", "order": 1, "chosen": True},
+        {"title": "Steigenberger Drei Mohren", "notes": "", "url": "", "est_cost": Decimal("210"), "currency": "EUR",
+         "order": 2, "chosen": False}])
     return trip
 
 

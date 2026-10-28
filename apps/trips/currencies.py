@@ -10,7 +10,6 @@ Field                   Local currency from
 ``Lodging``             its city's country, else the trip's countries
 ``TransportLeg``        its origin and destination cities' countries
 ``TripActivity``        its catalogue place's city, else the day's city
-``TaskOption``          the task's leg / stay / activity (as above), else the trip's
 ``Confirmation``        the places of the items it covers, else the trip's
 ``TripExpense``         its day's city, else the trip's countries
 ``TripRate`` from / to  every currency used on the trip, plus home
@@ -85,17 +84,6 @@ def used_codes(trip):
     for manager in (trip.expenses, trip.lodging, trip.transport, trip.activities, trip.confirmations):
         codes += manager.exclude(currency="").values_list("currency", flat=True).distinct()
     return list(dict.fromkeys(code.upper() for code in codes if code))
-
-
-def task_city_ids(task):
-    """The places a booking task's item involves (a decision's options use them)."""
-    if task.leg_id:
-        return [task.leg.origin_city_id, task.leg.destination_city_id]
-    if task.stay_id:
-        return [task.stay.city_id]
-    if task.activity_id:
-        return activity_city_ids(task.activity)
-    return []
 
 
 def activity_city_ids(activity):

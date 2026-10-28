@@ -422,8 +422,6 @@ def _trip_page_queryset(user):
             "infos",
             Prefetch("item_links", queryset=ItemLink.objects.select_related("source_type", "target_type")),
             "booking_tasks",
-            # A decision's options (U6): one fixed query for every task's.
-            "booking_tasks__options",
             # Checklists (site roadmap R9): three fixed queries — lists, items, per-person ticks.
             "checklists__items__ticks",
             "travelers",
@@ -486,16 +484,12 @@ def _trip_page_context(request, trip):
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
-    # Decision to-dos still to turn into choices (P4): no query.
-    from .day_first import pending_count
-    notes_pending = pending_count(trip) if "edit" in capabilities else 0
     # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
     # day and the day to open on arrival — all from the rows above, no queries.
     days = list(trip.days.all())
     stray_stays = itinerary.attach_stays(days, list(trip.lodging.all()))
     not_booked = booking_tasks.not_booked(trip)
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
-    open_decisions = [task for task in open_tasks if task.kind == task.Kind.DECIDE]
     itinerary.overview(days, not_booked, open_tasks)
     option_groups.count_on_days(days)
     itinerary.timeline(days)
@@ -515,13 +509,11 @@ def _trip_page_context(request, trip):
         "stray_legs": stray_legs,
         "stray_stays": stray_stays,
         "open_tasks": open_tasks,
-        "open_decisions": open_decisions,
         "closed_items": note_warnings["closed"],
         "book_ahead_items": note_warnings["book_ahead"],
         "travel_tables_pending": travel_tables_pending,
-        "notes_pending": notes_pending,
         "open_groups": open_groups,
-        "decision_count": len(open_decisions) + len(open_groups),
+        "decision_count": len(open_groups),
         "option_groups": all_groups,
         # + Add's kind buttons (P3; Options, a "choose one", P4).
         "quick_add_kinds": QUICK_ADD_KINDS,
@@ -2134,16 +2126,8 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     activity = None
     if activity_pk is not None:
         activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day), pk=activity_pk)
-    initial = {}
-    if activity is None and request.GET.get("from_option", "").isdigit():
-        # Pre-filled from a decision's option (U6, trips:option_add); nothing saved until submit.
-        from .models import TaskOption
-        option = TaskOption.objects.filter(task__trip=trip, pk=request.GET["from_option"]).first()
-        if option is not None:
-            initial = {"title": option.title, "notes": "\n".join(p for p in (option.detail, option.url) if p),
-                       "est_cost": option.est_cost, "currency": option.currency}
     form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day),
-                            initial=initial, trip=trip)
+                            trip=trip)
     back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#activities")
     if request.method == "POST" and form.is_valid():
         saved = form.save()
@@ -2494,17 +2478,6 @@ def _stay_back(trip, stay):
     return reverse("trips:trip_detail", args=[trip.pk]) + "#not-on-any-day"
 
 
-def _stay_from_option(trip, option_pk):
-    """A new stay's starting values from a decision's option (``?from_option=<pk>``, U6): name from
-    its title, notes from its detail and link. Nothing is saved until the editor saves the page."""
-    from .models import TaskOption
-    option = TaskOption.objects.filter(task__trip=trip, pk=option_pk).first() if option_pk.isdigit() else None
-    if option is None:
-        return {}
-    notes = "\n".join(part for part in (option.detail, option.url) if part)
-    return {"name": option.title[:200], "notes": notes, "currency": option.currency or "USD"}
-
-
 def _days_filled_message(request, form):
     if form.days_filled:
         messages.info(request, f"Filled in the city for {form.days_filled} day{'s' if form.days_filled != 1 else ''} "
@@ -2520,7 +2493,7 @@ def stay_new(request, pk, day_pk):
     from .forms import LodgingForm
     trip, day = _editable_day(request, pk, day_pk)
     initial = {"check_in": day.date, "check_out": day.date + timedelta(days=1) if day.date else None,
-               "city": day.city_id, **_stay_from_option(trip, request.GET.get("from_option", ""))}
+               "city": day.city_id}
     form = LodgingForm(request.POST or None, instance=Lodging(trip=trip), initial=initial)
     back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day")
     if request.method == "POST" and form.is_valid():
@@ -2566,41 +2539,6 @@ def stay_delete(request, pk, stay_pk):
     return render(request, "trips/stay_confirm_delete.html", {"trip": trip, "stay": stay, "next": back})
 
 
-# ---- converting old sections to the day-first kinds (day-first plan, P3) -----------------------
-@login_required
-def trip_convert(request, pk):
-    """Review turning this trip's to-dos with options into "choose one" groups (editors; linked from the
-    Needs attention banner while any is left, and as "Make it a choice" on one to-do, ``?task=<id>``;
-    retire-decision-todos D1). Each row merges into a matching open choice on its day or makes a new one
-    (a select switches), and keeps the to-do open as a booking to-do unless "Tick it off instead" is
-    ticked. Nothing changes until the ticked ones are converted, in one transaction
-    (``apps/trips/day_first.py``)."""
-    from . import day_first
-    trip = _readable_trip(request, pk, "edit")
-    task_id = request.GET.get("task") or request.POST.get("task") or ""
-    only = {int(task_id)} if task_id.isdigit() else None
-    if request.method == "POST":
-        keys = [value for value in request.POST.getlist("item") if value.startswith("task-")]
-        targets = {key: request.POST[f"target-{key}"] for key in keys if f"target-{key}" in request.POST}
-        tick_off = {key for key in keys if request.POST.get(f"tick-{key}")}
-        count = day_first.apply(trip, keys, targets, tick_off, request.user) if keys else 0
-        left = len(keys) - count
-        if count:
-            messages.success(request, f"Converted {count} to-do{'s' if count != 1 else ''}."
-                             + (f" {left} left: pick which choice {'it joins' if left == 1 else 'they join'}." if left else ""))
-        elif keys:
-            messages.info(request, "Pick which choice each one joins, then convert.")
-        else:
-            messages.info(request, "Nothing was ticked, so nothing changed.")
-        if count and not left and only is not None:
-            return redirect(_back(request, reverse("trips:trip_todo", args=[trip.pk])))
-        return redirect(reverse("trips:trip_convert", args=[trip.pk]) + (f"?task={task_id}" if only else ""))
-    groups = day_first.plan(trip, only)
-    return render(request, "trips/trip_convert.html", {
-        "trip": trip, "groups": groups, "count": sum(len(items) for _day, items in groups),
-        "task_id": task_id if only else "", "next": _back(request, "")})
-
-
 # ---- content clean-up review (trip-page UX plan, U7) -----------------------------------------
 @login_required
 def trip_tidy(request, pk):
@@ -2631,7 +2569,6 @@ def trip_tidy(request, pk):
     return render(request, "trips/trip_tidy.html", {"trip": trip, "groups": ordered, "count": len(found)})
 
 
-# ---- decisions: tasks with options (trip-page UX plan, U6) ----------------------------------
 # ---- the trip's to-dos (edit-by-day plan, E2) -----------------------------------------------
 def _todo_url(trip):
     return reverse("trips:trip_todo", args=[trip.pk])
@@ -2647,8 +2584,8 @@ def trip_todo(request, pk):
     from . import booking_tasks
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
-    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related(
-        "day").prefetch_related("options")), "days")
+    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related("day")),
+                             "days")
     booking_tasks.attach(trip)  # item / item_day / item_info; "Looks like" suggestions stay on the trip page
     tasks = sorted(trip.booking_tasks.all(),
                    key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk))
@@ -2675,7 +2612,7 @@ def task_edit(request, pk, task_pk=None):
                if task is None and request.GET.get(name, "").isdigit()}
     note = _note_for_todo(request) if task is None else None
     if note is not None:  # "Add as a to-do" from a catalogue note's lead time (catalogue-notes N3)
-        initial.update({"title": f"Book ahead: {note.target_name}", "kind": BookingTask.Kind.BOOK,
+        initial.update({"title": f"Book ahead: {note.target_name}",
                         "priority": BookingTask.Priority.HIGH,
                         "notes": "\n".join(part for part in (note.booking_url, note.text) if part)})
         try:
@@ -2730,45 +2667,6 @@ def task_done(request, pk, task_pk):
     task.save(update_fields=["done"])
     messages.success(request, f"{'Done' if task.done else 'Back on the list'}: “{task.title}”.")
     return redirect(_back(request, _todo_url(trip)))
-
-
-@login_required
-def task_options(request, pk, task_pk):
-    """A to-do's options, read-only (editors): to-dos with options are no longer made or edited
-    (retire-decision-todos D1); the page lists them and offers "Make it a choice". Removed in D2."""
-    trip = _readable_trip(request, pk, "edit")
-    task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
-    back = _back(request, reverse("trips:trip_todo", args=[trip.pk]))
-    if request.method == "POST":
-        messages.info(request, "To-dos don't take options any more: make it a choice on its day instead.")
-        return redirect(reverse("trips:task_options", args=[trip.pk, task.pk]))
-    return render(request, "trips/task_options.html", {"trip": trip, "task": task, "next": back})
-
-
-@login_required
-def option_add(request, pk, option_pk):
-    """Add a decision's option as a stay or an activity (U6): redirects to the new-stay or
-    new-activity page of the task's day (or ``?day=``), pre-filled; a stay with no day starts on
-    Day 1 (its dates are editable). Saves nothing itself."""
-    from .models import TaskOption
-    trip = _readable_trip(request, pk, "edit")
-    option = get_object_or_404(TaskOption.objects.filter(task__trip=trip).select_related("task"), pk=option_pk)
-    day_pk = request.GET.get("day") or option.task.day_id
-    day = get_object_or_404(trip.days.all(), pk=day_pk) if day_pk else None
-    if request.GET.get("as") == "stay":
-        day = day or trip.days.order_by("day_number").first()
-        if day is None:
-            messages.info(request, "Add the trip's days first, then the stay on its check-in day.")
-            return redirect(reverse("trips:task_options", args=[trip.pk, option.task_id]))
-        back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
-        return redirect(reverse("trips:stay_new", args=[trip.pk, day.pk])
-                        + f"?from_option={option.pk}&next={quote(back)}")
-    if day is None:
-        messages.info(request, "Pick the day it happens on.")
-        return redirect(reverse("trips:task_options", args=[trip.pk, option.task_id]))
-    back = reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"
-    return redirect(reverse("trips:activity_new", args=[trip.pk, day.pk])
-                    + f"?from_option={option.pk}&next={quote(back)}")
 
 
 # ---- contacts and info notes linked to items (trip-page UX plan, U4) -------------------------

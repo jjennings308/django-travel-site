@@ -33,7 +33,7 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided ch
       {% for task in open_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}
     </ul>
   {% else %}
-    <p class="empty-state">Nothing to do.{% if can_edit %} Add a to-do for anything still to book or decide.{% endif %}</p>
+    <p class="empty-state">Nothing to do.{% if can_edit %} Add a to-do for anything still to book.{% endif %}</p>
   {% endif %}
   {% if done_tasks %}
     <details class="mt-6" data-done-tasks>
