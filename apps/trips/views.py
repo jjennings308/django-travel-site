@@ -37,6 +37,7 @@ from django.utils import timezone as django_timezone
 
 
 from .forms import (
+    CoverPhotoForm,
     TripExpenseForm,
     AddTravelerForm,
     CommentForm,
@@ -785,8 +786,9 @@ def trip_create(request):
 
     form = TripForm(request.POST or None, user=request.user)
     traveler_form = AddTravelerForm(request.POST or None)
+    cover_form = CoverPhotoForm(request.POST or None, request.FILES or None)
 
-    if request.method == "POST" and form.is_valid():
+    if request.method == "POST" and form.is_valid() and cover_form.is_valid():
         trip = form.save(commit=False)
         # Ownership is set here rather than being a form field, so it cannot be
         # set or overwritten by anything a user submits.
@@ -801,6 +803,8 @@ def trip_create(request):
         TripGrant.objects.create(
             trip=trip, user=request.user, granted_by=request.user, role=TripRole.EDITOR
         )
+        cover_form.trip = trip
+        cover_form.save(request.user)  # a cover photo uploaded with the new trip
 
         messages.success(request, f"Created “{trip.name}”.")
         return redirect("trips:trip_detail", pk=trip.pk)
@@ -811,6 +815,7 @@ def trip_create(request):
         {
             "form": form,
             "traveler_form": traveler_form,
+            "cover_form": cover_form,
             "is_create": True,
         },
     )
@@ -872,14 +877,16 @@ def trip_settings(request, pk):
     before = (trip.start_date, trip.end_date)
     form = TripForm(request.POST or None, instance=trip, user=request.user)
     traveler_form = AddTravelerForm(request.POST or None)
+    cover_form = CoverPhotoForm(request.POST or None, request.FILES or None, trip=trip)
 
-    if request.method == "POST" and form.is_valid():
+    if request.method == "POST" and form.is_valid() and cover_form.is_valid():
         with transaction.atomic():
             # commit=True, so the travelers m2m is saved with it — save_m2m() only exists on a
             # commit=False form.
             form.save()
             trip_cities.sync(trip)
             _add_new_traveler(trip, traveler_form)
+            cover_form.save(request.user)
         messages.success(request, f"Saved “{trip.name}”.")
         _warn_if_ready_with_open_tasks(request, trip)
         if (trip.start_date, trip.end_date) != before:
@@ -897,6 +904,7 @@ def trip_settings(request, pk):
         {
             "form": form,
             "traveler_form": traveler_form,
+            "cover_form": cover_form,
             "trip": trip,
             "days": _days_with_counts(trip),
             "is_create": False,
@@ -1810,31 +1818,6 @@ def trip_photo_booklet(request, pk, media_pk):
     trip.save(update_fields=["cover_photo"])
     messages.success(request, "That photo is now on the booklet's cover.")
     return redirect("trips:trip_photos", pk=trip.pk)
-
-
-@login_required
-@require_POST
-def trip_cover(request, pk):
-    """Settings' Booklet cover (editors): upload a picture — it joins the trip's photos and goes on the
-    PDF's cover — or ``remove`` it from the cover (the photo stays in the album)."""
-    from .forms import CoverPhotoForm
-    trip = _readable_trip(request, pk, "edit")
-    back = reverse("trips:trip_settings", args=[trip.pk]) + "#cover"
-    if request.POST.get("remove"):
-        trip.cover_photo = None
-        trip.save(update_fields=["cover_photo"])
-        messages.success(request, "The booklet's cover has no photo now; it's still in the trip's photos.")
-        return redirect(back)
-    form = CoverPhotoForm(request.POST, request.FILES)
-    if not form.is_valid():
-        for error in form.errors.get("photo", ["Choose a picture to upload."]):
-            messages.error(request, error)
-        return redirect(back)
-    media, = trip.add_photos([form.cleaned_data["photo"]], request.user)
-    trip.cover_photo = media
-    trip.save(update_fields=["cover_photo"])
-    messages.success(request, "Cover photo added. It prints on the booklet's cover.")
-    return redirect(back)
 
 
 # ---- map ---------------------------------------------------------------------------------

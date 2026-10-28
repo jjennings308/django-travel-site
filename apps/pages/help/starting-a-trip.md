@@ -65,7 +65,13 @@ A city that isn't in the catalogue yet: type its name and click **Add “Hallsta
 
 ## A cover photo
 
-On **Settings**, under **Booklet cover**, upload a photo for the front of the PDF booklet ([the booklet](/help/reading-your-trip/#booklet)). It also joins the trip's **Photos**. To use a photo that's already there, open **Photos** and click **Use on the booklet** under it; the one in use is marked "On the booklet". **Take it off the cover** leaves the cover plain but keeps the photo. A wide picture fills the cover best: it's cropped to the top half of the page. Only editors can choose it.
+On **Settings**, under **Booklet cover**, choose a photo for the front of the PDF booklet ([the booklet](/help/reading-your-trip/#booklet)), then click **Save changes**:
+
+- **Upload a cover photo**: pick a picture from your device; a preview shows before you save. It also joins the trip's **Photos**.
+- **Or choose one of the trip's photos**: click one of the photos already in the trip's album. The one on the cover is ticked.
+- **Take the photo off the cover** leaves the cover plain; the photo stays in the trip's photos.
+
+On **Photos**, **Use on the booklet** under a photo does the same; the one in use is marked "On the booklet". A wide picture fills the cover best: it's cropped to the top half of the page. Only editors can choose it, and you can also add one when you create the trip.
 
 ## Changing the dates
 
