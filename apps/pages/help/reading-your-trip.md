@@ -89,7 +89,7 @@ A confirmation number on a hotel, train or activity is a small chip; click it to
 
 **Download PDF** gives a booklet to print or keep offline. It has:
 
-- a cover with the dates and who's travelling;
+- a cover with the dates and who's travelling, and the trip's cover photo if an editor chose one ([a cover photo](/help/starting-a-trip/#a-cover-photo));
 - **Days at a glance**, one row per day;
 - a section per day: where you stay, **Getting around**, the plans, **Activities**, **Food** and **Good to know**, with confirmation numbers and phone numbers printed in full on the day they're needed;
 - **Reference**: **Confirmations**, **Where we're staying**, **Contacts**, **Info** and **Still to book**.

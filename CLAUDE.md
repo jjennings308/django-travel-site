@@ -1042,6 +1042,11 @@ that matter most:
   trip page (`views._trip_page_queryset`). WeasyPrint needs `libpango-1.0-0 libpangoft2-1.0-0
   libharfbuzz-subset0` on the server; without them the view says so and redirects (`PdfUnavailable`)
   instead of a 500. Pictographic emoji are stripped (no emoji font on the servers).
+  **Cover photo** (trips 0053): `Trip.cover_photo` (FK `Media`, SET_NULL; always one of the album's photos, separate
+  from the album's own cover) — Settings' **Booklet cover** (`#cover`, `trips:trip_cover`, editors: upload via
+  `CoverPhotoForm` → `Trip.add_photos`, or `remove`) and Photos' **Use on the booklet** (`trips:trip_photo_booklet`).
+  `pdf.cover_image(trip)` embeds it as a JPEG `data:` URI scaled to `COVER_SIDE` (1800 px), so WeasyPrint never
+  fetches a private file; unreadable → plain cover, logged. Never public.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);
   `trips_staff:dashboard` at `/staff/trips/`, gated by `User.can_access_staff`. The user admin
   with role and trip-access inlines is registered from `apps/trips/admin.py`.

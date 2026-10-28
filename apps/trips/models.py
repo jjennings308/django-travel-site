@@ -450,6 +450,11 @@ class Trip(models.Model):
     # see the trip sees it; never in the public view.
     album = models.OneToOneField("media_app.MediaAlbum", on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name="trip", editable=False)
+    # The booklet's cover picture, chosen by an editor (uploaded in Settings, or picked on Photos);
+    # always one of the album's photos. Separate from the album's own cover, which is simply the
+    # first photo and shows in My adventures.
+    cover_photo = models.ForeignKey("media_app.Media", on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="+", editable=False)
     start_date = models.DateField()
     end_date = models.DateField()
     travelers = models.ManyToManyField(

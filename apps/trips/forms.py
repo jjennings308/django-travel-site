@@ -640,6 +640,20 @@ class SyncsTripCitiesMixin:
 HOME_CURRENCY_CHOICES = ("USD", "EUR", "GBP", "CAD", "AUD", "CHF", "JPY")
 
 
+class CoverPhotoForm(forms.Form):
+    """Settings' Booklet cover: one picture, checked like every upload (size; HEIC becomes JPEG on save)."""
+
+    photo = forms.ImageField(label="Cover photo",
+                             help_text="JPEG, PNG, WebP or iPhone HEIC. A wide picture fills the cover best.")
+
+    def clean_photo(self):
+        from apps.media_app.forms import MAX_PICTURE_MB
+        photo = self.cleaned_data["photo"]
+        if photo.size > MAX_PICTURE_MB * 1024 * 1024:
+            raise forms.ValidationError(f"That picture is over {MAX_PICTURE_MB} MB.")
+        return photo
+
+
 class TripForm(forms.ModelForm):
     """Create or edit a trip.
 

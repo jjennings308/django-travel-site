@@ -30,6 +30,8 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
   .cover .dates { font-size: 13pt; margin-bottom: 4pt; }
   .cover .who { margin-top: 14pt; }
   .cover .rule { border-top: 2pt solid #9a4a2a; width: 1.2in; margin: 14pt 0 8pt; }
+  .cover.with-photo { padding-top: 0; }
+  .cover-photo { display: block; width: 100%; height: 4.6in; object-fit: cover; margin-bottom: 22pt; }
   .glance h2 { font-size: 16pt; string-set: dayname "At a glance"; border-bottom: 1.5pt solid #9a4a2a; padding-bottom: 5pt; margin-bottom: 8pt; }
   .nowrap { white-space: nowrap; }
 
@@ -65,7 +67,8 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
 <body>
 
 {# ------------------------------------------------------------------ cover #}
-<section class="cover">
+<section class="cover{% if cover_image %} with-photo{% endif %}">
+  {% if cover_image %}<img class="cover-photo" src="{{ cover_image }}" alt="">{% endif %}
   <p class="kicker">Itinerary</p>
   <h1>{{ trip.name }}</h1>
   {% if trip.start_date %}<p class="dates">{{ trip.start_date|date:"l, F j" }} – {{ trip.end_date|date:"l, F j, Y" }}{% if trip.nights %} · {{ trip.nights }} night{{ trip.nights|pluralize }}{% endif %}</p>{% endif %}
