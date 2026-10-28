@@ -31,7 +31,8 @@ to-do and `BookingTask.kind` is gone).
 3. **Offered, never automatic** — as today: partner items are pre-ticked on forms, a confirmation reaching one
    covered item is offered to the others, never linked silently.
 4. **Reference gets one "To book" list** (K2) instead of Still to book + Not booked yet, rows open in the panel, and a
-   to-do can be ticked done in place. The To do and Bookings pages use the same rows.
+   to-do can be ticked done in place. **The To do page stays a priority-ordered list** of to-dos, followed by only the
+   items with no plan yet, so nothing shows twice there; Bookings shows those no-plan rows too.
 5. **"No booking needed"** is a per-item flag on legs, stays and trip activities; such an item is never in Not
    booked / To book.
 
@@ -113,14 +114,20 @@ to-do and `BookingTask.kind` is gone).
   set also by the row's button (`trips:item_no_booking`, POST, editors, `kind` / `id`, `undo=1`). The item's row shows
   a quiet "no booking needed" where the stage badge would say planned/scheduled; `not_booked`, `to_book`, the ⚠ count
   and the booklet's Not booked list skip it. Tracked in `changes.TRACKED` for the three kinds.
-- **The other pages.** The To do page: open to-dos by priority / due as now, but its Not booked section is the same
-  `to_book` rows (with the quick actions); Bookings' Not booked yet uses them too (read-only rows open on the trip
-  page with `?item=` as today, actions only on the trip page and To do). One partial, `partials/_to_book.html`, for all
-  three.
+- **The To do page keeps its own shape** (James, 2026-10-28: it answers "what do I book next?", so priority and due
+  date order it; the trip page's To book answers "what's still open on this trip?", in date order). Each thing shows
+  once: choices first, then the to-dos by priority / due as now (each row's "For:" is K1's `cover_label`; done ones
+  folded), then **No plan yet** — only the `to_book` rows with no to-do (an item with a to-do is already in the list
+  above), with the quick actions Add a to-do · Add confirmation · No booking needed. There's no item panel off the
+  trip page, so rows and actions link to the to-do's or item's own page with `next` back to the To do page; **Mark
+  done** works in place by `fetch` (204) there too, with the form as the no-JS fallback. Bookings' Not booked yet uses
+  the No plan yet rows read-only (they open on the trip page with `?item=` as today). One partial,
+  `partials/_to_book.html` (`no_plan_only=True` for To do and Bookings), for all three.
 - **Booklet.** Unchanged except the "No booking needed" items leave its Not booked list — update the snapshot only if
   the fixture has one (add one leg with `no_booking` to the fixture so it's covered, and check the diff).
 - **Tests.** `to_book` rows (no plan / to-do / round trip as one row / other to-dos / confirmed gone / no_booking
-  gone); Mark done by fetch (204) and by form; the fragment's query pin; `data-panel` on rows; the quick actions'
+  gone); the To do page shows each to-do once (an item with a to-do is not also under No plan yet) and keeps
+  priority / due order; Mark done by fetch (204) and by form, on the trip page and the To do page; the fragment's query pin; `data-panel` on rows; the quick actions'
   URLs; the hash mapping; `no_booking` hides an item everywhere it should and the form saves it; help links.
 - **Help.** `reading-your-trip` (Reference → To book) and `bookings-and-confirmations` (No booking needed, working
   from To book); bump `updated`.
