@@ -55,6 +55,21 @@ def _city(obj):
 
 # model -> (item type, label(obj), trip_id(obj), [(field attname, label, format(obj) or None)])
 # A format of None means "say it changed" (long text, JSON).
+def _cost(o):
+    """"€95 per room per night × 3 rooms" (budget-estimates B1): the amount and what it means, no people lookup."""
+    from .costs import amount_of, basis_of, money, Basis
+    amount = amount_of(o)
+    if amount is None:
+        return "none"
+    basis = basis_of(o)
+    text = f"{money(amount, o.currency)} {Basis(basis).label.lower()}"
+    if basis == Basis.PER_ROOM_NIGHT and getattr(o, "rooms", None):
+        text += f" × {o.rooms} room{'s' if o.rooms != 1 else ''}"
+    if o.cost_people:
+        text += f" for {o.cost_people}"
+    return text
+
+
 def _booking(o):
     """"needed" / "not needed" (booking-todos K2: an item's No booking needed)."""
     return "not needed" if o.no_booking else "needed"
@@ -71,6 +86,8 @@ TRACKED = {
         ("departure_at", "departs", lambda o: o.departure_local_str or "no time"),
         ("arrival_at", "arrives", lambda o: o.arrival_local_str or "no time"),
         ("notes", "notes", None),
+        ("cost_basis", "cost", _cost),
+        ("cost_people", "cost", _cost),
         ("no_booking", "booking", _booking),
     ]),
     Lodging: ("stay", lambda o: f"stay {o.name}", lambda o: o.trip_id, [
@@ -79,6 +96,9 @@ TRACKED = {
         ("check_out", "check-out", lambda o: _date(o.check_out)),
         ("address", "address", None),
         ("city_id", "city", _city),
+        ("cost_basis", "cost", _cost),
+        ("cost_people", "cost", _cost),
+        ("rooms", "cost", _cost),
         ("no_booking", "booking", _booking),
     ]),
     TripActivity: ("activity", lambda o: f"“{o.title}”", lambda o: o.trip_id, [
@@ -90,6 +110,8 @@ TRACKED = {
         ("place_text", "place", lambda o: _text(o.place_text)),
         ("poi_id", "place", lambda o: _text(o.poi)),
         ("notes", "notes", None),
+        ("cost_basis", "cost", _cost),
+        ("cost_people", "cost", _cost),
         ("no_booking", "booking", _booking),
     ]),
     Meal: ("meal", lambda o: f"{o.get_meal_type_display().lower()} at {o.name}",
@@ -99,6 +121,9 @@ TRACKED = {
         ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
         ("reserved_time", "reservation", lambda o: _time(o.reserved_time)),
         ("reservation_notes", "booking notes", None),
+        ("est_cost", "cost", _cost),
+        ("cost_basis", "cost", _cost),
+        ("cost_people", "cost", _cost),
     ]),
     Section: ("section", lambda o: f"“{o.title or o.get_section_type_display()}” on Day {_day_number(o.day_id)}",
               lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(), [
@@ -223,7 +248,9 @@ def _after(sender, instance, created, raw=False, **kwargs):
             continue
         changed.add(attname)
         values["before"][attname], values["after"][attname] = before, after
-        parts.append(f"{name} changed" if fmt is None else f"{name} {fmt(old)} → {fmt(instance)}")
+        part = f"{name} changed" if fmt is None else f"{name} {fmt(old)} → {fmt(instance)}"
+        if part not in parts:  # several fields read as one (the cost's amount, basis, rooms and people)
+            parts.append(part)
     if not parts:
         return
     record(trip_of(instance), TripChange.Kind.CHANGED, f"Changed {label(old)}: {'; '.join(parts)}", instance,

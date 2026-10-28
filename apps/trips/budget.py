@@ -120,34 +120,3 @@ def in_one_currency(expenses, target, rates):
             used.append(line)
         rows.append(_Converted(expense, conversion.amount, target))
     return {"total": _money(sum(_cents(r.amount) for r in rows)), "rows": rows, "used": used, "missing": missing}
-
-
-def estimate(trip, target, extra=()):
-    """Estimated trip cost in ``target`` from the trip page's prefetch: confirmations' ``cost`` and
-    activities' ``est_cost`` (a blank currency counts as ``target``). Queries rates only when
-    something is in another currency. Returns None when nothing has a cost."""
-    costs = [(c.cost, c.currency or target, "booking") for c in trip.confirmations.all() if c.cost is not None]
-    # Chosen options' own estimates (day-first plan P4: an option that is only a title and a cost).
-    costs += [(amount, currency or target, "option") for amount, currency in extra if amount is not None]
-    for day in trip.days.all():
-        for activity in getattr(day, "ordered_activities", []):
-            if activity.est_cost is not None:
-                costs.append((activity.est_cost, activity.currency or target, "activity"))
-    if not costs:
-        return None
-    foreign = {currency.upper() for _, currency, _ in costs} - {target.upper()}
-    rates = rates_for(trip, foreign | {target}) if foreign else None
-    total, used, missing = 0, [], []
-    for amount, currency, _ in costs:
-        conversion = rates.convert(amount, currency, target) if rates else None
-        if rates and conversion is None:
-            missing.append(currency.upper())
-            continue
-        total += _cents(conversion.amount if conversion else amount)
-        line = conversion.describe(currency.upper(), target) if conversion else ""
-        if line and line not in used:
-            used.append(line)
-    return {"total": _money(total), "currency": target.upper(), "approx": bool(foreign),
-            "bookings": sum(1 for *_, kind in costs if kind == "booking"),
-            "activities": sum(1 for *_, kind in costs if kind == "activity"),
-            "used": used, "missing": sorted(set(missing))}

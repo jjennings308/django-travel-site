@@ -35,7 +35,9 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
         <fieldset class="rounded-lg border border-zinc-200 p-4" data-option-form>
           {{ option_form.id }}
           <div class="grid gap-3 sm:grid-cols-3">
-            {% for field in option_form.visible_fields %}{% if field.name != "DELETE" %}
+            {% for field in option_form.visible_fields %}{% if field.name == option_form.cost_block_at %}
+              <div class="min-w-0 sm:col-span-3">{% include "trips/partials/_cost_fields.html" with form=option_form %}</div>
+            {% elif field.name in option_form.cost_block_hidden %}{% elif field.name != "DELETE" %}
               <div class="min-w-0 {% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
             {% endif %}{% endfor %}
           </div>

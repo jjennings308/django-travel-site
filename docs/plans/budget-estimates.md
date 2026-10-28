@@ -1,6 +1,6 @@
 # Plan: a planned budget — every item can carry an estimate, with its basis
 
-Status: not started. Asked for by James 2026-10-28. Three phases, one branch each, in order: B1 (what a cost means:
+Status: B1 done (2026-10-28, branch `b1-cost-basis`). Asked for by James 2026-10-28. Three phases, one branch each, in order: B1 (what a cost means:
 a basis on every item's cost), B2 (the Budget page shows estimated → booked → paid, by category and per person), B3
 (costs where you plan: on the day's rows, in choices, and payments recorded against what they paid for). Read with
 `CLAUDE.md` → Trips → "Budget", "Budget in one currency", "Currency choices", "Typed choices", "Booking tasks cover

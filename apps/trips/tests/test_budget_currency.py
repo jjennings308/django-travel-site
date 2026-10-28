@@ -145,7 +145,7 @@ class EstimateTests(CurrencyFixture):
         estimate = response.context["cost_estimate"]
         # Latest rates: 200 EUR = 220 USD, 85 GBP = 110 USD.
         self.assertEqual((estimate["total"], estimate["currency"], estimate["approx"]), (Decimal("830.00"), "USD", True))
-        self.assertEqual((estimate["bookings"], estimate["activities"]), (2, 1))
+        self.assertEqual((estimate["bookings"], estimate["estimates"]), (2, 1))
         self.assertContains(response, "≈ USD 830.00")
 
     def test_nothing_with_a_cost_shows_nothing(self):

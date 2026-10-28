@@ -55,7 +55,7 @@ class Fixture(TestCase):
 class FormTests(Fixture):
     def fields(self, kind):
         return set(OptionForm(trip=self.trip, kind=kind).fields) - {"title", "notes", "url", "est_cost", "currency",
-                                                                    "order"}
+                                                                    "order", "cost_basis", "cost_people", "rooms"}
 
     def test_each_kind_asks_for_its_fields(self):
         self.assertEqual(self.fields("stay"), {"city", "poi", "place_text", "nights"})
@@ -63,7 +63,11 @@ class FormTests(Fixture):
         self.assertEqual(self.fields("do"), {"poi", "activity", "event", "place_text"})
         self.assertEqual(self.fields("travel"), {"from_text", "to_text"})
         self.assertEqual(self.fields("any"), set())
-        self.assertEqual(OptionForm(trip=self.trip, kind="stay").fields["est_cost"].label, "Cost per night")
+        # What the cost means (budget-estimates B1): a stay's options offer the stay bases, per night first.
+        stay = OptionForm(trip=self.trip, kind="stay")
+        self.assertEqual([v for v, _ in stay.fields["cost_basis"].choices][1:], ["night", "room_night", "person_night", "total"])
+        self.assertIn("rooms", stay.fields)
+        self.assertNotIn("rooms", OptionForm(trip=self.trip, kind="eat").fields)
         self.assertEqual(list(OptionForm(trip=self.trip, kind="eat").fields["poi"].queryset), [self.keller])
 
     def test_one_catalogue_link_at_most(self):

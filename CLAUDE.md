@@ -550,8 +550,10 @@ that matter most:
   edited on the Budget page under **Your own rates** (`trips:trip_rates`, POST, editors; everyone sees them; moved from Edit trip in E3). Budget page: `?in=XXX` (default the reader's
   `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
   "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. About this trip:
-  `budget.estimate` = confirmation `cost` + activity `est_cost` in the reader's currency (two queries only when
-  something is foreign). `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
+  `costs.planned_total` (budget-estimates B1; replaced `budget.estimate`, which counted an activity's estimate and its
+  booking both) — per counted item the booked cost when a costed confirmation covers it (each confirmation once), else
+  its estimate on its basis, plus chosen / split-taken options' own costs — in the reader's currency (two queries only
+  when something is foreign). `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
   → `Rates`; unknown currency → None); the site makes no live exchange-rate calls and `requests` is gone from
   `requirements.txt`.
@@ -920,9 +922,11 @@ that matter most:
   `end_time` (do), `mode` (travel). `Option` gains a catalogue link (at most one of `poi` / `activity` / `event` /
   `city`, `option_one_target`, SET_NULL), `place_text`, `nights` (a stay override; blank = the group's), `from_text` /
   `to_text`, and `made` (generic, the item Pick creates — T2). For a stay `est_cost` is per night: `Option.own_cost` =
-  nightly × `stay_nights` (× 1 while unknown) feeds `options._costs` and the trip estimate; `Option.kind_line()` is
-  the box's and the booklet's line ("EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße", "Augustiner Keller · EUR
-  40.00", "Hacker-Festzelt · 11:00–16:00", "Train · Augsburg → Munich"). `OptionGroupForm` (**What is this choice
+  its `costs.estimate` total (B1: nightly × `stay_nights`, × 1 while unknown, unless its basis says per room / per
+  person; people from `options.attach`'s `option._people`) feeds `options._costs` and the trip estimate;
+  `Option.kind_line()` is the box's and the booklet's line ("EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße",
+  "Augustiner Keller · EUR 40.00", "Hacker-Festzelt · 11:00–16:00", "Train · Augsburg → Munich") — on the default basis
+  with no rooms / people exactly as before T1's wording (so the booklet snapshot holds), otherwise `costs`' line. `OptionGroupForm` (**What is this choice
   about?**, the kind's fields shown by Alpine, the others cleared in `clean`) and `OptionForm(kind=…)` (`KIND_FIELDS`;
   catalogue pickers from `catalogue_places` — Food & drink first for eat —, `catalogue_activities`,
   `catalogue_events`, the city box for a stay, built once per trip object `_option_pickers` and shared by
@@ -1531,7 +1535,27 @@ Plan: `docs/plans/budget-estimates.md` (every leg, stay, activity, meal and choi
 basis — total, per person, per night, per room per night with rooms, per person per night — and a people count; the
 Budget page shows planned → booked → paid by category and per person, with a daily food allowance; costs shown on the
 day's rows and in choices; payments recorded against what they paid for). Decided 2026-10-28. Phases B1–B3, one branch
-each, in order. Status: not started.
+each, in order. Status: B1 (what a cost means) done on branch `b1-cost-basis`.
+
+- **What a cost means** (B1; trips 0060, add-only): `cost_basis` (blank = the kind's default, `costs.DEFAULT`: a
+  leg's `cost` and an activity's `est_cost` total, a stay's `nightly_rate` and a stay option's `est_cost` per night, a
+  meal per person, other options total — so existing rows keep their meaning, no data migration) and `cost_people` on
+  `TransportLeg`, `Lodging`, `TripActivity`, `Meal` and `Option`; `rooms` on `Lodging` / `Option`; `Meal.est_cost` +
+  `currency`. `apps/trips/costs.py` (pure): `Basis`, `BASES_FOR` (kind → bases, default first; `stay_option` for a
+  stay choice's options), `amount_of` (the one accessor over the old field names), `basis_of`, `people_for(item, day,
+  trip)` (`cost_people`, else an activity's / split option's travellers, else `day.roster`, else the trip's; `(count,
+  known)`), `nights_for`, `estimate(item, day, trip)` → `Cost` (total, `per_person` in cents with the remainder on the
+  first share, and `line`: "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)"; unknown people →
+  "people not set", unknown nights / rooms → "× ? nights"), `money` ("€1,140", "€15.50", "NOK 12"), `planned_total`.
+  Forms: `forms.CostFieldsMixin` (`setup_cost(kind, amount_field)`: Cost / Currency / Cost is (limited to the kind's
+  bases) / People / Rooms (dropped where no room basis; cleared unless per room per night); `_form_fields.html`, the
+  leg page's fieldsets and the choice page draw them together as `partials/_cost_fields.html` with an Alpine preview
+  line, `window.sblCostPreview`) on the stay, leg (`LegEditForm`'s Details; the return trip copies basis and people,
+  not the amount), activity, meal page (`MealPageForm`: + currency, people; the day's Meals formset: amount and basis
+  only) and `OptionForm` (by kind). `group_edit` gives each option form the group object so rows cost no query.
+  `options.make_item` carries basis, rooms and people onto what Pick makes (a meal from an option gets its basis written
+  out). History: `changes.TRACKED` "cost" (`_cost`: "€95 per night → €95 per room per night × 3 rooms"; repeated
+  parts dropped). Pins unchanged (38 / 36); the booklet unchanged.
 
 ### Rules carried over from the itinerary project
 

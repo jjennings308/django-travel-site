@@ -98,6 +98,8 @@ from apps.locations.models import POI, City
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+
+from .costs import Basis
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
@@ -880,6 +882,11 @@ class TransportLeg(models.Model):
         validators=[MinValueValidator(Decimal("0"))],
     )
     currency = models.CharField(max_length=3, default="USD")
+    # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
+    cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
+    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                                   verbose_name="people",
+                                                   help_text="How many it's for, when not everyone on the day.")
     notes = models.TextField(blank=True)
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
@@ -1059,6 +1066,13 @@ class Lodging(models.Model):
         validators=[MinValueValidator(Decimal("0"))],
     )
     currency = models.CharField(max_length=3, default="USD")
+    # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
+    cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
+    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                                   verbose_name="people",
+                                                   help_text="How many it's for, when not everyone on the day.")
+    rooms = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                             help_text="For a price per room per night.")
     notes = models.TextField(blank=True)
     # Where it is, for the trip map (a stay is a private booking, never a catalogue POI).
     # The coordinates come from the address (``locate``) or are typed in; the city is the
@@ -1381,6 +1395,15 @@ class Meal(models.Model):
     # day's timeline; blank: it's a food idea. (Trip-page UX plan, U3.)
     reserved_time = models.TimeField(null=True, blank=True, verbose_name="reservation time")
     order = models.PositiveSmallIntegerField(default=0)
+    # Its estimate (budget-estimates B1): a meal needn't be booked to have a cost; per person by default.
+    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    currency = models.CharField(max_length=3, blank=True)
+    # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
+    cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
+    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                                   verbose_name="people",
+                                                   help_text="How many it's for, when not everyone on the day.")
     # The restaurant in the catalogue, when it's a notable one (site roadmap R18); optional.
     poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_meals",
                             verbose_name="place")
@@ -1432,6 +1455,11 @@ class TripActivity(models.Model):
     est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
                                    validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
     currency = models.CharField(max_length=3, blank=True)
+    # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
+    cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
+    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                                   verbose_name="people",
+                                                   help_text="How many it's for, when not everyone on the day.")
     notes = models.TextField(blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
@@ -2098,7 +2126,8 @@ class Option(models.Model):
     Typed choices (T1): the fields its group's ``kind`` asks for — a catalogue link (at most one of
     ``poi`` / ``activity`` / ``event`` / ``city``) or a typed ``place_text`` (stay, eat, do), a ``nights``
     override (stay; blank = the group's), ``from_text`` / ``to_text`` (travel). For a stay ``est_cost`` is
-    per night (``own_cost`` multiplies); otherwise the total. ``made`` is the item Pick created (T2)."""
+    per night (``own_cost`` multiplies); otherwise the total — unless ``cost_basis`` says otherwise (B1:
+    ``costs``, with ``rooms`` and ``cost_people``). ``made`` is the item Pick created (T2)."""
 
     group = models.ForeignKey(OptionGroup, on_delete=models.CASCADE, related_name="options")
     title = models.CharField(max_length=200)
@@ -2107,6 +2136,13 @@ class Option(models.Model):
     est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
                                    validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
     currency = models.CharField(max_length=3, blank=True)
+    # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
+    cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
+    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                                   verbose_name="people",
+                                                   help_text="How many it's for, when not everyone on the day.")
+    rooms = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
+                                             help_text="For a price per room per night.")
     order = models.PositiveSmallIntegerField(default=0)
     chosen = models.BooleanField(default=False)
     travelers = models.ManyToManyField(Traveler, blank=True, related_name="options")
@@ -2158,38 +2194,58 @@ class Option(models.Model):
         """A stay option's nights: its own, else its choice's (None when neither says)."""
         return self.nights or self.group.nights
 
+    def cost_estimate(self):
+        """Its ``costs.Cost`` (budget-estimates B1): people from ``options.attach`` when it ran, else its own."""
+        from .costs import estimate, people_for
+        people = getattr(self, "_people", None)
+        return estimate(self, people=people if people is not None else people_for(self))
+
     @property
     def own_cost(self):
-        """Its own estimate as a total: a stay's nightly price × its nights (× 1 while nights are unknown)."""
-        if self.est_cost is None:
+        """Its own estimate as a total (``costs``): a stay's nightly price × its nights (× 1 while nights are
+        unknown, as before B1), per room or per person when its basis says so."""
+        cost = self.cost_estimate()
+        if cost is None:
             return None
-        if self.group.kind == OptionGroup.Kind.STAY:
-            return self.est_cost * (self.stay_nights or 1)
-        return self.est_cost
+        if cost.total is None and cost.basis == "night":
+            return cost.amount
+        return cost.total
+
+    def _plain_cost(self):
+        """True when the cost is on its kind's default basis with nothing set that B1 added: its line keeps the
+        wording it had, so the booklet (and its snapshot) reads the same for existing options."""
+        from .costs import DEFAULT, kind_of
+        return (self.cost_basis in ("", DEFAULT[kind_of(self)]) and not self.cost_people and not self.rooms)
 
     def kind_line(self):
         """The one-line summary the choice's box and the booklet show for its kind (typed-choices T1):
         stay "EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße"; eat "Augustiner Bräustuben · EUR 40.00";
-        do "Hacker-Festzelt · 11:00–16:00 · EUR 20.00"; travel "Train · Augsburg → Munich · EUR 12.00"."""
+        do "Hacker-Festzelt · 11:00–16:00 · EUR 20.00"; travel "Train · Augsburg → Munich · EUR 12.00".
+        A cost on another basis (B1) reads as ``costs``' line: "€95 per room per night × 3 rooms × 4 nights =
+        €1,140 · €190 each (6)"."""
         group, parts = self.group, []
         money = (lambda amount: f"{self.currency or ''} {amount:.2f}".strip())
+        priced = self.est_cost is not None
+        plain = self._plain_cost()
+        cost_text = (money(self.est_cost) if plain else self.cost_estimate().line) if priced else ""
         if group.kind == OptionGroup.Kind.STAY:
-            if self.est_cost is not None:
+            if priced and plain:
                 nights = self.stay_nights
                 parts.append(f"{money(self.est_cost)}/night" + (f" × {nights} = {money(self.own_cost)}" if nights else ""))
+            elif priced:
+                parts.append(cost_text)
             elif self.stay_nights:
                 parts.append(f"{self.stay_nights} night{'s' if self.stay_nights != 1 else ''}")
             if self.place:
                 parts.append(self.place)
         elif group.kind == OptionGroup.Kind.EAT:
-            parts += [p for p in (self.place, money(self.est_cost) if self.est_cost is not None else "") if p]
+            parts += [p for p in (self.place, cost_text) if p]
         elif group.kind == OptionGroup.Kind.DO:
             when = "–".join(t.strftime("%H:%M") for t in (group.start_time, group.end_time) if t)
-            parts += [p for p in (self.place, when, money(self.est_cost) if self.est_cost is not None else "") if p]
+            parts += [p for p in (self.place, when, cost_text) if p]
         elif group.kind == OptionGroup.Kind.TRAVEL:
             route = " → ".join(p for p in (self.from_text, self.to_text) if p)
-            parts += [p for p in (group.get_mode_display() if group.mode else "", route,
-                                  money(self.est_cost) if self.est_cost is not None else "") if p]
+            parts += [p for p in (group.get_mode_display() if group.mode else "", route, cost_text) if p]
         return " · ".join(parts)
 
 

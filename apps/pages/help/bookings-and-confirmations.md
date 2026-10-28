@@ -50,6 +50,8 @@ Each train or flight shows its stage:
 | **Scheduled** | It has departure and arrival times. |
 | **Booked** | It has at least one confirmation number. |
 
+A confirmation's **cost** is what the booking cost. Once one covers a journey, stay or activity, that's the figure the trip's estimate uses for it instead of the item's own estimate, and only once however many things it covers ([what a cost means](/help/budget/#what-a-cost-means)).
+
 ## Insurance and passes
 
 A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On the trip's **Settings**, under **Loose confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
