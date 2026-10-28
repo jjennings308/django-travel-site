@@ -141,12 +141,16 @@ def _costs(trip, groups):
 
 def attach(trip, days, viewer=None, groups=None):
     """See the module docstring. ``days`` are the trip page's days (with their prefetched lists)."""
+    from .costs import people_for
     groups = load(trip) if groups is None else groups
     options = {}
+    day_by_pk = {day.pk: day for day in days}
     for group in groups:
         for option in group.options.all():
             option.group_ref = group
             option.group = group  # the cached object, so taken() costs no query
+            # Who its cost is for (budget-estimates B1), from the page's prefetched rosters: no query.
+            option._people = people_for(option, day_by_pk.get(group.day_id), trip)
             option.items = {kind: [] for kind in KINDS}
             options[option.pk] = option
             votes = list(option.votes.all())
@@ -258,6 +262,12 @@ def make_item(option, actor=None):
     def next_order(queryset):
         return (queryset.aggregate(m=Max("order"))["m"] or 0) + 1
 
+    # What its cost means comes along (budget-estimates B1): the option's basis (its own or its kind's default,
+    # written out so a meal made from a "total" option isn't read per person) and who it's for.
+    from .costs import basis_of
+    cost_meaning = {"cost_basis": basis_of(option) if option.est_cost is not None else "",
+                    "cost_people": option.cost_people}
+
     if group.kind == Kind.STAY:
         if not day.date:
             return None
@@ -265,13 +275,15 @@ def make_item(option, actor=None):
         item = Lodging.objects.create(
             trip=trip, name=option.title[:200], address=option.place_text or (option.poi.address if option.poi_id else ""),
             city=city or day.city, check_in=day.date, check_out=day.date + timedelta(days=nights),
-            nightly_rate=option.est_cost, currency=currency, notes=notes, option=option)
+            nightly_rate=option.est_cost, currency=currency, notes=notes, option=option,
+            rooms=option.rooms, **cost_meaning)
         item.fill_day_cities()
     elif group.kind == Kind.EAT:
         item = Meal.objects.create(
             day=day, name=option.title[:200], meal_type=group.meal_type or Meal.MealType.DINNER,
             reserved_time=group.start_time, poi=option.poi, why_recommended=notes,
-            order=next_order(day.meals.all()), option=option)
+            order=next_order(day.meals.all()), option=option,
+            est_cost=option.est_cost, currency=currency if option.est_cost is not None else "", **cost_meaning)
     elif group.kind == Kind.DO:
         poi = option.poi or (option.event.poi if option.event_id and option.event.poi_id else None) or (
             option.activity.venue if option.activity_id and option.activity.venue_id else None)
@@ -280,7 +292,7 @@ def make_item(option, actor=None):
             trip=trip, day=day, title=option.title[:200], kind=kind, poi=poi, event=option.event,
             place_text="" if poi else (option.place_text or getattr(city, "name", "")),
             start_time=group.start_time, end_time=group.end_time, est_cost=option.est_cost, currency=currency,
-            notes=notes, order=next_order(day.activities.all()), option=option)
+            notes=notes, order=next_order(day.activities.all()), option=option, **cost_meaning)
     elif group.kind == Kind.TRAVEL:
         own = list(trip.cities.all())
         catalogue = None
@@ -304,7 +316,7 @@ def make_item(option, actor=None):
             origin_timezone=getattr(origin_city, "timezone", "") or "",
             destination_timezone=getattr(destination_city, "timezone", "") or "",
             cost=option.est_cost, currency=currency, notes=notes,
-            order=next_order(trip.transport.filter(date=day.date)), option=option)
+            order=next_order(trip.transport.filter(date=day.date)), option=option, **cost_meaning)
     else:
         return None
     from django.contrib.contenttypes.models import ContentType

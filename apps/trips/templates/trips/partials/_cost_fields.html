@@ -1,0 +1,57 @@
+{% comment %}
+An item's cost and what it means, together (budget-estimates B1; forms.CostFieldsMixin): Cost, Currency, Cost is, People and Rooms (shown only for "Per room per night"; always without JavaScript), then a live preview line worked out in the browser from the fields (the saved figure is always computed in Python, apps/trips/costs.py). Pass form. Rendered by _form_fields.html, the leg page and the choice page where the amount would be. data-nights / data-people are the item's nights and people as the server knows them; a stay form's own Check in / Check out win.
+{% endcomment %}
+{% with amount=form.cost_amount_bound %}
+<div class="mb-4 sm:col-span-2" data-panel-tab="details" data-cost-fields data-nights="{{ form.cost_nights|default_if_none:'' }}" data-people="{{ form.cost_people_default|default_if_none:'' }}"
+     x-data="{ rooms: {% if form.cost_basis.value == 'room_night' %}true{% else %}false{% endif %}, line: '', read() { var r = window.sblCostPreview ? window.sblCostPreview($el) : null; if (r) { this.rooms = r.rooms; this.line = r.line; } } }"
+     x-init="read()" @input="read()" @change="read()">
+  <div class="grid gap-3 sm:grid-cols-2">
+    <div class="min-w-0"><label for="{{ amount.id_for_label }}">{{ amount.label }}</label>{{ amount }}{{ amount.errors }}</div>
+    {% if form.currency %}<div class="min-w-0"><label for="{{ form.currency.id_for_label }}">{{ form.currency.label }}</label>{{ form.currency }}{{ form.currency.errors }}</div>{% endif %}
+    {% if form.cost_basis %}<div class="min-w-0"><label for="{{ form.cost_basis.id_for_label }}">{{ form.cost_basis.label }}</label>{{ form.cost_basis }}{{ form.cost_basis.errors }}</div>{% endif %}
+    {% if form.cost_people %}<div class="min-w-0"><label for="{{ form.cost_people.id_for_label }}">{{ form.cost_people.label }}</label>{{ form.cost_people }}<p class="mt-1 text-xs text-zinc-500">{{ form.cost_people.help_text }}</p>{{ form.cost_people.errors }}</div>{% endif %}
+    {% if form.rooms %}<div class="min-w-0" x-show="rooms" data-cost-rooms><label for="{{ form.rooms.id_for_label }}">{{ form.rooms.label }}</label>{{ form.rooms }}{{ form.rooms.errors }}</div>{% endif %}
+  </div>
+  <p class="mt-2 text-sm text-zinc-600" data-cost-preview x-show="line" x-text="line" x-cloak></p>
+</div>
+{% endwith %}
+<script>
+  // The preview line (budget-estimates B1): the same arithmetic as costs.estimate, for display only.
+  window.sblCostPreview = window.sblCostPreview || function (box) {
+    function field(mark) { return box.querySelector('[data-cost="' + mark + '"]'); }
+    function num(mark) { var el = field(mark); return el && el.value !== "" ? Number(el.value) : null; }
+    var basisEl = field("basis");
+    var basis = basisEl ? (basisEl.value || basisEl.options[1].value) : "total";
+    var amount = num("amount");
+    var currencyEl = field("currency");
+    var currency = currencyEl && currencyEl.value && currencyEl.value !== "__other" ? currencyEl.value : "";
+    var symbols = { EUR: "€", USD: "$", GBP: "£", JPY: "¥", CHF: "CHF ", CAD: "CA$", AUD: "A$" };
+    function money(value) {
+      var whole = Math.round(value * 100) % 100 === 0;
+      var text = value.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+      return symbols[currency] ? symbols[currency] + text : (currency ? currency + " " + text : text);
+    }
+    var people = num("people") || Number(box.dataset.people) || null;
+    var nights = Number(box.dataset.nights) || null;
+    var form = box.closest("form");
+    var checkIn = form && form.querySelector('[name$="check_in"]'), checkOut = form && form.querySelector('[name$="check_out"]');
+    if (checkIn && checkOut && checkIn.value && checkOut.value) {
+      var n = Math.round((new Date(checkOut.value) - new Date(checkIn.value)) / 86400000);
+      nights = n > 0 ? n : null;
+    }
+    var rooms = num("rooms");
+    var result = { rooms: basis === "room_night", line: "" };
+    if (amount === null) return result;
+    var nightsText = nights ? nights + (nights === 1 ? " night" : " nights") : "? nights";
+    var total = null, line;
+    if (basis === "total") { total = amount; line = money(amount) + " total"; }
+    else if (basis === "person") { total = people ? amount * people : null; line = money(amount) + " per person" + (people ? " × " + people + " = " + money(total) : ""); }
+    else if (basis === "night") { total = nights ? amount * nights : null; line = money(amount) + " per night × " + nightsText + (total !== null ? " = " + money(total) : ""); }
+    else if (basis === "room_night") { total = rooms && nights ? amount * rooms * nights : null; line = money(amount) + " per room per night × " + (rooms ? rooms + (rooms === 1 ? " room" : " rooms") : "? rooms") + " × " + nightsText + (total !== null ? " = " + money(total) : ""); }
+    else { total = people && nights ? amount * people * nights : null; line = money(amount) + " per person per night × " + (people || "?") + " × " + nightsText + (total !== null ? " = " + money(total) : ""); }
+    if (total !== null && people && basis !== "person" && people > 1) line += " · " + money(Math.ceil(total * 100 / people) / 100) + " each (" + people + ")";
+    if (!people) line += " · people not set";
+    result.line = line;
+    return result;
+  };
+</script>

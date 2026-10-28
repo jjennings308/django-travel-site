@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-27
+updated: 2026-10-28
 
 # The budget and splitting costs
 
@@ -44,9 +44,32 @@ The rates are the European Central Bank's daily reference rates. A cost dated af
 
 If you changed money at a known rate and want the budget to use it: on the **Budget** page, under **Your own rates**, add a row such as "1 EUR is worth 1.09 USD" and click **Save rates**. Everyone on the trip sees the rates; editors change them. That rate is used for this trip, both ways, instead of the bank's.
 
+## What a cost means
+
+Every journey, stay, activity, meal and choice option can carry a cost: what you expect to pay, whether or not it needs booking (the €8 castle museum at the door, lunch, the U-Bahn). Next to it, **Cost is** says what the number means, and the site works out the total and each person's share:
+
+| Cost is | Means | Offered on |
+|---|---|---|
+| **Total** | the whole thing, for everyone it's for | journeys, stays, activities, meals, options |
+| **Per person** | each person pays this | journeys, activities, meals, options |
+| **Per night** | the whole stay, per night | stays and stay options |
+| **Per room per night** | one room, per night; give **Rooms** | stays and stay options |
+| **Per person per night** | each person, per night | stays and stay options |
+
+Leave **Cost is** blank and it keeps the usual meaning: the total for a journey or activity, per night for a stay, per person for a meal.
+
+**People** is how many it's for when that isn't everyone: a train for 4 of the 6. Left blank, it's the people on the activity, else the people on that day, else everyone on the trip. If the trip has no travellers yet, the total shows without a share and says "people not set".
+
+Under the fields a line shows the sum as you type, the same as everywhere else the cost appears. For a stay for six in Germany, compare:
+
+- three hotel rooms: "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)";
+- one 3-bedroom flat: "€310 per night × 4 nights = €1,240 · €206.67 each (6)".
+
+In a "choose one" box, options priced this way show the same line, so they compare directly; **Pick** carries the cost and its meaning onto the stay, meal, activity or journey it makes.
+
 ## Estimated trip cost
 
-The trip page shows **Estimated trip cost** under **About this trip**, above the days: the costs entered on confirmations and the estimated costs of activities, added up in your currency (set under Settings). It's an estimate of what's booked, separate from the costs recorded in the budget.
+The trip page shows **Estimated trip cost** under **About this trip**, above the days, in your currency (set under Settings). For each journey, stay, activity and meal it counts the booked cost when a confirmation with a cost covers it, else its estimate on its basis. A booking that covers several things (one ticket for four flights) counts once, and their own estimates step aside, so nothing is counted twice. Undecided choices aren't counted; a chosen option's own cost is. Estimates that can't be totalled yet (no nights, no rooms or no people) are listed as "without a total yet". It's the plan, separate from the costs recorded in the budget.
 
 ## Problems
 

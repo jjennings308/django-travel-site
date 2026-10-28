@@ -49,7 +49,7 @@ from .forms import (
     TripForm,
     section_payload_form,
 )
-from . import budget, checklists, itinerary, route, trip_cities, trip_notes
+from . import budget, checklists, costs, itinerary, route, trip_cities, trip_notes
 from .models import (
     counts_q,
     TripExpense,
@@ -524,10 +524,10 @@ def _trip_page_context(request, trip):
         "to_book": _to_book_urls(trip, to_book, "edit" in capabilities),
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
-        # An option's own estimate counts once chosen, and for every track of a split (P5).
-        "cost_estimate": budget.estimate(trip, _reader_currency(request), extra=[
-            (o.own_cost, o.currency) for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks
-            if o.own_cost is not None]),
+        # Booked where a costed confirmation covers it, else each item's estimate on its basis (budget-estimates
+        # B1: no double count); an option's own estimate counts once chosen, and for every track of a split (P5).
+        "cost_estimate": costs.planned_total(trip, _reader_currency(request), options=[
+            o for g in all_groups for o in ([g.chosen] if g.chosen else []) + g.tracks]),
         "checklist_attention": checklists.attention(trip, checklist_lists),
         "leg_modes": TransportLeg.Mode.choices,
         "trip_comments": comments.get(("trip", trip.pk), []),
@@ -2316,6 +2316,8 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
     kind = request.POST.get("kind") if request.method == "POST" and request.POST.get("kind") else group.kind
     formset = OptionFormSet(request.POST or None, instance=group, prefix="options",
                             form_kwargs={"trip": trip, "city_ids": [day.city_id], "kind": kind})
+    for option_form in formset.forms:  # the one group object, so a row's cost preview reads no query (B1)
+        option_form.instance.group = group
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     if request.method == "POST" and form.is_valid() and formset.is_valid():
         kind_changed = group.pk is not None and form.initial.get("kind") != form.cleaned_data["kind"]

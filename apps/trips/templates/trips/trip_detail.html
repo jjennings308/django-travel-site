@@ -130,8 +130,8 @@
         </div>
         {% if trip.notes %}<p class="note mt-4 mb-0">{{ trip.notes|linebreaksbr }}</p>{% endif %}
         {% if cost_estimate %}
-          {# Estimated trip cost (R10): bookings' and activities' costs in the reader's currency. #}
-          <p class="mt-3 text-sm" id="cost-estimate"><span class="card-kicker">Estimated trip cost</span> <strong>{% if cost_estimate.approx %}≈ {% endif %}{{ cost_estimate.currency }} {{ cost_estimate.total }}</strong> <span class="text-zinc-500">from {{ cost_estimate.bookings }} booking{{ cost_estimate.bookings|pluralize }} and {{ cost_estimate.activities }} activit{{ cost_estimate.activities|pluralize:"y,ies" }}{% if cost_estimate.missing %}; not counted: costs in {{ cost_estimate.missing|join:", " }} (no rate){% endif %}</span> · <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>{% if cost_estimate.used %}<span class="block text-xs text-zinc-500">{{ cost_estimate.used|join:" · " }}</span>{% endif %}</p>
+          {# Estimated trip cost (R10; budget-estimates B1): booked where a costed confirmation covers it, else each item's estimate, in the reader's currency. #}
+          <p class="mt-3 text-sm" id="cost-estimate"><span class="card-kicker">Estimated trip cost</span> <strong>{% if cost_estimate.approx %}≈ {% endif %}{{ cost_estimate.currency }} {{ cost_estimate.total }}</strong> <span class="text-zinc-500">from {{ cost_estimate.bookings }} booking{{ cost_estimate.bookings|pluralize }} and {{ cost_estimate.estimates }} estimate{{ cost_estimate.estimates|pluralize }}{% if cost_estimate.unpriced %}; {{ cost_estimate.unpriced }} without a total yet (people or nights not set){% endif %}{% if cost_estimate.missing %}; not counted: costs in {{ cost_estimate.missing|join:", " }} (no rate){% endif %}</span> · <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>{% if cost_estimate.used %}<span class="block text-xs text-zinc-500">{{ cost_estimate.used|join:" · " }}</span>{% endif %}</p>
         {% endif %}
       </div>
     </details>

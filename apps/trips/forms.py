@@ -832,7 +832,92 @@ class LocatingStayMixin:
         return stay
 
 
-class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
+class CostFieldsMixin:
+    """An item's cost and what it means (budget-estimates B1; ``apps/trips/costs.py``): the amount and currency
+    it already had, plus **Cost is** (the bases its kind offers, blank = the kind's default), **People** (when
+    it's not everyone) and **Rooms** (per room per night only; Alpine shows it then, and a no-JS form shows it
+    always). All optional. ``_form_fields.html`` renders them together, as ``partials/_cost_fields.html``, where
+    the amount would be, with a live preview line; the saved figure is always worked out in Python. Call
+    ``setup_cost(kind, amount_field)`` at the end of ``__init__``."""
+
+    cost_amount_field = None
+    cost_kind = None
+
+    def setup_cost(self, kind, amount_field):
+        from .costs import BASES_FOR, Basis
+        self.cost_kind, self.cost_amount_field = kind, amount_field
+        allowed = BASES_FOR[kind]
+        if "cost_basis" in self.fields:
+            field = self.fields["cost_basis"]
+            field.choices = [("", f"{Basis(allowed[0]).label} (usual)")] + [(b.value, b.label) for b in allowed]
+            field.required = False
+            field.widget.attrs["data-cost"] = "basis"
+        if "rooms" in self.fields and Basis.PER_ROOM_NIGHT not in allowed:
+            del self.fields["rooms"]
+        marks = {amount_field: "amount", "cost_people": "people", "rooms": "rooms", "currency": "currency"}
+        for name, mark in marks.items():
+            if name in self.fields:
+                self.fields[name].widget.attrs["data-cost"] = mark
+                if name != "currency":
+                    self.fields[name].required = False
+        if amount_field in self.fields:  # one name everywhere; "Cost is" says what it means
+            self.fields[amount_field].label = "Cost"
+
+    @property
+    def cost_block_hidden(self):
+        """The fields ``_cost_fields.html`` draws, so the general field loop skips them."""
+        return [name for name in ("currency", "cost_basis", "cost_people", "rooms") if name in self.fields]
+
+    @property
+    def cost_block_at(self):
+        return self.cost_amount_field
+
+    @property
+    def cost_amount_bound(self):
+        return self[self.cost_amount_field]
+
+    @property
+    def cost_nights(self):
+        """The item's nights for the preview (a stay's, a stay option's), else None."""
+        from .costs import nights_for
+        try:
+            return nights_for(self.instance)
+        except (AttributeError, KeyError, TypeError):
+            return None
+
+    @property
+    def cost_people_default(self):
+        """How many people the item's cost is for when People is blank (``costs.people_for``), for the preview.
+        A choice's options share their group's answer, so the options formset costs one lookup, not one a row."""
+        from .costs import people_for, roster_count
+        item = self.instance
+        try:
+            if type(item).__name__ == "Option":
+                group = item.group
+                if not hasattr(group, "_cost_people_default"):
+                    group._cost_people_default = roster_count(group.day, group.trip) or None
+                return group._cost_people_default
+            trip = item.trip if hasattr(item, "trip_id") and item.trip_id else (
+                item.day.trip if getattr(item, "day_id", None) else None)
+            if trip is None:
+                return None
+            if getattr(item, "day_id", None):
+                day = item.day
+            else:
+                when = getattr(item, "date", None) or getattr(item, "check_in", None)
+                day = trip.days.filter(date=when).first() if when else None
+            return people_for(item, day, trip)[0] or None
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return None
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("cost_basis") != "room_night" and "rooms" in cleaned:
+            cleaned["rooms"] = None  # rooms only mean something per room per night
+        return cleaned
+
+
+class LodgingForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
     """One place to stay. Check-out has to follow check-in."""
 
     class Meta:
@@ -847,6 +932,9 @@ class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.
             "check_out",
             "nightly_rate",
             "currency",
+            "cost_basis",
+            "cost_people",
+            "rooms",
             "notes",
             "no_booking",
             "option",
@@ -868,6 +956,7 @@ class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.
         if trip is not None:  # home + the city's local currency (E4)
             currencies.setup(self, "currency", trip, [self.initial.get("city") or self.instance.city_id],
                              given_initial=given)
+        self.setup_cost("stay", "nightly_rate")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -878,7 +967,7 @@ class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.
         return cleaned_data
 
 
-class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm):
+class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm):
     """One transport leg, entered by local times like the admin inline.
 
     Same conversion as the admin — see ``LocalLegTimeMixin``. Two deliberate
@@ -917,6 +1006,8 @@ class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
             "service_number",
             "cost",
             "currency",
+            "cost_basis",
+            "cost_people",
             "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2}),
@@ -928,6 +1019,7 @@ class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
         if self.instance.trip_id:  # home + both ends' local currencies (E4)
             currencies.setup(self, "currency", self.instance.trip,
                              [self.instance.origin_city_id, self.instance.destination_city_id])
+        self.setup_cost("leg", "cost")
         # Point the zone inputs at the datalist the formset renders once. The
         # id is the datalist leg_form.html renders once (COMMON_ZONE_SUGGESTIONS).
         for name in ("origin_timezone", "destination_timezone"):
@@ -1049,8 +1141,8 @@ class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
                 origin=leg.destination, destination=leg.origin,
                 origin_city=leg.destination_city, destination_city=leg.origin_city,
                 origin_timezone=leg.destination_timezone, destination_timezone=leg.origin_timezone,
-                currency=leg.currency, **times,
-            )  # Not copied: service number, cost, notes (they differ on the way back).
+                currency=leg.currency, cost_basis=leg.cost_basis, cost_people=leg.cost_people, **times,
+            )  # Not copied: service number, cost (its basis and people are), notes (they differ on the way back).
             if self.cleaned_data.get("same_booking"):  # one booking for both ways (K1)
                 from .models import BookingTask, Confirmation
                 for task in BookingTask.for_item(leg).filter(done=False):
@@ -1460,7 +1552,7 @@ def _setup_catalogue_fields(form, trip, food_first=False):
         form.fields["event"].help_text = "Optional: the dated event this is about (events during the trip)."
 
 
-class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
+class MealForm(CostFieldsMixin, BlankOrderFallbackMixin, forms.ModelForm):
     """One restaurant or food stop on a day. ``poi`` links a notable one to the catalogue (R18)."""
 
     class Meta:
@@ -1474,6 +1566,8 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
             "why_recommended",
             "reservation_notes",
             "poi",
+            "est_cost",
+            "cost_basis",
             "order",
         ]
         widgets = {
@@ -1492,6 +1586,7 @@ class MealForm(BlankOrderFallbackMixin, forms.ModelForm):
         if trip is None and self.instance.day_id:
             trip = self.instance.day.trip
         _setup_catalogue_fields(self, trip, food_first=True)
+        self.setup_cost("meal", "est_cost")
 
 
 MealFormSet = inlineformset_factory(
@@ -2046,7 +2141,8 @@ class LegEditForm(InOptionMixin, TransportLegForm):
         ("Route", ("origin", "origin_city", "destination", "destination_city", "mode")),
         ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
                       "est_duration", "order")),
-        ("Details", ("operator", "service_number", "cost", "currency", "notes", "no_booking")),
+        ("Details", ("operator", "service_number", "cost", "currency", "cost_basis", "cost_people", "notes",
+                     "no_booking")),
         ("Placement", ("section", "option")),
         ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date",
                          "same_booking")),
@@ -2111,7 +2207,7 @@ class ConfirmationEditForm(forms.ModelForm):
         currencies.setup(self, "currency", trip, currencies.confirmation_city_ids(self.instance))
 
 
-class TripActivityForm(InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
+class TripActivityForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
     """An activity on a day (``trips:activity_new`` / ``activity_edit``): a tour, timed entry,
     ticket, table or car hire. The place is a catalogue POI in one of the trip's cities (else
     typed), the travellers are the trip's own."""
@@ -2119,7 +2215,7 @@ class TripActivityForm(InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
     class Meta:
         model = TripActivity
         fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "event", "place_text", "travelers",
-                  "est_cost", "currency", "notes", "no_booking", "order", "option"]
+                  "est_cost", "currency", "cost_basis", "cost_people", "notes", "no_booking", "order", "option"]
         widgets = {
             "start_time": TimeInput(styled=False),
             "end_time": TimeInput(styled=False),
@@ -2250,7 +2346,7 @@ class OptionGroupForm(forms.ModelForm):
         return cleaned
 
 
-class OptionForm(forms.ModelForm):
+class OptionForm(CostFieldsMixin, forms.ModelForm):
     """One option: a title, notes, a link and an estimated cost, plus what its choice's kind asks for
     (typed-choices T1): a place — a catalogue place, activity, event or city, or typed — for a stay, a meal
     or something to do; a nights override for a stay (whose cost is per night); from / to for travel. Its
@@ -2265,7 +2361,7 @@ class OptionForm(forms.ModelForm):
     class Meta:
         model = Option
         fields = ["title", "poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text",
-                  "notes", "url", "est_cost", "currency", "order"]
+                  "notes", "url", "est_cost", "currency", "cost_basis", "cost_people", "rooms", "order"]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
 
     def __init__(self, *args, trip=None, city_ids=(), kind="any", **kwargs):
@@ -2294,8 +2390,7 @@ class OptionForm(forms.ModelForm):
             self.fields["event"].label = "Catalogue event"
         if "city" in self.fields:
             _leg_city_fields(self, trip, names=("city",))
-        if self.kind == "stay":
-            self.fields["est_cost"].label = "Cost per night"
+        self.setup_cost("stay_option" if self.kind == "stay" else "option", "est_cost")
 
     @staticmethod
     def _pickers(trip):
@@ -2365,12 +2460,15 @@ class MealPageForm(InOptionMixin, MealForm):
     which the Meals formset leaves out so its rows cost no extra queries."""
 
     class Meta(MealForm.Meta):
-        fields = MealForm.Meta.fields + ["option"]
+        fields = MealForm.Meta.fields + ["currency", "cost_people", "option"]
 
     def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, trip=trip, **kwargs)
-        self.setup_option(trip or (self.instance.day.trip if self.instance.day_id else None),
-                          self.instance.day if self.instance.day_id else None)
+        trip = trip or (self.instance.day.trip if self.instance.day_id else None)
+        self.setup_option(trip, self.instance.day if self.instance.day_id else None)
+        if trip is not None:  # its own currency on its page (the day's Meals formset has amount and basis only)
+            currencies.setup(self, "currency", trip, [self.instance.day.city_id if self.instance.day_id else None])
+            self.fields["currency"].widget.attrs["data-cost"] = "currency"
 
 
 class IdeaForm(forms.ModelForm):

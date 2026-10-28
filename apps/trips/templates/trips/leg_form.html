@@ -24,12 +24,16 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
           <legend class="form-section-title">{{ heading }}</legend>
           <div class="field-grid">
             {% for field in fields %}
+              {% if field.name == form.cost_block_at %}{% include "trips/partials/_cost_fields.html" %}
+              {% elif field.name in form.cost_block_hidden %}
+              {% else %}
               <div class="mb-4">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
                 {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
                 {{ field.errors }}
               </div>
+              {% endif %}
             {% endfor %}
           </div>
         </fieldset>
