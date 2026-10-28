@@ -274,9 +274,9 @@ class ConvertTests(Fixture):
         self.assertEqual((chosen.title, chosen.notes, chosen.url, chosen.est_cost), ("Augusta", "Old town",
                                                                                       "https://example.com/a", 140))
         task.refresh_from_db()
-        self.assertTrue(task.done)
-        self.assertIn("Moved to the choice “Augsburg hotel” on Day 2.", task.notes)
-        self.assertEqual(task.options.count(), 2)  # still readable
+        self.assertEqual((task.done, task.kind), (False, "book"))  # stays as the booking to-do (D1)
+        self.assertIn("Options moved to the choice “Augsburg hotel” on Day 2.", task.notes)
+        self.assertEqual(task.options.count(), 0)
 
     def test_the_banner_counts_them(self):
         task = BookingTask.objects.create(trip=self.trip, title="Hotel?", kind="decide")

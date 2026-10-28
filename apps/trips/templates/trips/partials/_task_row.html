@@ -1,5 +1,5 @@
 {% comment %}
-One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, task and can_edit. "For:" links to the item on the trip page; a decision lists its options as Reference does. Editors get Edit · Mark done · Options · Delete, all coming back here.
+One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, task and can_edit. "For:" links to the item on the trip page; an old decision lists its options as Reference does. Editors get Edit · Mark done · Make it a choice (a to-do with options, retire-decision-todos D1) · Delete, all coming back here.
 {% endcomment %}
 <li class="px-4 py-3" id="task-{{ task.pk }}">
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -16,7 +16,6 @@ One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, t
         <li class="{% if option.chosen %}font-medium text-zinc-900{% else %}text-zinc-600{% endif %}">
           {% if option.chosen %}✓ {% endif %}{{ option.title }}{% if option.est_cost is not None %} <span class="text-zinc-500">~{{ option.est_cost }} {{ option.currency }}</span>{% endif %}{% if option.url %} <a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">↗</a>{% endif %}
           {% if option.detail %}<span class="block text-xs text-zinc-500">{{ option.detail }}</span>{% endif %}
-          {% if option.chosen and can_edit and not task.done %}<span class="block text-xs"><a class="link-quiet font-medium" href="{% url 'trips:option_add' trip.pk option.pk %}?as=stay">Add as a stay</a> · <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}">Add as an activity…</a></span>{% endif %}
         </li>
       {% endfor %}
     </ul>
@@ -25,7 +24,7 @@ One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, t
     <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
       <a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">Edit</a>
       <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% else %}Mark done{% endif %}</button></form>
-      {% if not task.done %}<a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a>{% endif %}
+      {% if task.options.all and not task.done %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}?task={{ task.pk }}&amp;next={{ request.path|urlencode }}" data-make-choice>Make it a choice</a>{% endif %}
       <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ request.path|urlencode }}">Delete</a>
     </div>
   {% endif %}

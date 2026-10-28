@@ -1,14 +1,16 @@
-"""Turn a trip's phases, callouts and free text into notes (P3), and its choose-your-adventure sections and
-decision to-dos into "choose one" groups (P4), as the trip's review page would with everything ticked
-(day-first plan, apps/trips/day_first.py). ``--all`` does every live trip (retire-old-section-types S1),
-each in its own transaction under its own history line.
+"""Turn a trip's to-dos with options (the old way of choosing) into "choose one" groups, as the trip's review
+page would with everything ticked (day-first plan P4, retire-decision-todos D1; apps/trips/day_first.py): each
+merges into a matching open choice on its day or becomes a new one, and the to-do stays open as the booking
+to-do (``--tick-off`` ticks it off instead). One that looks like two choices is listed and skipped: do it on
+the trip's review page. ``--all`` does every live trip, each in its own transaction under its own history line.
 
-    .venv/bin/python manage.py convert_day_first --trip 36            # dry run: prints the plan
+    .venv/bin/python manage.py convert_day_first --trip 36            # dry run: prints Merge / New per to-do
     .venv/bin/python manage.py convert_day_first --trip 36 --apply
     .venv/bin/python manage.py convert_day_first --all                # dry run, every trip, then totals
-    .venv/bin/python manage.py convert_day_first --all --apply
+    .venv/bin/python manage.py convert_day_first --all --apply [--tick-off]
 
-A second run finds nothing to do.
+(It also converted phases, callouts, free text and choose-your-adventure sections until those were retired,
+retire-old-section-types S2.) A second run finds nothing to do, apart from the skipped ones.
 """
 from django.core.management.base import BaseCommand, CommandError
 
@@ -17,7 +19,7 @@ from apps.trips.models import Trip
 
 
 class Command(BaseCommand):
-    help = ("Turn phases, callouts and free text into notes, and choices into option groups, for one trip or "
+    help = ("Turn to-dos with options into \"choose one\" groups, merging into a matching one, for one trip or "
             "every trip (dry run unless --apply).")
 
     def add_arguments(self, parser):
@@ -25,8 +27,10 @@ class Command(BaseCommand):
         which.add_argument("--trip", type=int, help="The trip's id.")
         which.add_argument("--all", dest="every", action="store_true", help="Every live trip.")
         parser.add_argument("--apply", action="store_true", help="Save the changes (default: print the plan).")
+        parser.add_argument("--tick-off", action="store_true",
+                            help="Tick the to-dos off (default: they stay open as booking to-dos).")
 
-    def handle(self, *args, trip=None, every=False, apply=False, **options):
+    def handle(self, *args, trip=None, every=False, apply=False, tick_off=False, **options):
         if every:
             trips = list(Trip.objects.live().order_by("start_date", "pk"))
         else:
@@ -45,7 +49,7 @@ class Command(BaseCommand):
             found += count
             with_work += 1
             if apply:
-                done = day_first.apply(one)
+                done = day_first.apply(one, tick_off=tick_off)
                 converted += done
                 self.stdout.write(self.style.SUCCESS(f"  Converted {done}." if every else f"Converted {done}."))
         if every:
@@ -63,8 +67,10 @@ class Command(BaseCommand):
             for item in items:
                 kind, lines = item.before
                 after_kind, after = item.after
-                blocked = getattr(item, "blocked", "")
-                target = f"left as it is: {blocked}" if blocked else f"{after_kind.lower()}: {(after or [''])[0][:60]}"
+                skip = getattr(item, "skip", "")
+                target = f"left as it is: {skip}" if skip else (after or [''])[0][:70]
+                if not skip and after_kind == "New choice":
+                    target = f"New choice on Day {day.day_number}: {target}"
                 self.stdout.write(f"  {kind:12} {(lines or [''])[0][:60]}  →  {target}")
-                count += 0 if blocked else 1
+                count += 0 if skip else 1
         return count

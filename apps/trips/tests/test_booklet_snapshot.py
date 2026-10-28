@@ -174,7 +174,7 @@ def build_trip():
                           place_text="Anneliese-Pohl-Allee 7", order=0)
     Option.objects.create(group=where, title="Old town flat", est_cost=Decimal("80"), currency="EUR", nights=3,
                           place_text="Markt 12", notes="3-night minimum", order=1)
-    # Its decision to-dos as "choose one" groups (P4).
+    # Its decision to-dos as "choose one" groups (P4); the to-do stays as the booking to-do (retire-decision-todos D1).
     day_first.apply(trip)
     return trip
 

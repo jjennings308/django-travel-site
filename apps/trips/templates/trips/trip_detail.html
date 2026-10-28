@@ -235,18 +235,17 @@
             {% endif %}
             {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
             {% if task.options.all %}
-              {# A decision's options (U6): the chosen one marked; editors can add it as a stay or activity. #}
+              {# A decision's options (U6; no longer made, retire-decision-todos D1): the chosen one marked; editors turn it into a choice. #}
               <ul class="mt-1.5 space-y-1 border-l-2 border-zinc-200 pl-3">
                 {% for option in task.options.all %}
                   <li class="{% if option.chosen %}font-medium text-zinc-900{% else %}text-zinc-600{% endif %}">
                     {% if option.chosen %}✓ {% endif %}{{ option.title }}{% if option.est_cost is not None %} <span class="text-zinc-500">~{{ option.est_cost }} {{ option.currency }}</span>{% endif %}{% if option.url %} <a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">↗</a>{% endif %}
                     {% if option.detail %}<span class="block text-xs text-zinc-500">{{ option.detail }}</span>{% endif %}
-                    {% if option.chosen and can_edit %}<span class="block text-xs"><a class="link-quiet font-medium" href="{% url 'trips:option_add' trip.pk option.pk %}?as=stay">Add as a stay</a> · <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}">Add as an activity…</a></span>{% endif %}
                   </li>
                 {% endfor %}
               </ul>
             {% endif %}
-            {% if can_edit %}<p class="mt-1 text-xs"><a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}%23still-to-book">{% if task.options.all %}Options ({{ task.options.all|length }}){% else %}Add options{% endif %}</a></p>{% endif %}
+            {% if can_edit and task.options.all and not task.done %}<p class="mt-1 text-xs"><a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}?task={{ task.pk }}&amp;next={{ request.path|urlencode }}%23still-to-book" data-make-choice>Make it a choice</a></p>{% endif %}
             {% with thread=comments_by_target.task|dictkey:task.pk %}
               {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Comments on this task" %}
               {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a comment</a></p>{% endif %}

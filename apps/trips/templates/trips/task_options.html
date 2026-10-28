@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-A decision's options (trips:task_options, U6): edit them and choose one, or none. Choosing creates nothing; the trip page then offers "Add as a stay / activity". The chosen radio is separate from the rows so one submit can't choose two (the database allows one per task too).
+A to-do's options, read-only (trips:task_options, U6; retire-decision-todos D1: to-dos with options are no longer made or edited, and this page goes in D2). Reached only by its address; offers "Make it a choice" while the to-do is open.
 {% endcomment %}
 {% block title %}Options — {{ task.title }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -10,49 +10,24 @@ A decision's options (trips:task_options, U6): edit them and choose one, or none
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
     <span>Options</span>
   </nav>
-  <form method="post" class="card p-6" novalidate>
-    {% csrf_token %}
-    <input type="hidden" name="next" value="{{ next }}">
-    <h1 class="page-title mb-1">Decide: {{ task.title }}</h1>
-    <p class="mb-4 text-zinc-500">The choices, and which one you went with. Saving options makes this task a decision.</p>
-    {{ formset.management_form }}
-    {% if formset.non_form_errors %}<div class="alert-error">{{ formset.non_form_errors }}</div>{% endif %}
-    <div class="space-y-4">
-      {% for form in formset %}
-        <fieldset class="rounded-lg border border-zinc-200 p-4">
-          {{ form.id }}
-          <label class="mb-3 flex items-center gap-2 font-medium">
-            <input type="radio" name="chosen" value="{% if form.instance.pk %}{{ form.instance.pk }}{% else %}new-{{ forloop.counter0 }}{% endif %}"{% if form.instance.pk and form.instance.pk == chosen_pk %} checked{% endif %}>
-            Chosen
-          </label>
-          <div class="grid gap-3 sm:grid-cols-3">
-            {% for field in form.visible_fields %}{% if field.name != "DELETE" %}
-              <div class="{% if field.name == 'detail' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
-            {% endif %}{% endfor %}
-          </div>
-          {% if form.instance.pk %}<label class="mt-2 flex items-center gap-2 text-sm text-zinc-600">{{ form.DELETE }} Remove this option</label>{% endif %}
-        </fieldset>
-      {% endfor %}
-    </div>
-    <label class="mt-4 flex items-center gap-2 text-sm"><input type="radio" name="chosen" value=""{% if not chosen_pk %} checked{% endif %}> Not decided yet</label>
-    <div class="mt-4 flex gap-3">
-      <button type="submit" class="btn">Save</button>
-      <a class="btn-quiet" href="{{ next }}">Cancel</a>
-    </div>
-  </form>
-  {% if chosen_pk %}
-    {% for option in task.options.all %}{% if option.chosen %}
-      <section class="card mt-6 p-5 text-sm">
-        <p class="font-medium">Chosen: {{ option.title }}</p>
-        <p class="mt-2 flex flex-wrap items-center gap-3">
-          <a class="btn-quiet" href="{% url 'trips:option_add' trip.pk option.pk %}?as=stay">Add as a stay</a>
-          <form method="get" action="{% url 'trips:option_add' trip.pk option.pk %}" class="flex items-center gap-2">
-            <select name="day">{% for d in days %}<option value="{{ d.pk }}"{% if d.pk == task.day_id %} selected{% endif %}>Day {{ d.day_number }}{% if d.date %} · {{ d.date|date:"M j" }}{% endif %}</option>{% endfor %}</select>
-            <button type="submit" class="btn-quiet">Add as an activity</button>
-          </form>
-        </p>
-        <p class="note mt-2">Either opens a form filled in from this option; nothing is added until you save it.</p>
-      </section>
-    {% endif %}{% endfor %}
-  {% endif %}
+  <section class="card p-6">
+    <h1 class="page-title mb-1">{{ task.title }}</h1>
+    <p class="mb-4 text-zinc-500">The options this to-do had. Choosing now happens on the day, in a “choose one” box everyone can vote on.</p>
+    {% if task.options.all %}
+      <ul class="space-y-2 text-sm">
+        {% for option in task.options.all %}
+          <li class="{% if option.chosen %}font-medium text-zinc-900{% else %}text-zinc-600{% endif %}">
+            {% if option.chosen %}✓ {% endif %}{{ option.title }}{% if option.est_cost is not None %} <span class="text-zinc-500">~{{ option.est_cost }} {{ option.currency }}</span>{% endif %}{% if option.url %} <a class="link-quiet" href="{{ option.url }}" target="_blank" rel="noopener noreferrer">↗</a>{% endif %}
+            {% if option.detail %}<span class="block text-xs text-zinc-500">{{ option.detail }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">No options.</p>
+    {% endif %}
+    <p class="mt-4 flex flex-wrap gap-3">
+      {% if task.options.all and not task.done %}<a class="btn" href="{% url 'trips:trip_convert' trip.pk %}?task={{ task.pk }}&amp;next={{ next|urlencode }}" data-make-choice>Make it a choice</a>{% endif %}
+      <a class="btn-quiet" href="{{ next }}">Back</a>
+    </p>
+  </section>
 {% endblock %}

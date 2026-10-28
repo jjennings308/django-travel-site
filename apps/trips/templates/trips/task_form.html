@@ -23,7 +23,7 @@ One to-do (trips:task_new / task_edit, edit-by-day plan E2). Its About leg / sta
       <button type="submit" class="btn">{% if task %}Save{% else %}Add to-do{% endif %}</button>
       <a class="btn-quiet" href="{{ next }}">Cancel</a>
       {% if task %}
-        <a class="link-quiet font-medium" href="{% url 'trips:task_options' trip.pk task.pk %}?next={{ request.path|urlencode }}">{% if task.kind == "decide" %}Options{% else %}Make it a decision…{% endif %}</a>
+        {% if task.options.all and not task.done %}<a class="link-quiet font-medium" href="{% url 'trips:trip_convert' trip.pk %}?task={{ task.pk }}&amp;next={{ next|urlencode }}" data-make-choice>Make it a choice</a>{% endif %}
         <a class="link-quiet ml-auto font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ next|urlencode }}">Delete</a>
       {% endif %}
     </div>
