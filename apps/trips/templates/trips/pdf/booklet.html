@@ -103,6 +103,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
         {% if day.stay %}<p><span class="tag">{% if day.stay in day.checking_in %}Check in{% else %}Staying{% endif %}</span> <strong>{{ day.stay.name }}</strong>{% if day.stay.address %} · {{ day.stay.address }}{% endif %}{% for c in day.stay.confirmation_list %} · <span class="code">{{ c.confirmation_number }}</span>{% endfor %}</p>{% include "trips/pdf/_refs.html" with refs=day.stay.refs %}{% endif %}
       </div>
     {% endif %}
+    {% if day.trip_notes %}{% include "trips/pdf/_notes.html" with item=day %}{% endif %}
 
     {% if day.shared_legs %}
       <div class="block">

@@ -8,7 +8,7 @@ INPUT = {"class": "sbl-input"}
 
 
 class CatalogueNoteForm(forms.ModelForm):
-    """One note on a place, activity or event: what to know, and optionally which days it's closed and
+    """One note on a place, city, activity or event: what to know, and optionally which days it's closed and
     how far ahead to book."""
 
     closed_weekdays = forms.TypedMultipleChoiceField(
@@ -28,6 +28,15 @@ class CatalogueNoteForm(forms.ModelForm):
             "booking_url": forms.URLInput(attrs={**INPUT, "placeholder": "https://"}),
             "checked_on": DateInput(),
         }
+
+    #: Not asked on a city (a city isn't closed on a weekday or booked ahead)
+    PLACE_ONLY = ("closed_weekdays", "book_ahead", "book_ahead_unit")
+
+    def __init__(self, *args, kind=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if kind == "city":
+            for name in self.PLACE_ONLY:
+                del self.fields[name]
 
     def clean(self):
         data = super().clean()

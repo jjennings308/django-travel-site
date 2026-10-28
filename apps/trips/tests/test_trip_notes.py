@@ -114,3 +114,51 @@ class HidingTests(Fixture):
             body = self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk])).content.decode()
         self.assertIn(shown.text, body)
         self.assertNotIn(hidden.text, body)
+
+
+class CityNotesTests(Fixture):
+    """A city's notes on the first day of each run of days there, and under a stay option in that city."""
+
+    def setUp(self):
+        super().setUp()
+        self.marburg = self.castle.city
+        self.day.city = self.marburg
+        self.day.save()
+        self.day2 = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19), city=self.marburg)
+        self.day3 = Day.objects.create(trip=self.trip, day_number=3, date=date(2027, 9, 20))
+
+    def test_first_day_of_a_run_only(self):
+        self.note(city=self.marburg, text="Old town is car-free")
+        html = self.page(self.viewer)
+        self.assertEqual(html.count("Old town is car-free"), 1)
+        day1 = html[html.index('id="day-1"'):html.index('id="day-2"')]
+        self.assertIn("Old town is car-free", day1)
+        self.assertIn("From Marburg", day1)
+
+    def test_editor_hides_it_for_this_trip(self):
+        note = self.note(city=self.marburg, text="Old town is car-free")
+        TripHiddenNote.objects.create(trip=self.trip, note=note)
+        html = self.page(self.editor)
+        self.assertNotIn('data-trip-note="%d"' % note.pk, html)
+        self.assertIn("— show", html)
+
+    def test_stay_option_shows_its_citys_notes(self):
+        from apps.trips.models import Option, OptionGroup
+        group = OptionGroup.objects.create(trip=self.trip, day=self.day3, prompt="Where to sleep?", kind="stay")
+        Option.objects.create(group=group, title="Stay in Marburg", city=self.marburg)
+        Option.objects.create(group=group, title="Somewhere else")
+        self.note(city=self.marburg, text="Old town is car-free")
+        self.day.city = self.day2.city = None
+        self.day.save()
+        self.day2.save()
+        html = self.page(self.viewer)
+        self.assertIn("1 note from the catalogue", html)
+        self.assertIn("Old town is car-free", html)
+
+    def test_booklet_prints_it(self):
+        from apps.trips import pdf
+        self.note(city=self.marburg, text="Old town is car-free")
+        self.client.force_login(self.viewer)
+        with mock.patch.object(pdf, "render_pdf", side_effect=lambda html, **kw: html.encode()) as render:
+            self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk]))
+        self.assertIn("Old town is car-free", render.call_args.args[0])

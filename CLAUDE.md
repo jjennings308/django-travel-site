@@ -236,13 +236,14 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - `locations` models (Country, Region, City, POI) still carry the old `ReviewableMixin` (`status` field) next to `Approvable`. A migration from the old system is in progress (see `apps/approval_system/MIGRATION_GUIDE.md`). New code should use the `Approvable` fields. Both mixins define `approve()` / `reject()` / `request_changes()` and `ReviewableMixin` comes first in the MRO, so its versions set the legacy `status` and then call `super()` to reach `Approvable` (which owns `approval_status` and `ApprovalLog`). Keep that `super()` call, or approvals silently stop moving locations out of the pending queue.
 - `Activity` also uses `Approvable`. App-level docs are in `apps/approval_system/*.md` and `apps/accounts/docs/`.
 - **Catalogue notes** (`apps/catalogue_notes`, layer 3 after `events`; plan `docs/plans/catalogue-notes.md`): a
-  `CatalogueNote` (`Approvable`; exactly one of `poi` / `activity` / `event`, `catalogue_note_one_target`; tone tip /
+  `CatalogueNote` (`Approvable`; exactly one of `poi` / `activity` / `event` / `city` (catalogue_notes 0003; a city's
+  form drops closed days and book ahead), `catalogue_note_one_target`; tone tip /
   warning / critical, text, `closed_weekdays` (0 = Monday), `book_ahead` + `book_ahead_unit`, `booking_url`,
   `checked_on`) is a fact a traveller should know about a place, activity or event. Members' notes are pending until
   approved in the "Catalogue notes" queue (catalogue_notes 0002); staff's are published. `services.notes_for(target,
   user)`: own, then inherited — an event's activity and venue (`Event.poi`), an activity's venue — each inherited one
   marked `from_name`; approved for everyone, plus a member's own pending ones, everything for staff. The **Good to
-  know** card on place / activity / event pages is the shell partial `partials/_catalogue_notes.html` (loads
+  know** card on place / city / activity / event pages is the shell partial `partials/_catalogue_notes.html` (loads
   `catalogue_notes:for_target` after the page, as reviews do, so the catalogue apps never import it); add / edit /
   delete (writer until approved, staff always) and report ("Out of date?", `content_reported` to staff). Listed in the
   staff dashboard's approvals; `/notes/` is disallowed in robots.txt.
@@ -403,7 +404,8 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
 - **Catalogue notes on a trip** (catalogue-notes plan N2; trips 0046): `apps/trips/trip_notes.attach(trip, days)`
   (trip page and booklet, after the prefetch) gives each meal / trip activity / section linked to the catalogue its
   approved notes in one query — a section's activity first, then that activity's venue, then its place — as
-  `item.trip_notes`, and `item.hidden_trip_notes` for those an editor hid on this trip (`trips.TripHiddenNote`, unique
+  `item.trip_notes` (a city's notes go on the first day of each `route.runs` run in it, `day.trip_notes`, under the
+  stay line, and on a stay option with that `city`), and `item.hidden_trip_notes` for those an editor hid on this trip (`trips.TripHiddenNote`, unique
   trip + note; `trips:trip_note_hide`, POST, `show=1` to bring one back). Shown under the item
   (`partials/_trip_notes.html`, "From <place> · checked Mon YYYY", Not for this trip for editors) and printed in the
   booklet (`pdf/_notes.html`, hidden ones skipped; the snapshot fixture has two notes and a hidden one). Never in the

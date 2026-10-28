@@ -1,4 +1,4 @@
-"""Notes on catalogue places, activities and events (docs/plans/catalogue-notes.md).
+"""Notes on catalogue places, cities, activities and events (docs/plans/catalogue-notes.md).
 
 A note is written once on the thing it's about — "Cash only; no ATM near the castle", "Closed Mondays and
 Tuesdays", "Timed entry: book 3 months ahead" — and shows on that catalogue page and, from N2 on, under
@@ -15,7 +15,7 @@ from django.db.models import Q
 from apps.activities.models import Activity
 from apps.approval_system.models import Approvable
 from apps.events.models import Event
-from apps.locations.models import POI
+from apps.locations.models import POI, City
 
 WEEKDAYS = ((0, "Monday"), (1, "Tuesday"), (2, "Wednesday"), (3, "Thursday"), (4, "Friday"), (5, "Saturday"),
             (6, "Sunday"))
@@ -37,6 +37,7 @@ class CatalogueNote(Approvable):
     activity = models.ForeignKey(Activity, on_delete=models.CASCADE, null=True, blank=True,
                                  related_name="catalogue_notes")
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name="catalogue_notes")
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, related_name="catalogue_notes")
 
     tone = models.CharField(max_length=10, choices=Tone.choices, default=Tone.TIP)
     text = models.TextField(help_text="What a traveller should know, e.g. “Cash only; no ATM near the castle.”")
@@ -61,9 +62,10 @@ class CatalogueNote(Approvable):
         constraints = [
             models.CheckConstraint(
                 name="catalogue_note_one_target",
-                condition=(Q(poi__isnull=False, activity__isnull=True, event__isnull=True)
-                           | Q(poi__isnull=True, activity__isnull=False, event__isnull=True)
-                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=False)),
+                condition=(Q(poi__isnull=False, activity__isnull=True, event__isnull=True, city__isnull=True)
+                           | Q(poi__isnull=True, activity__isnull=False, event__isnull=True, city__isnull=True)
+                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=False, city__isnull=True)
+                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=True, city__isnull=False)),
             ),
         ]
 
@@ -72,11 +74,12 @@ class CatalogueNote(Approvable):
 
     @property
     def target(self):
-        return self.poi or self.activity or self.event
+        return self.poi or self.activity or self.event or self.city
 
     @property
     def target_kind(self):
-        return "poi" if self.poi_id else "activity" if self.activity_id else "event"
+        return ("poi" if self.poi_id else "activity" if self.activity_id else "event" if self.event_id
+                else "city")
 
     @property
     def target_name(self):

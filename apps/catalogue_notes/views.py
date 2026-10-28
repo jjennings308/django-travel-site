@@ -1,5 +1,5 @@
 """Notes on catalogue pages (docs/plans/catalogue-notes.md, N1): the Good to know card's list (loaded after
-the place / activity / event page, so the page itself pays no query), and adding, editing, deleting and
+the place / city / activity / event page, so the page itself pays no query), and adding, editing, deleting and
 reporting a note."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -38,7 +38,7 @@ def for_target(request, kind, slug):
 @login_required
 def add(request, kind, slug):
     target = get_target(kind, slug)
-    form = CatalogueNoteForm(request.POST or None)
+    form = CatalogueNoteForm(request.POST or None, kind=kind)
     if request.method == "POST" and form.is_valid():
         note = form.save(commit=False)
         setattr(note, KINDS[kind][1], target)
@@ -58,10 +58,10 @@ def add(request, kind, slug):
 
 @login_required
 def edit(request, pk):
-    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event"), pk=pk)
+    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event", "city"), pk=pk)
     if not can_edit(request.user, note):
         raise PermissionDenied
-    form = CatalogueNoteForm(request.POST or None, instance=note)
+    form = CatalogueNoteForm(request.POST or None, instance=note, kind=note.target_kind)
     if request.method == "POST" and form.is_valid():
         note = form.save()
         if not _is_staff(request.user) and note.approval_status in (
@@ -78,7 +78,7 @@ def edit(request, pk):
 
 @login_required
 def delete(request, pk):
-    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event"), pk=pk)
+    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event", "city"), pk=pk)
     if not can_edit(request.user, note):
         raise PermissionDenied
     back = note.get_absolute_url()
@@ -94,7 +94,7 @@ def delete(request, pk):
 def report(request, pk):
     """Tell staff a published note looks wrong or out of date."""
     from apps.notifications.services import notify_staff
-    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event"), pk=pk,
+    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event", "city"), pk=pk,
                              approval_status=ApprovalStatus.APPROVED)
     reason = (request.POST.get("reason") or "").strip()[:500]
     notify_staff("content_reported", f"A note on “{note.target_name}” was reported",
