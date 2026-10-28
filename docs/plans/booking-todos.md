@@ -1,6 +1,6 @@
 # Plan: to-dos that cover several items, and a "To book" list you can work in
 
-Status: K1 done (2026-10-28, branch `k1-task-links`); K2 not started. Decided by James and Claude 2026-10-28. Two phases, one branch each, in order: K1 (a to-do
+Status: K1 done (2026-10-28, branch `k1-task-links`); K2 done (2026-10-28, branch `k2-to-book`). Decided by James and Claude 2026-10-28. Two phases, one branch each, in order: K1 (a to-do
 covers several items), K2 (Reference's to-do and Not booked lists work like the days). Read with `CLAUDE.md` →
 Trips → "Booking tasks point at their item", "Confirmations attach like comments", "Round trips", "The item panel",
 "One page to read and edit", and `docs/plans/retire-decision-todos.md` (D2 is merged, so every to-do is a booking

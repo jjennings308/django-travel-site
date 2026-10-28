@@ -131,7 +131,7 @@ class LinksTests(Fixture):
         with mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 9, 1)):
             html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
         banner = re.search(r'id="needs-attention">(.*?)</p>', html, re.S).group(1)
-        self.assertIn(f'href="{self.url}">1 to do</a>', banner)
+        self.assertIn('href="#other-todos">1 other to-do</a>', banner)  # covers nothing (booking-todos K2)
         self.assertNotIn("decision", banner)  # decisions are choices on the days now (D2)
         self.assertIn(f'href="{self.url}" data-all-todos>All to-dos</a>', html)
 

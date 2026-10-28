@@ -1,0 +1,90 @@
+{% comment %}
+To book (booking-todos K2; booking_tasks.to_book, with links from views._to_book_urls): one row per item still to book, in date order — No plan yet, or the to-dos covering it (items covered by the same to-dos share a row: "Augsburg → Munich and back") — then Other to-dos. Pass to_book and mode:
+- "page": Reference on the trip page (#to-book). A click on a row opens it in the item panel (data-panel); editors get Mark done (fetch, 204; the row greys and moves to Done today), and on No plan yet rows Add a to-do · Add confirmation (in the panel) · No booking needed. panel.js swaps this in from trips:to_book_fragment after a save.
+- "todo": the To do page's No plan yet (only rows with no to-do; the to-dos are listed above it there): links to the item's own page with next back here; the same quick actions.
+- "bookings": the Bookings page's Not booked yet, read-only: each row opens on the trip page (?item=).
+Without JavaScript every link and form works on its own, coming back to #to-book.
+{% endcomment %}
+{% load trip_comments %}
+{% with here=request.path %}
+{% if mode == "page" %}
+<div id="to-book" class="scroll-mt-32" data-to-book data-to-book-fragment="{% url 'trips:to_book_fragment' trip.pk %}">
+  {% if to_book.rows or to_book.other %}
+    <h3 class="grid-label mt-8 flex items-baseline justify-between gap-3">To book <span class="flex items-baseline gap-3">{% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="to-book" label="To book" %}<a class="link-quiet text-xs font-medium normal-case" href="{% url 'trips:trip_todo' trip.pk %}" data-all-todos>All to-dos</a></span></h3>
+  {% endif %}
+{% endif %}
+{% if to_book.rows %}
+  <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-to-book-rows>
+    {% for row in to_book.rows %}{% if mode == "page" or row.no_plan %}
+      <li class="px-4 py-2.5{% if mode == 'page' %} cursor-pointer{% endif %}" id="to-book-{{ row.key }}" data-to-book-row{% if mode == "page" %} data-panel="{{ row.open }}"{% endif %}>
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="badge badge-mode">{{ row.what }}</span>
+          {% if mode == "page" %}<a class="link-quiet font-medium" href="#{{ row.anchor }}">{{ row.label }}</a>
+          {% elif mode == "todo" and can_edit %}<a class="link-quiet font-medium" href="{{ row.item_page }}?next={{ here|urlencode }}%23no-plan">{{ row.label }}</a>
+          {% else %}<a class="link-quiet font-medium" href="{% url 'trips:trip_detail' trip.pk %}?item={{ row.anchor }}#{{ row.anchor }}">{{ row.label }}</a>{% endif %}
+          <span class="text-zinc-500">{% if row.day %}Day {{ row.day.day_number }} · {% endif %}{{ row.when|date:"D M j" }}</span>
+          {% if row.no_plan %}<span class="font-medium text-amber-700" data-no-plan>No plan yet</span>{% endif %}
+        </div>
+        {% for task in row.tasks %}
+          <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1" data-to-book-task>
+            <span class="text-zinc-800">{{ task.title }}</span>
+            <span class="text-zinc-500">{{ task.get_priority_display }}{% if task.due %} · due {{ task.due|date:"M j" }}{% elif task.due_note %} · {{ task.due_note }}{% endif %}</span>
+            {% if can_edit %}<form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}" data-mark-done>{% csrf_token %}<input type="hidden" name="next" value="{{ here }}#to-book"><button type="submit" class="link-quiet text-xs font-medium">Mark done</button></form>{% endif %}
+          </div>
+          {% if mode == "page" %}
+            {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
+            {% with thread=comments_by_target.task|dictkey:task.pk %}
+              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Comments on this task" %}
+              {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a comment</a></p>{% endif %}
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+        {% if can_edit and row.no_plan and mode != "bookings" %}
+          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" data-to-book-actions>
+            {% if mode == "page" %}
+              <a class="link-quiet font-medium" href="{{ row.todo }}" data-panel-link>Add a to-do</a>
+              <a class="link-quiet font-medium" href="{{ row.confirm }}" data-panel-link>Add confirmation</a>
+            {% else %}
+              <a class="link-quiet font-medium" href="{{ row.todo }}&amp;next={{ here|urlencode }}">Add a to-do</a>
+              <a class="link-quiet font-medium" href="{{ row.confirm }}?next={{ here|urlencode }}">Add confirmation</a>
+            {% endif %}
+            <form method="post" action="{{ row.no_booking }}" data-no-booking>{% csrf_token %}<input type="hidden" name="next" value="{{ here }}{% if mode == 'page' %}#to-book{% else %}#no-plan{% endif %}"><button type="submit" class="link-quiet">No booking needed</button></form>
+          </div>
+        {% endif %}
+      </li>
+    {% endif %}{% endfor %}
+  </ul>
+{% endif %}
+{% if mode == "page" %}
+  {% if to_book.other %}
+    <p class="grid-label mt-4" id="other-todos">Other to-dos</p>
+    <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-other-todos>
+      {% for task in to_book.other %}
+        <li class="cursor-pointer px-4 py-2.5" id="task-{{ task.pk }}" data-to-book-row data-panel="{{ task.open_url }}">
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span class="font-medium text-zinc-900">{{ task.title }}</span>
+            <span class="text-zinc-500">{{ task.get_priority_display }}{% if task.due %} · due {{ task.due|date:"M j" }}{% elif task.due_note %} · {{ task.due_note }}{% endif %}</span>
+            {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}">{{ task.cover_label }}</a></span>{% elif task.day %}<a class="link-quiet text-zinc-500" href="#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
+            {% if can_edit %}<form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}" data-mark-done>{% csrf_token %}<input type="hidden" name="next" value="{{ here }}#to-book"><button type="submit" class="link-quiet text-xs font-medium">Mark done</button></form>{% endif %}
+          </div>
+          {% if task.suggestion %}
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+              <span class="text-zinc-500">Looks like: {{ task.suggestion_info.label }} ({{ task.suggestion_info.kind }})</span>
+              {% url 'trips:task_link' trip.pk task.pk as link_url %}
+              <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}#to-book"><input type="hidden" name="{{ task.suggestion_info.kind }}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
+              <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}#to-book"><input type="hidden" name="dismiss" value="{{ task.suggestion_info.label }}"><button type="submit" class="link-quiet">Not this one</button></form>
+            </div>
+          {% endif %}
+          {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
+          {% with thread=comments_by_target.task|dictkey:task.pk %}
+            {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Comments on this task" %}
+            {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a comment</a></p>{% endif %}
+          {% endwith %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <details class="mt-3" data-done-today hidden><summary class="cursor-pointer text-sm font-medium text-zinc-700">Done today</summary><ul class="card mt-2 divide-y divide-zinc-100 p-0 text-sm"></ul></details>
+</div>
+{% endif %}
+{% endwith %}

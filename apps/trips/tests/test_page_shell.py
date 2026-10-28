@@ -124,7 +124,7 @@ class DaySummaryTests(Fixture):
     def test_needs_attention_banner(self):
         html = self.page().content.decode()
         banner = re.search(r'<p class="callout-warning[^"]*" id="needs-attention">(.*?)</p>', html, re.S).group(1)
-        self.assertIn(f'href="{reverse("trips:trip_todo", args=[self.trip.pk])}">1 to do</a>', banner)  # E2
+        self.assertIn('href="#to-book" data-to-book-count>', banner)  # items to book (booking-todos K2)
         self.assertLess(html.index('id="needs-attention"'), html.index('class="day-nav"'))  # under the header
         BookingTask.objects.all().delete()
         Lodging.objects.all().delete()

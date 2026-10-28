@@ -741,10 +741,13 @@ that matter most:
   page: a link `trip_detail?item=<anchor>#<anchor>` opens the item's day (hash script) and the item itself in the panel
   (`panel.js` reads `?item=`): **Bookings** (`trips:trip_bookings`, `/trips/<pk>/bookings/`, anyone who can see the
   trip; the page context plus `views._edit_trip_stays_and_legs`: the confirmations (`partials/_confirmation_groups.html`,
-  shared with Reference, `elsewhere=True`), Not booked yet (`partials/_not_booked.html`, shared too) and **Getting around
+  shared with Reference, `elsewhere=True`), Not booked yet (the To book rows with no to-do, `partials/_to_book.html`
+  `mode="bookings"`, read-only; K2) and **Getting around
   & stays** (`#stays-legs`: every stay and leg in date order with its day and confirmation chips, strays flagged, the
-  "Turn “A → B” table rows into journeys" link)); **To do** (choices, then Not booked yet, then the to-dos; to-dos keep
-  their own pages); the map page's lists; the calendar feed's links. The header links Bookings · To do · Map · Budget ·
+  "Turn “A → B” table rows into journeys" link)); **To do** (choices, then the to-dos by priority and due date — "what
+  do I book next?" —, the done ones folded, then **No plan yet**: the To book rows no to-do covers, `mode="todo"`, with
+  Add a to-do · Add confirmation · No booking needed linking to pages with `next` back; booking-todos K2; to-dos keep
+  their own pages; Mark done in place); the map page's lists; the calendar feed's links. The header links Bookings · To do · Map · Budget ·
   Photos · People · History; the jump bar gains **Ideas** while the shelf has any. Budget keeps its own costs and rates.
   The booklet has no links.
 - **Booking tasks cover their items** (trips 0025, Phase E; booking-todos K1, trips 0056–0058): a to-do covers any
@@ -778,7 +781,7 @@ that matter most:
   so add no print styling): a header (title, dates · nights · status; Settings and Download PDF;
   Bookings · To do · Map · Budget · Photos links; a ⋯ menu, Alpine, with Add to calendar, Tidy suggestions (editors), Share /
   the shared link / Stop sharing and Delete), the **Needs attention** banner (`#needs-attention`, only when
-  something does: not booked, to do, decisions, documents not ticked, not on any day, tables to convert,
+  something does: to book, other to-dos (K2), decisions, documents not ticked, not on any day, tables to convert,
   each linking to its list), a sticky jump bar (Days · Reference), then:
   - **The days are the overview** (`docs/plans/trip-days-as-overview.md`; the web Overview table is gone,
     the booklet's "Days at a glance" page is unchanged). Each day's `<summary>` has line 1 (Day N · date ·
@@ -812,8 +815,23 @@ that matter most:
     Posting or editing a comment returns to `trip_detail#comment-N` (one anchor — the comment sits
     inside its day, so the page opens it).
   - **Reference** (`#reference`): the home of confirmations (one row each, `#confirmation-N`, number
-    in monospace, linking to its first item via `confirmation.anchor`), Still to book, Not booked
-    yet and Contacts. Confirmation chips on items are links to their row.
+    in monospace, linking to its first item via `confirmation.anchor`), **To book** and Contacts. Confirmation
+    chips on items are links to their row. **To book** (booking-todos K2; `#to-book`, the old `#still-to-book` and
+    `#not-booked` map to it in the hash script): `booking_tasks.to_book(trip)` (no queries, after `attach` and the
+    confirmations) — each item with no confirmation and not `no_booking` that is bookable (Not booked's rule) or has an
+    open to-do, in date order, **No plan yet** or its to-dos (items covered by exactly the same open to-dos are one
+    row: "Augsburg → Munich and back"), then **Other to-dos** (`#other-todos`: open to-dos with no row — covering
+    nothing, or only confirmed items — with their Looks like suggestion); `views._to_book_urls` adds each row's links.
+    Rows carry `data-panel` (editors: the to-do's page, or the item's own page on a No plan yet row; others
+    `item_panel`, which gained kind `task`, read-only); editors get **Mark done** (`data-mark-done`, `trips/to_book.js`:
+    `fetch`, `task_done` answers 204, the row greys into "Done today" until reload) and on No plan yet rows **Add a
+    to-do** (`task_new?leg=…`, partners pre-ticked) · **Add confirmation** (both in the panel) · **No booking needed**
+    (`trips:item_no_booking`, POST, `undo=1`). `panel.js` swaps the list for `trips:to_book_fragment` after every save
+    (the page's context, like `day_fragment`). Needs attention's "N not booked" / "N to do" became "N to book" (rows)
+    and "N other to-dos"; the day summary's ⚠ counts as before. **No booking needed** (`no_booking`, trips 0059) on
+    `TransportLeg`, `Lodging`, `TripActivity`: on their forms (a leg's Details), tracked in history ("booking"), the
+    item shows "no booking needed" instead of its stage, and `not_booked` / `to_book` skip it. One partial,
+    `partials/_to_book.html` (`mode` page / todo / bookings).
 - **The item panel** (day-first plan P2; mechanism: plain `fetch` in `apps/trips/static/trips/panel.js`, no htmx, so no
   new CDN file): on the trip page a click on an item (rows and cards carry `data-panel` = the edit URL for editors, else
   `trips:item_panel`; Edit / Edit this day links carry `data-panel-link`) opens its page in `#item-panel` (a side panel from
@@ -1498,18 +1516,14 @@ refuses while an open to-do has options). Complete.
 
 ### Booking to-dos
 
-Plan: `docs/plans/booking-todos.md` (a to-do covers several items through `TaskLink`, like confirmations — round
-trips and connections pre-ticked, "Same booking as the way out" on the return trip; then Reference's Still to book
-and Not booked yet become one **To book** list whose rows open in the panel, with Mark done in place, quick actions
-and a "No booking needed" flag). Decided 2026-10-28. Phases K1–K2, one branch each, in order. Status: not started.
-
-### Booking to-dos
-
 Plan: `docs/plans/booking-todos.md` (a to-do covers several items — a round trip, a connection, a hotel and its
 transfer — K1; then Reference's to-do and Not booked lists become one "To book" list that works like the days, with
 "No booking needed" per item — K2). Decided 2026-10-28. Phases K1–K2, one branch each, in order. Status: K1
 (`TaskLink`, trips 0056–0058; Covers on the to-do page with partners pre-ticked; Same booking as the way out; the
-"Also attach" confirmation offer; detail pin 37 → 38, day fragment 35 → 36) done on branch `k1-task-links`.
+"Also attach" confirmation offer; detail pin 37 → 38, day fragment 35 → 36) done on branch `k1-task-links`; K2
+(Reference's **To book**, `trips:to_book_fragment`, `item_no_booking`, `no_booking` on legs / stays / activities
+(trips 0059), the To do page's No plan yet, Mark done in place; no query-count change) done on branch `k2-to-book`.
+Complete.
 
 ### Rules carried over from the itinerary project
 

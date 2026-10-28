@@ -28,7 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponseBadRequest
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -491,6 +491,7 @@ def _trip_page_context(request, trip):
     days = list(trip.days.all())
     stray_stays = itinerary.attach_stays(days, list(trip.lodging.all()))
     not_booked = booking_tasks.not_booked(trip)
+    to_book = booking_tasks.to_book(trip)  # Reference's To book (booking-todos K2): no queries
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
     itinerary.overview(days, not_booked, open_tasks)
     option_groups.count_on_days(days)
@@ -520,6 +521,7 @@ def _trip_page_context(request, trip):
         # + Add's kind buttons (P3; Options, a "choose one", P4).
         "quick_add_kinds": QUICK_ADD_KINDS,
         "not_booked": not_booked,
+        "to_book": _to_book_urls(trip, to_book, "edit" in capabilities),
         "confirmation_groups": confirmation_groups(trip),
         "checklists": checklist_lists,
         # An option's own estimate counts once chosen, and for every track of a split (P5).
@@ -562,13 +564,74 @@ def day_fragment(request, pk, day_pk):
     return render(request, "trips/partials/_day.html", {**context, "day": day, "open_day_pk": day.pk})
 
 
-#: The item panel's kinds (P2): where each is found in the trip page's assembled days.
-PANEL_KINDS = ("leg", "stay", "activity", "meal", "section", "day")
+def _to_book_urls(trip, to_book, can_edit):
+    """The To book list (booking-todos K2) with each row's links: ``open`` (what a click on the row opens
+    in the panel: an editor's to-do or item page, else the read-only panel), and for editors on a No plan
+    yet row ``todo`` (a new to-do covering it, partners ticked), ``confirm`` (its confirmations) and
+    ``no_booking``. Plain ``reverse``s: no queries."""
+    for row in to_book["rows"]:
+        item, kind = row["item"], row["kind"]
+        if row["no_plan"]:
+            row["open"] = (_item_page(trip, item) if can_edit
+                           else reverse("trips:item_panel", args=[trip.pk, kind, item.pk]))
+        else:
+            task = row["tasks"][0]
+            row["open"] = (reverse("trips:task_edit", args=[trip.pk, task.pk]) if can_edit
+                           else reverse("trips:item_panel", args=[trip.pk, "task", task.pk]))
+        row["item_page"] = _item_page(trip, item)
+        if can_edit:
+            row["todo"] = reverse("trips:task_new", args=[trip.pk]) + f"?{kind}={item.pk}"
+            row["confirm"] = reverse("trips:item_confirmations", args=[trip.pk, kind, item.pk])
+            row["no_booking"] = reverse("trips:item_no_booking", args=[trip.pk, kind, item.pk])
+    for task in to_book["other"]:
+        task.open_url = (reverse("trips:task_edit", args=[trip.pk, task.pk]) if can_edit
+                         else reverse("trips:item_panel", args=[trip.pk, "task", task.pk]))
+    to_book["count"] = len(to_book["rows"])
+    to_book["no_plan"] = [row for row in to_book["rows"] if row["no_plan"]]  # To do and Bookings
+    return to_book
+
+
+@login_required
+def to_book_fragment(request, pk):
+    """Reference's To book list on its own (``trips/partials/_to_book.html``), from the trip page's context,
+    so the item panel can swap it in after a save (booking-todos K2). Anyone who can see the trip."""
+    trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    context = _trip_page_context(request, trip)
+    request.path = reverse("trips:trip_detail", args=[trip.pk])
+    return render(request, "trips/partials/_to_book.html", {**context, "mode": "page"})
+
+
+@login_required
+@require_POST
+def item_no_booking(request, pk, kind, item_pk):
+    """Mark a leg, stay or activity "No booking needed" (``undo=1``: needed again; editors; booking-todos
+    K2): it leaves To book and Not booked yet. A history line, as any field change."""
+    from .models import TASKABLE, item_trip_id
+    model = TASKABLE.get(kind)
+    if model is None:
+        raise Http404
+    trip = _readable_trip(request, pk, "edit")
+    item = get_object_or_404(model.objects.all(), pk=item_pk)
+    if item_trip_id(item) != trip.pk:
+        raise Http404
+    from .booking_tasks import label
+    item.no_booking = request.POST.get("undo") != "1"
+    item.save(update_fields=["no_booking"])
+    messages.success(request, f"{label(item)}: {'no booking needed' if item.no_booking else 'to book again'}.")
+    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#to-book"))
+
+
+#: The item panel's kinds (P2): where each is found in the trip page's assembled days; ``task`` is a
+#: to-do, read-only (booking-todos K2).
+PANEL_KINDS = ("leg", "stay", "activity", "meal", "section", "day", "task")
 
 
 def _find_on_days(context, kind, item_pk):
     """(item, its day) from the trip page context, or (None, None)."""
     trip, days = context["trip"], context["days"]
+    if kind == "task":
+        task = next((t for t in trip.booking_tasks.all() if t.pk == item_pk), None)
+        return task, getattr(task, "item_day", None) if task is not None else None
     if kind == "day":
         day = next((d for d in days if d.pk == item_pk), None)
         return day, day
@@ -611,7 +674,7 @@ def item_panel(request, pk, kind, item_pk):
     if item is None:
         raise Http404
     by_target = context["comments_by_target"]
-    comments = by_target.get(kind, {}).get(item.pk, []) if kind in ("day", "section") else None
+    comments = by_target.get(kind, {}).get(item.pk, []) if kind in ("day", "section", "task") else None
     request.path = reverse("trips:trip_detail", args=[trip.pk])
     return render(request, "trips/item_panel.html", {
         **context, "kind": kind, "item": item, "day": day, "panel_comments": comments,
@@ -2578,10 +2641,10 @@ def _todo_url(trip):
 
 @login_required
 def trip_todo(request, pk):
-    """What's left to do on the trip (anyone who can see it), in order (day-first plan P7): undecided
-    "choose one" groups, then what isn't booked yet, then the hand-written to-dos — open ones by
-    priority and due date, the done ones folded away. Editors add, edit and tick off to-dos here; the
-    rest open on the trip page."""
+    """What's left to do on the trip (anyone who can see it), in order: undecided "choose one" groups,
+    then the to-dos — open ones by priority and due date (booking-todos K2: "what do I book next?"), the
+    done ones folded away — then **No plan yet**, the To book rows no to-do covers, so nothing shows twice.
+    Editors add, edit and tick off to-dos here (Mark done in place); the rest open on the trip page."""
     from django.db.models import prefetch_related_objects
     from . import booking_tasks
     trip = _readable_trip(request, pk, "view")
@@ -2594,11 +2657,12 @@ def trip_todo(request, pk):
     from .models import OptionGroup
     open_groups = (OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN)
                    .select_related("day").prefetch_related("options").order_by("day__date", "start_time", "order"))
-    # Not booked yet (P7), worked out as on the trip page: only what counts, with its confirmations.
+    # No plan yet (K2), worked out as on the trip page: only what counts, with its confirmations.
     page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
-    not_booked = _trip_page_context(request, page_trip)["not_booked"]
+    to_book = _trip_page_context(request, page_trip)["to_book"]
     return render(request, "trips/trip_todo.html", {
-        "trip": trip, "can_edit": can_edit, "open_groups": open_groups, "not_booked": not_booked,
+        "trip": trip, "can_edit": can_edit, "open_groups": open_groups, "to_book": to_book,
+        "no_plan": to_book["no_plan"],
         "open_tasks": [t for t in tasks if not t.done], "done_tasks": [t for t in tasks if t.done],
     })
 
@@ -2682,6 +2746,8 @@ def task_done(request, pk, task_pk):
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
     task.done = request.POST.get("done", "1") != "0"
     task.save(update_fields=["done"])
+    if request.headers.get("X-Requested-With") == "fetch":  # ticked in place (booking-todos K2)
+        return HttpResponse(status=204)
     messages.success(request, f"{'Done' if task.done else 'Back on the list'}: “{task.title}”.")
     return redirect(_back(request, _todo_url(trip)))
 
@@ -3033,7 +3099,7 @@ def task_link(request, pk, task_pk):
     from . import booking_tasks
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
-    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#to-book")
     from .models import TASKABLE
     for kind, model in TASKABLE.items():
         if request.POST.get(kind):

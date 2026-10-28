@@ -3,7 +3,7 @@ summary: Leave a comment for everyone on a trip, on the trip itself or on a day,
 audience: everyone
 section: Trips
 order: 60
-updated: 2026-10-27
+updated: 2026-10-28
 
 # Comments
 
@@ -21,7 +21,7 @@ At the bottom of the trip page, under **Comments on this trip**, click **Add a c
 
 - **A day:** open the day and click **Add a comment to this day**, at the end of the day.
 - **One of the day's plans:** click **Add a comment** under it.
-- **A task:** in Reference, under **Still to book**, click **Add a comment** under the task.
+- **A task:** in Reference, under **To book**, click **Add a comment** under the task.
 
 Write your comment and click **Save**. You land back on the trip page at your comment, with its day open.
 

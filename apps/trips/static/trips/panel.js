@@ -137,12 +137,26 @@
         fresh.open = day.open;
         day.replaceWith(fresh);
       });
-    })).then(function () {
+    }).concat([refreshToBook()])).then(function () {
       // Moved to a day that wasn't refreshed (a leg given another date): reload the page there.
       if (state.anchor && !state.deleted && !document.getElementById(state.anchor)) {
         location.hash = state.anchor;
         location.reload();
       }
+    });
+  }
+
+  // Reference's To book list (booking-todos K2) after any save: a to-do, a confirmation or "No booking
+  // needed" anywhere can change it. Swapped for trips:to_book_fragment, keeping "Done today" closed.
+  function refreshToBook() {
+    var list = document.querySelector("[data-to-book]");
+    if (!list) return Promise.resolve();
+    return request(list.dataset.toBookFragment).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
+      if (!html) return;
+      var holder = document.createElement("div");
+      holder.innerHTML = html.trim();
+      var fresh = holder.querySelector("[data-to-book]");
+      if (fresh) list.replaceWith(fresh);
     });
   }
 

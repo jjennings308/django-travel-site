@@ -23,7 +23,7 @@ On the trip's **Map**, the **Choices** switch (off at first) shows the options o
 
 An undecided choice adds one to the day's **⚠** and to **Needs attention** ("N decisions", which links to the first one). The [To do page](/help/bookings-and-confirmations/#the-to-do-page) lists every undecided choice at the top.
 
-**Until an option is picked, nothing in it counts.** Its trains, stays, meals and activities aren't in the day's timeline, in **Not booked yet**, in the trip's cost estimate, on the map or in the [calendar feed](/help/calendar-feed/). The calendar shows one all-day event instead, "Undecided: Castle / Deutsches Museum". The shared read-only link never shows choices.
+**Until an option is picked, nothing in it counts.** Its trains, stays, meals and activities aren't in the day's timeline, in **To book** / **Not booked yet**, in the trip's cost estimate, on the map or in the [calendar feed](/help/calendar-feed/). The calendar shows one all-day event instead, "Undecided: Castle / Deutsches Museum". The shared read-only link never shows choices.
 
 ## Voting
 
@@ -31,7 +31,7 @@ Anyone who can comment on the trip can vote: click **👍** on the option you'd 
 
 ## Picking
 
-Editors click **Pick** on an option. Its items then count as the day's own: they join the timeline, Not booked yet, the cost estimate, the map and the calendar. The other options aren't deleted: the day shows **Chosen from: Afternoon (2 options) — Castle**, which opens the options **Considered**, with their votes. **Reopen the choice** there makes it undecided again. **Save for someday** beside a considered option adds it to your own bucket list ([ideas and goals](/help/ideas-and-goals/#save-for-someday)).
+Editors click **Pick** on an option. Its items then count as the day's own: they join the timeline, To book, the cost estimate, the map and the calendar. The other options aren't deleted: the day shows **Chosen from: Afternoon (2 options) — Castle**, which opens the options **Considered**, with their votes. **Reopen the choice** there makes it undecided again. **Save for someday** beside a considered option adds it to your own bucket list ([ideas and goals](/help/ideas-and-goals/#save-for-someday)).
 
 ### Picking a stay, meal, activity or journey adds it to the day
 
@@ -54,7 +54,7 @@ Sometimes you go different ways: two of you take the castle, the others the muse
 
 Every option someone takes then counts, each as a **track** on the day: a box marked **Split** with a column per track (stacked on a phone), headed by who's on it ("Debbie, John"), with that track's own timeline, notes, stay and cost. Things on the day that aren't in an option stay above and below it, for everyone. Options nobody takes fold into **Considered**.
 
-- **Not booked yet**, the cost estimate and the map include every track, since all of them happen.
+- **To book**, the cost estimate and the map include every track, since all of them happen.
 - In the [calendar feed](/help/calendar-feed/), **Only the things I'm on** follows your track: you see your track's activities, journeys, meals and stay, not the other track's. An activity's own travellers still win.
 - Journeys and stays in an option follow it: "we take the 17:05 back, they stay for dinner and take the 21:30" is two options, each with its own train. A stay in a track shows its other nights as "Sleeping (Debbie, John): …".
 

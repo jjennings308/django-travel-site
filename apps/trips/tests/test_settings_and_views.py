@@ -139,15 +139,16 @@ class ReadOnlyViewTests(Fixture):
         self.assertNotIn('method="post"', main)
         for anchor in (f"leg-{self.leg.pk}", f"stay-{self.stay.pk}"):
             self.assertIn(self.item(anchor), html)
-        self.assertIn('id="not-booked"', html)  # a flight and a stay with no confirmation
+        self.assertIn('id="not-booked"', html)  # a flight and a stay with no confirmation and no to-do
 
-    def test_todo_lists_choices_then_not_booked_then_todos(self):
+    def test_todo_lists_choices_then_todos_then_no_plan(self):
+        """Booking-todos K2: the to-dos by priority first ("what do I book next?"), then No plan yet."""
         OptionGroup.objects.create(trip=self.trip, day=self.days[1], prompt="Afternoon")
         self.trip.booking_tasks.create(title="Buy rail passes")
         html = self.get("trip_todo", self.viewer).content.decode()
-        self.assertLess(html.index("data-open-groups"), html.index('id="not-booked"'))
-        self.assertLess(html.index('id="not-booked"'), html.index("data-open-tasks"))
-        nb = html[html.index('id="not-booked"'):html.index("data-open-tasks")]
+        self.assertLess(html.index("data-open-groups"), html.index("data-open-tasks"))
+        self.assertLess(html.index("data-open-tasks"), html.index('id="no-plan"'))
+        nb = html[html.index('id="no-plan"'):]
         self.assertIn(self.item(f"stay-{self.stay.pk}"), nb)
 
     def test_the_map_lists_open_items(self):

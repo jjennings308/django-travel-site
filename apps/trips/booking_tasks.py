@@ -17,7 +17,11 @@ A to-do covers any number of legs, stays and activities (booking-todos K1: ``Tas
 - ``partners(item, legs)``: a leg's way back and the legs it connects with on the day — offered as
   pre-ticked boxes when a to-do is added from that leg, never linked on their own.
 - ``not_booked(trip)``: items that usually need booking (flights, rental cars, trains with an
-  operator or service number, stays) with no confirmation and no task.
+  operator or service number, stays) with no confirmation and no task, never one marked "No booking
+  needed" (``no_booking``, K2).
+- ``to_book(trip)``: Reference's **To book** list (K2), in date order — each unconfirmed item that needs
+  booking or has an open to-do ("No plan yet", or its to-dos; items covered by the same to-dos share one
+  row, "Augsburg → Munich and back"), then the open to-dos that have no row ("Other to-dos").
 - ``offer_for(trip, before)``: the "mark these tasks done?" offer, for to-dos all of whose items are
   confirmed now and one of which just was.
 """
@@ -238,17 +242,79 @@ def not_booked(trip):
     tasked = _tasked(trip)
     found = []
     for leg in trip.transport.all():
+        if leg.no_booking:
+            continue
         if _needs_booking(leg) and not getattr(leg, "confirmation_list", None) and ("leg", leg.pk) not in tasked:
             found.append({"item": leg, "what": leg.get_mode_display(), "when": leg.date, **describe(leg)})
     for stay in trip.lodging.all():
-        if not getattr(stay, "confirmation_list", None) and ("stay", stay.pk) not in tasked:
+        if not stay.no_booking and not getattr(stay, "confirmation_list", None) and ("stay", stay.pk) not in tasked:
             found.append({"item": stay, "what": "Stay", "when": stay.check_in, **describe(stay)})
     for activity in _activities(trip):
-        if (activity.kind in activity.BOOKABLE and not getattr(activity, "confirmation_list", None)
+        if (activity.kind in activity.BOOKABLE and not activity.no_booking
+                and not getattr(activity, "confirmation_list", None)
                 and ("activity", activity.pk) not in tasked):
             found.append({"item": activity, "what": activity.get_kind_display(), "when": activity.day.date,
                           **describe(activity)})
     return found
+
+
+def _bookable(item):
+    """Usually needs booking (``not_booked``'s rule)."""
+    kind = kind_of(item)
+    if kind == "leg":
+        return _needs_booking(item)
+    if kind == "activity":
+        return item.kind in item.BOOKABLE
+    return True
+
+
+def what(item):
+    """The row's badge: the leg's mode, "Stay", or the activity's kind."""
+    kind = kind_of(item)
+    if kind == "leg":
+        return item.get_mode_display()
+    return "Stay" if kind == "stay" else item.get_kind_display()
+
+
+def to_book(trip):
+    """Reference's To book list (booking-todos K2): ``{"rows": [...], "other": [...]}``. Call after
+    ``attach`` and ``views._attach_confirmations``; no queries.
+
+    A row is an item with no confirmation, not marked "No booking needed", that needs booking or has an
+    open to-do — items covered by exactly the same open to-dos are one row — as ``{"items", "item",
+    "what", "label", "anchor", "kind", "day", "when", "tasks", "no_plan", "key"}`` in date order.
+    ``other`` is every open to-do with no row (it covers nothing, or only confirmed items)."""
+    days = list(trip.days.all())
+    by_date = {day.date: day for day in days if day.date}
+    items = sorted(list(trip.transport.all()) + list(trip.lodging.all()) + _activities(trip), key=_when)
+    groups, order = {}, []
+    for item in items:
+        if item.no_booking or getattr(item, "confirmation_list", None):
+            continue
+        tasks = [task for task in getattr(item, "open_tasks", []) if not task.done]
+        if not tasks and not _bookable(item):
+            continue
+        key = ("tasks",) + tuple(sorted(task.pk for task in tasks)) if tasks else (kind_of(item), item.pk)
+        if key not in groups:
+            groups[key] = {"items": [], "tasks": tasks}
+            order.append(key)
+        groups[key]["items"].append(item)
+    rows = []
+    shown = set()
+    for key in order:
+        group = groups[key]
+        first = group["items"][0]
+        kind = kind_of(first)
+        when = first.date if kind == "leg" else first.check_in if kind == "stay" else (
+            first.day.date if first.day_id else None)
+        day = (getattr(first, "on_day", None) if kind == "leg" else None) or by_date.get(when)
+        rows.append({"items": group["items"], "item": first, "kind": kind, "what": what(first),
+                     "label": cover_label(group["items"]), "anchor": anchor(first), "day": day, "when": when,
+                     "tasks": group["tasks"], "no_plan": not group["tasks"],
+                     "key": f"{kind}-{first.pk}"})
+        shown.update(task.pk for task in group["tasks"])
+    other = [task for task in trip.booking_tasks.all() if not task.done and task.pk not in shown]
+    return {"rows": rows, "other": other}
 
 
 def confirmed_items(trip):

@@ -861,6 +861,9 @@ class TransportLeg(models.Model):
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="leg")
     # To-dos covering this leg (``TaskLink``, booking-todos K1); deleted with it, the to-do stays.
     task_links = GenericRelation("TaskLink", related_query_name="leg")
+    # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
+    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
+                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
     # Where on its day the leg is shown: a ``travel`` section of the day whose date is
     # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
     # day's automatic "Getting around" block. There is no day FK: the date decides.
@@ -1040,6 +1043,9 @@ class Lodging(models.Model):
                                   related_query_name="stay_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="stay")
     task_links = GenericRelation("TaskLink", related_query_name="stay")  # to-dos covering it (K1)
+    # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
+    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
+                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
     # Booking references: ``confirmation_links`` (moved from an inline field by trips 0023/0024).
@@ -1433,6 +1439,9 @@ class TripActivity(models.Model):
                                   related_query_name="activity_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
     task_links = GenericRelation("TaskLink", related_query_name="activity")  # to-dos covering it (K1)
+    # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
+    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
+                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="activities")
