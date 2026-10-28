@@ -19,7 +19,7 @@ would mean two places to fix the next time a field is added.
   {% include "partials/_help_link.html" with slug="starting-a-trip" label="starting and editing a trip" text="How this works" %}
 </div>
 
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
   <section class="form-section">
@@ -48,6 +48,27 @@ would mean two places to fix the next time a field is added.
     </fieldset>
   </section>
 
+  <section class="form-section mt-10 scroll-mt-32" id="cover" data-cover>
+    <h2 class="form-section-title">Booklet cover</h2>
+    <p class="form-section-lede">A photo for the front of the PDF booklet, saved with the rest of this page.{% if not is_create %} You can also pick one on <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>.{% endif %}</p>
+    {% include "partials/_picture_field.html" with form=cover_form current=trip.cover_photo %}
+    {% if cover_form.photos %}
+      <fieldset class="mb-4" data-cover-choices>
+        <legend class="sbl-label">{{ cover_form.choose.label }}</legend>
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {% for media in cover_form.photos %}
+            <label class="relative block cursor-pointer">
+              <input type="radio" name="{{ cover_form.choose.html_name }}" value="{{ media.pk }}" class="peer sr-only"{% if media.pk|stringformat:"s" == cover_form.choose.value|stringformat:"s" %} checked{% endif %}>
+              <img src="{{ media.file.url }}" alt="{{ media.alt_text|default:'Trip photo' }}" loading="lazy" class="aspect-[4/3] w-full rounded-lg object-cover opacity-80 ring-2 ring-transparent ring-offset-2 peer-checked:opacity-100 peer-checked:ring-accent-600 peer-focus-visible:ring-accent-400 hover:opacity-100">
+              <span class="absolute right-1.5 top-1.5 hidden rounded-full bg-accent-600 px-1.5 text-xs font-bold text-white shadow peer-checked:block">✓</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% for error in cover_form.choose.errors %}<p class="sbl-error">{{ error }}</p>{% endfor %}
+      </fieldset>
+    {% endif %}
+  </section>
+
   <div class="form-actions">
     <button type="submit" class="btn">{% if is_create %}Create trip{% else %}Save changes{% endif %}</button>
     <a
@@ -63,22 +84,6 @@ would mean two places to fix the next time a field is added.
   or, worse, quietly post this trip's data and navigate somewhere else.
 {% endcomment %}
 {% if not is_create %}
-  <section class="form-section mt-10 scroll-mt-32" id="cover" data-cover>
-    <h2 class="form-section-title">Booklet cover</h2>
-    <p class="mb-3 text-sm text-zinc-600">A photo for the front of the PDF booklet. It also joins the trip's <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">photos</a>, where you can pick another one for the cover.</p>
-    {% if trip.cover_photo %}
-      <div class="mb-4 flex flex-wrap items-end gap-4">
-        <img src="{{ trip.cover_photo.file.url }}" alt="The booklet's cover photo" class="h-32 w-56 rounded object-cover shadow-sm" data-cover-photo>
-        <form method="post" action="{% url 'trips:trip_cover' trip.pk %}">{% csrf_token %}<input type="hidden" name="remove" value="1"><button type="submit" class="link-quiet text-sm">Take it off the cover</button></form>
-      </div>
-    {% endif %}
-    <form method="post" action="{% url 'trips:trip_cover' trip.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
-      {% csrf_token %}
-      <label class="block min-w-0 text-sm"><span class="font-medium">{% if trip.cover_photo %}Upload a different photo{% else %}Upload a photo{% endif %}</span><input type="file" name="photo" accept="image/*" required class="mt-1 block w-full"></label>
-      <button type="submit" class="btn">Upload</button>
-    </form>
-  </section>
-
   <section class="form-section mt-10 scroll-mt-32" id="days">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>

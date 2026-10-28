@@ -1043,8 +1043,10 @@ that matter most:
   libharfbuzz-subset0` on the server; without them the view says so and redirects (`PdfUnavailable`)
   instead of a 500. Pictographic emoji are stripped (no emoji font on the servers).
   **Cover photo** (trips 0053): `Trip.cover_photo` (FK `Media`, SET_NULL; always one of the album's photos, separate
-  from the album's own cover) — Settings' **Booklet cover** (`#cover`, `trips:trip_cover`, editors: upload via
-  `CoverPhotoForm` → `Trip.add_photos`, or `remove`) and Photos' **Use on the booklet** (`trips:trip_photo_booklet`).
+  from the album's own cover) — Settings' and New trip's **Booklet cover** (`#cover`, inside the trip's own multipart
+  form, saved with it: `forms.CoverPhotoForm` = `PictureFormMixin`'s `picture` / `remove_picture` through the shared
+  `partials/_picture_field.html`, upload → `Trip.add_photos`, plus `choose`, a radio grid of the trip's photos; upload
+  wins, then remove, then choose) and Photos' **Use on the booklet** (`trips:trip_photo_booklet`).
   `pdf.cover_image(trip)` embeds it as a JPEG `data:` URI scaled to `COVER_SIDE` (1800 px), so WeasyPrint never
   fetches a private file; unreadable → plain cover, logged. Never public.
 - **URLs:** `trips:` at `/trips/` (list, `<pk>/`, `new/`, `profile/`, days, sections, comments);

@@ -25,6 +25,7 @@ from django.utils import timezone as django_timezone
 
 from apps.core.widgets import CurrencySelect, DateInput, DateTimeLocalInput, TimeInput
 from apps.locations.models import POI, City
+from apps.media_app.forms import MAX_PICTURE_MB, PictureFormMixin
 from apps.locations.widgets import CitySearchInput, CitySearchMultiple
 
 from . import currencies
@@ -640,18 +641,43 @@ class SyncsTripCitiesMixin:
 HOME_CURRENCY_CHOICES = ("USD", "EUR", "GBP", "CAD", "AUD", "CHF", "JPY")
 
 
-class CoverPhotoForm(forms.Form):
-    """Settings' Booklet cover: one picture, checked like every upload (size; HEIC becomes JPEG on save)."""
+class CoverPhotoForm(PictureFormMixin, forms.Form):
+    """Settings' Booklet cover (``Trip.cover_photo``), posted with the trip's own form: upload a picture with the
+    site's usual picture field (``partials/_picture_field.html``; it joins the trip's photos), or choose one of
+    the trip's photos, or take it off the cover. An upload wins over a choice."""
 
-    photo = forms.ImageField(label="Cover photo",
-                             help_text="JPEG, PNG, WebP or iPhone HEIC. A wide picture fills the cover best.")
+    def __init__(self, *args, trip=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trip = trip
+        self.setup_picture()
+        self.fields["picture"].label = "Upload a cover photo"
+        self.fields["picture"].help_text = (f"JPEG, PNG, WebP or iPhone HEIC, up to {MAX_PICTURE_MB} MB. A wide "
+                                            "picture fills the cover best. It also joins the trip's photos.")
+        self.fields["remove_picture"].label = "Take the photo off the cover (it stays in the trip's photos)"
+        # The trip's photos to choose from: one query, only when the trip has an album.
+        self.photos = [item.media for item in trip.photos()] if trip is not None and trip.album_id else []
+        self.fields["choose"] = forms.TypedChoiceField(
+            required=False, coerce=int, empty_value=None, label="Or choose one of the trip's photos",
+            choices=[(media.pk, media.title or str(media.pk)) for media in self.photos], widget=forms.RadioSelect)
+        if trip is not None and trip.cover_photo_id:
+            self.initial["choose"] = trip.cover_photo_id
 
-    def clean_photo(self):
-        from apps.media_app.forms import MAX_PICTURE_MB
-        photo = self.cleaned_data["photo"]
-        if photo.size > MAX_PICTURE_MB * 1024 * 1024:
-            raise forms.ValidationError(f"That picture is over {MAX_PICTURE_MB} MB.")
-        return photo
+    def save(self, user):
+        """Apply the choice to ``self.trip``; returns True when the cover changed."""
+        trip, data = self.trip, self.cleaned_data
+        if data.get("picture"):
+            media, = trip.add_photos([data["picture"]], user)
+        elif data.get("remove_picture"):
+            media = None
+        elif data.get("choose"):
+            media = next((m for m in self.photos if m.pk == data["choose"]), trip.cover_photo)
+        else:
+            return False
+        if (media.pk if media else None) == trip.cover_photo_id:
+            return False
+        trip.cover_photo = media
+        trip.save(update_fields=["cover_photo"])
+        return True
 
 
 class TripForm(forms.ModelForm):
