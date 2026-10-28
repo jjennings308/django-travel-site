@@ -19,12 +19,8 @@ from apps.locations.models import Country
 from apps.media_app.models import Media
 
 User = get_user_model()
-MEDIA_ROOT = tempfile.mkdtemp(prefix="sbl-test-flags-")
 IMPORT_COUNTRIES = Path(__file__).resolve().parents[1] / "management" / "commands" / "import_countries.py"
 
-
-def tearDownModule():
-    shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
 
 
 class PngTests(SimpleTestCase):
@@ -43,8 +39,23 @@ class PngTests(SimpleTestCase):
         self.assertEqual(missing, [])  # flag-icons has every sovereign country import_countries seeds
 
 
-@override_settings(MEDIA_ROOT=MEDIA_ROOT, COUNTRY_FLAGS_ENABLED=True)
 class Fixture(TestCase):
+    """Each class gets its own uploads folder: the parallel runner sends classes to different processes, and
+    the flag files have fixed names, so a shared folder let one class rewrite (or delete) another's."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.media_root = tempfile.mkdtemp(prefix="sbl-test-flags-")
+        cls._media_settings = override_settings(MEDIA_ROOT=cls.media_root, COUNTRY_FLAGS_ENABLED=True)
+        cls._media_settings.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls._media_settings.disable()
+        shutil.rmtree(cls.media_root, ignore_errors=True)
+
     def setUp(self):
         self.germany = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU",
                                               continent="Europe", approval_status=ApprovalStatus.APPROVED)
