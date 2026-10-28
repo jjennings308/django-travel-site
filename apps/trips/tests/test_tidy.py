@@ -10,6 +10,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from apps.trips import day_first, tidy, tidying
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import (BookingTask, Contact, Day, ItemLink, Lodging, Meal, Section,
                                TidyDismissal, TransportLeg, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
@@ -152,8 +153,7 @@ class Fixture(TestCase):
                                        "ICE Frankfurt Hbf → Augsburg (~2.5 hrs) — book 6 seats together", "Coffee first"]})
         self.callout = Section.objects.create(day=self.day, section_type="note", title="📅 Book", order=1, content={
             "tone": "tip", "paragraphs": ["ICE Frankfurt → Augsburg: book seat reservations for 6 people together"]})
-        self.task = BookingTask.objects.create(trip=self.trip, title="ICE train seats Frankfurt→Augsburg (6 people)",
-                                               leg=self.leg)
+        self.task = make_task(self.trip, "ICE train seats Frankfurt→Augsburg (6 people)", self.leg)
         self.url = reverse("trips:trip_tidy", args=[self.trip.pk])
 
     def suggestions(self):

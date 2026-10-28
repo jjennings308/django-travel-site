@@ -20,6 +20,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import TripRole
 from apps.trips.models import (
     BookingTask,
@@ -358,9 +359,9 @@ class QueryCountTests(DetailFixture):
         # groups, their options and the options' votes with who voted (day-first plan P4), however many;
         # 36 = 35 + who takes each option when a group is split (P5); 38 = 36 + the Ideas shelf and its
         # votes (P6; the day fragment doesn't load the shelf, so it stays at 36); 37 = 38 - the old decision
-        # to-dos' options (retire-decision-todos D2).
+        # to-dos' options (retire-decision-todos D2); 38 = 37 + what each to-do covers (booking-todos K1).
         # (An option mixing currencies adds the two rate queries once, as the cost estimate does.)
-        with self.assertNumQueries(37):
+        with self.assertNumQueries(38):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 
@@ -413,8 +414,8 @@ class QueryCountTests(DetailFixture):
                 activity.travelers.add(ada)
                 confirmation.link(activity)
             # Phase E: a booking task about the day's leg, and a not-yet-booked flight.
-            BookingTask.objects.create(trip=self.trip, title=f"Seats A to B {offset}",
-                                       leg=TransportLeg.objects.filter(trip=self.trip, date=day.date).first())
+            make_task(self.trip, f"Seats A to B {offset}",
+                      TransportLeg.objects.filter(trip=self.trip, date=day.date).first())
             TransportLeg.objects.create(trip=self.trip, date=day.date, origin="X", destination="Y", mode="plane",
                                         order=3)
 
@@ -468,7 +469,7 @@ class QueryCountTests(DetailFixture):
                                                 size=1000)
         # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
         # Python from the rows above (apps/trips/booking_tasks.py): no query of their own.
-        BookingTask.objects.create(trip=self.trip, title="Hotel deposit", stay=stay)
+        make_task(self.trip, "Hotel deposit", stay)
         desk = Contact.objects.create(trip=self.trip, name="Front desk", phone="+1 555 0100")
         rules = TripInfo.objects.create(trip=self.trip, title="Ticket rules", body="Regional only.")
         ItemLink.link(desk, stay)
@@ -521,7 +522,7 @@ class DayFragmentQueryTests(QueryCountTests):
     def test_one_day_holds_a_fixed_query_count(self):
         self.fill()
         day = self.trip.days.get(day_number=5)
-        with self.assertNumQueries(35):  # the page's 35: every day is assembled (stays and legs span days)
+        with self.assertNumQueries(36):  # the page's 36: every day is assembled (stays and legs span days)
             response = self.client.get(reverse("trips:day_fragment", args=[self.trip.pk, day.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="day-5" open')

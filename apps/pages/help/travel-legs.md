@@ -3,7 +3,7 @@ summary: Add trains, flights and drives, from a rough plan to a booked journey w
 audience: editors
 section: Trips
 order: 30
-updated: 2026-10-27
+updated: 2026-10-28
 
 # Travel legs
 
@@ -52,6 +52,8 @@ A leg appears on the day it departs. An overnight flight shows on the day it lea
 ## Return trips
 
 Tick **Also add the return trip** when you save a leg, and give the return's times (or just its day, if it's only planned). The site adds a second leg back the other way, with the ends and time zones swapped and the mode and operator copied. The two legs are separate from then on.
+
+**Same booking as the way out** (below the return's times) puts the return on the way out's open to-dos and confirmation numbers, for a return ticket bought as one. It's ticked when the way out already has a to-do or a confirmation; untick it when the return is booked separately. Its own service number, cost and notes are never copied ([one to-do for several things](/help/bookings-and-confirmations/#one-to-do-for-several-things)).
 
 ## Travel sections
 

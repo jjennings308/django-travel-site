@@ -125,11 +125,13 @@ class ShowingTests(Fixture):
 
 
 class TaskTests(Fixture):
-    def test_one_item_at_most(self):
+    def test_a_task_covers_an_activity_and_a_leg(self):
         activity = self.tour()
         leg = TransportLeg.objects.create(trip=self.trip, origin="A", destination="B", date=self.day.date)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            BookingTask.objects.create(trip=self.trip, title="x", leg=leg, activity=activity)
+        task = BookingTask.objects.create(trip=self.trip, title="x")
+        task.link(leg)
+        task.link(activity)
+        self.assertEqual(task.covered(), [leg, activity])
 
     def test_suggested_by_title_linked_and_offered_on_first_confirmation(self):
         activity = self.tour()
@@ -139,8 +141,7 @@ class TaskTests(Fixture):
         self.assertContains(self.client.get(detail), "Looks like: Neuschwanstein timed entry (activity)")
         self.assertEqual([nb["item"] for nb in self.client.get(detail).context["not_booked"]], [activity])
         self.client.post(reverse("trips:task_link", args=[self.trip.pk, task.pk]), {"activity": activity.pk})
-        task.refresh_from_db()
-        self.assertEqual(task.activity, activity)
+        self.assertEqual(task.covered(), [activity])
         self.assertEqual(self.client.get(detail).context["not_booked"], [])  # it has a task now
         response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "activity", activity.pk]),
                                     {"action": "add", "confirmation_number": "NEU-123"})

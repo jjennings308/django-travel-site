@@ -11,6 +11,7 @@ from .forms import DayAdminForm, LodgingAdminForm, TransportLegAdminForm
 from .models import (
     TripExpense,
     BookingTask,
+    TaskLink,
     Confirmation,
     ConfirmationLink,
     Contact,
@@ -108,9 +109,15 @@ class BookingTaskInline(admin.TabularInline):
 
     model = BookingTask
     extra = 1
-    fields = ("done", "priority", "title", "due", "due_note")
+    fields = ("done", "priority", "title", "due", "due_note", "covers")
+    readonly_fields = ("covers",)
     ordering = ("done", "priority")
     show_change_link = True
+
+    @admin.display(description="Covers")
+    def covers(self, obj):
+        """What the to-do covers (booking-todos K1), read-only: links are edited on the to-do's page."""
+        return covers_text(obj)
 
 
 class TripGrantInline(admin.TabularInline):
@@ -573,20 +580,48 @@ class ContactAdmin(admin.ModelAdmin):
     search_fields = ("name", "role", "email")
 
 
+def covers_text(task):
+    """The items a to-do covers, by label ("—" for none)."""
+    from .booking_tasks import label
+    if not task.pk:
+        return "—"
+    return ", ".join(label(item) for item in task.covered()) or "—"
+
+
+class TaskLinkInline(admin.TabularInline):
+    """What a to-do covers (booking-todos K1): read here, edited with Covers on the to-do's page."""
+
+    model = TaskLink
+    extra = 0
+    fields = ("content_type", "object_id", "item_label")
+    readonly_fields = ("content_type", "object_id", "item_label")
+    can_delete = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Item")
+    def item_label(self, obj):
+        from .booking_tasks import label
+        return label(obj.item) if obj.item is not None else "(gone)"
+
+
 @admin.register(BookingTask)
 class BookingTaskAdmin(admin.ModelAdmin):
     # `title` leads so it stays the link to the change page; `done` and
     # `priority` are editable inline because ticking tasks off in bulk is the
     # whole point of the list view.
-    list_display = ("title", "done", "priority", "trip", "due", "day", "leg", "stay", "confirmation")
+    list_display = ("title", "done", "priority", "trip", "due", "day", "covers", "confirmation")
     list_display_links = ("title",)
     list_editable = ("done", "priority")
     list_filter = ("done", "priority", "trip")
     search_fields = ("title", "notes", "due_note")
     autocomplete_fields = ("trip", "day", "confirmation")
-    # What the task is about (trip-items plan, Phase E); raw ids so any trip's legs and stays
-    # aren't loaded into one dropdown. The trip edit page offers this trip's only.
-    raw_id_fields = ("leg", "stay", "activity")
+    inlines = [TaskLinkInline]
+
+    @admin.display(description="Covers")
+    def covers(self, obj):
+        return covers_text(obj)
 
 
 @admin.register(TransportLeg)

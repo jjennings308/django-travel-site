@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import (BookingTask, Day, Lodging, TransportLeg, Trip, TripActivity, TripGrant,
                                TripRole)
 
@@ -46,7 +47,7 @@ class TodoPageTests(Fixture):
         self.assertLess(html.index("data-done-tasks"), html.index("All done"))  # inside the Done fold
 
     def test_each_shows_its_item(self):
-        BookingTask.objects.create(trip=self.trip, title="Seats", leg=self.leg)
+        make_task(self.trip, "Seats", self.leg)
         html = self.get(self.viewer).content.decode()
         detail = reverse("trips:trip_detail", args=[self.trip.pk])
         self.assertIn(f'href="{detail}?item=leg-{self.leg.pk}#leg-{self.leg.pk}">Day 4 · Munich → Salzburg</a>', html)
@@ -73,7 +74,7 @@ class TodoPageTests(Fixture):
 class TaskEditTests(Fixture):
     def data(self, **over):
         values = {"title": "Rail passes", "priority": "2", "due": "", "due_note": "", "day": "",
-                  "leg": "", "stay": "", "activity": "", "confirmation": "", "order": "", "notes": ""}
+                  "confirmation": "", "order": "", "notes": ""}
         values.update(over)
         return values
 
@@ -81,11 +82,11 @@ class TaskEditTests(Fixture):
         new = reverse("trips:task_new", args=[self.trip.pk])
         self.client.force_login(self.editor)
         form = self.client.get(f"{new}?leg={self.leg.pk}").context["form"]
-        self.assertEqual(str(form.initial["leg"]), str(self.leg.pk))
+        self.assertEqual(form.initial["covers"], [f"leg-{self.leg.pk}"])
         leg_page = reverse("trips:leg_edit", args=[self.trip.pk, self.leg.pk])
-        response = self.client.post(new, {**self.data(leg=self.leg.pk), "next": leg_page})
+        response = self.client.post(new, {**self.data(covers=[f"leg-{self.leg.pk}"]), "next": leg_page})
         self.assertEqual(response["Location"], leg_page)
-        self.assertEqual(BookingTask.objects.get().leg, self.leg)
+        self.assertEqual(BookingTask.objects.get().covered(), [self.leg])
 
     def test_another_trips_item_is_not_a_choice(self):
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
@@ -94,9 +95,9 @@ class TaskEditTests(Fixture):
         their_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 1, 1))
         self.client.force_login(self.editor)
         response = self.client.post(reverse("trips:task_new", args=[self.trip.pk]),
-                                    self.data(leg=theirs.pk, day=their_day.pk))
+                                    self.data(covers=[f"leg-{theirs.pk}"], day=their_day.pk))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(set(response.context["form"].errors), {"leg", "day"})
+        self.assertEqual(set(response.context["form"].errors), {"covers", "day"})
         self.assertFalse(BookingTask.objects.exists())
         theirs_task = BookingTask.objects.create(trip=other, title="x")
         self.assertEqual(self.client.get(reverse("trips:task_edit", args=[self.trip.pk, theirs_task.pk])).status_code,
@@ -137,7 +138,7 @@ class LinksTests(Fixture):
     def test_item_pages_add_a_todo_for_themselves(self):
         stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.day4.date, check_out=date(2027, 9, 24))
         activity = TripActivity.objects.create(trip=self.trip, day=self.day4, title="Salt mine")
-        task = BookingTask.objects.create(trip=self.trip, title="Mine tickets", activity=activity)
+        task = make_task(self.trip, "Mine tickets", activity)
         new = reverse("trips:task_new", args=[self.trip.pk])
         self.client.force_login(self.editor)
         pages = {"leg": (reverse("trips:leg_edit", args=[self.trip.pk, self.leg.pk]), self.leg),

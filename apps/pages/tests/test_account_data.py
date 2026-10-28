@@ -111,6 +111,19 @@ class ExportTests(Fixture):
         rome = next(t for t in trips if t["trip"][0]["name"] == "Rome")
         self.assertIn("Bob", " ".join(rome["travellers"]) + " bob")  # by name only
 
+    def test_todos_list_what_they_cover(self):
+        """Booking-todos K1: a to-do's covered items by label."""
+        from apps.trips.models import BookingTask, TransportLeg
+        out = TransportLeg.objects.create(trip=self.shared, origin="Roma Termini", destination="Firenze SMN",
+                                          date=date(2027, 5, 2))
+        back = TransportLeg.objects.create(trip=self.shared, origin="Firenze SMN", destination="Roma Termini",
+                                           date=date(2027, 5, 3))
+        task = BookingTask.objects.create(trip=self.shared, title="Train tickets")
+        task.link(out)
+        task.link(back)
+        rome = next(t for t in json.loads(self.zip().read("trips.json")) if t["trip"][0]["name"] == "Rome")
+        self.assertEqual(rome["todos"][0]["covers"], ["Roma Termini → Firenze SMN", "Firenze SMN → Roma Termini"])
+
     def test_rate_limited(self):
         self.client.force_login(self.ada)
         self.client.post(reverse("pages:data_export"))

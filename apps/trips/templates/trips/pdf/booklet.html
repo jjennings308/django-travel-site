@@ -298,7 +298,7 @@ The trip booklet (trips:trip_pdf, apps/trips/pdf.py), rendered by WeasyPrint. De
       <table>
         <tbody>
           {% for task in open_tasks %}
-            <tr><td style="width: 4%">☐</td><td><strong>{{ task.title }}</strong>{% if task.item_info %} <span class="muted small">· {{ task.item_info.label }}</span>{% endif %}{% if task.due or task.due_note %}<br><span class="small muted">{% if task.due %}Due {{ task.due|date:"M j" }}{% endif %}{% if task.due and task.due_note %} — {% endif %}{{ task.due_note }}</span>{% endif %}</td><td class="small">{{ task.get_priority_display }}</td></tr>
+            <tr><td style="width: 4%">☐</td><td><strong>{{ task.title }}</strong>{% if task.item_info %} <span class="muted small">· {{ task.cover_label }}</span>{% endif %}{% if task.due or task.due_note %}<br><span class="small muted">{% if task.due %}Due {{ task.due|date:"M j" }}{% endif %}{% if task.due and task.due_note %} — {% endif %}{{ task.due_note }}</span>{% endif %}</td><td class="small">{{ task.get_priority_display }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

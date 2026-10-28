@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.core.current import acting_as
 from apps.trips import changes
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import (
     BookingTask, Confirmation, ConfirmationLink, Contact, Day, ItemLink, Lodging, Meal, Section, TransportLeg,
     Traveler, Trip, TripActivity, TripChange, TripGrant, TripRole,
@@ -132,7 +133,7 @@ class UndoTests(HistoryFixture):
 class RestoreTests(HistoryFixture):
     def test_restoring_a_deleted_leg_brings_its_links_back(self):
         confirmation = Confirmation.attach_number(self.trip, "DB-1", self.leg, provider="DB")
-        task = BookingTask.objects.create(trip=self.trip, title="Seats", leg=self.leg)
+        task = make_task(self.trip, "Seats", self.leg)
         desk = Contact.objects.create(trip=self.trip, name="DB desk", phone="+49 1")
         ItemLink.link(desk, self.leg)
         pk = self.leg.pk
@@ -147,8 +148,7 @@ class RestoreTests(HistoryFixture):
         leg = TransportLeg.objects.get(pk=pk)
         self.assertEqual(leg.departure_at, datetime(2027, 9, 19, 8, 0, tzinfo=dt_timezone.utc))
         self.assertTrue(ConfirmationLink.objects.filter(confirmation=confirmation, object_id=pk).exists())
-        task.refresh_from_db()
-        self.assertEqual(task.leg_id, pk)
+        self.assertEqual([item.pk for item in task.covered()], [pk])  # re-linked (booking-todos K1)
         self.assertTrue(ItemLink.objects.filter(target_id=pk, source_id=desk.pk).exists())
         restored = TripChange.objects.latest("id")
         self.assertEqual((restored.summary, restored.actor), ("Restored Frankfurt Hbf → Augsburg Hbf", self.ed))

@@ -5,7 +5,7 @@ One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, t
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
     {% if task.priority == 1 %}<span class="badge badge-critical">{{ task.get_priority_display }}</span>{% elif task.priority == 2 %}<span class="badge badge-high">{{ task.get_priority_display }}</span>{% elif task.priority == 3 %}<span class="badge badge-medium">{{ task.get_priority_display }}</span>{% else %}<span class="badge badge-low">{{ task.get_priority_display }}</span>{% endif %}
     <span class="font-medium {% if task.done %}text-zinc-500 line-through{% else %}text-zinc-900{% endif %}">{{ task.title }}</span>
-    {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}?item={{ task.item_info.anchor }}#{{ task.item_info.anchor }}">{% if task.item_day %}Day {{ task.item_day.day_number }} · {% endif %}{{ task.item_info.label }}</a></span>
+    {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="{% url 'trips:trip_detail' trip.pk %}?item={{ task.item_info.anchor }}#{{ task.item_info.anchor }}"{% if task.more_labels %} title="Also: {{ task.more_labels }}"{% endif %}>{% if task.item_day %}Day {{ task.item_day.day_number }} · {% endif %}{{ task.cover_label }}</a></span>
     {% elif task.day %}<a class="link-quiet text-zinc-500" href="{% url 'trips:trip_detail' trip.pk %}#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
     {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
   </div>

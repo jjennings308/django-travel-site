@@ -5,14 +5,21 @@ Everything here works on rows the trip page already prefetched (``booking_tasks`
 ``transport``, ``lodging``, ``days`` and the confirmations' ``confirmation_list`` set by
 ``views._attach_confirmations``), so the page pays no query for it:
 
-- ``attach(trip)``: each leg and stay gets ``open_tasks``; each task gets ``item`` (its leg or
-  stay), ``item_day`` and, when it has no item, ``suggestion`` — the one stay whose name its
-  title contains, or the one leg whose two ends' first words it names ("ICE train seats
-  Frankfurt→Augsburg" → Frankfurt Hof → Augsburg Hof). Two candidates means no suggestion.
+A to-do covers any number of legs, stays and activities (booking-todos K1: ``TaskLink``, prefetched as
+``booking_tasks__links``) — a round trip, a connection, a hotel and its transfer.
+
+- ``attach(trip)``: each leg, stay and activity gets ``open_tasks`` (every to-do covering it); each task
+  gets ``items`` (in date order), ``item`` (the first), ``item_day``, ``item_info``, ``cover_label``
+  ("Augsburg → Munich and back", "PIT → ATL → FRA", "Hotel Laimer Hof + 1 more") and ``more_labels``,
+  and, when it covers nothing, ``suggestion`` — the one stay whose name its title contains, or the one
+  leg whose two ends' first words it names ("ICE train seats Frankfurt→Augsburg" → Frankfurt Hof →
+  Augsburg Hof). Two candidates means no suggestion.
+- ``partners(item, legs)``: a leg's way back and the legs it connects with on the day — offered as
+  pre-ticked boxes when a to-do is added from that leg, never linked on their own.
 - ``not_booked(trip)``: items that usually need booking (flights, rental cars, trains with an
   operator or service number, stays) with no confirmation and no task.
-- ``first_confirmed(before, item_keys)``: which items just got their first confirmation, for
-  the "mark these tasks done?" offer.
+- ``offer_for(trip, before)``: the "mark these tasks done?" offer, for to-dos all of whose items are
+  confirmed now and one of which just was.
 """
 import re
 
@@ -77,35 +84,146 @@ def _activities(trip):
     return list(trip.activities.select_related("day"))
 
 
+def _when(item):
+    """Sort key: an item's date, then (legs) its departure or order."""
+    from datetime import date as _date
+    if kind_of(item) == "stay":
+        return (item.check_in or _date.max, 1, 0, item.pk)
+    if kind_of(item) == "activity":
+        return (item.day.date if item.day_id and item.day.date else _date.max, 2,
+                item.start_time.hour * 60 + item.start_time.minute if item.start_time else 0, item.pk)
+    return (item.date or _date.max, 0, item.departure_at.timestamp() if item.departure_at else item.order, item.pk)
+
+
+def _same_place(city_a, text_a, city_b, text_b):
+    """Two leg ends are one place: the same catalogue city when both have one, else the same first word."""
+    if city_a and city_b:
+        return city_a == city_b
+    word_a, word_b = _first_word(text_a).lower(), _first_word(text_b).lower()
+    return bool(word_a) and word_a == word_b
+
+
+def _reverses(leg, other):
+    """``other`` goes back the way ``leg`` came (its ends swapped)."""
+    return (_same_place(other.origin_city_id, other.origin, leg.destination_city_id, leg.destination)
+            and _same_place(other.destination_city_id, other.destination, leg.origin_city_id, leg.origin))
+
+
+def _connects(first, second):
+    """``second`` leaves from where ``first`` arrives."""
+    return _same_place(first.destination_city_id, first.destination, second.origin_city_id, second.origin)
+
+
+def _later(other, leg):
+    """``other`` is after ``leg``: a later date, or the same date and later (times, else order)."""
+    if other.date != leg.date:
+        return bool(other.date and leg.date and other.date > leg.date)
+    if other.departure_at and leg.departure_at:
+        return other.departure_at > leg.departure_at
+    return (other.order, other.pk) > (leg.order, leg.pk)
+
+
+def chain(leg, legs):
+    """The legs connected to ``leg`` on its date (each one's destination the next one's origin), in order,
+    ``leg`` included."""
+    same_day = sorted((other for other in legs if other.date == leg.date), key=_when)
+    run = [leg]
+    while True:  # backwards
+        before = [o for o in same_day if o not in run and _connects(o, run[0]) and _later(run[0], o)]
+        if not before:
+            break
+        run.insert(0, before[-1])
+    while True:  # forwards
+        after = [o for o in same_day if o not in run and _connects(run[-1], o) and _later(o, run[-1])]
+        if not after:
+            break
+        run.append(after[0])
+    return run
+
+
+def partners(item, legs):
+    """[(leg, why)] a to-do about ``item`` probably covers too: a leg's way back (the first later leg with
+    its ends swapped: "the way back") and the legs it connects with that day ("connection"). Nothing for
+    stays and activities. Pure; used to pre-tick boxes, never to link on its own."""
+    if kind_of(item) != "leg":
+        return []
+    found = []
+    for other in chain(item, legs):
+        if other is not item and other.pk != item.pk and not _reverses(item, other):
+            found.append((other, "connection"))
+    back = sorted((o for o in legs if o.pk != item.pk and _reverses(item, o) and _later(o, item)), key=_when)
+    if back:
+        found.append((back[0], "the way back"))
+    return found
+
+
+def cover_label(items):
+    """How a to-do's items read together: "Augsburg → Munich and back" (a leg and its reverse), "PIT → ATL →
+    FRA" (legs chained on one date), one item's label, else "Hotel Laimer Hof + 1 more"."""
+    if not items:
+        return ""
+    if len(items) == 1:
+        return label(items[0])
+    if all(kind_of(item) == "leg" for item in items):
+        if len(items) == 2 and _reverses(items[0], items[1]):
+            return f"{items[0].origin} → {items[0].destination} and back"
+        if (len({leg.date for leg in items}) == 1
+                and all(_connects(a, b) for a, b in zip(items, items[1:]))):
+            return " → ".join([items[0].origin] + [leg.destination for leg in items])
+    return f"{label(items[0])} + {len(items) - 1} more"
+
+
+def _item_index(legs, stays, activities):
+    """{(content type id, pk): item} for the trip's legs, stays and activities."""
+    from django.contrib.contenttypes.models import ContentType
+    from .models import Lodging, TransportLeg, TripActivity
+    types = ContentType.objects.get_for_models(TransportLeg, Lodging, TripActivity)
+    index = {}
+    for model, rows in ((TransportLeg, legs), (Lodging, stays), (TripActivity, activities)):
+        for row in rows:
+            index[(types[model].pk, row.pk)] = row
+    return index
+
+
 def attach(trip, suggestions=False):
     legs = list(trip.transport.all())
     stays = list(trip.lodging.all())
     activities = _activities(trip)
     days_by_date = {day.date: day for day in trip.days.all() if day.date}
-    leg_by_id = {leg.pk: leg for leg in legs}
-    stay_by_id = {stay.pk: stay for stay in stays}
-    activity_by_id = {activity.pk: activity for activity in activities}
+    index = _item_index(legs, stays, activities)
     for item in legs + stays + activities:
         item.open_tasks = []
     for task in trip.booking_tasks.all():
-        task.item = (leg_by_id.get(task.leg_id) or stay_by_id.get(task.stay_id)
-                     or activity_by_id.get(task.activity_id))
+        items = [index[(link.content_type_id, link.object_id)] for link in task.links.all()
+                 if (link.content_type_id, link.object_id) in index]
+        task.items = sorted(items, key=_when)
+        task.item = task.items[0] if task.items else None
+        task.cover_label = cover_label(task.items)
+        task.more_labels = ", ".join(label(item) for item in task.items[1:])
         task.item_day = None
         task.suggestion = None
         if task.item is not None:
-            if task.leg_id:
-                when = task.item.date
-            elif task.stay_id:
-                when = task.item.check_in
-            else:
-                when = task.item.day.date
+            kind = kind_of(task.item)
+            when = (task.item.date if kind == "leg" else task.item.check_in if kind == "stay"
+                    else task.item.day.date)
             task.item_day = days_by_date.get(when)
             if not task.done:
-                task.item.open_tasks.append(task)
+                for item in task.items:
+                    item.open_tasks.append(task)
         elif suggestions and not task.done:
             task.suggestion = suggest(task, legs, stays, activities)
         task.item_info = describe(task.item) if task.item is not None else None
         task.suggestion_info = describe(task.suggestion) if task.suggestion is not None else None
+
+
+def _tasked(trip):
+    """{("leg" / "stay" / "activity", pk)} that any to-do covers, from the prefetched links."""
+    from django.contrib.contenttypes.models import ContentType
+    from .models import Lodging, TransportLeg, TripActivity
+    types = ContentType.objects.get_for_models(TransportLeg, Lodging, TripActivity)
+    kinds = {types[TransportLeg].pk: "leg", types[Lodging].pk: "stay", types[TripActivity].pk: "activity"}
+    return {(kinds[link.content_type_id], link.object_id) for task in trip.booking_tasks.all()
+            for link in task.links.all() if link.content_type_id in kinds}
 
 
 def _needs_booking(leg):
@@ -117,9 +235,7 @@ def _needs_booking(leg):
 def not_booked(trip):
     """[{"item", "what", "when", "kind", "label", "anchor"}] with no confirmation and no task
     at all. Call after ``attach`` and ``views._attach_confirmations``."""
-    tasked = {("leg", t.leg_id) for t in trip.booking_tasks.all() if t.leg_id} | \
-             {("stay", t.stay_id) for t in trip.booking_tasks.all() if t.stay_id} | \
-             {("activity", t.activity_id) for t in trip.booking_tasks.all() if t.activity_id}
+    tasked = _tasked(trip)
     found = []
     for leg in trip.transport.all():
         if _needs_booking(leg) and not getattr(leg, "confirmation_list", None) and ("leg", leg.pk) not in tasked:
@@ -144,15 +260,27 @@ def confirmed_items(trip):
     return {(kinds[model], pk) for model, pk in rows}
 
 
-def offer_for(trip, before):
-    """Open tasks on items that were unconfirmed in ``before`` (a ``confirmed_items`` set
-    taken before the save) and are confirmed now."""
-    newly = confirmed_items(trip) - before
-    leg_ids = [pk for kind, pk in newly if kind == "leg"]
-    stay_ids = [pk for kind, pk in newly if kind == "stay"]
-    activity_ids = [pk for kind, pk in newly if kind == "activity"]
-    if not leg_ids and not stay_ids and not activity_ids:
+def task_keys(task):
+    """{("leg" / "stay" / "activity", pk)} a to-do covers (one query)."""
+    kinds = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity"}
+    return {(kinds[model], pk) for model, pk in task.links.values_list("content_type__model", "object_id")
+            if model in kinds}
+
+
+def offer_after(trip, newly):
+    """Open to-dos covering one of ``newly`` (item keys just confirmed) all of whose items are confirmed now."""
+    if not newly:
         return []
-    from django.db.models import Q
-    return list(trip.booking_tasks.filter(done=False).filter(
-        Q(leg_id__in=leg_ids) | Q(stay_id__in=stay_ids) | Q(activity_id__in=activity_ids)))
+    confirmed = confirmed_items(trip)
+    found = []
+    for task in trip.booking_tasks.filter(done=False, links__isnull=False).distinct():
+        keys = task_keys(task)
+        if keys & newly and keys <= confirmed:
+            found.append(task)
+    return found
+
+
+def offer_for(trip, before):
+    """The "mark these done?" offer after a save: open to-dos covering an item that was unconfirmed in
+    ``before`` (a ``confirmed_items`` set taken before the save) and all of whose items are confirmed now."""
+    return offer_after(trip, confirmed_items(trip) - before)

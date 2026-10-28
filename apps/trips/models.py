@@ -859,6 +859,8 @@ class TransportLeg(models.Model):
     linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
                                   related_query_name="leg_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="leg")
+    # To-dos covering this leg (``TaskLink``, booking-todos K1); deleted with it, the to-do stays.
+    task_links = GenericRelation("TaskLink", related_query_name="leg")
     # Where on its day the leg is shown: a ``travel`` section of the day whose date is
     # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
     # day's automatic "Getting around" block. There is no day FK: the date decides.
@@ -1037,6 +1039,7 @@ class Lodging(models.Model):
     linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
                                   related_query_name="stay_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="stay")
+    task_links = GenericRelation("TaskLink", related_query_name="stay")  # to-dos covering it (K1)
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
     # Booking references: ``confirmation_links`` (moved from an inline field by trips 0023/0024).
@@ -1429,6 +1432,7 @@ class TripActivity(models.Model):
     linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
                                   related_query_name="activity_target")
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
+    task_links = GenericRelation("TaskLink", related_query_name="activity")  # to-dos covering it (K1)
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="activities")
@@ -1669,6 +1673,13 @@ CONFIRMABLE = {
     "meal": Meal,
 }
 CONFIRMABLE_ORDER = {"TransportLeg": 0, "Lodging": 1, "TripActivity": 2, "Section": 3, "Meal": 4}
+# kind -> model, for the items a to-do can cover (booking-todos K1: the kinds Not booked looks at).
+TASKABLE = {
+    "leg": TransportLeg,
+    "stay": Lodging,
+    "activity": TripActivity,
+}
+TASKABLE_ORDER = {"TransportLeg": 0, "Lodging": 1, "TripActivity": 2}
 
 
 def confirmable_kind(item):
@@ -1859,17 +1870,8 @@ class BookingTask(models.Model):
         null=True,
         blank=True,
     )
-    # What the task is about (trip-items plan, Phase E): a leg, a stay or an activity, at most
-    # one. Shown on the item; SET_NULL so deleting the item keeps the task.
-    leg = models.ForeignKey(
-        "TransportLeg", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
-    )
-    stay = models.ForeignKey(
-        "Lodging", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
-    )
-    activity = models.ForeignKey(
-        "TripActivity", on_delete=models.SET_NULL, related_name="booking_tasks", null=True, blank=True
-    )
+    # What the task covers (booking-todos K1): ``links`` (``TaskLink``), any number of legs, stays and
+    # activities; it replaced the one-item ``leg`` / ``stay`` / ``activity`` FKs of Phase E.
     title = models.CharField(max_length=200)
     priority = models.IntegerField(choices=Priority.choices, default=Priority.MEDIUM)
     due = models.DateField(
@@ -1894,14 +1896,6 @@ class BookingTask(models.Model):
         verbose_name = "booking task"
         verbose_name_plural = "booking tasks"
         indexes = [models.Index(fields=["trip", "done"])]
-        constraints = [
-            # At most one of leg / stay / activity.
-            models.CheckConstraint(
-                condition=(Q(leg__isnull=True) & Q(stay__isnull=True)) | (Q(leg__isnull=True) & Q(activity__isnull=True))
-                | (Q(stay__isnull=True) & Q(activity__isnull=True)),
-                name="bookingtask_one_item",
-            ),
-        ]
 
     def __str__(self):
         return self.title
@@ -1927,6 +1921,66 @@ class BookingTask(models.Model):
         """Names of items this task was marked as not being about (lower case)."""
         return {line[len(self.NOT_ABOUT):].strip().lower() for line in self.notes.splitlines()
                 if line.startswith(self.NOT_ABOUT)}
+
+    def link(self, item):
+        """Cover ``item`` too (once); see ``TaskLink.link``."""
+        return TaskLink.link(self, item)
+
+    def unlink(self, item):
+        TaskLink.objects.filter(task=self, content_type=ContentType.objects.get_for_model(type(item)),
+                                object_id=item.pk).delete()
+
+    def covered(self):
+        """The items this to-do covers, in date order (queries; the trip page uses ``booking_tasks.attach``)."""
+        items = [link.item for link in self.links.select_related("content_type") if link.item is not None]
+        return sorted(items, key=lambda item: (item_date(item) or date.max, TASKABLE_ORDER[type(item).__name__], item.pk))
+
+    @classmethod
+    def for_item(cls, item):
+        """The to-dos covering ``item``."""
+        return cls.objects.filter(links__content_type=ContentType.objects.get_for_model(type(item)),
+                                  links__object_id=item.pk).distinct()
+
+
+class TaskLink(models.Model):
+    """One item a to-do covers (booking-todos K1): a leg, a stay or a trip activity, attached with a
+    ``GenericForeignKey`` like ``ConfirmationLink``, any number per to-do (a round trip, a connection, a
+    hotel and its transfer). Each item model has a ``task_links`` ``GenericRelation``, so deleting the item
+    deletes its links and keeps the to-do."""
+
+    task = models.ForeignKey(BookingTask, on_delete=models.CASCADE, related_name="links")
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveBigIntegerField()
+    item = GenericForeignKey("content_type", "object_id")
+
+    class Meta:
+        db_table = "trip_task_links"
+        constraints = [
+            models.UniqueConstraint(fields=["task", "content_type", "object_id"], name="tasklink_once_per_item"),
+        ]
+        indexes = [models.Index(fields=["content_type", "object_id"])]
+
+    def __str__(self):
+        return f"{self.task} → {self.content_type.model} {self.object_id}"
+
+    def clean(self):
+        super().clean()
+        item = self.item
+        if item is None or type(item) not in TASKABLE.values():
+            raise ValidationError("A to-do covers legs, stays and activities.")
+        if item_trip_id(item) != self.task.trip_id:
+            raise ValidationError("That item belongs to another trip.")
+
+    @classmethod
+    def link(cls, task, item):
+        """Link ``item`` to ``task`` once; the item must be a leg, stay or activity of the task's trip."""
+        if type(item) not in TASKABLE.values():
+            raise ValueError("A to-do covers legs, stays and activities.")
+        if item_trip_id(item) != task.trip_id:
+            raise ValueError("A to-do can only cover items of its own trip.")
+        link, _created = cls.objects.get_or_create(
+            task=task, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk)
+        return link
 
 
 class OptionGroup(models.Model):

@@ -20,6 +20,7 @@ from django.urls import reverse
 
 from apps.activities.models import Activity, ActivityCategory
 from apps.locations.models import POI, City, Country
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Option, OptionGroup, Section,
                                TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
@@ -149,9 +150,8 @@ def build_trip():
     ItemLink.link(taxi, planned)   # under a leg
     ItemLink.link(rules, travel)   # a section: the day's Good to know
     ItemLink.link(rules, d2)       # the day itself
-    BookingTask.objects.create(trip=trip, title="ICE seats", priority=2, leg=planned, due_note="before Sept 1")
-    BookingTask.objects.create(trip=trip, title="Hotel Augusta deposit", priority=1, stay=augusta,
-                               due=date(2027, 8, 1))
+    make_task(trip, "ICE seats", planned, priority=2, due_note="before Sept 1")
+    make_task(trip, "Hotel Augusta deposit", augusta, priority=1, due=date(2027, 8, 1))
     BookingTask.objects.create(trip=trip, title="Already done", done=True)
     BookingTask.objects.create(trip=trip, title="Augsburg accommodation", priority=1,
                                notes="Options moved to the choice “Augsburg accommodation” on Day 1.")

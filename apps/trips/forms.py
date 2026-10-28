@@ -951,6 +951,15 @@ class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
             required=False, label="Return day (if no times yet)",
             widget=DateInput(styled=False),
             help_text="For a planned return: just the day, without times.")
+        # Booking-todos K1: the return joins the way out's open to-dos and confirmations. Ticked when the
+        # way out has either, so a round trip bought as one ticket stays one booking.
+        self.fields["same_booking"] = forms.BooleanField(
+            required=False, label="Same booking as the way out",
+            help_text="The return joins this leg's open to-dos and confirmations (one ticket for both ways).")
+        if self.instance.pk and not self.is_bound:
+            from .models import BookingTask, Confirmation
+            self.initial["same_booking"] = (BookingTask.for_item(self.instance).filter(done=False).exists()
+                                            or Confirmation.for_item(self.instance).exists())
         self._return_times = None
         self.return_leg = None
 
@@ -1040,7 +1049,13 @@ class TransportLegForm(SyncsTripCitiesMixin, LocalLegTimeMixin, forms.ModelForm)
                 origin_city=leg.destination_city, destination_city=leg.origin_city,
                 origin_timezone=leg.destination_timezone, destination_timezone=leg.origin_timezone,
                 currency=leg.currency, **times,
-            )  # Not copied: service number, confirmation, cost, notes (they differ on the way back).
+            )  # Not copied: service number, cost, notes (they differ on the way back).
+            if self.cleaned_data.get("same_booking"):  # one booking for both ways (K1)
+                from .models import BookingTask, Confirmation
+                for task in BookingTask.for_item(leg).filter(done=False):
+                    task.link(self.return_leg)
+                for confirmation in Confirmation.for_item(leg):
+                    confirmation.link(self.return_leg)
             self._return_times = None
         return leg
 
@@ -1146,13 +1161,56 @@ class QuickInfoForm(forms.Form):
     body = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
+def cover_choices(trip):
+    """What a to-do can cover (booking-todos K1), grouped by day: ``(choices, items)`` where choices are
+    ``[(group label, [(key, label), …]), …]`` — each day's legs, stays checking in and activities, then
+    "Not on a day" — and items maps a key (``leg-<pk>``, ``stay-<pk>``, ``activity-<pk>``) to its item.
+    Built once per trip object (four queries), so a page with several to-do forms pays for it once."""
+    cached = getattr(trip, "_cover_choices", None)
+    if cached is not None:
+        return cached
+    days = list(trip.days.order_by("date", "day_number"))
+    by_date = {day.date: day for day in days if day.date}
+    groups = {day.pk: [] for day in days}
+    loose, items = [], {}
+
+    def put(key, item, text, day):
+        items[key] = item
+        (groups[day.pk] if day is not None else loose).append((key, text))
+
+    for leg in trip.transport.all():
+        put(f"leg-{leg.pk}", leg, f"{leg.get_mode_display()}: {leg.origin} → {leg.destination}", by_date.get(leg.date))
+    for stay in trip.lodging.order_by("check_in", "pk"):
+        put(f"stay-{stay.pk}", stay, f"Stay: {stay.name}", by_date.get(stay.check_in))
+    for activity in trip.activities.select_related("day").order_by("day__date", "start_time", "order", "pk"):
+        put(f"activity-{activity.pk}", activity, f"{activity.get_kind_display()}: {activity.title}",
+            activity.day if activity.day_id in groups else None)
+    choices = [(f"Day {day.day_number}" + (f" · {day.date:%a %b} {day.date.day}" if day.date else ""), groups[day.pk])
+               for day in days if groups[day.pk]]
+    if loose:
+        choices.append(("Not on a day", loose))
+    trip._cover_choices = (choices, items)
+    return trip._cover_choices
+
+
+def cover_key(item):
+    """``leg-<pk>`` / ``stay-<pk>`` / ``activity-<pk>``: an item's value in ``covers``."""
+    from .booking_tasks import kind_of
+    return f"{kind_of(item)}-{item.pk}"
+
+
 class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
-    """One outstanding booking, decision or confirmation.
+    """One outstanding booking or confirmation.
 
     ``day`` and ``confirmation`` are both optional and both SET_NULL on the
     model, so deleting the thing a task pointed at drops the link rather than the
-    task. That is why neither is required here.
+    task. That is why neither is required here. **Covers** (booking-todos K1) is every leg, stay and
+    activity it's about — a round trip, a connection, a hotel and its transfer — saved as ``TaskLink``s.
     """
+
+    covers = forms.MultipleChoiceField(
+        required=False, label="Covers", widget=forms.CheckboxSelectMultiple,
+        help_text="Every journey, stay or activity this booking is for; each then shows it as “Still to book”.")
 
     class Meta:
         model = BookingTask
@@ -1162,39 +1220,58 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
             "due",
             "due_note",
             "day",
-            "leg",
-            "stay",
-            "activity",
             "confirmation",
             "done",
             "order",
             "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "due": DateInput(styled=False)}
-        labels = {"leg": "About leg", "stay": "About stay", "activity": "About activity"}
-
-    def clean(self):
-        cleaned = super().clean()
-        if sum(1 for name in ("leg", "stay", "activity") if cleaned.get(name)) > 1:
-            raise forms.ValidationError("A task is about one leg, stay or activity, not several.")
-        return cleaned
 
     #: Pickers narrowed to the task's own trip.
-    trip_scoped_fields = ("day", "leg", "stay", "activity", "confirmation")
+    trip_scoped_fields = ("day", "confirmation")
 
     def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.cover_items = {}
         if trip is not None:
             # On its own page (trips:task_new / task_edit, edit-by-day plan E2) the pickers offer only
             # this trip's own things: a hand-written POST naming another trip's day or leg is refused.
             for name in self.trip_scoped_fields:
                 self.fields[name].queryset = self.fields[name].queryset.filter(trip=trip)
+            choices, self.cover_items = cover_choices(trip)
+            self.fields["covers"].choices = choices
+        if self.instance.pk and "covers" not in self.initial:
+            self.initial["covers"] = [cover_key(item) for item in self.instance.covered()]
         # `order` has a model default of 0 but is not blank, so a ModelForm
         # would make it a *required* field — asking somebody to type 0 into a
         # sort column to save a booking task. Left blank it falls back to the
         # model default, because an omitted value skips the field entirely
         # rather than storing an empty string.
         self.fields["order"].required = False
+
+    def cover_groups(self):
+        """The Covers checkboxes for the template: [(group label, [(key, label, ticked), …]), …]."""
+        value = self["covers"].value() or []
+        ticked = {str(v) for v in (value if isinstance(value, (list, tuple)) else [value])}
+        return [(group, [(key, text, key in ticked) for key, text in options])
+                for group, options in self.fields["covers"].choices]
+
+    def save(self, commit=True):
+        task = super().save(commit=commit)
+        if commit:
+            self.save_covers(task)
+        return task
+
+    def save_covers(self, task):
+        """Make the to-do's links match the ticked boxes (adds and removes links, never items)."""
+        wanted = {key: self.cover_items[key] for key in self.cleaned_data.get("covers", []) if key in self.cover_items}
+        for link in task.links.select_related("content_type"):
+            if link.item is None or cover_key(link.item) not in wanted:
+                link.delete()
+            else:
+                wanted.pop(cover_key(link.item))
+        for item in wanted.values():
+            task.link(item)
 
 
 class LodgingAdminForm(LocatingStayMixin, forms.ModelForm):
@@ -1970,7 +2047,8 @@ class LegEditForm(InOptionMixin, TransportLegForm):
                       "est_duration", "order")),
         ("Details", ("operator", "service_number", "cost", "currency", "notes")),
         ("Placement", ("section", "option")),
-        ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date")),
+        ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date",
+                         "same_booking")),
     )
 
     class Meta(TransportLegForm.Meta):

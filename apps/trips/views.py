@@ -422,6 +422,8 @@ def _trip_page_queryset(user):
             "infos",
             Prefetch("item_links", queryset=ItemLink.objects.select_related("source_type", "target_type")),
             "booking_tasks",
+            # What each to-do covers (booking-todos K1): one fixed query.
+            "booking_tasks__links",
             # Checklists (site roadmap R9): three fixed queries — lists, items, per-person ticks.
             "checklists__items__ticks",
             "travelers",
@@ -2045,7 +2047,7 @@ def leg_edit(request, pk, leg_pk):
         "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
         **_item_confirmations_context(request, trip, "leg", leg),
         **_item_links_context(trip, "leg", leg),
-        "open_tasks": list(leg.booking_tasks.filter(done=False)),
+        "open_tasks": list(BookingTask.for_item(leg).filter(done=False)),
     })
 
 
@@ -2139,7 +2141,7 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     if activity is not None:
         context.update(_item_confirmations_context(request, trip, "activity", activity))
         context.update(_item_links_context(trip, "activity", activity))
-        context["open_tasks"] = list(activity.booking_tasks.filter(done=False))
+        context["open_tasks"] = list(BookingTask.for_item(activity).filter(done=False))
     return render(request, "trips/activity_form.html", context)
 
 
@@ -2522,7 +2524,7 @@ def stay_edit(request, pk, stay_pk):
         "next": _back(request, _stay_back(trip, stay)),
         **_item_confirmations_context(request, trip, "stay", stay),
         **_item_links_context(trip, "stay", stay),
-        "open_tasks": list(stay.booking_tasks.filter(done=False)),
+        "open_tasks": list(BookingTask.for_item(stay).filter(done=False)),
     })
 
 
@@ -2584,8 +2586,8 @@ def trip_todo(request, pk):
     from . import booking_tasks
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
-    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related("day")),
-                             "days")
+    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related("day")
+                                              .prefetch_related("links")), "days")
     booking_tasks.attach(trip)  # item / item_day / item_info; "Looks like" suggestions stay on the trip page
     tasks = sorted(trip.booking_tasks.all(),
                    key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk))
@@ -2603,13 +2605,28 @@ def trip_todo(request, pk):
 
 @login_required
 def task_edit(request, pk, task_pk=None):
-    """Add or edit one to-do (editors). ``?leg=`` / ``?stay=`` / ``?activity=`` pre-pick what a new
-    one is about (from that item's page); the pickers only offer this trip's own things."""
-    from .forms import BookingTaskForm
+    """Add or edit one to-do (editors). ``?leg=`` / ``?stay=`` / ``?activity=`` (each may repeat) pre-tick
+    what a new one covers, and a leg's partners — its way back, the legs it connects with — are ticked too
+    and named ("Also ticked: …"; booking-todos K1); the pickers only offer this trip's own things."""
+    from . import booking_tasks
+    from .forms import BookingTaskForm, cover_choices, cover_key
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk) if task_pk is not None else None
-    initial = {name: request.GET[name] for name in ("leg", "stay", "activity", "day")
-               if task is None and request.GET.get(name, "").isdigit()}
+    initial = {"day": request.GET["day"]} if task is None and request.GET.get("day", "").isdigit() else {}
+    also = []
+    if task is None and request.method == "GET":
+        _choices, items = cover_choices(trip)
+        asked = [items[f"{kind}-{value}"] for kind in ("leg", "stay", "activity")
+                 for value in request.GET.getlist(kind) if f"{kind}-{value}" in items]
+        if asked:
+            legs = [item for item in items.values() if booking_tasks.kind_of(item) == "leg"]
+            ticked = {cover_key(item) for item in asked}
+            for item in asked:
+                for partner, why in booking_tasks.partners(item, legs):
+                    if cover_key(partner) not in ticked:
+                        ticked.add(cover_key(partner))
+                        also.append(f"{booking_tasks.label(partner)} ({why})")
+            initial["covers"] = sorted(ticked)
     note = _note_for_todo(request) if task is None else None
     if note is not None:  # "Add as a to-do" from a catalogue note's lead time (catalogue-notes N3)
         initial.update({"title": f"Book ahead: {note.target_name}",
@@ -2630,7 +2647,7 @@ def task_edit(request, pk, task_pk=None):
         messages.success(request, f"{'Saved' if task else 'Added'} “{saved.title}”.")
         return redirect(back)
     return render(request, "trips/task_form.html", {"trip": trip, "task": task, "form": form, "next": back,
-                                                    "from_note": note})
+                                                    "from_note": note, "also_ticked": also})
 
 
 def _note_for_todo(request):
@@ -2873,6 +2890,7 @@ def item_confirmations(request, pk, kind, item_pk):
     if request.method == "POST":
         before = booking_tasks.confirmed_items(trip)
         action = request.POST.get("action")
+        confirmation = None
         if action == "detach":
             confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
             confirmation.unlink(item)
@@ -2900,11 +2918,74 @@ def item_confirmations(request, pk, kind, item_pk):
         if not url_has_allowed_host_and_scheme(return_to, allowed_hosts={request.get_host()},
                                                require_https=request.is_secure()):
             return_to = here
-        return redirect(_task_offer_or(trip, booking_tasks.offer_for(trip, before), return_to))
+        newly = booking_tasks.confirmed_items(trip) - before
+        if action != "detach" and confirmation is not None:
+            others = _spread_candidates(item, confirmation)
+            if others:  # the item's to-do covers others still unconfirmed: offer them this number too (K1)
+                from urllib.parse import urlencode
+                return redirect(reverse("trips:confirmation_spread", args=[trip.pk, confirmation.pk]) + "?" + urlencode({
+                    "items": ",".join(f"{booking_tasks.kind_of(o)}-{o.pk}" for o in others),
+                    "new": ",".join(f"{k}-{pk}" for k, pk in sorted(newly)), "next": return_to,
+                    **({"panel": "1"} if "panel=1" in return_to or request.GET.get("panel") else {})}))
+        return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), return_to))
     return render(request, "trips/item_confirmations.html", {
         "trip": trip, "item_label": item_label(item), "next": back,
         **_item_confirmations_context(request, trip, kind, item),
     })
+
+
+def _spread_candidates(item, confirmation):
+    """Items an open to-do of ``item`` also covers that have no confirmation yet (booking-todos K1), for
+    "Also attach <number> to …" — offered, never linked on its own."""
+    from .models import TASKABLE, Confirmation
+    if type(item) not in TASKABLE.values():
+        return []
+    found = []
+    for task in BookingTask.for_item(item).filter(done=False):
+        for other in task.covered():
+            if (type(other), other.pk) == (type(item), item.pk) or other in found:
+                continue
+            if not Confirmation.for_item(other).exists():
+                found.append(other)
+    return found
+
+
+@login_required
+def confirmation_spread(request, pk, confirmation_pk):
+    """After a confirmation reaches one item of a to-do that covers several: offer it to the to-do's other
+    items that have none yet (editors; booking-todos K1), each ticked; then the "mark these done?" offer."""
+    from . import booking_tasks
+    from .forms import cover_choices
+    trip = _readable_trip(request, pk, "edit")
+    confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
+    source = request.POST if request.method == "POST" else request.GET
+    _choices, items = cover_choices(trip)
+    offered = [items[key] for key in source.get("items", "").split(",") if key in items]
+    newly = set()
+    for key in source.get("new", "").split(","):
+        kind, _, item_pk = key.partition("-")
+        if kind in ("leg", "stay", "activity") and item_pk.isdigit():
+            newly.add((kind, int(item_pk)))
+    back = _back(request, reverse("trips:trip_bookings", args=[trip.pk]) + "#stays-legs")
+    if request.method == "POST":
+        ticked = set() if request.POST.get("skip") else set(request.POST.getlist("attach"))
+        added = []
+        for item in offered:
+            key = f"{booking_tasks.kind_of(item)}-{item.pk}"
+            if key in ticked:
+                confirmation.link(item)
+                added.append(item)
+                newly.add((booking_tasks.kind_of(item), item.pk))
+        if added:
+            messages.success(request, f"Added {confirmation.confirmation_number} to "
+                                      f"{', '.join(booking_tasks.label(i) for i in added)}.")
+        return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), back))
+    if not offered:
+        return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), back))
+    rows = [(f"{booking_tasks.kind_of(item)}-{item.pk}", booking_tasks.label(item)) for item in offered]
+    return render(request, "trips/confirmation_spread.html", {
+        "trip": trip, "confirmation": confirmation, "rows": rows, "next": back,
+        "items": source.get("items", ""), "new": source.get("new", "")})
 
 
 def _task_offer_or(trip, tasks, back):
@@ -2938,8 +3019,7 @@ def task_offer(request, pk):
         return redirect(back)
     from . import booking_tasks
     for task in tasks:
-        item = task.leg or task.stay or task.activity
-        task.item_label = booking_tasks.label(item) if item else ""
+        task.item_label = booking_tasks.cover_label(sorted(task.covered(), key=booking_tasks._when))
     return render(request, "trips/task_offer.html", {"trip": trip, "tasks": tasks, "next": back,
                                                       "ids": ",".join(str(t.pk) for t in tasks)})
 
@@ -2947,26 +3027,23 @@ def task_offer(request, pk):
 @login_required
 @require_POST
 def task_link(request, pk, task_pk):
-    """Link a task to the leg or stay it's about (``leg`` / ``stay``), or dismiss the
-    suggestion (``dismiss`` = the suggested item's name, remembered in the task's notes)."""
+    """Add the leg, stay or activity a task's title names to what it covers (``leg`` / ``stay`` /
+    ``activity``; never replaces — booking-todos K1), or dismiss the suggestion (``dismiss`` = the
+    suggested item's name, remembered in the task's notes)."""
     from . import booking_tasks
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
-    if request.POST.get("leg"):
-        task.leg, task.stay, task.activity = get_object_or_404(trip.transport.all(), pk=request.POST["leg"]), None, None
-        task.save(update_fields=["leg", "stay", "activity"])
-        messages.success(request, f"“{task.title}” is now about {booking_tasks.label(task.leg)}.")
-    elif request.POST.get("stay"):
-        task.stay, task.leg, task.activity = get_object_or_404(trip.lodging.all(), pk=request.POST["stay"]), None, None
-        task.save(update_fields=["leg", "stay", "activity"])
-        messages.success(request, f"“{task.title}” is now about {task.stay.name}.")
-    elif request.POST.get("activity"):
-        task.activity = get_object_or_404(trip.activities.all(), pk=request.POST["activity"])
-        task.leg = task.stay = None
-        task.save(update_fields=["leg", "stay", "activity"])
-        messages.success(request, f"“{task.title}” is now about {task.activity.title}.")
-    elif request.POST.get("dismiss", "").strip():
+    from .models import TASKABLE
+    for kind, model in TASKABLE.items():
+        if request.POST.get(kind):
+            item = get_object_or_404(model.objects.all(), pk=request.POST[kind])
+            if (item.trip_id if hasattr(item, "trip_id") else item.day.trip_id) != trip.pk:
+                raise Http404
+            task.link(item)  # adds, never replaces (booking-todos K1)
+            messages.success(request, f"“{task.title}” now covers {booking_tasks.label(item)}.")
+            return redirect(back)
+    if request.POST.get("dismiss", "").strip():
         line = BookingTask.NOT_ABOUT + request.POST["dismiss"].strip()[:200]
         task.notes = "\n".join(n for n in (task.notes.rstrip(), line) if n)
         task.save(update_fields=["notes"])

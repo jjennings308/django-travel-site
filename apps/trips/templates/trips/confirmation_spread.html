@@ -1,0 +1,25 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Offered after a confirmation reaches one item of a to-do that covers several (views.confirmation_spread, booking-todos K1): attach the same number to the to-do's other items that have none yet, each ticked. Never automatic. Then the "mark these done?" offer.
+{% endcomment %}
+{% block title %}Same booking? — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-xl{% endblock %}
+{% block content %}
+  <form method="post" class="card p-6" data-confirmation-spread>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <input type="hidden" name="items" value="{{ items }}">
+    <input type="hidden" name="new" value="{{ new }}">
+    <h1 class="page-title mb-2">Also attach {{ confirmation.confirmation_number }} to:</h1>
+    <p class="mb-4 text-zinc-600">The to-do for this booking covers these too, and they have no confirmation yet.</p>
+    <ul class="mb-5 space-y-2">
+      {% for key, label in rows %}
+        <li><label class="flex items-start gap-2"><input type="checkbox" name="attach" value="{{ key }}" checked class="mt-1"> <span class="font-medium">{{ label }}</span></label></li>
+      {% endfor %}
+    </ul>
+    <div class="flex gap-3">
+      <button type="submit" class="btn">Attach to the ticked ones</button>
+      <button type="submit" name="skip" value="1" class="btn-quiet" data-spread-skip>Not these</button>
+    </div>
+  </form>
+{% endblock %}
