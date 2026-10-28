@@ -484,6 +484,12 @@ class Trip(models.Model):
     # choice on the trip's forms, beside the places' local ones. Filled from the creator's preferred
     # currency when a trip is created without one (``save``).
     home_currency = models.CharField(max_length=3, help_text="The currency you think in for this trip, e.g. USD.")
+    # Daily food per person (budget-estimates B2): the plan's Food line for meals nobody priced; days marked
+    # meals_included are skipped.
+    food_allowance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                         validators=[MinValueValidator(Decimal("0"))], verbose_name="daily food",
+                                         help_text="Per person per day, for meals you haven't priced.")
+    food_allowance_currency = models.CharField(max_length=3, blank=True, verbose_name="daily food currency")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(

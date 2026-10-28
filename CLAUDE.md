@@ -550,10 +550,10 @@ that matter most:
   edited on the Budget page under **Your own rates** (`trips:trip_rates`, POST, editors; everyone sees them; moved from Edit trip in E3). Budget page: `?in=XXX` (default the reader's
   `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
   "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. About this trip:
-  `costs.planned_total` (budget-estimates B1; replaced `budget.estimate`, which counted an activity's estimate and its
-  booking both) — per counted item the booked cost when a costed confirmation covers it (each confirmation once), else
-  its estimate on its basis, plus chosen / split-taken options' own costs — in the reader's currency (two queries only
-  when something is foreign). `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
+  `costs.planned_total(context, target)` (budget-estimates B1–B2; replaced `budget.estimate`, which counted an
+  activity's estimate and its booking both) — the Budget page's Plan total and how much of it is booked, "≈ USD 14,200
+  planned · USD 6,100 booked", from the same `costs.plan`, so the two agree — in the reader's currency (two queries
+  only when something is foreign); computed after `_trip_page_context`'s dict is built. `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
   → `Rates`; unknown currency → None); the site makes no live exchange-rate calls and `requests` is gone from
   `requirements.txt`.
@@ -1535,7 +1535,8 @@ Plan: `docs/plans/budget-estimates.md` (every leg, stay, activity, meal and choi
 basis — total, per person, per night, per room per night with rooms, per person per night — and a people count; the
 Budget page shows planned → booked → paid by category and per person, with a daily food allowance; costs shown on the
 day's rows and in choices; payments recorded against what they paid for). Decided 2026-10-28. Phases B1–B3, one branch
-each, in order. Status: B1 (what a cost means) done on branch `b1-cost-basis`.
+each, in order. Status: B1 (what a cost means) done on branch `b1-cost-basis`; B2 (the planned budget page, daily
+food) done on branch `b2-planned-budget`.
 
 - **What a cost means** (B1; trips 0060, add-only): `cost_basis` (blank = the kind's default, `costs.DEFAULT`: a
   leg's `cost` and an activity's `est_cost` total, a stay's `nightly_rate` and a stay option's `est_cost` per night, a
@@ -1556,6 +1557,22 @@ each, in order. Status: B1 (what a cost means) done on branch `b1-cost-basis`.
   `options.make_item` carries basis, rooms and people onto what Pick makes (a meal from an option gets its basis written
   out). History: `changes.TRACKED` "cost" (`_cost`: "€95 per night → €95 per room per night × 3 rooms"; repeated
   parts dropped). Pins unchanged (38 / 36); the booklet unchanged.
+- **The planned budget** (B2; trips 0061 adds `Trip.food_allowance` + `food_allowance_currency`, Settings → "Daily
+  food", blank currency = home): the Budget page opens with **Plan** (`#plan`, `?in=` currency, the reader's by
+  default), built by `costs.plan(context, target, expenses)` from `_trip_page_context` (only what counts, each item's
+  `confirmation_list`, the option groups — so the page's query count is fixed per page, not per item; pinned in
+  `test_budget_plan`, with one of each kind present since Django skips an empty prefetch). Rows by category
+  (`costs.CATEGORIES`: Travel, Stays, Activities & tickets, Food, Other): a costed confirmation once over the counted
+  items it covers ("GCH7JS · 3 journeys"; none counted → Other, e.g. insurance), each other counted leg / stay /
+  activity with its estimate or "no plan" / "no booking needed" (meals only with an estimate), a chosen / split-taken
+  option's own cost, an undecided group as a `range` outside the totals, and `allowance_row` ("€45 per person per day ×
+  2 days × 2 = €180", `meals_included` days skipped, people per day from the roster). One `_Money` (one `Rates` load)
+  converts everything; an amount with no rate is listed in `missing`, never guessed. Totals per category and overall:
+  planned (booked else estimated), booked, paid (expenses through `EXPENSE_CATEGORY`), left to pay (≥ 0 per
+  category); `people`: each traveller's share (rows' named people, remainder cents on the first by name) next to what
+  they paid; a cost for a number of people goes to `unassigned`. Rows link `trip_detail?item=`; ⓘ shows the row's
+  line; categories fold on a phone (Alpine). **Spent** (the expenses, settle-up, own rates) follows, unchanged; the
+  old "Lodging on file" line is gone.
 
 ### Rules carried over from the itinerary project
 

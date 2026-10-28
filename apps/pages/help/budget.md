@@ -7,7 +7,27 @@ updated: 2026-10-28
 
 # The budget and splitting costs
 
-Click **Budget** at the top of the trip page. Anyone who can see the trip can read it; editors add and change costs.
+Click **Budget** at the top of the trip page. It has two parts: the **Plan** (what the trip should cost, what's booked and what's been paid, from the costs on the trip's items) and **Spent** (the costs you record as you go, and who owes whom). Anyone who can see the trip can read it; editors add and change costs.
+
+## The plan
+
+The Plan adds up everything on the trip that counts, in one currency (pick it with **In**; it starts in yours, set under Settings), by category: **Travel**, **Stays**, **Activities & tickets**, **Food** and **Other**. Each row is one thing:
+
+- a journey, stay, activity or meal with its estimate ([what a cost means](#what-a-cost-means)): its total, and each person's share;
+- a booking with a cost, once over everything it covers ("GCH7JS · 4 journeys"); the estimates of the things it covers aren't added as well;
+- a booking that covers no single thing, such as travel insurance, under Other;
+- a chosen option's own cost;
+- the **daily food allowance** (below).
+
+Journeys, stays and activities with no cost say **No plan yet**; a meal without a cost isn't listed (the allowance covers it). Something marked **No booking needed** is still in the plan if it has a cost (the €8 museum at the door). An undecided choice shows its options' range, such as "€840–€1,240", and isn't counted until you pick one. Click a row to open it on the trip page, where its cost is changed; ⓘ shows how its total was worked out.
+
+Each category, and the whole trip, shows **Planned** (booked where it's booked, else the estimate), **of which booked**, **Paid** (the costs recorded under Spent, by their category: flights and local transport are Travel, lodging is Stays) and **Left to pay** (planned minus paid, never below zero). On a phone the categories fold; tap one to open it. Below them, each traveller's **share of the plan** sits next to what they've **paid so far**. A cost given for a number of people ("for 4") rather than named ones is added up separately.
+
+Amounts in other currencies are converted at the latest rates (or your own rates); one with no rate is listed and left out.
+
+## Daily food
+
+Most meals aren't worth pricing one by one. In **Settings**, **Daily food** is an amount per person per day (with its currency) for the food you haven't priced. The plan adds it for each day and the people on it: "€45 per person per day × 11 days × 6 = €2,970". Days marked **meals included** are skipped. Meals you do price are added as well, so leave the allowance for the rest.
 
 ## Adding a cost
 
@@ -69,7 +89,7 @@ In a "choose one" box, options priced this way show the same line, so they compa
 
 ## Estimated trip cost
 
-The trip page shows **Estimated trip cost** under **About this trip**, above the days, in your currency (set under Settings). For each journey, stay, activity and meal it counts the booked cost when a confirmation with a cost covers it, else its estimate on its basis. A booking that covers several things (one ticket for four flights) counts once, and their own estimates step aside, so nothing is counted twice. Undecided choices aren't counted; a chosen option's own cost is. Estimates that can't be totalled yet (no nights, no rooms or no people) are listed as "without a total yet". It's the plan, separate from the costs recorded in the budget.
+The trip page shows **Estimated trip cost** under **About this trip**, above the days: the Plan's total and how much of it is booked ("≈ USD 14,200 planned · USD 6,100 booked"), in your currency, linking to the Budget page. It's the same sum as the Plan, so the two always agree.
 
 ## Problems
 
