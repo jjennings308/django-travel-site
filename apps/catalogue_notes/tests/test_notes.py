@@ -1,4 +1,4 @@
-"""Notes on catalogue places, activities and events (docs/plans/catalogue-notes.md, N1)."""
+"""Notes on catalogue places, cities, activities and events (docs/plans/catalogue-notes.md, N1)."""
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -25,7 +25,7 @@ class Fixture(TestCase):
         self.other = User.objects.create_user("ot", "ot@example.com", "pw-1234-abcd")
         de = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU", continent="Europe",
                                     approval_status=APPROVED)
-        munich = City.objects.create(name="Munich", slug="munich", country=de, latitude=0, longitude=0,
+        self.munich = munich = City.objects.create(name="Munich", slug="munich", country=de, latitude=0, longitude=0,
                                      approval_status=APPROVED)
         self.wiesn = POI.objects.create(name="Theresienwiese", slug="theresienwiese", city=munich, latitude=0,
                                         longitude=0, approval_status=APPROVED)
@@ -125,7 +125,8 @@ class VisibilityTests(Fixture):
     def test_the_card_is_on_every_detail_page(self):
         for url, kind, slug in ((reverse("locations:poi_detail", args=["theresienwiese"]), "poi", "theresienwiese"),
                                 (reverse("activities:activity_detail", args=["oktoberfest"]), "activity", "oktoberfest"),
-                                (reverse("events:event_detail", args=["oktoberfest-2027"]), "event", "oktoberfest-2027")):
+                                (reverse("events:event_detail", args=["oktoberfest-2027"]), "event", "oktoberfest-2027"),
+                                (reverse("locations:city_detail", args=["munich"]), "city", "munich")):
             with self.subTest(kind=kind):
                 self.client.force_login(self.member)
                 html = self.client.get(url).content.decode()
@@ -175,3 +176,24 @@ class ApprovalTests(Fixture):
         self.assertEqual(note.approval_status, APPROVED)
         self.assertIn("Cash only", self.fragment("poi", "theresienwiese"))  # now everyone sees it
         self.assertTrue(Notification.objects.filter(user=self.member).exists())
+
+
+class CityTests(Fixture):
+    def test_a_city_takes_notes_without_closed_days_or_book_ahead(self):
+        self.client.force_login(self.member)
+        url = reverse("catalogue_notes:add", args=["city", "munich"])
+        form = self.client.get(url).content.decode()
+        self.assertNotIn('name="closed_weekdays"', form)
+        self.assertNotIn('name="book_ahead"', form)
+        response = self.client.post(url, {"tone": "tip", "text": "Most shops close on Sundays",
+                                          "checked_on": "2026-10-26", "closed_weekdays": ["6"]})
+        self.assertEqual(response["Location"], "/locations/cities/munich/#good-to-know")
+        note = CatalogueNote.objects.get()
+        self.assertEqual((note.city, note.target_kind, note.closed_weekdays, note.approval_status),
+                         (self.munich, "city", [], ApprovalStatus.PENDING))
+        self.assertIn("Most shops close on Sundays", self.fragment("city", "munich", self.member))
+        self.assertNotIn("Most shops close on Sundays", self.fragment("city", "munich"))  # pending: theirs only
+
+    def test_one_target_only_with_a_city(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            CatalogueNote.objects.create(text="x", poi=self.wiesn, city=self.munich)

@@ -3,7 +3,7 @@ summary: Browse what there is to do, suggest new places, activities and events, 
 audience: everyone
 section: Places & events
 order: 10
-updated: 2026-10-27
+updated: 2026-10-28
 
 # Places, activities and events
 
@@ -42,17 +42,17 @@ New suggestions are checked by the site's staff before others see them. Until th
 
 ## Good to know notes
 
-A place, activity or event page has a **Good to know** card: things a traveller should know before going, such as "Cash only; no ATM near the castle", or "Timed entry: book 3 months ahead". An event also shows its activity's notes and its venue's (marked "From …"), and an activity its venue's.
+A place, city, activity or event page has a **Good to know** card: things a traveller should know before going, such as "Cash only; no ATM near the castle", "Timed entry: book 3 months ahead", or, on a city, "Most shops close on Sundays". An event also shows its activity's notes and its venue's (marked "From …"), and an activity its venue's.
 
 To add one, click **Add a note**:
 
 - **Tone**: Tip, Warning or Critical.
 - **Text**: what to know, in a sentence or two.
-- **Closed on**: tick the days it's closed every week, if any.
-- **Book ahead** and **Booking link**: how far ahead to book (for example 3 months), and where.
+- **Closed on**: tick the days it's closed every week, if any (not on a city).
+- **Book ahead** and **Booking link**: how far ahead to book (for example 3 months; not on a city), and where.
 - **Last checked**: when you confirmed it; it shows as "checked Oct 2026", so readers know how fresh it is.
 
-Staff check each note before others see it; until then only you can, marked "waiting for review", and you can still edit or delete it. If a published note looks wrong or out of date, click **Out of date?** under it and say what's changed. Trips that include the place, activity or event will show its notes.
+Staff check each note before others see it; until then only you can, marked "waiting for review", and you can still edit or delete it. If a published note looks wrong or out of date, click **Out of date?** under it and say what's changed. Trips that include the place, activity or event will show its notes. A city's notes show on the first day of each stretch of days a trip spends in that city, and under a stay option in that city while a choice is still open ([options and votes](/help/options-and-votes/)).
 
 ## Reviews
 

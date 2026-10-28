@@ -42,6 +42,8 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
     <div class="stay-line">Sleeping: <a class="link-quiet font-medium" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay.refs %}{% include "trips/partials/_refs.html" with refs=day.stay.refs %}{% endif %}</div>
   {% endif %}
   {% for stay in day.track_stays %}<p class="stay-line">Sleeping ({{ stay.track.who }}): <a class="link-quiet font-medium" href="#stay-{{ stay.pk }}">{{ stay.name }}</a></p>{% endfor %}
+  {# The city's catalogue notes, on the first day of each run of days there (trip_notes.attach). #}
+  {% include "trips/partials/_trip_notes.html" with item=day %}
 
   {% comment %}
     The day's timeline (U3, itinerary.timeline): legs, activities and reserved meals in local

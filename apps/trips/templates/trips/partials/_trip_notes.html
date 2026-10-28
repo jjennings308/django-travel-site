@@ -1,5 +1,5 @@
 {% comment %}
-An item's catalogue notes on the trip page (catalogue-notes plan, N2). Pass item= (a meal, trip activity or section linked to the catalogue; trip_notes.attach set item.trip_notes / item.hidden_trip_notes). Editors get "Not for this trip", and a line listing hidden ones to show again.
+An item's catalogue notes on the trip page (catalogue-notes plan, N2). Pass item= (a meal, trip activity, section or option linked to the catalogue, or a day in a city with notes; trip_notes.attach set item.trip_notes / item.hidden_trip_notes). Editors get "Not for this trip", and a line listing hidden ones to show again.
 {% endcomment %}
 {% if item.trip_notes or can_edit and item.hidden_trip_notes %}
   <div class="mt-2 space-y-2" data-trip-notes>

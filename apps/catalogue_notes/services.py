@@ -1,7 +1,7 @@
 """Which notes an item shows (docs/plans/catalogue-notes.md).
 
 An event shows its own notes, then its activity's, then its venue's (``Event.poi``); an activity its own,
-then its venue's (``Activity.venue``); a place its own. Approved notes for everyone; on catalogue pages a
+then its venue's (``Activity.venue``); a place or a city its own. Approved notes for everyone; on catalogue pages a
 member also sees their own notes still waiting for review, and staff see every note.
 """
 from django.db.models import Q
@@ -10,12 +10,12 @@ from django.http import Http404
 from apps.activities.models import Activity
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
-from apps.locations.models import POI
+from apps.locations.models import POI, City
 
 from .models import CatalogueNote
 
 #: URL kind -> (model, the note's field)
-KINDS = {"poi": (POI, "poi"), "activity": (Activity, "activity"), "event": (Event, "event")}
+KINDS = {"poi": (POI, "poi"), "activity": (Activity, "activity"), "event": (Event, "event"), "city": (City, "city")}
 
 
 def get_target(kind, slug):
@@ -33,7 +33,8 @@ def get_target(kind, slug):
 
 
 #: URL kind -> its detail page's URL name
-DETAIL = {"poi": "locations:poi_detail", "activity": "activities:activity_detail", "event": "events:event_detail"}
+DETAIL = {"poi": "locations:poi_detail", "activity": "activities:activity_detail", "event": "events:event_detail",
+          "city": "locations:city_detail"}
 
 
 def target_url(target):
@@ -74,7 +75,7 @@ def notes_for(target, user=None):
     for _label, field, pk in groups:
         combined |= Q(**{field: pk})
     notes = list(visible(CatalogueNote.objects.filter(combined), user)
-                 .select_related("poi", "activity", "event", "created_by"))
+                 .select_related("poi", "activity", "event", "city", "created_by"))
     ordered = []
     for label, field, pk in groups:
         for note in notes:
