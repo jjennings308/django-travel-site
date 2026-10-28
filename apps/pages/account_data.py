@@ -45,7 +45,7 @@ from apps.media_app.models import Media, MediaAlbum
 from apps.notifications.models import Notification
 from apps.reviews.models import Review
 from apps.trips.models import (
-    Checklist, ChecklistItem, Comment, Confirmation, ConfirmationFile, Day, Lodging, Meal, RewardsMembership,
+    BookingTask, Checklist, ChecklistItem, Comment, Confirmation, ConfirmationFile, Day, Lodging, Meal, RewardsMembership,
     Section, TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripIdea,
 )
 
@@ -86,7 +86,17 @@ def _trip_rows(trip):
         "checklists": _rows(Checklist.objects.filter(trip=trip)),
         "checklist_items": _rows(ChecklistItem.objects.filter(checklist__trip=trip), exclude=("done_by",)),
         "ideas": _rows(TripIdea.objects.filter(trip=trip), exclude=("added_by",)),
+        "todos": _todo_rows(trip),
     }
+
+
+def _todo_rows(trip):
+    """The trip's to-dos, each with what it covers by label (booking-todos K1: a to-do may cover several)."""
+    from apps.trips.booking_tasks import label
+    return [{"id": task.pk, "title": task.title, "priority": task.get_priority_display(), "due": task.due,
+             "due_note": task.due_note, "done": task.done, "notes": task.visible_notes,
+             "covers": [label(item) for item in task.covered()]}
+            for task in BookingTask.objects.filter(trip=trip)]
 
 
 def export_data(user):

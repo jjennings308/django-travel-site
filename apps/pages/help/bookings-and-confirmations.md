@@ -58,16 +58,26 @@ A confirmation that covers no single item, such as travel insurance or a rail pa
 
 Reference keeps two lists:
 
-- **Still to book**: the trip's tasks, such as "ICE seats for 6", most urgent first. A task can be about one journey, stay or activity; it then shows on that item as **Still to book**. If a task's name mentions a stay, journey or activity, editors see **Looks like:** with a **Link** button to connect them, or **Not this one**.
+- **Still to book**: the trip's tasks, such as "ICE seats for 6", most urgent first. A task can cover any number of journeys, stays and activities ([below](#one-to-do-for-several-things)); each of them then shows it as **Still to book**. If a task's name mentions a stay, journey or activity, editors see **Looks like:** with a **Link** button to add it, or **Not this one**.
 - **Not booked yet**: flights, rental cars, trains with an operator or number, stays and bookable activities (tours, timed entries, tickets, tables, car hire) that have no confirmation and no task. Nothing needs typing to appear here.
 
-When you add the first confirmation to something that has open tasks, the site asks **Mark these done?** Tick the tasks that are finished and click **Mark ticked done**, or click **Not yet**.
+When a confirmation makes everything a task covers confirmed, the site asks **Mark these done?** Tick the tasks that are finished and click **Mark ticked done**, or click **Not yet**.
+
+## One to-do for several things
+
+One booking often covers more than one thing: a return train ticket is two journeys, a flight with a connection is two legs (PIT → ATL, ATL → FRA), a rail pass covers several trains, a hotel may come with its airport transfer. One to-do covers them all. On the to-do's page, **Covers** lists the trip's journeys, stays and activities by day: tick each one it's for. The to-do then shows on every one of them, and none of them is listed under **Not booked yet**. It reads as one line: "For: Augsburg → Munich and back", "PIT → ATL → FRA", or "Hotel Laimer Hof + 1 more" (point at it to see the rest).
+
+**Add a to-do for this** on a journey's page ticks that journey and also its way back and the legs it connects with that day; the page says what it ticked ("Also ticked: Munich → Augsburg (the way back)"). Untick any that are booked separately.
+
+When you add a confirmation number to one of them and the to-do covers others with no confirmation yet, the site asks **Also attach GCH7JS to:** with each of them ticked. Click **Attach to the ticked ones**, or **Not these**. Nothing is attached without asking.
+
+When you add a return trip on a journey's page, **Same booking as the way out** puts the return on the way out's open to-dos and confirmations. It's ticked when the way out has either; untick it when the return is booked on its own ([return trips](/help/travel-legs/#return-trips)).
 
 ## The To do page
 
 **To do** (at the top of the trip page) lists what's left, in order: choices still to make (**Decide:** …), then **Not booked yet**, then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg"). Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
 
-Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**) and **Delete** on each one. To add a task about one journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task is already linked to it. Its **Still to book** lines open the task.
+Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**) and **Delete** on each one. To add a task about a journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task already covers it (and, for a journey, its way back and connections). Its **Still to book** lines open the task.
 
 ## The Bookings page
 

@@ -9,6 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips.forms import BookingTaskForm
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripGrant, TripRole
 
 User = get_user_model()
@@ -37,11 +38,17 @@ class Fixture(TestCase):
 
 
 class ModelAndFormTests(Fixture):
-    def test_one_item_at_most(self):
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            BookingTask.objects.create(trip=self.trip, title="x", leg=self.ice, stay=self.hof)
+    def test_a_task_covers_several_items_of_its_own_trip(self):
+        """Booking-todos K1: any number of legs, stays and activities; once each; never another trip's."""
+        task = make_task(self.trip, "x", self.ice, self.hof)
+        task.link(self.ice)
+        self.assertEqual(task.links.count(), 2)
+        other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
+        theirs = TransportLeg.objects.create(trip=other, origin="X", destination="Y", date=date(2027, 1, 1))
+        with self.assertRaises(ValueError):
+            task.link(theirs)
 
-    def test_form_refuses_both_and_another_trips_leg(self):
+    def test_form_covers_several_and_refuses_another_trips_leg(self):
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         theirs = TransportLeg.objects.create(trip=other, origin="X", destination="Y", date=date(2027, 1, 1))
         base = {"title": "Seats", "priority": "2"}
@@ -49,17 +56,22 @@ class ModelAndFormTests(Fixture):
         def form(**data):
             return BookingTaskForm({**base, **data}, instance=BookingTask(trip=self.trip), trip=self.trip)
 
-        self.assertFalse(form(leg=self.ice.pk, stay=self.hof.pk).is_valid())
-        foreign = form(leg=theirs.pk)
+        foreign = form(covers=[f"leg-{theirs.pk}"])
         self.assertFalse(foreign.is_valid())
-        self.assertIn("leg", foreign.errors)
-        ok = form(leg=self.ice.pk)
+        self.assertIn("covers", foreign.errors)
+        ok = form(covers=[f"leg-{self.ice.pk}", f"stay-{self.hof.pk}"])  # several (booking-todos K1)
         self.assertTrue(ok.is_valid(), ok.errors)
+        task = ok.save()
+        self.assertEqual(set(task.covered()), {self.ice, self.hof})
+        again = BookingTaskForm({**base, "covers": [f"stay-{self.hof.pk}"]}, instance=task, trip=self.trip)
+        self.assertTrue(again.is_valid(), again.errors)
+        again.save()
+        self.assertEqual(task.covered(), [self.hof])  # unticking removes the link, not the leg
 
 
 class TripPageTests(Fixture):
     def test_task_shown_on_its_item_and_names_it(self):
-        BookingTask.objects.create(trip=self.trip, title="ICE seats for 6", leg=self.ice)
+        make_task(self.trip, "ICE seats for 6", self.ice)
         page = self.page(self.viewer)
         self.assertContains(page, "Still to book: ICE seats for 6")
         self.assertContains(page, f'For: <a class="link-quiet" href="#leg-{self.ice.pk}">Frankfurt Hof → Augsburg Hof</a> · Day 4')
@@ -77,12 +89,10 @@ class TripPageTests(Fixture):
         link = reverse("trips:task_link", args=[self.trip.pk, ice_task.pk])
         self.client.force_login(self.editor)
         self.client.post(link, {"leg": self.ice.pk})
-        ice_task.refresh_from_db()
-        self.assertEqual(ice_task.leg, self.ice)
+        self.assertEqual(ice_task.covered(), [self.ice])
         self.client.post(reverse("trips:task_link", args=[self.trip.pk, hotel_task.pk]),
                          {"dismiss": "Hessischer Hof"})
-        hotel_task.refresh_from_db()
-        self.assertIsNone(hotel_task.stay)
+        self.assertEqual(hotel_task.covered(), [])
         page = self.page()
         self.assertNotContains(page, "Looks like:")
         self.assertNotContains(page, "Not about:")  # the remembered dismissal isn't shown
@@ -107,7 +117,7 @@ class TripPageTests(Fixture):
         booked = Lodging.objects.create(trip=self.trip, name="The Christopher", check_in=date(2027, 9, 21),
                                         check_out=date(2027, 9, 22))
         Confirmation.objects.create(trip=self.trip, confirmation_number="CHR1").link(booked)
-        BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=self.hof)
+        make_task(self.trip, "Hof rooms", self.hof)
         items = self.page().context["not_booked"]
         self.assertEqual([nb["item"] for nb in items], [self.ice, flight])  # U-Bahn, booked stay, tasked stay out
 
@@ -115,8 +125,8 @@ class TripPageTests(Fixture):
 class OfferTests(Fixture):
     def setUp(self):
         super().setUp()
-        self.seats = BookingTask.objects.create(trip=self.trip, title="ICE seats for 6", leg=self.ice)
-        self.other = BookingTask.objects.create(trip=self.trip, title="Seat map check", leg=self.ice)
+        self.seats = make_task(self.trip, "ICE seats for 6", self.ice)
+        self.other = make_task(self.trip, "Seat map check", self.ice)
         self.client.force_login(self.editor)
 
     def test_first_confirmation_offers_its_tasks_and_ticks_only_the_chosen(self):

@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-One to-do (trips:task_new / task_edit, edit-by-day plan E2). Its About leg / stay / activity, day and confirmation pickers offer only this trip's own things; ?leg= / ?stay= / ?activity= pre-pick one for a new to-do.
+One to-do (trips:task_new / task_edit, edit-by-day plan E2). Covers (booking-todos K1) is grouped checkboxes of the trip's legs, stays and activities by day; ?leg= / ?stay= / ?activity= (repeatable) pre-tick them for a new to-do, with a leg's way back and connections ("Also ticked"). The day and confirmation pickers offer only this trip's own things.
 {% endcomment %}
 {% block title %}{% if task %}{{ task.title }}{% else %}New to-do{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -16,9 +16,23 @@ One to-do (trips:task_new / task_edit, edit-by-day plan E2). Its About leg / sta
     <input type="hidden" name="next" value="{{ next }}">
     {% if from_note %}<input type="hidden" name="from_note" value="{{ from_note.pk }}">{% endif %}
     <h1 class="page-title mb-1">{% if task %}{{ task.title }}{% else %}New to-do{% endif %}</h1>
-    <p class="mb-4 text-zinc-500">Pick at most one leg, stay or activity it's about; it then shows on that item as "Still to book". {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" text="How this works" %}</p>
+    <p class="mb-4 text-zinc-500">Tick every journey, stay or activity it covers (a round trip, a connection, a hotel and its transfer); each then shows it as "Still to book". {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" text="How this works" %}</p>
     {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
-    {% include "trips/_form_fields.html" with form=form %}
+    {% include "trips/_form_fields.html" with form=form hide_fields="covers" %}
+    <fieldset class="mb-4" data-panel-tab="details" data-covers>
+      <legend class="font-medium">{{ form.covers.label }}</legend>
+      <p class="mt-1 text-xs text-zinc-500">{{ form.covers.help_text }}</p>
+      {% if also_ticked %}<p class="mt-2 text-sm text-zinc-600" data-also-ticked>Also ticked: {{ also_ticked|join:", " }}</p>{% endif %}
+      {% for group, options in form.cover_groups %}
+        <p class="mt-3 text-xs font-medium uppercase tracking-wide text-zinc-500">{{ group }}</p>
+        {% for key, text, ticked in options %}
+          <label class="mt-1 flex items-start gap-2 text-sm"><input type="checkbox" name="covers" value="{{ key }}" class="mt-1"{% if ticked %} checked{% endif %}> <span>{{ text }}</span></label>
+        {% endfor %}
+      {% empty %}
+        <p class="mt-2 text-sm text-zinc-500">The trip has no journeys, stays or activities yet.</p>
+      {% endfor %}
+      {{ form.covers.errors }}
+    </fieldset>
     <div class="flex flex-wrap items-center gap-3">
       <button type="submit" class="btn">{% if task %}Save{% else %}Add to-do{% endif %}</button>
       <a class="btn-quiet" href="{{ next }}">Cancel</a>

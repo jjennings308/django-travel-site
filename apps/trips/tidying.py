@@ -42,14 +42,17 @@ def snapshot(trip):
                                              *(a for a in activities if a.day_id == day.pk),
                                              *(s for s in sections if s.day_id == day.pk)])})
     tasks = []
-    for task in trip.booking_tasks.filter(done=False).select_related("leg", "stay", "activity"):
+    from .booking_tasks import _when, kind_of
+    for task in trip.booking_tasks.filter(done=False).prefetch_related("links__item"):
+        # Its first covered item (booking-todos K1: a to-do may cover several) is where a note goes.
+        covered = sorted((link.item for link in task.links.all() if link.item is not None), key=_when)
         item = None
-        if task.leg_id:
-            item = {"kind": "leg", "id": task.leg_id, "label": f"{task.leg.origin} → {task.leg.destination}"}
-        elif task.stay_id:
-            item = {"kind": "stay", "id": task.stay_id, "label": task.stay.name}
-        elif task.activity_id:
-            item = {"kind": "activity", "id": task.activity_id, "label": task.activity.title}
+        if covered:
+            first = covered[0]
+            kind = kind_of(first)
+            text = (f"{first.origin} → {first.destination}" if kind == "leg" else
+                    first.name if kind == "stay" else first.title)
+            item = {"kind": kind, "id": first.pk, "label": text}
         tasks.append({"id": task.pk, "title": task.title, "item": item})
     return {
         "notes": trip.notes,

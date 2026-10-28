@@ -684,7 +684,9 @@ that matter most:
 - **Round trips:** a leg's own page (`LegEditForm`, extending `TransportLegForm`) has "Also add the return trip"
   plus the return's local departure/arrival; saving creates a second, independent leg with the ends,
   cities and zones swapped (return departs in the destination's zone, arrives in the origin's) and
-  mode/operator/currency copied, but not service number, confirmations, cost or notes. The fields are
+  mode/operator/currency copied, but not service number, cost or notes. **Same booking as the way out**
+  (`same_booking`, booking-todos K1; initially ticked when the way out has an open to-do or a confirmation) links the
+  return to the way out's open to-dos and confirmations; unticked, it shares neither. The fields are
   added in `__init__` (`LocalLegTimeMixin` rebuilds `declared_fields`). The admin stays one-way.
 - **Confirmations attach like comments** (trips 0026–0028): a `Confirmation` holds the booking's own
   details (number, provider, optional `label`, `url` manage-booking link, `booked_on`, `cost` + `currency`
@@ -721,8 +723,7 @@ that matter most:
   `trips:activity_new` / `activity_edit` / `activity_delete`); a new one lands on its own page so its
   confirmation can be added at once (it's a `CONFIRMABLE` kind, "activity"). Shown on its day (an
   "Activities" block, `#activity-<pk>`), in the PDF; never public. Booking
-  tasks may point at one (`BookingTask.activity`; `bookingtask_one_item` allows at most one of leg / stay
-  / activity), suggestions match an activity whose title the task names, and "Not booked yet" includes
+  tasks may cover it (a `TaskLink`, with legs and stays too — booking-todos K1), suggestions match an activity whose title the task names, and "Not booked yet" includes
   bookable kinds (not "other") with no confirmation and no task.
 - **One page to read and edit; trip-wide pages are views; Settings holds trip-level things** (day-first plan
   P2–P7, replacing edit-by-day E3's "the view page is for reading"). On the trip page a click on an item opens it in
@@ -746,19 +747,29 @@ that matter most:
   their own pages); the map page's lists; the calendar feed's links. The header links Bookings · To do · Map · Budget ·
   Photos · People · History; the jump bar gains **Ideas** while the shelf has any. Budget keeps its own costs and rates.
   The booklet has no links.
-- **Booking tasks point at their item** (trips 0025, Phase E): `BookingTask.leg` / `stay` (optional,
-  SET_NULL, at most one — `bookingtask_one_item`; Phase F adds `booking`). `apps/trips/booking_tasks.py`
-  works from the trip page's prefetches (no query): `attach` gives legs/stays `open_tasks` ("Still to
-  book: …" on the leg row and stay card) and each task `item` / `item_day` ("For: … · Day 4"), and for
-  editors a `suggestion` when an unlinked task's title names exactly one stay (by name) or one leg
-  (first word of each end): "Looks like: … — Link / Not this one" (`trips:task_link`; a dismissal is a
-  "Not about: <item>" line in the task's notes, hidden by `visible_notes`). `not_booked` is the derived
-  "Not booked yet" list: flights, rental cars, trains with an operator or service number, and stays with
-  no confirmation and no task. When a save gives a leg or stay its **first** confirmation
-  (`trips:item_confirmations`) and it has open tasks, the user lands on `trips:task_offer`
-  to tick them off — offered, never automatic. `BookingTaskForm(trip=…)` (the to-do page, E2) scopes its
-  day / leg / stay / activity / confirmation pickers to the trip.
-- **The detail page** holds a fixed query count (37 here — D2 removed the decision to-dos' options; P6 the Ideas shelf and its votes (the page only; the day fragment stays at 35); P5 who takes each option of a split; P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
+- **Booking tasks cover their items** (trips 0025, Phase E; booking-todos K1, trips 0056–0058): a to-do covers any
+  number of legs, stays and trip activities through `TaskLink` (`trip_task_links`: task + generic item, once per pair,
+  `TaskLink.link` / `task.link(item)` refuse another trip's item; `models.TASKABLE`; each item's `task_links`
+  GenericRelation deletes its links, never the to-do; `BookingTask.covered()` / `BookingTask.for_item(item)`); 0057
+  copied the old one-item `leg` / `stay` / `activity` FKs into links and 0058 dropped them with `bookingtask_one_item`.
+  `apps/trips/booking_tasks.py` works from the trip page's prefetches (`booking_tasks__links`, one query): `attach`
+  gives every covered item `open_tasks` ("Still to book: …" on the leg row, stay card and activity row) and each task
+  `items` (date order), `item` (the first) / `item_day` / `item_info`, `cover_label` ("Augsburg → Munich and back" for a
+  leg and its reverse, "PIT → ATL → FRA" for legs chained on one date, else "Hotel Laimer Hof + 1 more"; the rest in
+  `more_labels`, shown as a `title`), and for editors a `suggestion` when a task covering nothing names exactly one
+  stay (by name) or one leg (first word of each end): "Looks like: … — Link / Not this one" (`trips:task_link` **adds** a
+  link; a dismissal is a "Not about: <item>" line in the task's notes, hidden by `visible_notes`). `partners(item, legs)`
+  (pure): a leg's way back (the first later leg with its ends swapped — cities when both set, else first words) and the
+  legs chained to it that day; **Covers** on the to-do page (`BookingTaskForm`: grouped checkboxes by day,
+  `forms.cover_choices` cached on the trip object) is pre-ticked from `?leg=` / `?stay=` / `?activity=` (repeatable)
+  plus those partners ("Also ticked: …") — offered, never linked on their own. `not_booked` is the derived "Not booked
+  yet" list: flights, rental cars, trains with an operator or service number, stays and bookable activities with no
+  confirmation and no covering task. A confirmation added to an item (`trips:item_confirmations`) whose open to-do covers
+  other unconfirmed items first offers **Also attach <number> to:** (`trips:confirmation_spread`, each ticked, **Not
+  these** skips), then `trips:task_offer` lists the to-dos all of whose items are now confirmed (`offer_after` /
+  `offer_for`) — offered, never automatic. History snapshots keep a removed item's `task_links` and Restore links them
+  back (a pre-K1 snapshot's `tasks` too); the admin shows a read-only Covers; Your data lists each to-do's covers.
+- **The detail page** holds a fixed query count (38 here — K1 what each to-do covers; D2 removed the decision to-dos' options; P6 the Ideas shelf and its votes (the page only; the day fragment stays at 36); P5 who takes each option of a split; P4 the "choose one" groups, their options and votes; N2 the catalogue notes of linked items, one query, none when nothing links to the catalogue; R5 added the confirmations' files, R9 checklists, their items and ticks, R10 the rates and the trip's own rates when a cost is in another currency; R11 removed the rewards context processor's query, R21 the time-zone middleware's own one — 2 of them from this site's
   middleware/context processors; one is the trip's cities; two are the confirmations' links and
   travellers; two are the days' activities and their travellers; two are item links and info notes;
   one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
@@ -1491,6 +1502,14 @@ Plan: `docs/plans/booking-todos.md` (a to-do covers several items through `TaskL
 trips and connections pre-ticked, "Same booking as the way out" on the return trip; then Reference's Still to book
 and Not booked yet become one **To book** list whose rows open in the panel, with Mark done in place, quick actions
 and a "No booking needed" flag). Decided 2026-10-28. Phases K1–K2, one branch each, in order. Status: not started.
+
+### Booking to-dos
+
+Plan: `docs/plans/booking-todos.md` (a to-do covers several items — a round trip, a connection, a hotel and its
+transfer — K1; then Reference's to-do and Not booked lists become one "To book" list that works like the days, with
+"No booking needed" per item — K2). Decided 2026-10-28. Phases K1–K2, one branch each, in order. Status: K1
+(`TaskLink`, trips 0056–0058; Covers on the to-do page with partners pre-ticked; Same booking as the way out; the
+"Also attach" confirmation offer; detail pin 37 → 38, day fragment 35 → 36) done on branch `k1-task-links`.
 
 ### Rules carried over from the itinerary project
 

@@ -86,6 +86,7 @@ urlpatterns = [
     path("<int:pk>/travel-tables/", views.trip_travel_review, name="trip_travel_review"),
     path("<int:pk>/booklet.pdf", views.trip_pdf, name="trip_pdf"),
     path("<int:pk>/tasks/done/", views.task_offer, name="task_offer"),
+    path("<int:pk>/confirmations/<int:confirmation_pk>/also/", views.confirmation_spread, name="confirmation_spread"),
     path("<int:pk>/tidy/", views.trip_tidy, name="trip_tidy"),
     path("<int:pk>/todo/", views.trip_todo, name="trip_todo"),
     path("<int:pk>/tasks/new/", views.task_edit, name="task_new"),

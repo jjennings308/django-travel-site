@@ -25,3 +25,12 @@ def give(user, *roles, trip=None, granted_by=None):
             raise ValueError("a TripGrant needs a role")
         TripGrant.objects.create(trip=trip, user=user, role=role, granted_by=granted_by)
     return user
+
+
+def make_task(trip, title, *items, **fields):
+    """A to-do covering ``items`` (booking-todos K1: links, not the old leg / stay / activity FKs)."""
+    from apps.trips.models import BookingTask
+    task = BookingTask.objects.create(trip=trip, title=title, **fields)
+    for item in items:
+        task.link(item)
+    return task

@@ -26,7 +26,7 @@ from apps.core.current import get_user
 
 from .models import (
     BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, OptionGroup, Section,
-    TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripIdea, item_label,
+    TaskLink, TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripIdea, item_label,
 )
 
 URGENT_DAYS = 7
@@ -348,19 +348,20 @@ class CannotUndo(Exception):
 
 def snapshot(instance):
     """Everything restoring ``instance`` needs: its row and many-to-many (Django's serializer),
-    the confirmations and contacts/notes linked to it, and the booking tasks pointing at it."""
+    the confirmations and contacts/notes linked to it, and the to-dos covering it (``task_links``,
+    booking-todos K1)."""
     from django.contrib.contenttypes.models import ContentType
     from django.core import serializers
     content_type = ContentType.objects.get_for_model(instance)
-    task_field = RESTORABLE.get(type(instance))
+    takes_tasks = RESTORABLE.get(type(instance)) is not None
     return {
         "object": serializers.serialize("python", [instance])[0],
         "links": list(ConfirmationLink.objects.filter(content_type=content_type, object_id=instance.pk)
                       .values_list("confirmation_id", flat=True)),
         "refs": list(ItemLink.objects.filter(target_type=content_type, target_id=instance.pk)
                      .values("source_type_id", "source_id")),
-        "tasks": list(BookingTask.objects.filter(**{task_field: instance}).values_list("pk", flat=True))
-                 if task_field else [],
+        "task_links": list(TaskLink.objects.filter(content_type=content_type, object_id=instance.pk)
+                           .values_list("task_id", flat=True)) if takes_tasks else [],
     }
 
 
@@ -451,10 +452,11 @@ def restore(change, actor=None):
                 ItemLink.objects.get_or_create(trip_id=change.trip_id, source_type_id=ref["source_type_id"],
                                                source_id=ref["source_id"], target_type=content_type,
                                                target_id=item.pk)
-        task_field = RESTORABLE.get(model)
-        if task_field and snap.get("tasks"):
-            BookingTask.objects.filter(pk__in=snap["tasks"], trip_id=change.trip_id,
-                                       **{f"{task_field}__isnull": True}).update(**{task_field: item})
+        # The to-dos that covered it, if they still exist (a pre-K1 snapshot keeps them as "tasks").
+        task_ids = snap.get("task_links") or snap.get("tasks") or []
+        if RESTORABLE.get(model) and task_ids:
+            for task in BookingTask.objects.filter(pk__in=task_ids, trip_id=change.trip_id):
+                task.link(item)
     _, label, trip_of, _ = TRACKED[model]
     record(change.trip_id, TripChange.Kind.ADDED, f"Restored {label(item)}", item, actor=actor,
            day_id=day_id_of(item))

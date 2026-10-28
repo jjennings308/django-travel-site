@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.trips.tests.helpers import make_task
 from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripActivity,
                                TripGrant, TripRole)
 
@@ -92,7 +93,7 @@ class DaySummaryTests(Fixture):
         Lodging.objects.create(trip=self.trip, name="Early Inn", check_in=date(2027, 9, 10),
                                check_out=date(2027, 9, 11))
         TripActivity.objects.create(trip=self.trip, day=d3, kind="tour", title="Student guide", start_time=time(15))
-        BookingTask.objects.create(trip=self.trip, title="Hof rooms", stay=self.hof)
+        make_task(self.trip, "Hof rooms", self.hof)
 
     def test_the_old_overview_table_is_gone(self):
         html = self.page().content.decode()
