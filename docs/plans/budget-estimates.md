@@ -86,7 +86,7 @@ per person. Today:
   existing rows; `planned_total` counts a confirmation once across four legs and drops those legs' estimates;
   options and `make_item` carry the basis; form validation (basis not allowed for the kind refused; rooms only with per
   room per night); pins.
-- **Help**: `bookings-and-confirmations` (or a new `budget` guide if none covers costs — check `apps/pages/help/`):
+- **Help**: `budget` (and a line in `bookings-and-confirmations`):
   what each basis means, the 3 rooms vs VRBO example; bump `updated`.
 
 ## B2 — The planned budget page (branch `b2-planned-budget`)
