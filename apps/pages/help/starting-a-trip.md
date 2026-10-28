@@ -42,7 +42,7 @@ Click **Preview** to see what saving would do, then **Save the route**:
 
 - Each day gets its city. The day you travel belongs to the next city, and the last city also has the day you leave. Days the trip doesn't have yet are made.
 - A day that already has a different city (a day trip) is kept, unless you tick **Replace days that already have a different city**.
-- Ticked by default: a **planned leg** on each travel day ("Munich → Salzburg", no times yet; skipped where that day already has one), and a **stay to book** in each city ("Stay in Munich"; skipped where a stay already covers those nights). Both show under **Not booked yet** until you fill them in.
+- Ticked by default: a **planned leg** on each travel day ("Munich → Salzburg", no times yet; skipped where that day already has one), and a **stay to book** in each city ("Stay in Munich"; skipped where a stay already covers those nights). Both show under **To book** until you fill them in.
 - When the nights don't add up to the trip, the preview says so. A longer route stops at the trip's last day unless you tick **Extend the trip to fit the route**; a shorter one leaves the last days without a city.
 
 Need more stops? **Preview** adds three more rows. Clear a stop's city to drop it. Saving is one line in the trip's [history](/help/trip-history/).

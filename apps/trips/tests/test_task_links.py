@@ -86,7 +86,11 @@ class PageTests(Fixture):
         make_task(self.trip, "Set up train travel", self.out, self.back)
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
-        self.assertIn('title="Also: München Hbf → Augsburg Hbf">Augsburg Hbf → München Hbf and back</a>', html)
+        row = html[html.index(f'id="to-book-leg-{self.out.pk}"'):]
+        row = row[:row.index("</li>")]
+        self.assertIn(">Augsburg Hbf → München Hbf and back</a>", row)  # one To book row for both (K2)
+        self.assertIn("Set up train travel", row)
+        self.assertNotIn(f'id="to-book-leg-{self.back.pk}"', html)
         self.assertEqual(html.count("Still to book: Set up train travel"), 2)
 
     def test_deleting_a_leg_deletes_its_link_not_the_todo(self):
@@ -209,7 +213,7 @@ class CopyMigrationTests(RestoringTransactionTestCase):
     """trips 0056–0058: each to-do's leg / stay / activity becomes a link."""
 
     BEFORE = [("trips", "0055_remove_decision_todos")]
-    AFTER = [("trips", "0058_remove_task_item_fks")]
+    AFTER = []  # all the way: the test reads through today's models (0059 added no_booking)
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)

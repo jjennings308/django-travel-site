@@ -1,6 +1,7 @@
 {% extends "trips/base_trips.html" %}
+{% load static %}
 {% comment %}
-What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided choices, then Not booked yet (each opens on the trip page), then the to-dos — open ones by priority and due date, the done ones folded away. Anyone who can see the trip reads it; editors add, edit and tick off here. Linked from the Needs attention banner and Reference.
+What's left to do (trips:trip_todo, edit-by-day plan E2; booking-todos K2 order): undecided choices, then the to-dos — open ones by priority and due date, the done ones folded away — then No plan yet (the trip's To book rows no to-do covers, partials/_to_book.html mode "todo": Add a to-do · Add confirmation · No booking needed, back here). Each thing shows once. Anyone who can see the trip reads it; editors add, edit and tick off here (Mark done in place, trips/to_book.js). Linked from the Needs attention banner and Reference.
 {% endcomment %}
 {% block title %}To do — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -14,7 +15,7 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided ch
     <h1 class="page-title">To do {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" %}</h1>
     {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}
   </div>
-  <p class="mb-4 text-sm text-zinc-500">Choices still to make, bookings with no confirmation, then the to-dos, most urgent first. A to-do about a journey, stay or activity also shows on it.</p>
+  <p class="mb-4 text-sm text-zinc-500">Choices still to make, then the to-dos, most urgent first, then bookings with no plan yet. A to-do about a journey, stay or activity also shows on it.</p>
   {% if open_groups %}
     {# Undecided "choose one" groups on the days (day-first plan P4): decided on the day itself. #}
     <ul class="card mb-4 divide-y divide-zinc-100 p-0 text-sm" data-open-groups>
@@ -23,17 +24,13 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided ch
       {% endfor %}
     </ul>
   {% endif %}
-  {% if not_booked %}
-    <h2 class="grid-label mb-2" id="not-booked">Not booked yet</h2>
-    <div class="mb-4">{% include "trips/partials/_not_booked.html" with elsewhere=True %}</div>
-  {% endif %}
-  {% if open_groups or not_booked %}<h2 class="grid-label mb-2">To-dos</h2>{% endif %}
+  {% if open_groups %}<h2 class="grid-label mb-2">To-dos</h2>{% endif %}
   {% if open_tasks %}
     <ul class="card divide-y divide-zinc-100 p-0 text-sm" data-open-tasks>
       {% for task in open_tasks %}{% include "trips/partials/_task_row.html" %}{% endfor %}
     </ul>
   {% else %}
-    <p class="empty-state">Nothing to do.{% if can_edit %} Add a to-do for anything still to book.{% endif %}</p>
+    <p class="empty-state">No to-dos.{% if can_edit %} Add a to-do for anything still to book.{% endif %}</p>
   {% endif %}
   {% if done_tasks %}
     <details class="mt-6" data-done-tasks>
@@ -43,4 +40,10 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; P7 order): undecided ch
       </ul>
     </details>
   {% endif %}
+  {% if no_plan %}
+    <h2 class="grid-label mt-6 mb-2 scroll-mt-32" id="no-plan">No plan yet</h2>
+    <p class="mb-2 text-sm text-zinc-500">Bookings with no confirmation and no to-do yet.</p>
+    {% include "trips/partials/_to_book.html" with mode="todo" %}
+  {% endif %}
+  {% if can_edit %}<script src="{% static 'trips/to_book.js' %}" defer></script>{% endif %}
 {% endblock %}

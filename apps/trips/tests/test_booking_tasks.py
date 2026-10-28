@@ -74,7 +74,12 @@ class TripPageTests(Fixture):
         make_task(self.trip, "ICE seats for 6", self.ice)
         page = self.page(self.viewer)
         self.assertContains(page, "Still to book: ICE seats for 6")
-        self.assertContains(page, f'For: <a class="link-quiet" href="#leg-{self.ice.pk}">Frankfurt Hof → Augsburg Hof</a> · Day 4')
+        html = page.content.decode()
+        row = html[html.index(f'id="to-book-leg-{self.ice.pk}"'):]
+        row = row[:row.index("</li>")]
+        self.assertIn(f'<a class="link-quiet font-medium" href="#leg-{self.ice.pk}">Frankfurt Hof → Augsburg Hof</a>', row)
+        self.assertIn("Day 4", row)
+        self.assertIn("ICE seats for 6", row)  # its to-do, in the item's To book row (booking-todos K2)
 
     def test_suggestions_link_and_dismiss(self):
         ice_task = BookingTask.objects.create(trip=self.trip, title="ICE train seats Frankfurt→Augsburg (6 people)")

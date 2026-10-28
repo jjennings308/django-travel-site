@@ -18,9 +18,10 @@ Bookings (trips:trip_bookings, day-first plan P7): the trip's confirmations, wha
   {% include "trips/partials/_confirmation_groups.html" with elsewhere=True %}
   {% if not confirmation_groups %}<p class="empty-state">No confirmations yet.{% if can_edit %} Add one on the item it's for.{% endif %}</p>{% endif %}
 
-  {% if not_booked %}
+  {% if to_book.no_plan %}
+    {# The To book rows with no to-do yet (booking-todos K2), read-only: each opens on the trip page. #}
     <h2 class="grid-label mt-8" id="not-booked">Not booked yet</h2>
-    {% include "trips/partials/_not_booked.html" with elsewhere=True %}
+    {% include "trips/partials/_to_book.html" with mode="bookings" %}
   {% endif %}
 
   <section class="mt-8 scroll-mt-32" id="stays-legs">

@@ -12,7 +12,7 @@ zone filter.
   <div class="min-w-0">
     <p><span aria-hidden="true">{{ leg.icon }}</span> <span class="font-medium text-zinc-900">{{ leg.origin }} → {{ leg.destination }}</span>
       <span class="text-zinc-500">{% if leg.operator or leg.service_number %}{{ leg.operator }} {{ leg.service_number }} · {% endif %}{% if leg.is_planned %}planned{% if leg.est_duration_str %} · {{ leg.est_duration_str }}{% endif %}{% else %}arrives {{ leg.arrival_local_str }}{% if leg.departs_on_a_different_day %} (+1 day){% endif %}{% if leg.duration_str %} · {{ leg.duration_str }}{% endif %}{% endif %}</span>
-      <span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
+      {% if leg.no_booking and leg.stage != "booked" %}<span class="text-xs text-zinc-500" data-no-booking-needed>no booking needed</span>{% else %}<span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>{% endif %}
       {% for c in leg.confirmation_list %}<a class="chip hover:border-zinc-400" href="#confirmation-{{ c.pk }}">{{ c.confirmation_number }}{% if c.provider %} · {{ c.provider }}{% endif %}{% if c.files.all %} · 📎{{ c.files.all|length }}{% endif %}</a> {% endfor %}
       {% if can_edit %}<a class="link-quiet text-xs font-medium" href="{% url 'trips:leg_edit' trip.pk leg.pk %}?next={{ request.path|urlencode }}%23leg-{{ leg.pk }}" data-panel-link>Edit</a>{% endif %}
     </p>
@@ -32,7 +32,7 @@ zone filter.
     <span class="flex flex-wrap items-center gap-1">
       {% if show_day and leg.on_day %}<a class="chip print:hidden" href="#day-{{ leg.on_day.day_number }}">Day {{ leg.on_day.day_number }}</a>{% endif %}
       <span class="badge badge-mode">{{ leg.get_mode_display }}</span>
-      <span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>
+      {% if leg.no_booking and leg.stage != "booked" %}<span class="text-xs text-zinc-500" data-no-booking-needed>no booking needed</span>{% else %}<span class="badge badge-mode">{% if leg.stage == "booked" %}Booked{% elif leg.stage == "planned" %}Planned{% else %}Scheduled{% endif %}</span>{% endif %}
     </span>
   </div>
   {% if leg.operator or leg.service_number %}

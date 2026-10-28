@@ -54,12 +54,23 @@ Each train or flight shows its stage:
 
 A confirmation that covers no single item, such as travel insurance or a rail pass, is a loose one. On the trip's **Settings**, under **Loose confirmations**, click **Add a loose confirmation**. It shows in Reference under Other.
 
-## What's still to book
+## To book
 
-Reference keeps two lists:
+Reference's **To book** list is everything on the trip still to book, in date order:
 
-- **Still to book**: the trip's tasks, such as "ICE seats for 6", most urgent first. A task can cover any number of journeys, stays and activities ([below](#one-to-do-for-several-things)); each of them then shows it as **Still to book**. If a task's name mentions a stay, journey or activity, editors see **Looks like:** with a **Link** button to add it, or **Not this one**.
-- **Not booked yet**: flights, rental cars, trains with an operator or number, stays and bookable activities (tours, timed entries, tickets, tables, car hire) that have no confirmation and no task. Nothing needs typing to appear here.
+- each journey, stay and activity with no confirmation that usually needs booking (flights, rental cars, trains with an operator or number, stays, tours, timed entries, tickets, tables and car hire) or that has a to-do. Under it is its to-do, such as "Book trains · High · due Aug 1", or **No plan yet** when it has none. Things one to-do covers together are one row: "Augsburg → Munich and back";
+- then **Other to-dos**: to-dos that aren't about a journey, stay or activity, such as "Travel insurance". If a task's name mentions a stay, journey or activity, editors see **Looks like:** with a **Link** button to add it, or **Not this one**.
+
+A row works like an item on a day: click it and it opens beside the days (an editor gets the to-do or the item to edit; anyone else a read-only view). Editors also have, on each row:
+
+- **Mark done** on a to-do: the row greys and moves to **Done today** (it's gone the next time you open the page);
+- on a **No plan yet** row: **Add a to-do** (it already covers the item, and a journey's way back and connections), **Add confirmation**, or **No booking needed**.
+
+After a save beside the days, the list is refreshed. **Needs attention** counts the rows ("3 to book") and the other to-dos.
+
+### No booking needed
+
+Some things never need booking: a walk-up regional train, a free museum, a stay with friends. Click **No booking needed** on its row, or tick **No booking needed** on its page (under Details for a journey). It then never shows in To book, Not booked yet or the days' ⚠, and its row on the day says "no booking needed" instead of Planned or Scheduled. Untick it on its page to put it back.
 
 When a confirmation makes everything a task covers confirmed, the site asks **Mark these done?** Tick the tasks that are finished and click **Mark ticked done**, or click **Not yet**.
 
@@ -75,13 +86,13 @@ When you add a return trip on a journey's page, **Same booking as the way out** 
 
 ## The To do page
 
-**To do** (at the top of the trip page) lists what's left, in order: choices still to make (**Decide:** …), then **Not booked yet**, then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done**. Each says what it's for ("For: Day 4 · Munich → Salzburg"). Open it from **N to do** in the **Needs attention** banner, or **All to-dos** beside **Still to book** in Reference. Anyone who can see the trip can read it.
+**To do** (at the top of the trip page) answers "what do I book next?": choices still to make (**Decide:** …), then every task on the trip — open ones by priority and due date, then the finished ones folded under **Done** — then **No plan yet**, the things to book that no to-do covers yet (with **Add a to-do**, **Add confirmation** and **No booking needed**). Each thing is listed once. **Mark done** ticks a to-do off where it is. Each says what it's for ("For: Day 4 · Munich → Salzburg"). Open it from **All to-dos** beside **To book** in Reference. Anyone who can see the trip can read it.
 
 Editors use **Add a to-do** there, and **Edit**, **Mark done** (or **Not done yet**) and **Delete** on each one. To add a task about a journey, stay or activity, open that item's page and click **Add a to-do for this** under **Still to book**: the task already covers it (and, for a journey, its way back and connections). Its **Still to book** lines open the task.
 
 ## The Bookings page
 
-**Bookings**, at the top of the trip page, is the trip's bookings in one place, for everyone who can see the trip: the confirmations (grouped as in Reference), **Not booked yet**, and **Getting around & stays**, every journey and stay in date order with its day and confirmation numbers (a journey or stay whose date is outside the trip's days is flagged). Nothing is changed on it: click a line and it opens on the trip page, beside the days, where editors change it. The same goes for the lines on **To do**, the map page and the [calendar feed](/help/calendar-feed/).
+**Bookings**, at the top of the trip page, is the trip's bookings in one place, for everyone who can see the trip: the confirmations (grouped as in Reference), **Not booked yet** (the things to book with no plan yet), and **Getting around & stays**, every journey and stay in date order with its day and confirmation numbers (a journey or stay whose date is outside the trip's days is flagged). Nothing is changed on it: click a line and it opens on the trip page, beside the days, where editors change it. The same goes for the lines on **To do**, the map page and the [calendar feed](/help/calendar-feed/).
 
 ## To-dos from catalogue notes
 

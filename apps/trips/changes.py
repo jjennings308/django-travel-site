@@ -55,6 +55,11 @@ def _city(obj):
 
 # model -> (item type, label(obj), trip_id(obj), [(field attname, label, format(obj) or None)])
 # A format of None means "say it changed" (long text, JSON).
+def _booking(o):
+    """"needed" / "not needed" (booking-todos K2: an item's No booking needed)."""
+    return "not needed" if o.no_booking else "needed"
+
+
 TRACKED = {
     TransportLeg: ("leg", lambda o: f"{o.origin} → {o.destination}", lambda o: o.trip_id, [
         ("mode", "mode", lambda o: o.get_mode_display()),
@@ -66,6 +71,7 @@ TRACKED = {
         ("departure_at", "departs", lambda o: o.departure_local_str or "no time"),
         ("arrival_at", "arrives", lambda o: o.arrival_local_str or "no time"),
         ("notes", "notes", None),
+        ("no_booking", "booking", _booking),
     ]),
     Lodging: ("stay", lambda o: f"stay {o.name}", lambda o: o.trip_id, [
         ("name", "name", lambda o: _text(o.name)),
@@ -73,6 +79,7 @@ TRACKED = {
         ("check_out", "check-out", lambda o: _date(o.check_out)),
         ("address", "address", None),
         ("city_id", "city", _city),
+        ("no_booking", "booking", _booking),
     ]),
     TripActivity: ("activity", lambda o: f"“{o.title}”", lambda o: o.trip_id, [
         ("title", "title", lambda o: _text(o.title)),
@@ -83,6 +90,7 @@ TRACKED = {
         ("place_text", "place", lambda o: _text(o.place_text)),
         ("poi_id", "place", lambda o: _text(o.poi)),
         ("notes", "notes", None),
+        ("no_booking", "booking", _booking),
     ]),
     Meal: ("meal", lambda o: f"{o.get_meal_type_display().lower()} at {o.name}",
            lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(), [

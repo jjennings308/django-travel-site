@@ -13,7 +13,7 @@ One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, t
   {% if can_edit %}
     <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
       <a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">Edit</a>
-      <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% else %}Mark done{% endif %}</button></form>
+      <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}"{% if not task.done %} data-mark-done{% endif %}>{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% else %}Mark done{% endif %}</button></form>
       <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ request.path|urlencode }}">Delete</a>
     </div>
   {% endif %}

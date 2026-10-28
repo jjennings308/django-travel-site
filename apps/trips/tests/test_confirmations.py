@@ -257,9 +257,10 @@ class ViewPageIsForReadingTests(Fixture):
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
         for marker in (reverse("trips:confirmation_new", args=[self.trip.pk]),
                        reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]),
-                       reverse("trips:day_add_travel", args=[self.trip.pk, self.day.pk]),
-                       "Add confirmation"):
+                       reverse("trips:day_add_travel", args=[self.trip.pk, self.day.pk])):
             self.assertNotIn(marker, html)
+        # To book's quick action (booking-todos K2) opens the item's confirmations in the panel; nowhere else.
+        self.assertNotIn("Add confirmation", html.replace(html[html.find('id="to-book"'):], ""))
         self.assertIn(reverse("trips:leg_edit", args=[self.trip.pk, self.bwi.pk]), html)  # Edit links stay
 
     def test_edit_trip_lists_stays_and_legs_and_adds_loose_confirmations(self):

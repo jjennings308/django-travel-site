@@ -848,6 +848,7 @@ class LodgingForm(InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.
             "nightly_rate",
             "currency",
             "notes",
+            "no_booking",
             "option",
         ]
         widgets = {
@@ -2045,14 +2046,14 @@ class LegEditForm(InOptionMixin, TransportLegForm):
         ("Route", ("origin", "origin_city", "destination", "destination_city", "mode")),
         ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
                       "est_duration", "order")),
-        ("Details", ("operator", "service_number", "cost", "currency", "notes")),
+        ("Details", ("operator", "service_number", "cost", "currency", "notes", "no_booking")),
         ("Placement", ("section", "option")),
         ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date",
                          "same_booking")),
     )
 
     class Meta(TransportLegForm.Meta):
-        fields = TransportLegForm.Meta.fields + ["section", "order", "option"]
+        fields = TransportLegForm.Meta.fields + ["section", "order", "option", "no_booking"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2118,7 +2119,7 @@ class TripActivityForm(InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
     class Meta:
         model = TripActivity
         fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "event", "place_text", "travelers",
-                  "est_cost", "currency", "notes", "order", "option"]
+                  "est_cost", "currency", "notes", "no_booking", "order", "option"]
         widgets = {
             "start_time": TimeInput(styled=False),
             "end_time": TimeInput(styled=False),

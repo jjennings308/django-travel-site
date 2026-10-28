@@ -21,7 +21,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
-When something needs attention, a **Needs attention** banner sits under the title. It counts what's **not booked**, what's still **to do**, open **decisions** (undecided [choices](/help/options-and-votes/)), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
+When something needs attention, a **Needs attention** banner sits under the title. It counts what's still **to book** (journeys, stays and activities with no confirmation), **other to-dos** (ones not about any of them), open **decisions** (undecided [choices](/help/options-and-votes/)), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
 
 The bar under the title jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
 
@@ -71,15 +71,14 @@ Click a journey, stay, activity, meal or part of the write-up to open it in a **
 - **If you can edit the trip**, the panel is the item's own page, with tabs: **Details** (what it is, when and where), **Booking** (confirmation numbers, tickets and to-dos for it), **People** (who's on it, for activities and days), **Contacts** (phone numbers and notes linked to it) and, for a day or a part of the write-up, **Comments**. Change something and save: the panel says **Saved** and stays open, and the day on the page updates. Deleting the item closes the panel. **Edit this day** at the top of each open day opens the day's own details the same way, and **Edit** beside each item does too.
 - **If you can read the trip**, the panel shows the item as the page does, with its notes where it has them.
 
-A journey moved to another date reloads the page at its new day. The rest of the page (Needs attention, the route, Reference) catches up the next time you open it. Without JavaScript, or with Ctrl/⌘-click, **Edit** opens the item's own page as before.
+A journey moved to another date reloads the page at its new day. Reference's **To book** list is refreshed too; the rest of the page (Needs attention, the route, the rest of Reference) catches up the next time you open it. Without JavaScript, or with Ctrl/⌘-click, **Edit** opens the item's own page as before.
 
 ## Reference
 
 The home of the trip's confirmations, contacts and to-dos. Everything elsewhere on the page links here.
 
 - **Confirmations**, grouped as Flights, Trains, Stays, Activities, Meals and Other. Each shows the number in large type (easy to read out at a desk), who it's with, what it covers (click to jump to it), who it's for, and **Manage booking ↗** when there's a link. Insurance and passes are under Other.
-- **Still to book**: tasks, most urgent first, each saying what it's for and on which day. **All to-dos** opens the trip's [To do page](/help/bookings-and-confirmations/#the-to-do-page), where editors add and tick them off.
-- **Not booked yet**: flights, trains, stays and bookable activities that have no confirmation and no task yet.
+- **To book**: every journey, stay and activity still to book, in date order, each with its to-do or **No plan yet**, then **Other to-dos**. Click a row to open it beside the days; editors tick to-dos off there and add what's missing ([to book](/help/bookings-and-confirmations/#to-book)). **All to-dos** opens the trip's [To do page](/help/bookings-and-confirmations/#the-to-do-page).
 - **Contacts**: name, role, phone (tap to call), email, website and address, with **On:** links to the days they matter.
 - **Info**: the trip's know-how, such as ticket rules or a tent guide, with **On:** links.
 
@@ -92,7 +91,7 @@ A confirmation number on a hotel, train or activity is a small chip; click it to
 - a cover with the dates and who's travelling, and the trip's cover photo if an editor chose one ([a cover photo](/help/starting-a-trip/#a-cover-photo));
 - **Days at a glance**, one row per day;
 - a section per day: where you stay, **Getting around**, the plans, **Activities**, **Food** and **Good to know**, with confirmation numbers and phone numbers printed in full on the day they're needed;
-- **Reference**: **Confirmations**, **Where we're staying**, **Contacts**, **Info** and **Still to book**.
+- **Reference**: **Confirmations**, **Where we're staying**, **Contacts**, **Info** and **Still to book** (the open to-dos).
 
 Paper can't link, so the booklet repeats contacts and confirmation numbers on each day they matter, as well as in Reference.
 

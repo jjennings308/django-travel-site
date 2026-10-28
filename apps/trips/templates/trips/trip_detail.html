@@ -80,12 +80,12 @@
     <p class="mb-4 text-sm" data-route-strip><a class="link-quiet font-medium" href="{% url 'trips:trip_route' trip.pk %}">Set the route</a> <span class="text-zinc-500">— the cities and nights, in order; the days fill themselves in.</span></p>
   {% endif %}
 
-  {% if not_booked or open_tasks or decision_count or stray_legs or travel_tables_pending or checklist_attention or closed_items or book_ahead_items %}
+  {% if to_book.rows or to_book.other or decision_count or stray_legs or travel_tables_pending or checklist_attention or closed_items or book_ahead_items %}
     {# Needs attention (days-as-overview plan): one banner under the header, each count linking to its list. #}
     <p class="callout-warning mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm scroll-mt-32" id="needs-attention">
       <span class="card-kicker">Needs attention</span>
-      {% if not_booked %}<a class="link-quiet font-medium text-amber-700" href="#not-booked">{{ not_booked|length }} not booked</a>{% endif %}
-      {% if open_tasks %}<a class="link-quiet font-medium text-amber-700" href="{% url 'trips:trip_todo' trip.pk %}">{{ open_tasks|length }} to do</a>{% endif %}
+      {% if to_book.rows %}<a class="link-quiet font-medium text-amber-700" href="#to-book" data-to-book-count>{{ to_book.count }} to book</a>{% endif %}
+      {% if to_book.other %}<a class="link-quiet font-medium text-amber-700" href="#other-todos">{{ to_book.other|length }} other to-do{{ to_book.other|length|pluralize }}</a>{% endif %}
       {% if decision_count %}<a class="link-quiet font-medium text-amber-700" data-decisions href="#group-{{ open_groups.0.pk }}">{{ decision_count }} decision{{ decision_count|pluralize }}</a>{% endif %}
       {% if checklist_attention %}<a class="link-quiet font-medium text-amber-700" href="#checklists">{{ checklist_attention }} document{{ checklist_attention|pluralize }} not ticked</a>{% endif %}
       {% if closed_items %}<a class="link-quiet font-medium text-amber-700" href="#{{ closed_items.0.anchor }}" data-closed-days>{{ closed_items|length }} closed on {{ closed_items|length|pluralize:"its day,their days" }}</a>{% endif %}
@@ -165,6 +165,7 @@
         if (!hash || hash.length < 2) return;
         var id = decodeURIComponent(hash.slice(1));
         if (id === "overview") id = "days";  // the old Overview section: bookmarks and emails land on the days
+        if (id === "still-to-book" || id === "not-booked") id = "to-book";  // the two lists To book replaced (K2)
         var target = document.getElementById(id);
         for (var node = target; node; node = node.parentElement) {
           if (node.tagName === "DETAILS") node.open = true;
@@ -201,6 +202,7 @@
   </aside>
   {% if can_edit %}<script src="{% static 'locations/city_search.js' %}"></script>{% endif %}
   <script src="{% static 'trips/panel.js' %}" defer></script>
+  {% if can_edit %}<script src="{% static 'trips/to_book.js' %}" defer></script>{% endif %}
 
   {# -------------------------------------------------------------- reference #}
   {% comment %}
@@ -212,41 +214,8 @@
 
     {% include "trips/partials/_confirmation_groups.html" %}
 
-    {% if open_tasks %}
-      <h3 class="grid-label mt-8 flex items-baseline justify-between gap-3" id="still-to-book">Still to book <a class="link-quiet text-xs font-medium normal-case" href="{% url 'trips:trip_todo' trip.pk %}" data-all-todos>All to-dos</a></h3>
-      <ul class="card divide-y divide-zinc-100 p-0 text-sm">
-        {% for task in open_tasks %}
-          <li class="px-4 py-2.5">
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {% if task.priority == 1 %}<span class="badge badge-critical">{{ task.get_priority_display }}</span>{% elif task.priority == 2 %}<span class="badge badge-high">{{ task.get_priority_display }}</span>{% elif task.priority == 3 %}<span class="badge badge-medium">{{ task.get_priority_display }}</span>{% else %}<span class="badge badge-low">{{ task.get_priority_display }}</span>{% endif %}
-              <span class="font-medium text-zinc-900">{{ task.title }}</span>
-              {% if task.item %}<span class="text-zinc-600">For: <a class="link-quiet" href="#{{ task.item_info.anchor }}"{% if task.more_labels %} title="Also: {{ task.more_labels }}"{% endif %}>{{ task.cover_label }}</a>{% if task.item_day %} · Day {{ task.item_day.day_number }}{% endif %}</span>
-              {% elif task.day %}<a class="link-quiet text-zinc-500" href="#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
-              {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
-            </div>
-            {% if task.suggestion %}
-              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                <span class="text-zinc-500">Looks like: {{ task.suggestion_info.label }} ({{ task.suggestion_info.kind }})</span>
-                {% url 'trips:task_link' trip.pk task.pk as link_url %}
-                <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="{{ task.suggestion_info.kind }}" value="{{ task.suggestion.pk }}"><button type="submit" class="link-quiet font-medium">Link</button></form>
-                <form method="post" action="{{ link_url }}">{% csrf_token %}<input type="hidden" name="dismiss" value="{{ task.suggestion_info.label }}"><button type="submit" class="link-quiet">Not this one</button></form>
-              </div>
-            {% endif %}
-            {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
-            {% with thread=comments_by_target.task|dictkey:task.pk %}
-              {% if thread %}{% include "trips/_comments.html" with comment_kind="task" comment_pk=task.pk comments=thread can_comment=can_comment heading="Comments on this task" %}
-              {% elif can_comment %}<p class="no-print mt-1 text-xs"><a class="link-quiet" href="{% url 'trips:comment_create' 'task' task.pk %}#body">Add a comment</a></p>{% endif %}
-            {% endwith %}
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-
-    {% if not_booked %}
-      {# Derived, never stored (booking_tasks.not_booked): bookable items with no confirmation and no task. #}
-      <h3 class="grid-label mt-8" id="not-booked">Not booked yet</h3>
-      {% include "trips/partials/_not_booked.html" %}
-    {% endif %}
+    {# To book (booking-todos K2): every item still to book and its to-dos, then the other to-dos; rows open in the panel. #}
+    {% include "trips/partials/_to_book.html" with mode="page" %}
 
     {% if trip.contacts.all %}
       {# The home of each contact (U4); items it's linked to show a one-line ☎ that links here. #}
@@ -296,7 +265,7 @@
       </div>
     {% endif %}
 
-    {% if not confirmation_groups and not open_tasks and not not_booked and not trip.contacts.all and not trip.infos.all and not checklists %}
+    {% if not confirmation_groups and not to_book.rows and not to_book.other and not trip.contacts.all and not trip.infos.all and not checklists %}
       <p class="empty-state">Nothing here yet: confirmations, contacts, checklists and things to book appear here.</p>
     {% endif %}
   </section>

@@ -304,12 +304,16 @@ class TripChromeTests(DetailFixture):
         BookingTask.objects.create(trip=self.trip, title="Trains", priority=2)
         BookingTask.objects.create(trip=self.trip, title="Hotels", priority=3)
         BookingTask.objects.create(trip=self.trip, title="Insurance", priority=4)
-        html = self.get().content.decode()
+        # Since To book (booking-todos K2) the trip page names the priority in words; the To do page,
+        # ordered by priority, keeps the badges.
+        html = self.client.get(reverse("trips:trip_todo", args=[self.trip.pk])).content.decode()
         self.assertIn('<span class="badge badge-critical">Critical</span>', html)
         self.assertIn('<span class="badge badge-high">High</span>', html)
         self.assertIn('<span class="badge badge-medium">Medium</span>', html)
         self.assertIn('<span class="badge badge-low">Low</span>', html)
-        self.assertIn('id="still-to-book"', html)
+        page = self.get().content.decode()
+        self.assertIn('id="to-book"', page)  # the trip page's Reference (booking-todos K2)
+        self.assertRegex(page, r'Flights</span>\s*<span class="text-zinc-500">Critical')
 
     def test_meals_render_for_the_day(self):
         Meal.objects.create(
