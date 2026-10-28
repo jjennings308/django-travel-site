@@ -1525,6 +1525,14 @@ transfer — K1; then Reference's to-do and Not booked lists become one "To book
 (trips 0059), the To do page's No plan yet, Mark done in place; no query-count change) done on branch `k2-to-book`.
 Complete.
 
+### Budget estimates
+
+Plan: `docs/plans/budget-estimates.md` (every leg, stay, activity, meal and choice option carries an estimate with a
+basis — total, per person, per night, per room per night with rooms, per person per night — and a people count; the
+Budget page shows planned → booked → paid by category and per person, with a daily food allowance; costs shown on the
+day's rows and in choices; payments recorded against what they paid for). Decided 2026-10-28. Phases B1–B3, one branch
+each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
