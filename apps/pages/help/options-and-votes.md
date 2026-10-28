@@ -90,16 +90,9 @@ On the day, each option shows a line for its kind: a stay "EUR 95.00/night × 3 
 
 ## From older trips
 
-Trips planned before choices had **Choose your adventure** sections and **decision** to-dos (to-dos with options) instead. Every Choose your adventure has been turned into a choice on its day (one with a confirmation number on it became a note listing its options, so the confirmation stays with it), and a Word itinerary imported now makes choices straight away. Choices live on the day; to-dos are only for booking, and they no longer take options.
+Trips planned before choices had **Choose your adventure** sections and **decision** to-dos (to-dos with options) instead. Every one has been turned into a choice on its day: its options joined a choice the day already had for the same thing, or became a new one, with the option that had been chosen picked. A Choose your adventure with a confirmation number on it became a note listing its options, so the confirmation stays with it. The to-do stayed on the list as the reminder to book, with a note saying where its options went. A to-do that was already done keeps its options as a line in its notes ("Options considered: …").
 
-A to-do that still has options shows **Make it a choice** to editors (in Reference, on the To do page and on the to-do's own page), and **Needs attention** shows **N decisions to turn into choices**, which opens the same page for all of them. Each row says where its options go:
-
-- **Merge into “Where to stay in Augsburg” (Day 4)** when its day already has an undecided choice that looks like the same one (a word in common, such as "Augsburg", or an option with the same name). Only the options the choice doesn't have yet are added; if the to-do had chosen one, it's picked.
-- **New choice on Day 4** otherwise: a choice with the to-do's title as its question, its options, and its chosen one picked.
-
-Use the select on a row to change it, for instance to make a new choice instead of merging. When two choices on the day look like it, the row asks you to pick one. The to-do goes on its own day, else its journey's, stay's or activity's day; one with no day at all makes a new choice on Day 1 (flagged to check) and never merges.
-
-The to-do itself stays on the list as the reminder to book, with its priority and due date, and a note saying where its options went ("Options moved to the choice “…” on Day 4"). Tick **Tick it off instead** on a row to mark it done instead.
+Choices live on the day; to-dos are only for booking. A Word itinerary imported now makes choices straight away.
 
 ## In the PDF
 

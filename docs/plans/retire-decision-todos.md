@@ -1,6 +1,6 @@
 # Plan: retire decision to-dos (the old way of choosing)
 
-Status: D1 done (2026-10-28, branch `d1-decisions-to-choices`); D2 not started. Decided by James and Claude 2026-10-28. Two phases, one branch each, in order:
+Status: D1 done (2026-10-28, branch `d1-decisions-to-choices`); D2 done (2026-10-28, branch `d2-remove-decision-todos`; `convert_day_first` deleted: nothing on the import path used it). Decided by James and Claude 2026-10-28. Two phases, one branch each, in order:
 D1 (stop making them, convert or merge the ones left), D2 (remove them from the code). Read with `CLAUDE.md` →
 Trips → "Decisions are tasks with options", "'Choose one' groups and votes", "Typed choices", and
 `docs/plans/retire-old-section-types.md` (the same two-step pattern).

@@ -10,7 +10,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from apps.trips import day_first, tidy, tidying
-from apps.trips.models import (BookingTask, Contact, Day, ItemLink, Lodging, Meal, Section, TaskOption,
+from apps.trips.models import (BookingTask, Contact, Day, ItemLink, Lodging, Meal, Section,
                                TidyDismissal, TransportLeg, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
 User = get_user_model()
@@ -237,11 +237,12 @@ class ApplyTests(Fixture):
         options = next(s for s in found if s.kind == "notes_options")
         self.assertEqual(options.after, "A choice “Day 5 dinner options” with 2 options on Day 5")
         self.assertEqual(options.actions, [("choice", "Make it a choice on Day 5 with these options")])
+        tasks = BookingTask.objects.count()
         tidying.apply(self.trip, found, {options.key: "choice"})
         group = self.trip.option_groups.get()
         self.assertEqual((group.day.day_number, group.prompt, group.state), (5, "Day 5 dinner options", "open"))
         self.assertEqual([o.title for o in group.options.all()], ["Hotel Augusta", "Drei Mohren"])
-        self.assertFalse(BookingTask.objects.filter(kind="decide").exists())
+        self.assertEqual(BookingTask.objects.count(), tasks)  # no to-do made
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.notes, "Day 5 dinner options:\n\nKeep this")
 

@@ -30,7 +30,6 @@ from apps.trips.models import (
     Lodging,
     Meal,
     Section,
-    TaskOption,
     TransportLeg,
     Traveler,
     Trip,
@@ -358,9 +357,10 @@ class QueryCountTests(DetailFixture):
         # 32 = 31 + the catalogue notes of its linked items (catalogue-notes N2); 35 = 32 + the "choose one"
         # groups, their options and the options' votes with who voted (day-first plan P4), however many;
         # 36 = 35 + who takes each option when a group is split (P5); 38 = 36 + the Ideas shelf and its
-        # votes (P6; the day fragment doesn't load the shelf, so it stays at 36).
+        # votes (P6; the day fragment doesn't load the shelf, so it stays at 36); 37 = 38 - the old decision
+        # to-dos' options (retire-decision-todos D2).
         # (An option mixing currencies adds the two rate queries once, as the cost estimate does.)
-        with self.assertNumQueries(38):
+        with self.assertNumQueries(37):
             response = self.get()
         self.assertEqual(response.status_code, 200)
 
@@ -469,10 +469,6 @@ class QueryCountTests(DetailFixture):
         # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
         # Python from the rows above (apps/trips/booking_tasks.py): no query of their own.
         BookingTask.objects.create(trip=self.trip, title="Hotel deposit", stay=stay)
-        for n in range(3):
-            decision = BookingTask.objects.create(trip=self.trip, title=f"Pick hotel {n}", kind="decide")
-            for m in range(3):
-                TaskOption.objects.create(task=decision, title=f"Option {n}-{m}", chosen=(m == 0), order=m)
         desk = Contact.objects.create(trip=self.trip, name="Front desk", phone="+1 555 0100")
         rules = TripInfo.objects.create(trip=self.trip, title="Ticket rules", body="Regional only.")
         ItemLink.link(desk, stay)
@@ -525,7 +521,7 @@ class DayFragmentQueryTests(QueryCountTests):
     def test_one_day_holds_a_fixed_query_count(self):
         self.fill()
         day = self.trip.days.get(day_number=5)
-        with self.assertNumQueries(36):  # the page's 36: every day is assembled (stays and legs span days)
+        with self.assertNumQueries(35):  # the page's 35: every day is assembled (stays and legs span days)
             response = self.client.get(reverse("trips:day_fragment", args=[self.trip.pk, day.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="day-5" open')

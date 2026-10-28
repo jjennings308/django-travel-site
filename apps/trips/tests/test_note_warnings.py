@@ -91,7 +91,7 @@ class BookAheadTests(Fixture):
         self.assertEqual((form.initial["title"], form.initial["due"]), ("Book ahead: Arches", date(2027, 6, 20)))
         self.assertIn("recreation.gov", form.initial["notes"])
         self.client.post(reverse("trips:task_new", args=[self.trip.pk]), {
-            "title": "Book ahead: Arches", "kind": "book", "priority": "2", "due": "2027-06-20", "due_note": "",
+            "title": "Book ahead: Arches", "priority": "2", "due": "2027-06-20", "due_note": "",
             "day": self.monday.pk, "leg": "", "stay": "", "activity": self.visit.pk, "confirmation": "", "order": "",
             "notes": "https://www.recreation.gov/", "from_note": self.entry.pk})
         task = BookingTask.objects.get()

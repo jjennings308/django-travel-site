@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (BookingTask, Day, Lodging, TaskOption, TransportLeg, Trip, TripActivity, TripGrant,
+from apps.trips.models import (BookingTask, Day, Lodging, TransportLeg, Trip, TripActivity, TripGrant,
                                TripRole)
 
 User = get_user_model()
@@ -45,14 +45,12 @@ class TodoPageTests(Fixture):
         html = page.content.decode()
         self.assertLess(html.index("data-done-tasks"), html.index("All done"))  # inside the Done fold
 
-    def test_each_shows_its_item_and_options(self):
-        task = BookingTask.objects.create(trip=self.trip, title="Seats", leg=self.leg, kind="decide")
-        TaskOption.objects.create(task=task, title="Window", chosen=True)
+    def test_each_shows_its_item(self):
+        BookingTask.objects.create(trip=self.trip, title="Seats", leg=self.leg)
         html = self.get(self.viewer).content.decode()
         detail = reverse("trips:trip_detail", args=[self.trip.pk])
         self.assertIn(f'href="{detail}?item=leg-{self.leg.pk}#leg-{self.leg.pk}">Day 4 · Munich → Salzburg</a>', html)
-        self.assertIn("Decide: Seats", html)
-        self.assertIn("✓ Window", html)
+        self.assertIn("Seats", html)
 
     def test_viewers_read_editors_change_strangers_404(self):
         task = BookingTask.objects.create(trip=self.trip, title="Seats")
@@ -74,7 +72,7 @@ class TodoPageTests(Fixture):
 
 class TaskEditTests(Fixture):
     def data(self, **over):
-        values = {"title": "Rail passes", "kind": "book", "priority": "2", "due": "", "due_note": "", "day": "",
+        values = {"title": "Rail passes", "priority": "2", "due": "", "due_note": "", "day": "",
                   "leg": "", "stay": "", "activity": "", "confirmation": "", "order": "", "notes": ""}
         values.update(over)
         return values
@@ -127,13 +125,13 @@ class TaskEditTests(Fixture):
 
 class LinksTests(Fixture):
     def test_banner_and_reference_link_to_the_todo_page(self):
-        BookingTask.objects.create(trip=self.trip, title="Seats", kind="decide")
+        BookingTask.objects.create(trip=self.trip, title="Seats")
         self.client.force_login(self.viewer)
         with mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 9, 1)):
             html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
         banner = re.search(r'id="needs-attention">(.*?)</p>', html, re.S).group(1)
         self.assertIn(f'href="{self.url}">1 to do</a>', banner)
-        self.assertIn(f'href="{self.url}">1 decision</a>', banner)
+        self.assertNotIn("decision", banner)  # decisions are choices on the days now (D2)
         self.assertIn(f'href="{self.url}" data-all-todos>All to-dos</a>', html)
 
     def test_item_pages_add_a_todo_for_themselves(self):

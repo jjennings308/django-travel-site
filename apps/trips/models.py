@@ -1821,7 +1821,8 @@ LINKABLE = {
 
 
 class BookingTask(models.Model):
-    """Something still to book, decide or confirm for a trip.
+    """Something still to book or confirm for a trip (choosing is a "choose one" group on a day: the
+    decision to-dos with options of trip-page UX U6 were retired in retire-decision-todos D2).
 
     Trips are documented at wildly different stages. A finished trip has
     everything confirmed and no tasks; a trip being planned is mostly tasks —
@@ -1843,12 +1844,7 @@ class BookingTask(models.Model):
         MEDIUM = 3, "Medium"
         LOW = 4, "Low"
 
-    class Kind(models.TextChoices):
-        BOOK = "book", "Book"
-        DECIDE = "decide", "Decide"  # a choice between options (TaskOption), e.g. which hotel
-
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="booking_tasks")
-    kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.BOOK)
     day = models.ForeignKey(
         Day,
         on_delete=models.SET_NULL,
@@ -1933,39 +1929,13 @@ class BookingTask(models.Model):
                 if line.startswith(self.NOT_ABOUT)}
 
 
-class TaskOption(models.Model):
-    """One option of a decision (``BookingTask.kind == "decide"``, trip-page UX plan U6): the
-    Augsburg hotels to choose between. At most one is ``chosen``; choosing creates nothing, it
-    offers to add the choice as a stay or an activity."""
-
-    task = models.ForeignKey(BookingTask, on_delete=models.CASCADE, related_name="options")
-    title = models.CharField(max_length=200)
-    detail = models.TextField(blank=True)
-    url = models.URLField(blank=True, verbose_name="link")
-    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
-    currency = models.CharField(max_length=3, blank=True)
-    order = models.PositiveSmallIntegerField(default=0)
-    chosen = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = "trips_taskoption"
-        ordering = ["order", "id"]
-        constraints = [
-            models.UniqueConstraint(fields=["task"], condition=Q(chosen=True), name="taskoption_one_chosen"),
-        ]
-
-    def __str__(self):
-        return self.title
-
-
 class OptionGroup(models.Model):
     """"Choose one" on a day (day-first plan, P4): a dinner, an afternoon, a whole day or where to
     stay, with its ``Option``s. Travellers vote; an editor **picks** one (its items count as the day's,
     the others fold into Considered and can be reopened) or **splits** the group between travellers
     (P5: each option's ``travelers`` take it, and every option someone takes counts, as a track of the
     day). Picking never deletes. A stay group sits on its first night. Converted from "Choose
-    your adventure" sections and decision to-dos (``day_first``)."""
+    your adventure" sections (``day_first``) and, until retire-decision-todos D2, decision to-dos."""
 
     class State(models.TextChoices):
         OPEN = "open", "Undecided"

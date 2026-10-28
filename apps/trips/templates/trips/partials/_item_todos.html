@@ -4,7 +4,7 @@ An item's open to-dos on its own page (leg, stay, activity; edit-by-day plan E2)
 <section class="card mt-6 p-5" id="todos">
   <h2 class="form-section-title mb-2">Still to book</h2>
   {% if open_tasks %}
-    <ul class="list-disc pl-5 text-sm">{% for task in open_tasks %}<li><a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.get_full_path|urlencode }}">{% if task.kind == "decide" %}Decide: {% endif %}{{ task.title }}</a>{% if task.due_note %} <span class="text-zinc-500">· {{ task.due_note }}</span>{% endif %}</li>{% endfor %}</ul>
+    <ul class="list-disc pl-5 text-sm">{% for task in open_tasks %}<li><a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.get_full_path|urlencode }}">{{ task.title }}</a>{% if task.due_note %} <span class="text-zinc-500">· {{ task.due_note }}</span>{% endif %}</li>{% endfor %}</ul>
     <p class="note mt-2">Adding a confirmation offers to tick these off.</p>
   {% else %}
     <p class="text-sm text-zinc-500">Nothing to do for this.</p>
