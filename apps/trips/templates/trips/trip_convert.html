@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, day-first plan P4; apps/trips/day_first.py). Every one starts ticked; nothing changes until the ticked ones are converted, in one transaction.
+Turning a trip's to-dos with options into "choose one" groups (trips:trip_convert, day-first plan P4, retire-decision-todos D1; apps/trips/day_first.py). Each row merges into a matching choice on its day or makes a new one (the select switches; blank when two match), and the to-do stays as the booking to-do unless "Tick it off instead". Every row starts ticked; nothing changes until the ticked ones are converted, in one transaction. ?task=<id> shows one row (a to-do's "Make it a choice").
 {% endcomment %}
 {% block title %}Convert — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -13,7 +13,7 @@ Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, d
   <div class="page-header">
     <div>
       <h1 class="page-title">Turn decisions into choices</h1>
-      <p class="page-subtitle">Decision to-dos with options become “choose one” groups on their days, which everyone can vote on and an editor picks (a chosen option stays picked); the to-do is ticked off with a note saying where it went. Nothing is lost. {{ count }} to convert.</p>
+      <p class="page-subtitle">To-dos with options become “choose one” groups on their days, which everyone can vote on and an editor picks (a chosen option stays picked). When the day already has a choice that looks like the same one, the options join it. The to-do stays as the reminder to book, with a note saying where its options went. Nothing is lost. {{ count }} to convert.</p>
     </div>
     <p class="flex items-center gap-3">{% include "partials/_help_link.html" with slug="options-and-votes" anchor="from-older-trips" label="older trips" text="How this works" %}<a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Back to the trip</a></p>
   </div>
@@ -21,6 +21,8 @@ Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, d
   {% if groups %}
     <form method="post">
       {% csrf_token %}
+      {% if task_id %}<input type="hidden" name="task" value="{{ task_id }}">{% endif %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       {% for day, items in groups %}
         <h2 class="section-title mt-6 mb-2">Day {{ day.day_number }}{% if day.date %} · {{ day.date|date:"D M j" }}{% endif %}</h2>
         <ul class="card divide-y divide-zinc-100 p-0 text-sm">
@@ -29,7 +31,19 @@ Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, d
             <li class="grid gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[auto_1fr_1fr]" data-convert-row>
               {% if item.blocked %}<span class="text-zinc-500">Left as it is: {{ item.blocked }}</span>{% else %}<label class="flex items-start gap-2 font-medium"><input type="checkbox" name="item" value="{{ item.key }}" checked> Convert</label>{% endif %}
               <div class="min-w-0 text-zinc-500"><span class="badge badge-mode">{{ before.0 }}</span>{% for line in before.1 %}<p class="mt-1">{{ line }}</p>{% endfor %}</div>
-              <div class="min-w-0 text-zinc-800"><span class="badge badge-mode">→ {{ after.0 }}</span>{% for line in after.1 %}<p class="mt-1">{{ line }}</p>{% endfor %}{% if item.flag %}<p class="mt-1 text-amber-700">{{ item.flag }}</p>{% endif %}</div>
+              <div class="min-w-0 text-zinc-800">
+                {% if not item.blocked %}
+                  <select name="target-{{ item.key }}" aria-label="Where its options go" data-convert-target>
+                    {% if item.ambiguous %}<option value=""{% if not item.default_target %} selected{% endif %}>Pick which choice…</option>{% endif %}
+                    {% for group in item.choices %}<option value="group-{{ group.pk }}"{% if item.target.pk == group.pk %} selected{% endif %}>Merge into “{{ group.prompt }}” (Day {{ day.day_number }})</option>{% endfor %}
+                    <option value="new"{% if item.default_target == "new" %} selected{% endif %}>New choice on Day {{ day.day_number }}</option>
+                  </select>
+                {% endif %}
+                {% for line in after.1|slice:"1:" %}<p class="mt-1">{{ line }}</p>{% endfor %}
+                {% if item.ambiguous %}<p class="mt-1 text-amber-700">More than one choice on this day looks like it: pick one.</p>{% endif %}
+                {% if item.flag %}<p class="mt-1 text-amber-700">{{ item.flag }}</p>{% endif %}
+                {% if not item.blocked %}<label class="mt-2 flex items-center gap-2 text-zinc-600"><input type="checkbox" name="tick-{{ item.key }}" value="1"> Tick it off instead</label>{% endif %}
+              </div>
             </li>
             {% endwith %}
           {% endfor %}
@@ -37,7 +51,7 @@ Turning a trip's decision to-dos into "choose one" groups (trips:trip_convert, d
       {% endfor %}
       <div class="mt-4 flex gap-3">
         <button type="submit" class="btn">Convert the ticked ones</button>
-        <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}">Cancel</a>
+        <a class="btn-quiet" href="{% if next %}{{ next }}{% else %}{% url 'trips:trip_detail' trip.pk %}{% endif %}">Cancel</a>
       </div>
     </form>
   {% else %}

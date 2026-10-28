@@ -884,9 +884,18 @@ that matter most:
   option and its items; a picked one prints "Prompt: chosen (cost — notes)" and its items with the day's. **Converting**
   open decision to-dos with options (`day_first.plan` / `apply(trip, keys)`, keys `task-<id>`, one transaction and history
   line; `trips:trip_convert`, `/trips/<pk>/convert/`, editors, every row ticked; Needs attention's "N decisions to turn into
-  choices", `pending_count` from the prefetch; `manage.py convert_day_first --trip <pk> | --all [--apply]`): groups on the
-  task's day, else its item's, else Day 1 (flagged), the chosen option picked, the task ticked off with "Moved to the
-  choice …". (S1 also converted choose-your-adventure sections here — to groups, or to a note on the same row when one
+  choices", `pending_count` from the prefetch; `manage.py convert_day_first --trip <pk> | --all [--apply] [--tick-off]`): groups on
+  the task's day, else its item's, else Day 1 (flagged), the chosen option picked. **Since retire-decision-todos D1** a
+  conversion **merges** into an open group on the task's own (or item's) day — never the Day 1 fallback — that looks
+  like the same decision (`day_first.match_group`: prompt and title share a word outside `STOP_WORDS`, through
+  `catalogue_links.match_keys`, or an option title in common; two matches → asked on the page, the command skips it):
+  only missing options are added and a chosen one is picked (with Pick's item on a typed group) while the group is
+  open, else noted "Earlier choice: …"; a select per row switches merge / new (`target-task-<id>`). The to-do becomes a
+  plain `book` to-do, its `TaskOption`s deleted, "Options moved to the choice “…” on Day N" in its notes, still open
+  unless **Tick it off instead** (`tick-task-<id>` / `--tick-off`). **Make it a choice** (editors; an open to-do with
+  options, in Reference, `_task_row` and the to-do page) opens `trip_convert?task=<id>&next=…`; **Add options** /
+  **Make it a decision…** and the chosen option's "Add as a stay / activity" links are gone, and `task_options` is
+  read-only, by URL only, until D2. (S1 also converted choose-your-adventure sections here — to groups, or to a note on the same row when one
   had a confirmation — before S2 retired the type.)
 - **Typed choices** (typed-choices plan T1; trips 0052): `OptionGroup.kind` any (default; choices before T1) / stay /
   eat / do / travel, with the kind's shared fields `nights` (stay), `meal_type` + `start_time` (eat), `start_time` /
@@ -1490,7 +1499,10 @@ Rule set 2026-10-27. One phase, M1. Status: M1 done on branch `m1-script-emails`
 Plan: `docs/plans/retire-decision-todos.md` (to-dos with options — the old way of choosing — stop being made; the ones
 left convert into choices on their day, merging into a choice that already exists and staying as the booking to-do —
 D1; then `TaskOption`, `BookingTask.kind`, the options page and the convert page are removed — D2). Decided 2026-10-28.
-Phases D1–D2, one branch each, in order; merge D2 only after D1 has run on production. Status: not started.
+Phases D1–D2, one branch each, in order; merge D2 only after D1 has run on production. Status: D1 (no new decision
+to-dos; converting merges into a matching choice and keeps the to-do as the booking to-do) done on branch
+`d1-decisions-to-choices` — James then runs `convert_day_first --all` (dry run) on dev, fixes the ambiguous ones on
+the page, and on production `pg_dump` + `convert_day_first --all --apply`.
 
 ### Rules carried over from the itinerary project
 

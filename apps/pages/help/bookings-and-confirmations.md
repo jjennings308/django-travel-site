@@ -3,7 +3,7 @@ summary: Add confirmation numbers, tickets and booking documents to journeys, st
 audience: editors
 section: Bookings & contacts
 order: 10
-updated: 2026-10-27
+updated: 2026-10-28
 
 # Bookings and confirmations
 
@@ -79,7 +79,7 @@ When a place's note says to book ahead, such as Arches' timed entry 3 months ahe
 
 ## Choosing between options
 
-Choosing between options, such as which hotel to book, is a **choice** on a day: everyone can vote, and an editor picks one ([choices, options and votes](/help/options-and-votes/)). The To do page lists undecided choices at the top. Older trips' decision to-dos have been turned into choices.
+Choosing between options, such as which hotel to book, is a **choice** on a day: everyone can vote, and an editor picks one ([choices, options and votes](/help/options-and-votes/)). The To do page lists undecided choices at the top. To-dos are for booking and don't take options: an older to-do that still has them shows **Make it a choice**, which moves its options to a choice on its day and keeps the to-do as the reminder to book ([from older trips](/help/options-and-votes/#from-older-trips)).
 
 ## Problems
 

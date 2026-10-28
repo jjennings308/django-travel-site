@@ -2569,22 +2569,36 @@ def stay_delete(request, pk, stay_pk):
 # ---- converting old sections to the day-first kinds (day-first plan, P3) -----------------------
 @login_required
 def trip_convert(request, pk):
-    """Review turning this trip's open decision to-dos into "choose one" groups (editors; linked from the
-    Needs attention banner while any is left; P4). Everything starts ticked; nothing changes until the
-    ticked ones are converted, in one transaction (``apps/trips/day_first.py``)."""
+    """Review turning this trip's to-dos with options into "choose one" groups (editors; linked from the
+    Needs attention banner while any is left, and as "Make it a choice" on one to-do, ``?task=<id>``;
+    retire-decision-todos D1). Each row merges into a matching open choice on its day or makes a new one
+    (a select switches), and keeps the to-do open as a booking to-do unless "Tick it off instead" is
+    ticked. Nothing changes until the ticked ones are converted, in one transaction
+    (``apps/trips/day_first.py``)."""
     from . import day_first
     trip = _readable_trip(request, pk, "edit")
+    task_id = request.GET.get("task") or request.POST.get("task") or ""
+    only = {int(task_id)} if task_id.isdigit() else None
     if request.method == "POST":
         keys = [value for value in request.POST.getlist("item") if value.startswith("task-")]
-        count = day_first.apply(trip, keys) if keys else 0
+        targets = {key: request.POST[f"target-{key}"] for key in keys if f"target-{key}" in request.POST}
+        tick_off = {key for key in keys if request.POST.get(f"tick-{key}")}
+        count = day_first.apply(trip, keys, targets, tick_off, request.user) if keys else 0
+        left = len(keys) - count
         if count:
-            messages.success(request, f"Converted {count} item{'s' if count != 1 else ''}.")
+            messages.success(request, f"Converted {count} to-do{'s' if count != 1 else ''}."
+                             + (f" {left} left: pick which choice {'it joins' if left == 1 else 'they join'}." if left else ""))
+        elif keys:
+            messages.info(request, "Pick which choice each one joins, then convert.")
         else:
             messages.info(request, "Nothing was ticked, so nothing changed.")
-        return redirect("trips:trip_convert", pk=trip.pk)
-    groups = day_first.plan(trip)
+        if count and not left and only is not None:
+            return redirect(_back(request, reverse("trips:trip_todo", args=[trip.pk])))
+        return redirect(reverse("trips:trip_convert", args=[trip.pk]) + (f"?task={task_id}" if only else ""))
+    groups = day_first.plan(trip, only)
     return render(request, "trips/trip_convert.html", {
-        "trip": trip, "groups": groups, "count": sum(len(items) for _day, items in groups)})
+        "trip": trip, "groups": groups, "count": sum(len(items) for _day, items in groups),
+        "task_id": task_id if only else "", "next": _back(request, "")})
 
 
 # ---- content clean-up review (trip-page UX plan, U7) -----------------------------------------
@@ -2720,35 +2734,15 @@ def task_done(request, pk, task_pk):
 
 @login_required
 def task_options(request, pk, task_pk):
-    """A decision's options (editors): add, edit, reorder and delete them, and choose one (or
-    none). Choosing creates nothing; the trip page then offers to add it as a stay or activity."""
-    from .forms import TaskOptionFormSet
+    """A to-do's options, read-only (editors): to-dos with options are no longer made or edited
+    (retire-decision-todos D1); the page lists them and offers "Make it a choice". Removed in D2."""
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
-    formset = TaskOptionFormSet(request.POST or None, instance=task, prefix="options", form_kwargs={"task": task})
-    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#still-to-book")
-    if request.method == "POST" and formset.is_valid():
-        with transaction.atomic():
-            formset.save()
-            chosen = request.POST.get("chosen", "")
-            task.options.update(chosen=False)
-            if chosen.isdigit():
-                task.options.filter(pk=chosen).update(chosen=True)
-            elif chosen.startswith("new-"):
-                # A row added in this same submit: its index among the formset's forms.
-                index = chosen[4:]
-                form = formset.forms[int(index)] if index.isdigit() and int(index) < len(formset.forms) else None
-                if form is not None and form.instance.pk:
-                    task.options.filter(pk=form.instance.pk).update(chosen=True)
-            if task.kind != task.Kind.DECIDE and task.options.exists():
-                task.kind = task.Kind.DECIDE
-                task.save(update_fields=["kind"])
-        messages.success(request, f"Saved the options for “{task.title}”.")
-        return redirect(back)
-    chosen_pk = next((o.pk for o in task.options.all() if o.chosen), None)
-    return render(request, "trips/task_options.html", {"trip": trip, "task": task, "formset": formset,
-                                                       "chosen_pk": chosen_pk, "next": back,
-                                                       "days": list(trip.days.order_by("day_number"))})
+    back = _back(request, reverse("trips:trip_todo", args=[trip.pk]))
+    if request.method == "POST":
+        messages.info(request, "To-dos don't take options any more: make it a choice on its day instead.")
+        return redirect(reverse("trips:task_options", args=[trip.pk, task.pk]))
+    return render(request, "trips/task_options.html", {"trip": trip, "task": task, "next": back})
 
 
 @login_required

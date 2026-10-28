@@ -1,4 +1,5 @@
-"""Decisions as tasks with options (docs/plans/trip-page-ux.md, U6)."""
+"""Decisions as tasks with options (docs/plans/trip-page-ux.md, U6), no longer made or edited
+(docs/plans/retire-decision-todos.md, D1): they show read-only and offer "Make it a choice"."""
 from datetime import date
 from decimal import Decimal
 from unittest import mock
@@ -34,20 +35,6 @@ class Fixture(TestCase):
         with mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 9, 1)):
             return self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
 
-    def options_post(self, chosen, **rows):
-        page = self.client.get(self.options_url)
-        formset = page.context["formset"]
-        data = {"options-TOTAL_FORMS": str(len(formset.forms)), "options-INITIAL_FORMS": str(formset.initial_form_count()),
-                "options-MIN_NUM_FORMS": "0", "options-MAX_NUM_FORMS": "1000", "chosen": chosen}
-        for form in formset.forms:  # what a browser posts: every row's current values
-            for name in form.fields:
-                value = form[name].value()
-                if value is not None and value is not False:
-                    data[form.add_prefix(name)] = str(value)
-        data.update(rows)
-        return self.client.post(self.options_url, data)
-
-
 class ModelTests(Fixture):
     def test_one_chosen_per_task_and_options_keep_their_order(self):
         self.assertEqual(list(self.task.options.all()), [self.mohren, self.augusta])
@@ -65,31 +52,38 @@ class PageTests(Fixture):
         self.assertLess(html.index("Drei Mohren"), html.index("Hotel Augusta"))  # option order
         self.assertIn("~140.00 EUR", html)
         self.assertIn(f'href="{reverse("trips:trip_todo", args=[self.trip.pk])}">1 decision</a>', html)  # E2
-        self.assertNotIn(self.options_url, html)  # viewers can't edit options
-        self.assertIn(self.options_url, self.page(self.editor).content.decode())
+        convert = reverse("trips:trip_convert", args=[self.trip.pk]) + f"?task={self.task.pk}"
+        self.assertNotIn(convert, html)  # viewers can't convert
+        editor = self.page(self.editor).content.decode()
+        self.assertIn(convert, editor)
+        for retired in (self.options_url, "Add options", "Add as a stay", reverse("trips:option_add", args=[self.trip.pk, self.augusta.pk])):
+            self.assertNotIn(retired, editor)
 
 
 class OptionsPageTests(Fixture):
-    def test_choose_unchoose_and_add_an_option(self):
+    def test_read_only_with_make_it_a_choice(self):
         self.client.force_login(self.editor)
-        self.options_post(str(self.augusta.pk))
+        page = self.client.get(self.options_url).content.decode()
+        self.assertIn("Hotel Augusta", page)
+        self.assertNotIn('method="post"', page[page.index('<nav class="crumbs">'):])
+        self.assertIn(reverse("trips:trip_convert", args=[self.trip.pk]) + f"?task={self.task.pk}", page)
+        self.client.post(self.options_url, {"options-TOTAL_FORMS": "0", "chosen": str(self.augusta.pk)})
         self.augusta.refresh_from_db()
-        self.assertTrue(self.augusta.chosen)
-        self.options_post("")
-        self.augusta.refresh_from_db()
-        self.assertFalse(self.augusta.chosen)
-        self.options_post("new-2", **{"options-2-title": "Airbnb Altstadt", "options-2-order": "3"})
-        new = TaskOption.objects.get(title="Airbnb Altstadt")
-        self.assertTrue(new.chosen)
-        self.assertEqual(self.task.options.filter(chosen=True).count(), 1)
+        self.assertFalse(self.augusta.chosen)  # nothing saved
 
-    def test_a_task_with_options_becomes_a_decision(self):
+    def test_no_entry_point_offers_options(self):
         plain = BookingTask.objects.create(trip=self.trip, title="Which tent")
         self.client.force_login(self.editor)
-        self.options_url = reverse("trips:task_options", args=[self.trip.pk, plain.pk])
-        self.options_post("", **{"options-0-title": "Schottenhamel", "options-0-order": "1"})
-        plain.refresh_from_db()
-        self.assertEqual(plain.kind, "decide")
+        pages = [reverse("trips:trip_todo", args=[self.trip.pk]),
+                 reverse("trips:task_edit", args=[self.trip.pk, plain.pk]),
+                 reverse("trips:task_edit", args=[self.trip.pk, self.task.pk])]
+        for url in pages:
+            html = self.client.get(url).content.decode()
+            for retired in ("Add options", "Make it a decision", "Options (",
+                            reverse("trips:task_options", args=[self.trip.pk, plain.pk])):
+                self.assertNotIn(retired, html, url)
+        self.assertIn("data-make-choice", self.client.get(pages[0]).content.decode())  # the one with options
+        self.assertNotIn("data-make-choice", self.client.get(pages[1]).content.decode())
 
     def test_permissions(self):
         self.client.force_login(self.viewer)
