@@ -17,7 +17,11 @@ from apps.media_app.forms import MAX_PICTURE_SIDE
 
 from .test_events import EventFixture
 
+# One folder per class: the parallel runner sends classes to different processes, and each class
+# deletes its folder when it ends, so a shared one vanished under another class's running test.
 MEDIA_ROOT = tempfile.mkdtemp(prefix="sbl-test-pictures-")
+COPY_ROOT = tempfile.mkdtemp(prefix="sbl-test-pictures-copy-")
+FALLBACK_ROOT = tempfile.mkdtemp(prefix="sbl-test-pictures-fallback-")
 
 
 def picture(name="photo.jpg", size=(800, 600), fmt="JPEG"):
@@ -88,13 +92,13 @@ class PictureTests(EventFixture):
                             activity.featured_media.file.url)
 
 
-@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=COPY_ROOT)
 class ActivityPictureCopyTests(EventFixture):
     """A new event starts with its activity's picture; the event can replace or remove its own."""
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(COPY_ROOT, ignore_errors=True)
         super().tearDownClass()
 
     def setUp(self):
@@ -153,13 +157,13 @@ class ActivityPictureCopyTests(EventFixture):
         self.assertEqual(Event.objects.get(name="Okto 2028").featured_media, first.featured_media)
 
 
-@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=FALLBACK_ROOT)
 class PlacePictureFallbackTests(EventFixture):
     """No picture of its own: an activity or event shows its place's (venue, city, region, country)."""
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(FALLBACK_ROOT, ignore_errors=True)
         super().tearDownClass()
 
     def media(self, owner, name, media_type="image"):
