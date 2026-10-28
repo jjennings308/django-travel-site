@@ -63,6 +63,22 @@ would mean two places to fix the next time a field is added.
   or, worse, quietly post this trip's data and navigate somewhere else.
 {% endcomment %}
 {% if not is_create %}
+  <section class="form-section mt-10 scroll-mt-32" id="cover" data-cover>
+    <h2 class="form-section-title">Booklet cover</h2>
+    <p class="mb-3 text-sm text-zinc-600">A photo for the front of the PDF booklet. It also joins the trip's <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">photos</a>, where you can pick another one for the cover.</p>
+    {% if trip.cover_photo %}
+      <div class="mb-4 flex flex-wrap items-end gap-4">
+        <img src="{{ trip.cover_photo.file.url }}" alt="The booklet's cover photo" class="h-32 w-56 rounded object-cover shadow-sm" data-cover-photo>
+        <form method="post" action="{% url 'trips:trip_cover' trip.pk %}">{% csrf_token %}<input type="hidden" name="remove" value="1"><button type="submit" class="link-quiet text-sm">Take it off the cover</button></form>
+      </div>
+    {% endif %}
+    <form method="post" action="{% url 'trips:trip_cover' trip.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <label class="block min-w-0 text-sm"><span class="font-medium">{% if trip.cover_photo %}Upload a different photo{% else %}Upload a photo{% endif %}</span><input type="file" name="photo" accept="image/*" required class="mt-1 block w-full"></label>
+      <button type="submit" class="btn">Upload</button>
+    </form>
+  </section>
+
   <section class="form-section mt-10 scroll-mt-32" id="days">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>

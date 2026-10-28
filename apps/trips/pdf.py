@@ -9,10 +9,20 @@ P5) leave the day's own tables (``day.shared_legs`` / ``shared_activities`` / ``
 printed in their track. WeasyPrint needs the Pango and
 HarfBuzz system libraries; ``render_pdf`` raises ``PdfUnavailable`` when they're missing so the
 view can say so instead of failing with a 500.
+
+The cover shows ``Trip.cover_photo`` when an editor chose one: ``cover_image`` embeds it as a ``data:`` URI
+(scaled to ``COVER_SIDE`` px, JPEG), so WeasyPrint never fetches a private photo over HTTP.
 """
 
 
+import base64
+import io
+import logging
 import re
+
+logger = logging.getLogger(__name__)
+
+COVER_SIDE = 1800  # px, the longer side: sharp across a Letter page at print size, small enough to embed
 
 # Pictographic emoji (💡, 🍺) and their variation selector: no emoji font is installed on the
 # servers, so they'd print as empty boxes. Symbols the text font has (✈, →) are kept.
@@ -35,7 +45,25 @@ def booklet_context(trip):
         for group in getattr(day, "split_groups", []):
             tracks(group)
     open_tasks = [task for task in trip.booking_tasks.all() if not task.done]
-    return {"days": days, "stays": stays, "open_tasks": open_tasks}
+    return {"days": days, "stays": stays, "open_tasks": open_tasks, "cover_image": cover_image(trip)}
+
+
+def cover_image(trip):
+    """The trip's cover photo as a JPEG ``data:`` URI, or "" (none chosen, or the file can't be read)."""
+    media = trip.cover_photo if trip.cover_photo_id else None
+    if media is None or not media.file:
+        return ""
+    from PIL import Image, ImageOps
+    try:
+        with media.file.open("rb") as f, Image.open(f) as picture:
+            picture = ImageOps.exif_transpose(picture).convert("RGB")
+            picture.thumbnail((COVER_SIDE, COVER_SIDE))
+            out = io.BytesIO()
+            picture.save(out, "JPEG", quality=85)
+    except (OSError, ValueError) as exc:
+        logger.warning("Trip %s: cover photo %s unreadable (%s)", trip.pk, media.pk, exc.__class__.__name__)
+        return ""
+    return "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode("ascii")
 
 
 def render_pdf(html, base_url):

@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, set its route (c
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-27
+updated: 2026-10-28
 
 # Starting a trip
 
@@ -61,7 +61,11 @@ A city that isn't in the catalogue yet: type its name and click **Add “Hallsta
 2. On the trip page, use **+ Add** at the end of each open day: a stay for where you sleep ([stays](/help/adding-a-day/#stays)), trains, flights and drives ([travel legs](/help/travel-legs/)), activities, meals and notes. Click anything on a day to open it beside the page and change it.
 3. Add confirmation numbers on the thing they confirm, once it's booked ([bookings](/help/bookings-and-confirmations/)).
 
-**Settings** (at the top of the trip page, for editors) holds what belongs to the whole trip: its name, dates, status, cities, travellers, notes and **home currency** (the one you think in, offered first wherever a cost is entered; [currency choices](/help/budget/#currency-choices)), the days table, **Loose confirmations** (bookings that cover no single item, such as travel insurance), **Contacts & info** and **Checklists**. Every stay and journey in date order is on **Bookings** ([the Bookings page](/help/bookings-and-confirmations/#the-bookings-page)).
+**Settings** (at the top of the trip page, for editors) holds what belongs to the whole trip: its name, dates, status, cities, travellers, notes, the booklet's [cover photo](#a-cover-photo) and **home currency** (the one you think in, offered first wherever a cost is entered; [currency choices](/help/budget/#currency-choices)), the days table, **Loose confirmations** (bookings that cover no single item, such as travel insurance), **Contacts & info** and **Checklists**. Every stay and journey in date order is on **Bookings** ([the Bookings page](/help/bookings-and-confirmations/#the-bookings-page)).
+
+## A cover photo
+
+On **Settings**, under **Booklet cover**, upload a photo for the front of the PDF booklet ([the booklet](/help/reading-your-trip/#booklet)). It also joins the trip's **Photos**. To use a photo that's already there, open **Photos** and click **Use on the booklet** under it; the one in use is marked "On the booklet". **Take it off the cover** leaves the cover plain but keeps the photo. A wide picture fills the cover best: it's cropped to the top half of the page. Only editors can choose it.
 
 ## Changing the dates
 

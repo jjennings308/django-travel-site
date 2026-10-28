@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Anyone who can see the trip sees them; commentors and editors add photos; whoever added a photo, or an editor, removes it; editors pick the cover. Never part of the public view.
+Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Anyone who can see the trip sees them; commentors and editors add photos; whoever added a photo, or an editor, removes it; editors pick the album's cover (My adventures) and the booklet's cover photo (Trip.cover_photo, the PDF's front page). Never part of the public view.
 {% endcomment %}
 {% block title %}Photos — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
@@ -33,11 +33,12 @@ Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Any
         <figure class="card overflow-hidden p-0">
           <a href="{{ media.file.url }}" target="_blank" rel="noopener" class="relative block">
             <img src="{{ media.file.url }}" alt="{{ media.alt_text|default:trip.name }}" loading="lazy" class="aspect-square w-full object-cover">
-            {% if media.pk == cover_id %}<span class="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold uppercase text-zinc-900 shadow">Cover</span>{% endif %}
+            {% if media.pk == cover_id %}<span class="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold uppercase text-zinc-900 shadow">Cover</span>{% endif %}{% if media.pk == trip.cover_photo_id %}<span class="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold uppercase text-zinc-900 shadow" data-booklet-cover>On the booklet</span>{% endif %}
           </a>
           <figcaption class="flex flex-wrap items-center justify-between gap-1 px-3 py-2 text-xs text-zinc-500">
             <span>@{{ media.uploaded_by.username|default:"?" }} · {{ media.created_at|date:"M j" }}</span>
             <span class="flex gap-2">
+              {% if can_edit and media.pk != trip.cover_photo_id %}<form method="post" action="{% url 'trips:trip_photo_booklet' trip.pk media.pk %}">{% csrf_token %}<button type="submit" class="link-quiet">Use on the booklet</button></form>{% endif %}
               {% if can_edit and media.pk != cover_id %}<form method="post" action="{% url 'trips:trip_photo_cover' trip.pk media.pk %}">{% csrf_token %}<button type="submit" class="link-quiet">Make cover</button></form>{% endif %}
               {% if can_edit or media.uploaded_by_id == user.pk %}<form method="post" action="{% url 'trips:trip_photo_delete' trip.pk media.pk %}" onsubmit="return confirm('Remove this photo?')">{% csrf_token %}<button type="submit" class="link-quiet hover:text-red-700">Remove</button></form>{% endif %}
             </span>

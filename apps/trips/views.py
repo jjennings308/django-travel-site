@@ -1799,6 +1799,44 @@ def trip_photo_cover(request, pk, media_pk):
     return redirect("trips:trip_photos", pk=trip.pk)
 
 
+@login_required
+@require_POST
+def trip_photo_booklet(request, pk, media_pk):
+    """Editors put one of the trip's photos on the booklet's cover (``Trip.cover_photo``)."""
+    trip, media = _trip_photo(request, pk, media_pk)
+    if not trip.can(request.user, "edit"):
+        raise PermissionDenied
+    trip.cover_photo = media
+    trip.save(update_fields=["cover_photo"])
+    messages.success(request, "That photo is now on the booklet's cover.")
+    return redirect("trips:trip_photos", pk=trip.pk)
+
+
+@login_required
+@require_POST
+def trip_cover(request, pk):
+    """Settings' Booklet cover (editors): upload a picture — it joins the trip's photos and goes on the
+    PDF's cover — or ``remove`` it from the cover (the photo stays in the album)."""
+    from .forms import CoverPhotoForm
+    trip = _readable_trip(request, pk, "edit")
+    back = reverse("trips:trip_settings", args=[trip.pk]) + "#cover"
+    if request.POST.get("remove"):
+        trip.cover_photo = None
+        trip.save(update_fields=["cover_photo"])
+        messages.success(request, "The booklet's cover has no photo now; it's still in the trip's photos.")
+        return redirect(back)
+    form = CoverPhotoForm(request.POST, request.FILES)
+    if not form.is_valid():
+        for error in form.errors.get("photo", ["Choose a picture to upload."]):
+            messages.error(request, error)
+        return redirect(back)
+    media, = trip.add_photos([form.cleaned_data["photo"]], request.user)
+    trip.cover_photo = media
+    trip.save(update_fields=["cover_photo"])
+    messages.success(request, "Cover photo added. It prints on the booklet's cover.")
+    return redirect(back)
+
+
 # ---- map ---------------------------------------------------------------------------------
 def _trip_stops(trip):
     """(stops, others, legs) for the trip map.
