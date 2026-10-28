@@ -1485,6 +1485,13 @@ Plan: `docs/plans/script-emails.md` (every script and scheduled job reports to `
 `notify_admins` command for shell scripts, `fail()` mails, a `run_job.sh` wrapper for cron lines, no `MAILTO`).
 Rule set 2026-10-27. One phase, M1. Status: M1 done on branch `m1-script-emails`. Complete.
 
+### Retire decision to-dos
+
+Plan: `docs/plans/retire-decision-todos.md` (to-dos with options — the old way of choosing — stop being made; the ones
+left convert into choices on their day, merging into a choice that already exists and staying as the booking to-do —
+D1; then `TaskOption`, `BookingTask.kind`, the options page and the convert page are removed — D2). Decided 2026-10-28.
+Phases D1–D2, one branch each, in order; merge D2 only after D1 has run on production. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
