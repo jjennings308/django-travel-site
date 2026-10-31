@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page's context): rows by category — each item's estimate on its basis, a costed booking once over what it covers, chosen options, the daily food allowance; undecided choices as a range outside the totals — with Planned / of which booked / Paid / Left to pay per category and overall, and each traveller's share against what they've paid, all in ?in= (the reader's currency by default). Rows open the item on the trip page (?item=), where its cost is edited; the plan itself is read-only here. Then Spent: the costs (trips.budget.summarize), totals per currency, who owes whom, and the trip's own rates. Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
+Trip budget. First the Plan (budget-estimates B2; budget_plan.plan over the trip page's context): rows by category — each item's estimate on its basis, a costed booking once over what it covers, chosen options, the daily food allowance; undecided choices as a range outside the totals — with Planned / of which booked / Paid / Left to pay per category and overall, and each traveller's share against what they've paid, all in ?in= (the reader's currency by default). Rows open the item on the trip page (?item=), where its cost is edited; the plan itself is read-only here. Then Spent: the costs (trips.budget.summarize), totals per currency, who owes whom, and the trip's own rates. Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
 {% endcomment %}
 {% block title %}Budget — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
@@ -44,7 +44,7 @@ Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page'
           </summary>
           <div class="scroll-x border-t border-zinc-100">
             <table class="w-full text-sm">
-              <thead><tr class="text-left text-zinc-500"><th class="px-4 py-2 font-medium">What</th><th class="px-4 py-2 font-medium">Day</th><th class="px-4 py-2 text-right font-medium">Estimated</th><th class="px-4 py-2 text-right font-medium">Booked</th><th class="px-4 py-2 text-right font-medium">Per person</th><th class="px-4 py-2 font-medium">Status</th></tr></thead>
+              <thead><tr class="text-left text-zinc-500"><th class="px-4 py-2 font-medium">What</th><th class="px-4 py-2 font-medium">Day</th><th class="px-4 py-2 text-right font-medium">Estimated</th><th class="px-4 py-2 text-right font-medium">Booked</th><th class="px-4 py-2 text-right font-medium">Paid</th><th class="px-4 py-2 text-right font-medium">Per person</th><th class="px-4 py-2 font-medium">Status</th></tr></thead>
               <tbody>
                 {% for row in category.rows %}
                   <tr class="border-t border-zinc-100{% if row.range %} text-zinc-500{% endif %}" data-plan-row>
@@ -52,6 +52,7 @@ Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page'
                     <td class="px-4 py-2 whitespace-nowrap text-zinc-500">{% if row.day %}Day {{ row.day.day_number }}{% endif %}</td>
                     <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.range %}{{ row.range.0|floatformat:"2g" }}–{{ row.range.1|floatformat:"2g" }}{% elif row.estimated is not None %}{{ row.estimated|floatformat:"2g" }}{% else %}—{% endif %}</td>
                     <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.booked is not None %}{{ row.booked|floatformat:"2g" }}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap" data-plan-paid>{% if row.paid %}{{ row.paid|floatformat:"2g" }}{% else %}—{% endif %}{% if can_edit and row.pay %}<a class="link-quiet block text-xs font-medium" href="?pay={{ row.pay }}&amp;in={{ target }}#add-cost" data-record-payment>Record a payment</a>{% endif %}</td>
                     <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{% if row.per_person is not None %}{{ row.per_person|floatformat:"2g" }}{% if row.people %} <span class="text-xs text-zinc-500">({{ row.people }})</span>{% endif %}{% else %}—{% endif %}</td>
                     <td class="px-4 py-2 whitespace-nowrap text-zinc-600">{% if row.status == "no plan" %}<span class="text-amber-700">No plan yet</span>{% elif row.status == "undecided" %}Undecided, not counted{% else %}{{ row.status|capfirst }}{% endif %}</td>
                   </tr>
@@ -158,7 +159,7 @@ Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page'
           {% for e in expenses %}
             <tr class="border-b border-zinc-100">
               <td class="px-4 py-2 whitespace-nowrap">{{ e.spent_on|date:"M j"|default:"—" }}</td>
-              <td class="px-4 py-2">{{ e.description }} <span class="text-xs text-zinc-500">· {{ e.get_category_display }}{% if e.day %} · Day {{ e.day.day_number }}{% endif %}</span>{% if e.notes %}<span class="block text-xs text-zinc-500">{{ e.notes }}</span>{% endif %}</td>
+              <td class="px-4 py-2">{{ e.description }} <span class="text-xs text-zinc-500">· {{ e.get_category_display }}{% if e.day %} · Day {{ e.day.day_number }}{% endif %}{% if e.for_label %} · for {{ e.for_label }}{% endif %}</span>{% if e.notes %}<span class="block text-xs text-zinc-500">{{ e.notes }}</span>{% endif %}</td>
               <td class="px-4 py-2">{{ e.paid_by.name }}</td>
               <td class="px-4 py-2 text-zinc-600">{% with people=e.shared_with.all %}{% if people %}{% for p in people %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}Everyone{% endif %}{% endwith %}</td>
               <td class="px-4 py-2 text-right tabular-nums whitespace-nowrap">{{ e.currency }} {{ e.amount }}{% if one and e.converted and e.converted.source != "same" %}<span class="block text-xs text-zinc-500" title="{{ e.converted.rate }}">≈ {{ target }} {{ e.converted.amount }}</span>{% endif %}</td>
@@ -171,7 +172,7 @@ Trip budget. First the Plan (budget-estimates B2; costs.plan over the trip page'
   {% endif %}
 
   {% if form %}
-    <form method="post" class="card p-6" novalidate>
+    <form method="post" action="{% url 'trips:trip_budget' trip.pk %}" class="card scroll-mt-24 p-6" id="add-cost" novalidate>
       {% csrf_token %}
       <h2 class="form-section-title">Add a cost</h2>
       {% if not everyone %}<p class="note">Add travellers to the trip first (Settings), so there's someone to pay and share.</p>{% endif %}

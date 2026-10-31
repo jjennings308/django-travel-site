@@ -49,7 +49,7 @@ from .forms import (
     TripForm,
     section_payload_form,
 )
-from . import budget, checklists, costs, itinerary, route, trip_cities, trip_notes
+from . import budget, budget_plan, checklists, costs, itinerary, route, trip_cities, trip_notes
 from .models import (
     counts_q,
     TripExpense,
@@ -537,9 +537,10 @@ def _trip_page_context(request, trip):
         "my_grant": my_grant,
         "offline_debug": settings.DEBUG,
     }
-    # The plan's total and how much of it is booked (budget-estimates B1–B2: costs.plan, the Budget page's rule —
+    # The plan's total and how much of it is booked (budget-estimates B1–B2: budget_plan.plan, the Budget page's rule —
     # booked where a costed confirmation covers it, else each item's estimate; chosen options count, open ones not).
-    context["cost_estimate"] = costs.planned_total(context, _reader_currency(request))
+    context["cost_estimate"] = budget_plan.planned_total(context, _reader_currency(request))
+    costs.annotate(trip)  # each row's quiet cost note on its day (B3): no queries
     return context
 
 
@@ -1745,7 +1746,7 @@ def trip_budget(request, pk, rate_formset=None):
     own_rates = list(trip.rates.all())
     for rate in own_rates:
         rate.rate_text = f"{rate.rate.normalize():f}"  # 1.5 and 160, not 1.50000000 or 1.6E+2
-    expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with")
+    expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with", "paid_for")
                     .order_by("spent_on", "created_at"))
     everyone = list(trip.travelers.all())
     # Totals in one currency (site roadmap R10): ?in=USD (default: the reader's currency), and
@@ -1762,13 +1763,21 @@ def trip_budget(request, pk, rate_formset=None):
     # person, from the trip page's own context (only what counts, its confirmations and choices), in ``target``.
     # A fixed number of queries per page, however many items (test_budget pins it).
     page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
-    budget_plan = costs.plan(_trip_page_context(request, page_trip), target, expenses)
+    plan = budget_plan.plan(_trip_page_context(request, page_trip), target, expenses)
+    # Record a payment (B3): ?pay=<the row's key> pre-fills Add a cost from a booked row of the Plan.
+    pay = request.GET.get("pay", "")
+    if can_edit and pay and request.method != "POST":
+        row = next((r for c in plan["categories"] for r in c["rows"] if r.get("pay") == pay), None)
+        if row is not None:
+            form = TripExpenseForm(trip=trip, instance=TripExpense(trip=trip), initial={
+                "description": row["label"], "amount": row.get("booked_amount"), "currency": row.get("booked_currency"),
+                "category": row["expense_category"], "paid_for": pay, "spent_on": django_timezone.localdate()})
     return render(request, "trips/trip_budget.html", {
         "trip": trip, "expenses": expenses, "summary": summary, "form": form,
         "target": target, "one": one,
         "currencies": sorted(set(currencies) | {target, (trip.home_currency or "USD").upper(), _reader_currency(request)}),
         "settle_in_one": settle_in_one and one, "can_edit": can_edit, "everyone": everyone,
-        "own_rates": own_rates, "rate_formset": rate_formset, "plan": budget_plan,
+        "own_rates": own_rates, "rate_formset": rate_formset, "plan": plan,
     })
 
 

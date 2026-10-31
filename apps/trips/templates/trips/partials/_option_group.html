@@ -27,7 +27,7 @@ An undecided "choose one" group on its day (day-first plan P4; apps/trips/option
           {% endif %}
         {% endwith %}
         <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          {% if option.cost %}<span class="text-zinc-600">{% if option.cost.approx %}≈ {% endif %}{{ option.cost.currency }} {{ option.cost.total }}</span>{% endif %}
+          {% if option.cost %}<span class="text-zinc-600">{% if option.cost.approx %}≈ {% endif %}{{ option.cost.currency }} {{ option.cost.total }}{% if option.per_person is not None %} · {{ option.cost.currency }} {{ option.per_person }} pp{% endif %}</span>{% endif %}
           {% if option.duration %}<span class="text-zinc-600">{{ option.duration }}</span>{% endif %}
           {% if can_comment %}
             <form method="post" action="{% url 'trips:option_vote' trip.pk option.pk %}" class="inline" data-vote>
@@ -48,4 +48,5 @@ An undecided "choose one" group on its day (day-first plan P4; apps/trips/option
       <p class="note">No options yet.{% if can_edit %} Add them with Edit · + Option.{% endif %}</p>
     {% endfor %}
   </div>
+  {% if group.cheapest %}<p class="mt-2 text-sm text-zinc-600" data-cheapest>Cheapest per person: <strong>{{ group.cheapest.title }}</strong></p>{% endif %}
 </div>

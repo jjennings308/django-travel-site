@@ -2099,6 +2099,55 @@ class TripExpenseForm(forms.ModelForm):
         # Home + the day's local currency, else the trip's (E4).
         currencies.setup(self, "currency", trip, [self.instance.day.city_id] if self.instance.day_id else [],
                          given_initial="currency" in (kwargs.get("initial") or {}))
+        # What it paid for (budget-estimates B3), optional: a booking, or a journey, stay, activity or meal.
+        choices, self.for_items = expense_for_choices(trip)
+        self.fields["paid_for"] = forms.ChoiceField(
+            required=False, label="For", choices=[("", "Nothing in particular")] + choices,
+            help_text="The booking or item it paid for: the Plan then shows it as paid there.")
+        if "paid_for" not in self.initial and self.instance.for_type_id and self.instance.for_id:
+            self.initial["paid_for"] = f"{_for_kind(self.instance.for_type.model)}-{self.instance.for_id}"
+
+    def save(self, commit=True):
+        expense = super().save(commit=False)
+        expense.trip = self.trip
+        expense.set_for(self.for_items.get(self.cleaned_data.get("paid_for") or ""))
+        if commit:
+            expense.save()
+            self.save_m2m()
+        return expense
+
+
+_FOR_MODEL_KIND = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity", "meal": "meal",
+                   "confirmation": "confirmation"}
+
+
+def _for_kind(model_name):
+    return _FOR_MODEL_KIND.get(model_name, model_name)
+
+
+def expense_for_choices(trip):
+    """(choices, items) for an expense's **For** (B3): the trip's bookings, then its journeys, stays and activities by
+    day (``cover_choices``), then its meals; ``items`` maps each key (``confirmation-5``, ``leg-12``, ``meal-3``) to it."""
+    from .models import Meal
+    groups, items = [], {}
+    bookings = []
+    for confirmation in trip.confirmations.order_by("pk"):
+        key = f"confirmation-{confirmation.pk}"
+        items[key] = confirmation
+        bookings.append((key, f"{confirmation.confirmation_number}" + (f" · {confirmation.label}" if confirmation.label else "")))
+    if bookings:
+        groups.append(("Bookings", bookings))
+    cover, cover_items = cover_choices(trip)
+    groups += cover
+    items.update(cover_items)
+    meals = []
+    for meal in Meal.objects.filter(day__trip=trip).select_related("day").order_by("day__date", "order", "pk"):
+        key = f"meal-{meal.pk}"
+        items[key] = meal
+        meals.append((key, f"Day {meal.day.day_number}: {meal.name}"))
+    if meals:
+        groups.append(("Meals", meals))
+    return groups, items
 
 
 class LegProposalForm(forms.Form):

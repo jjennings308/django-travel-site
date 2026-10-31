@@ -139,6 +139,24 @@ def _costs(trip, groups):
             option.cost = {"total": _money(total), "currency": home, "approx": approx}
 
 
+def _per_person(groups):
+    """Each option's cost per person (budget-estimates B3: its total over the people it's for, ``option._people``)
+    and each group's ``cheapest`` — the option cheapest per person — when two or more options have a cost for the
+    same number of people in one currency."""
+    from decimal import Decimal
+    for group in groups:
+        priced = []
+        for option in group.options.all():
+            option.per_person = None
+            count, known = getattr(option, "_people", (0, False))
+            if option.cost and known and count:
+                option.per_person = (Decimal(option.cost["total"]) / count).quantize(Decimal("0.01"))
+                priced.append((option, count, option.cost["currency"]))
+        group.cheapest = None
+        if len(priced) >= 2 and len({(n, c) for _, n, c in priced}) == 1:
+            group.cheapest = min(priced, key=lambda p: (p[0].per_person, p[0].order, p[0].pk))[0]
+
+
 def attach(trip, days, viewer=None, groups=None):
     """See the module docstring. ``days`` are the trip page's days (with their prefetched lists)."""
     from .costs import people_for
@@ -192,6 +210,7 @@ def attach(trip, days, viewer=None, groups=None):
                 item.track = option
                 option.items[_kind_of(item)].append(item)
     _costs(trip, groups)
+    _per_person(groups)
     for option in options.values():
         option.duration = _duration(option)
     by_day = {}

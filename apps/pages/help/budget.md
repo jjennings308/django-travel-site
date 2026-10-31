@@ -23,6 +23,8 @@ Journeys, stays and activities with no cost say **No plan yet**; a meal without 
 
 Each category, and the whole trip, shows **Planned** (booked where it's booked, else the estimate), **of which booked**, **Paid** (the costs recorded under Spent, by their category: flights and local transport are Travel, lodging is Stays) and **Left to pay** (planned minus paid, never below zero). On a phone the categories fold; tap one to open it. Below them, each traveller's **share of the plan** sits next to what they've **paid so far**. A cost given for a number of people ("for 4") rather than named ones is added up separately.
 
+Each row also shows what's been **paid** for it: the costs under Spent whose **For** is that booking or one of the things it covers. On a booked row, editors have **Record a payment**: it fills in **Add a cost** below with the booking's description, cost, currency and category, and For set to it, ready for who paid and when. A cost recorded without For still counts in its category, as before.
+
 Amounts in other currencies are converted at the latest rates (or your own rates); one with no rate is listed and left out.
 
 ## Daily food
@@ -30,6 +32,9 @@ Amounts in other currencies are converted at the latest rates (or your own rates
 Most meals aren't worth pricing one by one. In **Settings**, **Daily food** is an amount per person per day (with its currency) for the food you haven't priced. The plan adds it for each day and the people on it: "€45 per person per day × 11 days × 6 = €2,970". Days marked **meals included** are skipped. Meals you do price are added as well, so leave the allowance for the rest.
 
 ## Adding a cost
+
+**For** (optional) is what the cost paid for: a booking, or a journey, stay, activity or meal of the trip. The Plan then shows it as paid on that row, and the list of costs says "for GCH7JS".
+
 
 You need [editor access](/help/sharing-and-access/#who-can-do-what).
 
@@ -85,7 +90,9 @@ Under the fields a line shows the sum as you type, the same as everywhere else t
 - three hotel rooms: "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)";
 - one 3-bedroom flat: "€310 per night × 4 nights = €1,240 · €206.67 each (6)".
 
-In a "choose one" box, options priced this way show the same line, so they compare directly; **Pick** carries the cost and its meaning onto the stay, meal, activity or journey it makes.
+In a "choose one" box, options priced this way show the same line, so they compare directly, and each option shows its total and its cost per person ("EUR 380.00 · EUR 190.00 pp"). When two or more options are priced for the same number of people, the box ends with **Cheapest per person**. **Pick** carries the cost and its meaning onto the stay, meal, activity or journey it makes.
+
+On the trip page, each journey, stay, activity and meal with a cost shows it quietly at the end of its row: "≈ €190 pp" from its estimate, or "€1,140 · booked" once a booking with a cost covers it ("€380 for 4 · booked" when the booking covers several things). The day's summary line and the booklet don't show costs.
 
 ## Estimated trip cost
 

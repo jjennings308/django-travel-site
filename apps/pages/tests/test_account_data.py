@@ -124,6 +124,21 @@ class ExportTests(Fixture):
         rome = next(t for t in json.loads(self.zip().read("trips.json")) if t["trip"][0]["name"] == "Rome")
         self.assertEqual(rome["todos"][0]["covers"], ["Roma Termini → Firenze SMN", "Firenze SMN → Roma Termini"])
 
+    def test_costs_list_what_they_paid_for(self):
+        """Budget-estimates B3: each recorded cost, people by name, and what it was for."""
+        from decimal import Decimal
+        from apps.trips.models import Confirmation, Traveler, TripExpense
+        payer = Traveler.objects.create(name="Payer P")
+        booking = Confirmation.objects.create(trip=self.shared, confirmation_number="GCH7JS", cost=Decimal("40"),
+                                              currency="EUR")
+        expense = TripExpense(trip=self.shared, description="Train", amount=Decimal("40"), currency="EUR",
+                              paid_by=payer, category="transport")
+        expense.set_for(booking)
+        expense.save()
+        rome = next(t for t in json.loads(self.zip().read("trips.json")) if t["trip"][0]["name"] == "Rome")
+        cost = rome["costs"][0]
+        self.assertEqual((cost["for"], cost["paid_by"], cost["shared_with"]), ("GCH7JS", "Payer P", ["everyone"]))
+
     def test_rate_limited(self):
         self.client.force_login(self.ada)
         self.client.post(reverse("pages:data_export"))

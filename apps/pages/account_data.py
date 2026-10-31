@@ -46,7 +46,7 @@ from apps.notifications.models import Notification
 from apps.reviews.models import Review
 from apps.trips.models import (
     BookingTask, Checklist, ChecklistItem, Comment, Confirmation, ConfirmationFile, Day, Lodging, Meal, RewardsMembership,
-    Section, TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripIdea,
+    Section, TransportLeg, Traveler, Trip, TripActivity, TripExpense, TripGrant, TripIdea,
 )
 
 log = logging.getLogger(__name__)
@@ -87,7 +87,17 @@ def _trip_rows(trip):
         "checklist_items": _rows(ChecklistItem.objects.filter(checklist__trip=trip), exclude=("done_by",)),
         "ideas": _rows(TripIdea.objects.filter(trip=trip), exclude=("added_by",)),
         "todos": _todo_rows(trip),
+        "costs": _cost_rows(trip),
     }
+
+
+def _cost_rows(trip):
+    """The trip's recorded costs (budget-estimates B3): who paid and shared by name, and what each was for."""
+    return [{"id": e.pk, "date": e.spent_on, "description": e.description, "category": e.get_category_display(),
+             "amount": e.amount, "currency": e.currency, "paid_by": e.paid_by.name,
+             "shared_with": [t.name for t in e.shared_with.all()] or ["everyone"], "for": e.for_label,
+             "notes": e.notes}
+            for e in TripExpense.objects.filter(trip=trip).select_related("paid_by").prefetch_related("shared_with")]
 
 
 def _todo_rows(trip):
