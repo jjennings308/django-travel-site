@@ -1,6 +1,6 @@
 # Plan: an optional budget in the PDF booklet
 
-Status: not started. Asked for by James 2026-10-31 ("the middle path"). One phase, BB1, branch `bb1-booklet-budget`.
+Status: BB1 done (2026-10-31) on branch `bb1-booklet-budget`. Asked for by James 2026-10-31 ("the middle path").
 Read with `CLAUDE.md` → Trips → "PDF booklet", "The booklet is snapshot-guarded", "Budget", "Budget in one
 currency", and `docs/plans/budget-estimates.md` (B1–B3: `costs`, `budget_plan.plan`, an expense's **For**).
 
@@ -36,7 +36,10 @@ the items where money still changes hands.
 - **Data** — reuse, don't re-derive: the summary comes from `budget_plan.plan` in the trip's `home_currency` with the
   trip's expenses. `trip_pdf` doesn't build `_trip_page_context`, so either call the same helper the Budget page uses
   or give `budget_plan` a small entry point that takes what `trip_pdf` already has (after `options.attach` and
-  `_attach_confirmations`, so only what counts) plus one expenses query; say which in the PR. Nothing extra runs for the
+  `_attach_confirmations`, so only what counts) plus one expenses query; say which in the PR. **Done the second way:**
+  `budget_plan.booklet(trip, days, groups, expenses)` calls `plan` with a minimal context (trip, days, the option
+  groups `trip_pdf` now loads once and hands to `options.attach`); the budget version costs one query more than the
+  plain one. Nothing extra runs for the
   plain booklet (check with `assertNumQueries` on both).
 - **"To pay"** — one pure function (in `budget_plan` or `costs`, next to `note_for`), `to_pay(item, payments)` →
   `None` / "Paid" / "To pay: …" / "To pay there: ≈ …", from the item's `confirmation_list`, its estimate and the

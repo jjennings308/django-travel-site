@@ -687,7 +687,11 @@ def item_panel(request, pk, kind, item_pk):
 def trip_pdf(request, pk):
     """The trip as a downloadable booklet (apps/trips/pdf.py): cover and days at a glance,
     one section per day, then confirmations, stays, contacts and what's still to book. Anyone
-    who can see the trip; never part of the public view (it carries confirmation numbers)."""
+    who can see the trip; never part of the public view (it carries confirmation numbers).
+
+    ``?budget=1`` is the budget version (booklet-budget BB1): each item's "to pay" line and one page of totals at
+    the end, from ``budget_plan`` over this view's own prefetch plus one query for the expenses. The plain booklet
+    runs none of it."""
     import logging
     from django.http import HttpResponse
     from django.template.loader import render_to_string
@@ -696,17 +700,25 @@ def trip_pdf(request, pk):
     from .pdf import PdfUnavailable, booklet_context, render_pdf
 
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
+    with_budget = request.GET.get("budget") == "1"
     from . import options as option_groups
-    option_groups.attach(trip, list(trip.days.all()), request.user)  # only what counts, as on the page (P4)
+    groups = option_groups.load(trip)
+    option_groups.attach(trip, list(trip.days.all()), request.user, groups=groups)  # only what counts (P4)
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     booking_tasks.attach(trip)
     itinerary.attach_links(trip, list(trip.days.all()))
     trip_notes.attach(trip, list(trip.days.all()))
     itinerary.note_warnings(list(trip.days.all()), list(trip.booking_tasks.all()), django_timezone.localdate())
+    budget_page = None
+    if with_budget:
+        expenses = list(trip.expenses.all())
+        budget_plan.attach_to_pay(trip, expenses)
+        budget_page = budget_plan.booklet(trip, list(trip.days.all()), groups, expenses)
     html = render_to_string("trips/pdf/booklet.html", {
         "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
         "printed": django_timezone.localdate(), "checklists": checklists.attach(trip), **booklet_context(trip),
+        "budget": budget_page,
     }, request=request)
     try:
         pdf = render_pdf(html, base_url=request.build_absolute_uri("/"))
@@ -716,7 +728,7 @@ def trip_pdf(request, pk):
                                 "missing). Use your browser's Print → Save as PDF for now.")
         return redirect("trips:trip_detail", pk=trip.pk)
     response = HttpResponse(pdf, content_type="application/pdf")
-    filename = f"{slugify(trip.public_title or trip.name) or 'trip'}-itinerary.pdf"
+    filename = f"{slugify(trip.public_title or trip.name) or 'trip'}-{'booklet-budget' if with_budget else 'itinerary'}.pdf"
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 

@@ -1,0 +1,23 @@
+{% comment %}
+The booklet's budget page (booklet-budget BB1; trips:trip_pdf?budget=1): totals only, per category and overall, in the trip's home currency, from budget_plan.booklet. No per-person figures: who paid and who owes whom stay on the Budget page. Pass budget and printed.
+{% endcomment %}
+<section class="budget-page">
+  <h2>Budget</h2>
+  <p class="small muted">As of {{ printed|date:"F j, Y" }} · in {{ budget.currency }}{% if budget.used %} · rates used: {% for line in budget.used %}{{ line }}{% if not forloop.last %}; {% endif %}{% endfor %}{% endif %}</p>
+  {% if budget.categories %}
+    <table>
+      <thead><tr><th>Category</th><th class="num">Planned</th><th class="num">Of which booked</th><th class="num">Paid</th><th class="num">Left to pay</th></tr></thead>
+      <tbody>
+        {% for row in budget.categories %}
+          <tr><td>{{ row.name }}</td><td class="num">{{ row.planned }}</td><td class="num">{{ row.booked }}</td><td class="num">{{ row.paid }}</td><td class="num">{{ row.left }}</td></tr>
+        {% endfor %}
+        <tr class="total"><td>{{ budget.total.name }}</td><td class="num">{{ budget.total.planned }}</td><td class="num">{{ budget.total.booked }}</td><td class="num">{{ budget.total.paid }}</td><td class="num">{{ budget.total.left }}</td></tr>
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Nothing on this trip has a cost yet.</p>
+  {% endif %}
+  {% if budget.undecided %}<p>Undecided: {{ budget.undecided }}, not in the totals.</p>{% endif %}
+  {% if budget.missing %}<p class="small">Not converted (no rate): {% for what in budget.missing %}{{ what }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+  <p class="small muted">Planned is what's booked, else the estimate. "To pay" under an item is in that item's own currency. Who paid what is on the trip's Budget page.</p>
+</section>

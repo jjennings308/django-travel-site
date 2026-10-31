@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-28
+updated: 2026-10-31
 
 # The budget and splitting costs
 
@@ -92,7 +92,7 @@ Under the fields a line shows the sum as you type, the same as everywhere else t
 
 In a "choose one" box, options priced this way show the same line, so they compare directly, and each option shows its total and its cost per person ("EUR 380.00 · EUR 190.00 pp"). When two or more options are priced for the same number of people, the box ends with **Cheapest per person**. **Pick** carries the cost and its meaning onto the stay, meal, activity or journey it makes.
 
-On the trip page, each journey, stay, activity and meal with a cost shows it quietly at the end of its row: "≈ €190 pp" from its estimate, or "€1,140 · booked" once a booking with a cost covers it ("€380 for 4 · booked" when the booking covers several things). The day's summary line and the booklet don't show costs.
+On the trip page, each journey, stay, activity and meal with a cost shows it quietly at the end of its row: "≈ €190 pp" from its estimate, or "€1,140 · booked" once a booking with a cost covers it ("€380 for 4 · booked" when the booking covers several things). The day's summary line and the plain booklet don't show costs; **PDF with budget** prints what's still to pay under each item and a page of totals ([the booklet with a budget](/help/reading-your-trip/#booklet-with-a-budget)).
 
 ## Estimated trip cost
 

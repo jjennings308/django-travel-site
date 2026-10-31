@@ -26,7 +26,12 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         {% if can_edit %}<a class="btn" href="{% url 'trips:trip_settings' trip.pk %}" data-settings-link>Settings</a>{% endif %}
-        <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts">Download PDF</a>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
+        {# Download PDF (booklet-budget BB1): the plain booklet, or with a budget page; without JavaScript both links show. #}
+        <div class="relative flex flex-wrap items-center gap-2" x-data="{ pdf: false }" @keydown.escape.window="pdf = false" @click.outside="pdf = false" data-pdf-menu>
+          <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts" data-pdf-plain>Download PDF</a>
+          <button type="button" class="btn-quiet hidden" x-init="$el.classList.remove('hidden')" aria-label="More PDF choices" :aria-expanded="pdf" @click="pdf = !pdf">▾</button>
+          <a class="btn-quiet" x-show="pdf" :class="'absolute right-0 top-full z-30 mt-1 whitespace-nowrap rounded-lg border border-zinc-200 bg-white shadow-lg'" href="{% url 'trips:trip_pdf' trip.pk %}?budget=1" title="The booklet plus a page of totals and what's still to pay on each item, as of today" data-pdf-budget>PDF with budget</a>
+        </div>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
         {# ⋯ menu: calendar, sharing and delete, kept out of the way (Alpine). #}
           <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
             <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>

@@ -10,6 +10,10 @@ ranges outside the totals — with planned / booked / paid / left to pay per cat
 paid (expenses whose For is it, B3) and each traveller's share next to what they paid. ``planned_total(context,
 target)`` is About this trip's line from the same plan, so the two always agree.
 
+The booklet's budget version (booklet-budget BB1, ``trip_pdf?budget=1``): ``booklet(trip, days, groups, expenses)``
+is the one page of totals, from the same ``plan`` in the trip's home currency, and ``attach_to_pay`` gives each
+counted item its ``to_pay`` line (``to_pay``: in the item's own currency, never converted).
+
 What one item costs (its basis, people and nights) is ``costs``; the expense arithmetic (shares, settle-up) is
 ``budget``.
 """
@@ -74,6 +78,7 @@ class _Money:
         foreign = {c.upper() for c in currencies if c} - {self.target}
         self.rates = rates_for(trip, foreign | {self.target}) if foreign else None
         self.missing = []
+        self.used = []  # the rates used, as text: "1 CHF = 1.04 EUR (ECB, Oct 30)"
 
     def convert(self, amount, currency, what="", note=True):
         """``amount`` in the target currency (a Decimal), or None with no rate (listed in ``missing`` unless
@@ -88,6 +93,9 @@ class _Money:
             if note:
                 self.missing.append(f"{what} ({money(amount, currency)})" if what else money(amount, currency))
             return None
+        line = conversion.describe(currency, self.target)
+        if line and line not in self.used:
+            self.used.append(line)
         return conversion.amount
 
 
@@ -188,8 +196,8 @@ def plan(context, target, expenses=()):
         category = _GROUP_CATEGORY.get(group.kind, "other")
         day = by_pk.get(group.day_id)
         if group.is_open:
-            totals = [cash.convert(o.cost["total"], o.cost["currency"]) for o in group.options.all()
-                      if getattr(o, "cost", None)]
+            totals = [cash.convert(o.cost["total"], o.cost["currency"], f"{group.prompt}: {o.title}")
+                      for o in group.options.all() if getattr(o, "cost", None)]
             totals = [t for t in totals if t is not None]
             if totals:
                 add(category, label=f"Undecided: {group.prompt}", anchor=f"group-{group.pk}", day=day,
@@ -283,17 +291,11 @@ def _totals(rows, expenses, cash, everyone, target):
         if expense.paid_by_id in paid_by_person:
             paid_by_person[expense.paid_by_id] += amount
     # Paid per row (B3): an expense whose For is the row's booking or one of its items.
-    from django.contrib.contenttypes.models import ContentType
-    kinds = {ct.pk: name for name, ct in (
-        (name, ContentType.objects.get_by_natural_key("trips", model))
-        for name, model in (("leg", "transportleg"), ("stay", "lodging"), ("activity", "tripactivity"),
-                            ("meal", "meal"), ("confirmation", "confirmation")))}
     paid_for = {}
-    for expense in expenses:
-        if expense.for_type_id in kinds and expense.for_id:
-            amount = cash.convert(expense.amount, expense.currency, note=False)
+    for key, amounts in payments_by_key(expenses).items():
+        for amount, currency in amounts:
+            amount = cash.convert(amount, currency, note=False)
             if amount is not None:
-                key = f"{kinds[expense.for_type_id]}-{expense.for_id}"
                 paid_for[key] = paid_for.get(key, zero) + amount
     for row in rows:
         row["paid"] = sum((paid_for.get(key, zero) for key in row["keys"]), zero)
@@ -328,7 +330,107 @@ def _totals(rows, expenses, cash, everyone, target):
     unpriced = sum(1 for r in rows if r["status"] in ("estimated", "no booking needed") and r["line"]
                    and r["planned"] is None and not r["range"])
     return {"target": target, "categories": categories, "totals": overall, "people": people,
-            "unassigned": unassigned, "missing": cash.missing, "approx": cash.rates is not None, "unpriced": unpriced}
+            "unassigned": unassigned, "missing": cash.missing, "approx": cash.rates is not None, "unpriced": unpriced,
+            "used": cash.used}
+
+
+def payments_by_key(expenses):
+    """{For key: [(amount, currency)]}: each expense recorded against a booking or an item (B3), by the key the Plan's
+    rows carry (``confirmation-4``, ``leg-12``, …), in its own currency."""
+    from django.contrib.contenttypes.models import ContentType
+    kinds = {ContentType.objects.get_by_natural_key("trips", model).pk: name
+             for name, model in (("leg", "transportleg"), ("stay", "lodging"), ("activity", "tripactivity"),
+                                 ("meal", "meal"), ("confirmation", "confirmation"))}
+    found = {}
+    for expense in expenses:
+        if expense.for_type_id in kinds and expense.for_id:
+            key = f"{kinds[expense.for_type_id]}-{expense.for_id}"
+            found.setdefault(key, []).append((Decimal(expense.amount), (expense.currency or "").upper()))
+    return found
+
+
+# ---- the booklet's budget version (booklet-budget BB1) ---------------------------------------------------------
+
+def _owed(amount, currency, payments, keys, booked, covers=None):
+    """The "to pay" text for ``amount`` in ``currency``, less what's recorded as paid against ``keys`` in that
+    currency (a payment in another currency is named, never converted)."""
+    currency = (currency or "").upper()
+    amount = Decimal(amount)
+    paid, others = Decimal("0"), []
+    for key in keys:
+        for value, its in payments.get(key, []):
+            if its == currency or not its:
+                paid += value
+            else:
+                others.append(money(value, its))
+    also = f" · also paid {', '.join(others)}" if others else ""
+    if paid and paid >= amount:
+        return "Paid" + also
+    m = lambda value: money(value, currency)  # noqa: E731
+    left = amount - paid
+    if booked:
+        what = f" for {covers}" if covers else ""
+        detail = f"booked {m(amount)}, paid {m(paid)}" if paid else f"booked {m(amount)}, nothing recorded as paid"
+        return f"To pay: {m(left)}{what} ({detail}){also}"
+    return f"To pay there: ≈ {m(left)}" + (f" (≈ {m(amount)}, paid {m(paid)})" if paid else "") + also
+
+
+def to_pay(item, payments, day=None, trip=None):
+    """What's still to hand over for ``item``, in its own currency (never converted), or None when the site doesn't
+    know: "To pay: €48 (booked €96, paid €48)" for a costed booking — printed once, on the first item it covers ("To
+    pay: €120 for 4 journeys …") —, "To pay there: ≈ €48" from an estimate when nothing is booked (or no booking is
+    needed), "Paid" once payments recorded against it (or its booking) cover it. ``payments`` is
+    ``payments_by_key``."""
+    confirmations = getattr(item, "confirmation_list", None) or []
+    if confirmations:
+        lines = []
+        mine = (type(item), item.pk)
+        for confirmation in confirmations:
+            if confirmation.cost is None:
+                continue
+            covered = confirmation.covered_items()
+            if covered and (type(covered[0]), covered[0].pk) != mine:
+                continue  # printed on its first item
+            kinds = {kind_of(i) if type(i).__name__ != "Section" else "section" for i in covered}
+            words = _KIND_WORDS.get(kinds.pop(), ("item", "items")) if len(kinds) == 1 else ("item", "items")
+            covers = f"{len(covered)} {words[1]}" if len(covered) > 1 else None
+            keys = [f"confirmation-{confirmation.pk}"] + [_key(i) for i in covered if type(i).__name__ != "Section"]
+            lines.append(_owed(confirmation.cost, confirmation.currency, payments, keys, True, covers))
+        return "; ".join(lines) or None  # booked with no cost on file: nothing to say
+    cost = estimate(item, day, trip)
+    if cost is None or cost.total is None:
+        return None
+    return _owed(cost.total, cost.currency, payments, [_key(item)], False)
+
+
+def attach_to_pay(trip, expenses):
+    """Give every counted leg, stay, activity and meal its ``to_pay`` (no queries beyond the page's prefetch)."""
+    payments = payments_by_key(expenses)
+    by_pk, by_date = _days_by(trip)
+    for item in planned_items(trip):
+        item.to_pay = to_pay(item, payments, day_of(item, by_pk, by_date), trip)
+
+
+def booklet(trip, days, groups, expenses):
+    """The booklet's budget page: per category and overall — planned, of which booked, paid, left to pay — in the
+    trip's home currency, the rates used, what couldn't be converted and the undecided choices as one line. No
+    per-person figures (they stay on the Budget page)."""
+    target = (trip.home_currency or "USD").upper()
+    found = plan({"trip": trip, "days": days, "option_groups": groups}, target, expenses)
+    m = lambda value: money(value, target)  # noqa: E731
+
+    def line(name, values):
+        return {"name": name, "planned": m(values["planned"]), "booked": m(values["booked"]),
+                "paid": m(values["paid"]), "left": m(values["left"])}
+    ranges = [row["range"] for category in found["categories"] for row in category["rows"] if row["range"]]
+    undecided = None
+    if ranges:
+        low, high = sum(r[0] for r in ranges), sum(r[1] for r in ranges)
+        span = m(low) if low == high else f"{m(low)}–{m(high)}"
+        undecided = f"{len(ranges)} choice{'s' if len(ranges) != 1 else ''}, {span}"
+    return {"currency": target, "categories": [line(c["name"], c) for c in found["categories"]],
+            "total": line("Total", found["totals"]), "used": found["used"], "missing": found["missing"],
+            "undecided": undecided}
 
 
 def date_max():
