@@ -32,7 +32,7 @@ def queryset(trip):
 
 def load(trip, viewer=None):
     """The trip's ideas (two queries), each with ``vote_count``, ``voters``, ``voted`` and ``on_shelf``."""
-    ideas = list(queryset(trip).prefetch_related(Prefetch("votes", queryset=Vote.objects.select_related("user"))))
+    ideas = list(queryset(trip).prefetch_related(Prefetch("votes", queryset=Vote.objects.select_related("user").order_by("pk"))))
     for idea in ideas:
         votes = list(idea.votes.all())
         idea.vote_count = len(votes)

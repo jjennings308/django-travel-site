@@ -61,7 +61,7 @@ def load(trip):
     options = Option.objects.select_related("poi", "activity", "event__related_activity", "event__poi", "city")
     return list(OptionGroup.objects.filter(trip=trip)
                 .prefetch_related(Prefetch("options", queryset=options), "options__travelers",
-                                  Prefetch("options__votes", queryset=Vote.objects.select_related("user"))))
+                                  Prefetch("options__votes", queryset=Vote.objects.select_related("user").order_by("pk"))))
 
 
 def _keep(owner, name, keep):
