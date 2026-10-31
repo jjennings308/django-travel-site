@@ -1063,6 +1063,19 @@ that matter most:
   trip page (`views._trip_page_queryset`). WeasyPrint needs `libpango-1.0-0 libpangoft2-1.0-0
   libharfbuzz-subset0` on the server; without them the view says so and redirects (`PdfUnavailable`)
   instead of a 500. Pictographic emoji are stripped (no emoji font on the servers).
+  **Budget version** (booklet-budget BB1; no migration): `trip_pdf?budget=1` (header: Download PDF ▾ **PDF with
+  budget**; without JavaScript both links show; same access, never public; file `<slug>-booklet-budget.pdf`; the offline
+  worker keeps only the plain one, no query strings) adds `item.to_pay` under legs, stays (on their check-in day),
+  activities, meals and track items — `budget_plan.to_pay(item, payments)` (`payments_by_key(expenses)`, the For keys):
+  "To pay: €48 (booked €96, paid €48)" (a costed booking, printed once on its first covered item, "… for 4 journeys"),
+  "To pay there: ≈ €48" (an estimate, unbooked or no booking needed), "Paid", or nothing when the site doesn't know; in
+  the item's own currency, never converted (another currency's payment is named) — and `pdf/_budget.html` at the end:
+  `budget_plan.booklet(trip, days, groups, expenses)` = `plan` in the trip's home currency (per category and total:
+  planned, of which booked, paid, left to pay; rates used; not converted; undecided choices as one line), no per-person
+  figures. Built from the booklet's own prefetch plus one expenses query (`test_booklet_budget` pins plain + 1, fixed
+  per page); the plain booklet runs none of it and its HTML is unchanged (the budget CSS is behind `{% if budget %}`).
+  Snapshot `tests/snapshots/booklet_budget.html` (the plain fixture plus a part-paid booking, a paid one, a no-booking
+  estimate and a CHF amount with no rate; `UPDATE_SNAPSHOTS=1 … test_booklet_budget`).
   **Cover photo** (trips 0053): `Trip.cover_photo` (FK `Media`, SET_NULL; always one of the album's photos, separate
   from the album's own cover) — Settings' and New trip's **Booklet cover** (`#cover`, inside the trip's own multipart
   form, saved with it: `forms.CoverPhotoForm` = `PictureFormMixin`'s `picture` / `remove_picture` through the shared
@@ -1595,6 +1608,13 @@ Plan: `docs/plans/booklet-budget.md` (an optional "PDF with budget": one page of
 home currency with an as-of date and the rates used, no per-person table, and a "To pay" line on items where money
 still changes hands; the plain booklet and its snapshot unchanged). Decided 2026-10-31. One phase, BB1. Status: not
 started.
+
+### Booklet budget
+
+Plan: `docs/plans/booklet-budget.md` (an optional budget in the PDF booklet: off by default, **PDF with budget** adds a
+"to pay" line under items and one page of totals in the trip's home currency; no per-person table; the plain booklet
+unchanged). Decided 2026-10-31. One phase, BB1. Status: BB1 done on branch `bb1-booklet-budget` (see Trips → PDF
+booklet). Complete.
 
 ### Rules carried over from the itinerary project
 

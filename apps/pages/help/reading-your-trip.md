@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the days at a glance, each day's plan
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-28
+updated: 2026-10-31
 
 # Reading your trip
 
@@ -16,7 +16,7 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 | Button or link | What it does |
 | --- | --- |
 | **Settings** | The trip's name, dates, travellers, cities and trip-wide lists. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). Everything on a day is changed right on the trip page ([open an item](#open-an-item)). |
-| **Download PDF** | The printable booklet ([see below](#booklet)). |
+| **Download PDF** | The printable booklet ([see below](#booklet)); **▾** beside it offers **PDF with budget** ([see below](#booklet-with-a-budget)). |
 | **Bookings** · **To do** | Every confirmation, what isn't booked yet, and every journey and stay; and what's left to decide, book and do ([bookings](/help/bookings-and-confirmations/#the-bookings-page)). Click a line there to open it here, beside the page. |
 | **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
 | **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
@@ -95,12 +95,26 @@ A confirmation number on a hotel, train or activity is a small chip; click it to
 
 Paper can't link, so the booklet repeats contacts and confirmation numbers on each day they matter, as well as in Reference.
 
+## Booklet with a budget
+
+Click **▾** beside **Download PDF** and choose **PDF with budget** for the same booklet plus money for the road. Anyone who can see the trip can download either one.
+
+- **To pay** under each journey, stay, activity and meal where money still changes hands, in that item's own currency (what you'll hand over there, never converted):
+  - "To pay: €48 (booked €96, paid €48)" for a booking with a cost, from the payments recorded for it on the Budget page; a booking that covers several things says it once, on the first ("To pay: €120 for 4 journeys …");
+  - "To pay there: ≈ €48" from an estimate when nothing is booked, or when the item needs no booking;
+  - **Paid** once the payments recorded for it cover it.
+
+  Nothing is printed when the site doesn't know (no cost, or a booking with no cost on file).
+- A **Budget** page at the end: per category (Travel, Stays, Activities & tickets, Food, Other) and in total, what's planned, how much of it is booked, what's been paid and what's left to pay, in the trip's home currency. It names the exchange rates it used, lists anything it couldn't convert, and puts undecided choices on one line, outside the totals.
+
+The cover says **Includes budget · as of** the day you downloaded it: it's a snapshot, so download it again after paying for something. Who paid what and who owes whom stay on the [Budget page](/help/budget/#who-owes-whom); the booklet doesn't print them.
+
 ## Offline
 
 On a phone, the trip page keeps working without a signal (on a train, or abroad without data):
 
 - Each time you open a trip page, your phone keeps a copy of it.
-- To be sure before you go, open **⋯** and click **Save for offline**. That also keeps the PDF booklet and the trip's tickets and documents (see [tickets and documents](/help/bookings-and-confirmations/#tickets-and-documents)).
+- To be sure before you go, open **⋯** and click **Save for offline**. That also keeps the PDF booklet (the plain one, not **PDF with budget**) and the trip's tickets and documents (see [tickets and documents](/help/bookings-and-confirmations/#tickets-and-documents)).
 
 With no signal, the trip page opens from that copy, with **Offline — this is the copy saved …** at the top. Anything changed since then isn't shown, and you can't make changes until you're back online. Edit pages, the map and other pages need a signal.
 
