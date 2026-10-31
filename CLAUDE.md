@@ -1589,6 +1589,13 @@ done on branch `b3-costs-in-place`. Complete.
   (`?pay=confirmation-<pk>#add-cost` pre-fills description, amount, currency, category — `budget_plan._expense_category` —
   and For). Your data's trips gain `costs` (each expense, people by name, `for`).
 
+### Booklet budget
+
+Plan: `docs/plans/booklet-budget.md` (an optional "PDF with budget": one page of totals per category in the trip's
+home currency with an as-of date and the rates used, no per-person table, and a "To pay" line on items where money
+still changes hands; the plain booklet and its snapshot unchanged). Decided 2026-10-31. One phase, BB1. Status: not
+started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
