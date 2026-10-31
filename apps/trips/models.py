@@ -1187,12 +1187,45 @@ class TripExpense(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # What it paid for (budget-estimates B3), optional: a leg, stay, activity or meal, or a confirmation, of this
+    # trip (``set_for`` checks); the Plan then shows it as paid on that row. Without it the cost counts in its
+    # category only. SET_NULL by hand: a generic link, so a deleted item leaves a dangling id that reads as none.
+    for_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    for_id = models.PositiveBigIntegerField(null=True, blank=True)
+    paid_for = GenericForeignKey("for_type", "for_id")
+
     class Meta:
         db_table = "trip_expenses"
         ordering = ["spent_on", "created_at"]
 
     def __str__(self):
         return f"{self.description} ({self.amount} {self.currency})"
+
+    #: What an expense can be for, by key (a confirmation as well as the items To book looks at, plus meals).
+    FOR_KINDS = ("leg", "stay", "activity", "meal", "confirmation")
+
+    @property
+    def for_label(self):
+        """What it paid for, in words ("GCH7JS", "Munich → Salzburg"), "" for none or a deleted item."""
+        item = self.paid_for if self.for_type_id and self.for_id else None
+        if item is None:
+            return ""
+        if type(item).__name__ == "Confirmation":
+            return item.confirmation_number
+        from .booking_tasks import label
+        return item.name if type(item).__name__ == "Meal" else label(item)
+
+    def set_for(self, item):
+        """Point it at ``item`` (None clears it); the item must be a leg, stay, activity, meal or confirmation of
+        this expense's trip, like ``ConfirmationLink.link``."""
+        if item is None:
+            self.for_type, self.for_id = None, None
+            return
+        if type(item).__name__ not in ("TransportLeg", "Lodging", "TripActivity", "Meal", "Confirmation"):
+            raise ValueError("A cost is for a journey, stay, activity, meal or booking.")
+        if item_trip_id(item) != self.trip_id:
+            raise ValueError("That belongs to another trip.")
+        self.for_type, self.for_id = ContentType.objects.get_for_model(type(item)), item.pk
 
 
 class Day(models.Model):

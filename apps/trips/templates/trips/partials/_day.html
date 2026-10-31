@@ -101,6 +101,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
               <span class="badge badge-mode">{{ meal.get_meal_type_display }}</span>
             </div>
             {% if meal.cuisine %}<p class="mt-1 text-sm text-zinc-600">{{ meal.cuisine }}</p>{% endif %}
+            {% if meal.cost_note %}<p class="mt-1 text-xs text-zinc-500" data-cost-note>{{ meal.cost_note }}</p>{% endif %}
             {% include "trips/partials/_catalogue_link.html" with item=meal %}
             {% include "trips/partials/_trip_notes.html" with item=meal %}
             {% if meal.why_recommended %}<p class="mt-2 text-sm">{{ meal.why_recommended }}</p>{% endif %}

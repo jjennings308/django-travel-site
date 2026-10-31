@@ -550,9 +550,9 @@ that matter most:
   edited on the Budget page under **Your own rates** (`trips:trip_rates`, POST, editors; everyone sees them; moved from Edit trip in E3). Budget page: `?in=XXX` (default the reader's
   `settings.preferred_currency`) converts each cost at its `spent_on` rate (`budget.in_one_currency`), shows
   "≈" totals and "Rates used"; `?settle=1` settles in it, otherwise settle-up stays per currency. About this trip:
-  `costs.planned_total(context, target)` (budget-estimates B1–B2; replaced `budget.estimate`, which counted an
+  `budget_plan.planned_total(context, target)` (budget-estimates B1–B2; replaced `budget.estimate`, which counted an
   activity's estimate and its booking both) — the Budget page's Plan total and how much of it is booked, "≈ USD 14,200
-  planned · USD 6,100 booked", from the same `costs.plan`, so the two agree — in the reader's currency (two queries
+  planned · USD 6,100 booked", from the same `budget_plan.plan`, so the two agree — in the reader's currency (two queries
   only when something is foreign); computed after `_trip_page_context`'s dict is built. `apps/core/utils/currency.py` (currency codes, `format_currency`, the catalogue's
   `|convert_curr` filter) converts with the same stored rates since R19 (`convert_currency(amount, from, to, on=None)`
   → `Rates`; unknown currency → None); the site makes no live exchange-rate calls and `requests` is gone from
@@ -1536,7 +1536,8 @@ basis — total, per person, per night, per room per night with rooms, per perso
 Budget page shows planned → booked → paid by category and per person, with a daily food allowance; costs shown on the
 day's rows and in choices; payments recorded against what they paid for). Decided 2026-10-28. Phases B1–B3, one branch
 each, in order. Status: B1 (what a cost means) done on branch `b1-cost-basis`; B2 (the planned budget page, daily
-food) done on branch `b2-planned-budget`.
+food) done on branch `b2-planned-budget`; B3 (costs on the day's rows and in choices, payments for what they paid for)
+done on branch `b3-costs-in-place`. Complete.
 
 - **What a cost means** (B1; trips 0060, add-only): `cost_basis` (blank = the kind's default, `costs.DEFAULT`: a
   leg's `cost` and an activity's `est_cost` total, a stay's `nightly_rate` and a stay option's `est_cost` per night, a
@@ -1547,7 +1548,7 @@ food) done on branch `b2-planned-budget`.
   trip)` (`cost_people`, else an activity's / split option's travellers, else `day.roster`, else the trip's; `(count,
   known)`), `nights_for`, `estimate(item, day, trip)` → `Cost` (total, `per_person` in cents with the remainder on the
   first share, and `line`: "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)"; unknown people →
-  "people not set", unknown nights / rooms → "× ? nights"), `money` ("€1,140", "€15.50", "NOK 12"), `planned_total`.
+  "people not set", unknown nights / rooms → "× ? nights"), `money` ("€1,140", "€15.50", "NOK 12"), `planned_items` / `day_of` (shared with `budget_plan`).
   Forms: `forms.CostFieldsMixin` (`setup_cost(kind, amount_field)`: Cost / Currency / Cost is (limited to the kind's
   bases) / People / Rooms (dropped where no room basis; cleared unless per room per night); `_form_fields.html`, the
   leg page's fieldsets and the choice page draw them together as `partials/_cost_fields.html` with an Alpine preview
@@ -1559,10 +1560,11 @@ food) done on branch `b2-planned-budget`.
   parts dropped). Pins unchanged (38 / 36); the booklet unchanged.
 - **The planned budget** (B2; trips 0061 adds `Trip.food_allowance` + `food_allowance_currency`, Settings → "Daily
   food", blank currency = home): the Budget page opens with **Plan** (`#plan`, `?in=` currency, the reader's by
-  default), built by `costs.plan(context, target, expenses)` from `_trip_page_context` (only what counts, each item's
+  default), built by `budget_plan.plan(context, target, expenses)` (`apps/trips/budget_plan.py`, its own module: the
+  Plan's rows, totals, allowance and currency conversion; `costs` stays what one item costs) from `_trip_page_context` (only what counts, each item's
   `confirmation_list`, the option groups — so the page's query count is fixed per page, not per item; pinned in
   `test_budget_plan`, with one of each kind present since Django skips an empty prefetch). Rows by category
-  (`costs.CATEGORIES`: Travel, Stays, Activities & tickets, Food, Other): a costed confirmation once over the counted
+  (`budget_plan.CATEGORIES`: Travel, Stays, Activities & tickets, Food, Other): a costed confirmation once over the counted
   items it covers ("GCH7JS · 3 journeys"; none counted → Other, e.g. insurance), each other counted leg / stay /
   activity with its estimate or "no plan" / "no booking needed" (meals only with an estimate), a chosen / split-taken
   option's own cost, an undecided group as a `range` outside the totals, and `allowance_row` ("€45 per person per day ×
@@ -1573,6 +1575,19 @@ food) done on branch `b2-planned-budget`.
   they paid; a cost for a number of people goes to `unassigned`. Rows link `trip_detail?item=`; ⓘ shows the row's
   line; categories fold on a phone (Alpine). **Spent** (the expenses, settle-up, own rates) follows, unchanged; the
   old "Lodging on file" line is gone.
+- **Costs where you plan** (B3; trips 0062): `costs.annotate(trip)` (end of `_trip_page_context`, no queries) gives each
+  counted leg / stay / activity / meal `cost_note` — "€1,140 · booked" when a costed confirmation covers it ("€380 for
+  4 · booked" over several), else "≈ €190 pp" / "≈ €1,140" from its estimate — shown quietly on `_leg_row`,
+  `_stay_card`, `_activity_row` (replacing its "~85 EUR"), `_meal_row` and the day's Food ideas; not in the day's
+  summary line or the booklet. Choices: `options._per_person` gives each option `per_person` (its `options._costs`
+  total over `option._people`) and the group `cheapest` when ≥ 2 options are priced for the same people in one
+  currency ("Cheapest per person: B", `data-cheapest`). **Paid against what it paid for**: `TripExpense.for_type` +
+  `for_id` (`paid_for` GFK, `set_for(item)` — a leg, stay, activity, meal or confirmation of the same trip, else
+  ValueError; `for_label`), the expense form's **For** (`forms.expense_for_choices`: Bookings, the days' items, Meals);
+  the Plan's rows carry `keys` (the booking and its items) and `paid` (expenses whose For is one of them; the category
+  totals still count every expense by category), and a booked row has **Record a payment** for editors
+  (`?pay=confirmation-<pk>#add-cost` pre-fills description, amount, currency, category — `budget_plan._expense_category` —
+  and For). Your data's trips gain `costs` (each expense, people by name, `for`).
 
 ### Rules carried over from the itinerary project
 
