@@ -21,7 +21,7 @@ gunicorn==26.2.0
 brotli==1.2.1
 cffi==2.1.1
 cssselect2==0.10.1
-fonttools==4.67.0
+fonttools==4.68.0
 pycparser==3.12
 pydyf==0.13.0
 pyphen==0.18.1
@@ -34,4 +34,4 @@ zopfli==0.4.3
 icalendar==7.3.0
 python-dateutil==3.0.0
 six==1.17.0
-tzdata==2026.5
+tzdata==2026.6
