@@ -963,7 +963,10 @@ def trip_settings(request, pk):
             from . import day_fit
             found = day_fit.plan(trip)
             if found["missing"] or found["outside"]:
-                return redirect("trips:trip_days_fit", pk=trip.pk)
+                url = reverse("trips:trip_days_fit", args=[trip.pk])
+                if before[0] and trip.start_date and trip.start_date != before[0]:
+                    url += f"?moved_from={before[0]:%Y-%m-%d}"  # offer to move everything instead (DR1)
+                return redirect(url)
         return redirect("trips:trip_detail", pk=trip.pk)
 
     from .forms import share_choices
@@ -1010,7 +1013,73 @@ def trip_days_fit(request, pk):
                 f"added {made} day{'s' if made != 1 else ''}" if made else "",
                 f"removed {removed}" if removed else "") if part).capitalize() + ".")
         return redirect(settings_url + "#days")
-    return render(request, "trips/trip_days_fit.html", {"trip": trip, **found, "settings_url": settings_url})
+    # The start date moved (Settings passes the old one): offer to move everything instead (DR1).
+    shift_offer = None
+    moved_from = _date_param(request.GET.get("moved_from"))
+    if moved_from and trip.start_date and moved_from != trip.start_date and found["outside"]:
+        dated = sorted(day.date for day in trip.days.all() if day.date)
+        if dated:
+            from .reschedule import span
+            shift_offer = {"url": reverse("trips:trip_shift", args=[trip.pk]) + f"?moved_from={moved_from:%Y-%m-%d}",
+                           "days_span": span(dated[0], dated[-1]), "start": trip.start_date}
+    return render(request, "trips/trip_days_fit.html", {"trip": trip, **found, "settings_url": settings_url,
+                                                        "shift_offer": shift_offer})
+
+
+def _date_param(value):
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
+@login_required
+def trip_shift(request, pk):
+    """Move the whole trip by N days (editors; shift-and-reorder DR1, ``apps/trips/reschedule.py``): a new start
+    date → Preview (nothing saved) → Apply. With ``?moved_from=`` (from the fit-the-days page, after Settings saved a
+    new start date) only the contents move, by the difference."""
+    from . import reschedule
+    trip = _readable_trip(request, pk, "edit")
+    data = request.POST if request.method == "POST" else request.GET
+    moved_from = _date_param(data.get("moved_from"))
+    start = _date_param(data.get("start"))
+    n = 0
+    if moved_from and trip.start_date:
+        n = (trip.start_date - moved_from).days
+    elif start and trip.start_date:
+        n = (start - trip.start_date).days
+    if request.method == "POST" and n:
+        try:
+            done = reschedule.shift(trip, n, request.user, move_due=data.get("move_due") == "1",
+                                    booking_todos=data.get("booking_todos") == "1", move_trip=moved_from is None)
+        except reschedule.CannotMove as reason:
+            messages.error(request, str(reason))
+            return redirect("trips:trip_shift", pk=trip.pk)
+        trip.refresh_from_db()
+        text = f"Moved the trip to {reschedule.span(trip.start_date, trip.end_date)}."
+        if done["made"]:
+            count = len(done["made"])
+            text += f" {count} booking{'s' if count != 1 else ''} to change: see To book."
+        messages.success(request, text)
+        if moved_from:
+            from . import day_fit
+            found = day_fit.plan(trip)
+            if found["missing"] or found["outside"]:
+                return redirect("trips:trip_days_fit", pk=trip.pk)
+        return redirect(reverse("trips:trip_detail", args=[trip.pk]) + ("#to-book" if done["made"] else ""))
+    preview = None
+    if n:
+        page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
+        _attach_confirmations(page_trip)
+        trip_notes.attach(page_trip, list(page_trip.days.all()))
+        preview = reschedule.shift_plan(page_trip, n, move_trip=moved_from is None)
+    elif start and start == trip.start_date:
+        messages.info(request, "That's the trip's start date already.")
+    length = (trip.end_date - trip.start_date).days if trip.start_date and trip.end_date else None
+    return render(request, "trips/trip_shift.html", {
+        "trip": trip, "preview": preview, "moved_from": moved_from, "start": start or trip.start_date,
+        "length": length, "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
+    })
 
 
 @login_required

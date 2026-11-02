@@ -1,0 +1,83 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/reschedule.py). A new start date, then Preview (a GET, nothing saved) lists what moves and the warnings, then Apply (a POST) moves it all in one go, under one history line that can be undone. With moved_from (from the fit-the-days page) the trip's dates are already saved and only the days, journeys and stays move.
+{% endcomment %}
+{% block title %}Move the trip — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{{ settings_url }}">Settings</a><span>/</span>
+    <span>Move the trip</span>
+  </nav>
+  <div class="card p-6" data-trip-shift>
+    <h1 class="page-title mb-1">Move the whole trip</h1>
+    {% if moved_from %}
+      <p class="mb-4 text-zinc-500">The trip now starts {{ trip.start_date|date:"l, F j" }}, but its days, journeys and stays still start {{ moved_from|date:"l, F j" }}. This moves them all {{ preview.describe|default:"" }} to match; nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
+    {% else %}
+      <p class="mb-4 text-zinc-500">Every day moves with what's on it, every journey keeps its local times on its new date, and every stay keeps its length. Payments, catalogue events and to-do due dates stay where they are. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
+      <form method="get" class="mb-2 flex flex-wrap items-end gap-3" data-shift-pick>
+        <div>
+          <label for="shift-start">New start date</label>
+          <input type="date" id="shift-start" name="start" value="{{ start|date:'Y-m-d' }}" required>
+        </div>
+        <button type="submit" class="btn-quiet">Preview</button>
+      </form>
+      <p class="note">Now {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}{% if length is not None %} ({{ length }} night{{ length|pluralize }}); the length stays the same{% endif %}.</p>
+    {% endif %}
+
+    {% if preview %}
+      <div class="mt-5 border-t border-zinc-100 pt-5" data-shift-preview>
+        <h2 class="form-section-title">{% if preview.move_trip %}{{ preview.old_span }} → {{ preview.new_span }}{% else %}Days, journeys and stays {{ preview.describe }}{% endif %}</h2>
+        <p class="mb-3 text-sm text-zinc-500">{{ preview.describe|capfirst }}: {{ preview.days|length }} day{{ preview.days|length|pluralize }}, {{ preview.legs|length }} journey{{ preview.legs|length|pluralize }}, {{ preview.stays|length }} stay{{ preview.stays|length|pluralize }}.</p>
+
+        {% if preview.booked %}
+          <div class="callout callout-warning mb-3" data-shift-booked>
+            <p class="font-medium">Booked: these move on this site, not at the provider.</p>
+            <ul class="mt-1 list-disc pl-5 text-sm">
+              {% for row in preview.booked %}<li><span class="font-mono">{{ row.confirmation.confirmation_number }}</span> · {{ row.items|join:", " }}{% if row.was %} · booked for {{ row.was }}, would be {{ row.now }}{% endif %}</li>{% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if preview.events or preview.closed or preview.strays %}
+          <div class="callout callout-info mb-3" data-shift-warnings>
+            <p class="font-medium">Check these</p>
+            <ul class="mt-1 list-disc pl-5 text-sm">
+              {% for text in preview.events %}<li data-shift-event>{{ text }}.</li>{% endfor %}
+              {% for text in preview.closed %}<li data-shift-closed>{{ text }}.</li>{% endfor %}
+              {% for row in preview.strays %}<li data-shift-stray>{{ row.label }} is on {{ row.old|date:"M j" }}, which isn't one of the trip's days; it moves to {{ row.new|date:"M j" }} too.</li>{% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        <details class="mb-2"><summary class="cursor-pointer font-medium">Days ({{ preview.days|length }})</summary>
+          <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.days %}<li>Day {{ row.day.day_number }}{% if row.day.city %} · {{ row.day.city.name }}{% endif %}{% if row.day.theme %} — {{ row.day.theme }}{% endif %}: {{ row.old|date:"D M j" }} → <strong>{{ row.new|date:"D M j" }}</strong></li>{% endfor %}</ul>
+        </details>
+        {% if preview.legs %}
+          <details class="mb-2"><summary class="cursor-pointer font-medium">Journeys ({{ preview.legs|length }})</summary>
+            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.legs %}<li>{{ row.label }}: {{ row.old|date:"M j" }} → <strong>{{ row.new|date:"M j" }}{% if row.time %} {{ row.time }}{% endif %}</strong></li>{% endfor %}</ul>
+          </details>
+        {% endif %}
+        {% if preview.stays %}
+          <details class="mb-2"><summary class="cursor-pointer font-medium">Stays ({{ preview.stays|length }})</summary>
+            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.stays %}<li>{{ row.label }}: {{ row.old.0|date:"M j" }}–{{ row.old.1|date:"M j" }} → <strong>{{ row.new.0|date:"M j" }}–{{ row.new.1|date:"M j" }}</strong></li>{% endfor %}</ul>
+          </details>
+        {% endif %}
+
+        <form method="post" class="mt-4" data-shift-apply>
+          {% csrf_token %}
+          {% if moved_from %}<input type="hidden" name="moved_from" value="{{ moved_from|date:'Y-m-d' }}">{% else %}<input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">{% endif %}
+          {% if preview.booked %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="booking_todos" value="1" checked> Add a to-do to change each booking ({{ preview.booked|length }})</label>{% endif %}
+          {% if preview.tasks %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="move_due" value="1"> Also move to-do due dates ({{ preview.tasks|length }}) <span class="text-sm text-zinc-500">— usually booking deadlines, which don't move with the trip</span></label>{% endif %}
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <button type="submit" class="btn">Apply</button>
+            <a class="btn-quiet" href="{{ settings_url }}">Cancel</a>
+          </div>
+          <p class="note mt-2">One line in the trip's history; you can undo it there until something else on the trip changes.</p>
+        </form>
+      </div>
+    {% elif not moved_from %}
+      <a class="btn-quiet mt-3 inline-block" href="{{ settings_url }}">Back to Settings</a>
+    {% endif %}
+  </div>
+{% endblock %}

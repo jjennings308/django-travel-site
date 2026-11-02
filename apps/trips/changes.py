@@ -178,10 +178,18 @@ def record(trip_id, kind, summary, item=None, actor=None, day_id=None, before=No
 
 
 @contextmanager
-def batch(summary, trip=None, actor=None):
+def batch(summary, trip=None, actor=None, item=None, no_urgent=False):
     """One "<summary> (N changes)" line per trip instead of a line per item, for bulk operations.
-    ``trip=None`` covers whichever trips are touched (an import creates its trip inside)."""
-    state = {"trip_id": getattr(trip, "pk", None), "counts": {}}
+    ``trip=None`` covers whichever trips are touched (an import creates its trip inside).
+
+    For an operation that can be undone as a whole (moving the trip, shift-and-reorder DR1): ``item`` names what
+    the line is about, ``state["before"]`` (set inside) is stored on it, the line is written even when nothing
+    tracked changed, and ``state["line"]`` is the line afterwards. ``no_urgent`` holds back the per-leg "time
+    change" notices (the caller sends one of its own)."""
+    state = {"trip_id": getattr(trip, "pk", None), "counts": {}, "no_urgent": no_urgent, "before": None,
+             "line": None}
+    if item is not None and trip is not None:
+        state["counts"][trip.pk] = 0
     token = _batch.set(state)
     try:
         yield state
@@ -190,7 +198,12 @@ def batch(summary, trip=None, actor=None):
     for trip_id, count in state["counts"].items():
         if Trip.objects.filter(pk=trip_id).exists():
             noun = "change" if count == 1 else "changes"
-            record(trip_id, TripChange.Kind.CHANGED, f"{summary} ({count} {noun})", actor=actor)
+            text = f"{summary} ({count} {noun})" if count else summary
+            mine = trip_id == state["trip_id"]
+            line = record(trip_id, TripChange.Kind.CHANGED, text, item=item if mine else None, actor=actor,
+                          before=state["before"] if mine else None)
+            if mine:
+                state["line"] = line
 
 
 @contextmanager
@@ -255,7 +268,9 @@ def _after(sender, instance, created, raw=False, **kwargs):
         return
     record(trip_of(instance), TripChange.Kind.CHANGED, f"Changed {label(old)}: {'; '.join(parts)}", instance,
            day_id=day_id_of(instance), before=values)
-    if sender is TransportLeg and changed & {"departure_at", "arrival_at", "date"}:
+    current = _batch.get()
+    if sender is TransportLeg and changed & {"departure_at", "arrival_at", "date"} and not (
+            current and current.get("no_urgent")):
         _maybe_urgent(old, instance)
 
 
@@ -401,14 +416,19 @@ def snapshot(instance):
 
 
 def latest_change_ids(trip):
-    """{(item_type, item_id): id of its newest change} — only the newest can be undone."""
+    """{(item_type, item_id): id of its newest change} — only the newest can be undone. Under ``"newest"``: the
+    trip's newest change of all (a move of the whole trip can be undone only while it is that, DR1)."""
     from django.db.models import Max
     rows = trip.changes.exclude(item_id=None).values("item_type", "item_id").annotate(last=Max("id"))
-    return {(row["item_type"], row["item_id"]): row["last"] for row in rows}
+    found = {(row["item_type"], row["item_id"]): row["last"] for row in rows}
+    found["newest"] = trip.changes.aggregate(newest=Max("id"))["newest"]
+    return found
 
 
 def can_undo(change, latest):
     """Offer Undo / Restore for this change? (The POST re-checks against the current data.)"""
+    if change.before and "shift" in change.before:  # the whole trip moved (DR1): reschedule.undo_shift
+        return latest.get("newest") == change.pk
     if latest.get((change.item_type, change.item_id)) != change.pk or not change.before:
         return False
     if change.kind == TripChange.Kind.CHANGED:

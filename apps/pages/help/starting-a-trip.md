@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, set its route (c
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-10-28
+updated: 2026-11-02
 
 # Starting a trip
 
@@ -76,6 +76,26 @@ On **Photos**, **Use on the booklet** under a photo does the same; the one in us
 ## Changing the dates
 
 Change **Start date** or **End date** on **Settings** and save. If the days no longer fit the new dates, the next page lists what to do: **Add a day for** each new date without one (ticked), and **Remove** each day now outside the dates (ticked only when nothing is on it; otherwise it says what would be deleted, such as "2 meals, 1 note"). Journeys and stays aren't deleted with a day. Click **Fit the days**: the days are then numbered again in date order. **Leave them as they are** changes nothing; a day you keep shows under its date, outside the trip's dates.
+
+If the trip moves as a whole (it starts a week earlier, say), use [moving the whole trip](#moving-the-whole-trip) instead, so the days keep what's on them. When you've already changed the start date, the page that fits the days offers it at the top: "Your days are still on Sep 17–29. **Move everything to start on Sep 10** instead?"
+
+## Moving the whole trip
+
+On **Settings**, under the dates, click **Move the whole trip…**. Pick the new start date and click **Preview**: the end date moves by the same number of days, so the trip stays the same length. Nothing changes until you click **Apply**.
+
+- **Every day moves with what's on it**: its city, theme, meals, notes, activities, choices and comments.
+- **Every journey keeps its local times** on its new date: a 10:15 train is still a 10:15 train, even when the clocks change in between. A journey with no times yet just gets its new date.
+- **Every stay keeps its length**: check-in and check-out both move.
+- **What doesn't move**: payments on the Budget page, the date a booking was made, catalogue events (Oktoberfest keeps its dates) and to-do due dates. Tick **Also move to-do due dates** if yours should move; most are booking deadlines, which don't.
+
+The preview lists what moves and what to check:
+
+- **Booked**: journeys and stays with a confirmation number. They move on this site only; the booking itself still has the old dates. **Add a to-do to change each booking** (ticked) adds one to-do per booking, "Change booking GCH7JS to the new dates", which shows under **To book**.
+- An activity linked to an event whose dates its new day falls outside.
+- A place whose catalogue note says it's closed on the new day of the week.
+- A journey on a date that isn't one of the trip's days (it moves too).
+
+The move is one line in the trip's history, and **Undo** on that line puts everything back while nothing else on the trip has changed since ([undo a change](/help/trip-history/#undo-a-change)). To change the trip's length as well, move it first, then change the end date on **Settings**.
 
 To let others see or edit the trip, click **People** on the trip page and invite them ([inviting people](/help/sharing-and-access/#inviting-people)).
 
