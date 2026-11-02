@@ -1622,7 +1622,28 @@ Plan: `docs/plans/shift-and-reorder-days.md` (move the whole trip by N days — 
 times, stays — with a preview, booking to-dos for booked items and one undoable history line, also offered from the
 fit-the-days page after a start-date change — DR1; then a page to put days in a new order between fixed dates, their
 contents and journeys following, stays only when their nights stay together — DR2). Decided 2026-11-02. Phases
-DR1–DR2, one branch each, in order. Status: not started.
+DR1–DR2, one branch each, in order. Status: DR1 (move the whole trip, `apps/trips/reschedule.py`, `trips:trip_shift`)
+done on branch `dr1-shift-trip`.
+
+- **Move the whole trip** (DR1; no migration): `reschedule.shift_plan(trip, n)` (the preview, over the trip page's
+  prefetch with `views._attach_confirmations` + `trip_notes.attach` but *not* `options.attach`, so undecided choices'
+  items move too: days, journeys — new local time —, stays, due dates old → new; warnings: booked items, an activity /
+  section linked to an event its new day falls outside, catalogue notes' closed weekdays newly hit, journeys on no
+  day) and `reschedule.shift(trip, n, user, move_due=False, booking_todos=True, move_trip=True)`: one transaction
+  under `changes.batch(…, item=trip, no_urgent=True)` — days first, then legs by **wall clock**
+  (`reschedule.wall_clock_plus`: local time in its zone + n days → UTC, so a DST change between is right; a planned
+  leg its date), stays, the trip's dates, due dates when ticked, then one "Change booking <number> to the new dates"
+  to-do (High) per confirmation linked to anything, covering its TASKABLE items. Payments, `booked_on` and events
+  never move. No per-leg "time change" notice; one "<trip> has moved" notice when a journey now leaves within
+  `URGENT_DAYS`. The line ("Moved the trip 7 days earlier: Sep 17–29 → Sep 10–22", item_type `trip`) stores every
+  old value and the made to-dos in `before["shift"…]`; `changes.batch` gained `item` / `state["before"]` /
+  `state["line"]` / `no_urgent` for it, `latest_change_ids` a `"newest"` key and `can_undo` the rule (only while it is
+  the trip's newest change); `reschedule.undo_shift` (via `trips:change_undo`) restores them and deletes the made
+  to-dos unless edited or done since (`_task_print`). Pages: `trips:trip_shift` (`/trips/<pk>/shift/`, editors;
+  Settings' **Move the whole trip…** under the dates): new start → Preview (GET) → Apply (POST); `?moved_from=` (the
+  fit-the-days page's offer — `trip_settings` passes the old start when it changed — "Your days are still on Sep
+  17–20. Move everything to start on Sep 10 instead?") moves the contents only (`move_trip=False`) and then returns
+  to fit the days if the end moved by another amount. Tests `test_reschedule`.
 
 ### Rules carried over from the itinerary project
 

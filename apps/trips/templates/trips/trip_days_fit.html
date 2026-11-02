@@ -14,6 +14,11 @@ Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/da
     {% csrf_token %}
     <h1 class="page-title mb-1">The days and the new dates</h1>
     <p class="mb-4 text-zinc-500">The trip now runs {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}. Choose what to do with the days; nothing changes until you click <strong>Fit the days</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="changing-the-dates" label="changing the dates" text="How this works" %}</p>
+    {% if shift_offer %}
+      <div class="callout callout-info mb-4" data-shift-offer>
+        <p>Your days are still on {{ shift_offer.days_span }}. <a class="font-medium underline" href="{{ shift_offer.url }}">Move everything to start on {{ shift_offer.start|date:"M j" }}</a> instead? The days, journeys and stays move together, with a preview first.</p>
+      </div>
+    {% endif %}
     {% if missing %}
       <h2 class="card-kicker mb-1">Add a day for</h2>
       <ul class="mb-4 space-y-1">
