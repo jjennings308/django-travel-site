@@ -1,0 +1,184 @@
+"""Put the days in a new order (docs/plans/shift-and-reorder-days.md, DR2): ``reschedule.reorder_plan`` / ``reorder``
+and ``trips:trip_reorder`` — the dates stay, days move between them with their contents and journeys, stays move
+only when their nights stay together, warnings (including text naming a day), booking to-dos, one undoable line."""
+from datetime import date, datetime, timezone as dt_timezone
+
+from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
+
+from apps.trips import changes, reschedule
+from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, Meal, OptionGroup, Section, TransportLeg,
+                               Traveler, Trip, TripActivity, TripChange, TripGrant, TripRole)
+
+User = get_user_model()
+UTC = dt_timezone.utc
+
+
+class Fixture(TestCase):
+    def setUp(self):
+        self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
+        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 10), end_date=date(2027, 9, 14),
+                                        created_by=self.editor, home_currency="EUR")
+        TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
+        self.ada, self.bo = Traveler.objects.create(name="Ada"), Traveler.objects.create(name="Bo")
+        self.trip.travelers.set([self.ada, self.bo])
+        self.d = {n: Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 9 + n), theme=f"Theme {n}")
+                  for n in range(1, 6)}
+        # 10:15 CEST on Sep 11 (Day 2).
+        self.train = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Augsburg", destination="Munich", origin_timezone="Europe/Berlin",
+            destination_timezone="Europe/Berlin", departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
+            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC))
+        self.planned = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Munich", destination="Füssen",
+                                                   date=date(2027, 9, 13))  # Day 4
+        # Three nights on Days 2–4.
+        self.hotel = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 11),
+                                            check_out=date(2027, 9, 14))
+        self.client.force_login(self.editor)
+
+    def pks(self, *numbers):
+        return [self.d[n].pk for n in numbers]
+
+    def dates(self):
+        return {day.pk: (day.date, day.day_number) for day in Day.objects.filter(trip=self.trip)}
+
+
+class ReorderTests(Fixture):
+    def test_a_swap_moves_contents_and_journeys_and_leaves_a_split_stay(self):
+        meal = Meal.objects.create(day=self.d[2], name="Augustiner")
+        note = Section.objects.create(day=self.d[2], section_type="note", title="Plan", content={"paragraphs": []})
+        tour = TripActivity.objects.create(trip=self.trip, day=self.d[2], title="Castle")
+        group = OptionGroup.objects.create(trip=self.trip, day=self.d[2], prompt="Dinner")
+        self.d[2].travelers.set([self.ada])
+        reschedule.reorder(self.trip, self.pks(1, 4, 3, 2, 5), self.editor)
+        old_two = Day.objects.get(pk=self.d[2].pk)
+        self.assertEqual((old_two.date, old_two.day_number, old_two.theme), (date(2027, 9, 13), 4, "Theme 2"))
+        for item in (meal, note, tour, group):
+            item.refresh_from_db()
+            self.assertEqual(item.day_id, old_two.pk)
+        self.assertEqual(list(old_two.travelers.all()), [self.ada])
+        self.assertEqual(Day.objects.get(pk=self.d[4].pk).day_number, 2)
+        self.train.refresh_from_db()
+        self.assertEqual((self.train.date, self.train.departure_local_str), (date(2027, 9, 13), "10:15 AM CEST"))
+        self.planned.refresh_from_db()
+        self.assertEqual(self.planned.date, date(2027, 9, 11))
+        self.hotel.refresh_from_db()  # nights now out of order: left where it was
+        self.assertEqual((self.hotel.check_in, self.hotel.check_out), (date(2027, 9, 11), date(2027, 9, 14)))
+        self.assertEqual(sorted(n for _, n in self.dates().values()), [1, 2, 3, 4, 5])
+
+    def test_a_rotation_keeps_a_stay_together(self):
+        reschedule.reorder(self.trip, self.pks(5, 1, 2, 3, 4), self.editor)
+        found = self.dates()
+        self.assertEqual(found[self.d[5].pk], (date(2027, 9, 10), 1))
+        self.assertEqual(found[self.d[1].pk], (date(2027, 9, 11), 2))
+        self.hotel.refresh_from_db()  # Days 2–4 moved together and in order: the stay follows, same length
+        self.assertEqual((self.hotel.check_in, self.hotel.check_out), (date(2027, 9, 12), date(2027, 9, 15)))
+        self.train.refresh_from_db()
+        self.assertEqual(self.train.date, date(2027, 9, 12))
+
+    def test_the_plan_lists_the_split_stay_bookings_and_text_naming_a_day(self):
+        Section.objects.create(day=self.d[3], section_type="note", title="Plan",
+                               content={"paragraphs": ["Same as Day 3 last year."]})
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="STAY1").link(self.hotel)
+        plan = reschedule.reorder_plan(self.trip, self.pks(1, 3, 2, 4, 5))
+        self.assertEqual(plan["kept_stays"], ["Hotel Laimer Hof (Sep 11–14) now covers Day 2 — Theme 3, "
+                                              "Day 3 — Theme 2 and Day 4 — Theme 4: check it"])
+        self.assertEqual([row["confirmation"].confirmation_number for row in plan["booked"]], ["GCH7JS"])
+        self.assertEqual(plan["slips"], ["Plan on Day 2 says “Day 3”: “Same as Day 3 last year.”"])
+        self.assertEqual(plan["summary"], "Reordered days: Sep 11 Theme 3, Sep 12 Theme 2")
+        self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 11))  # nothing saved
+
+    def test_booking_todos_only_for_moved_bookings(self):
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="STAY1").link(self.hotel)  # stays put
+        done = reschedule.reorder(self.trip, self.pks(1, 3, 2, 4, 5), self.editor)
+        self.assertEqual([task.title for task in done["made"]], ["Change booking GCH7JS to the new dates"])
+        self.assertEqual(list(done["made"][0].covered()), [self.train])
+
+    def test_refused_when_the_days_dont_match_the_dates_or_nothing_moves(self):
+        with self.assertRaises(reschedule.CannotMove):
+            reschedule.reorder(self.trip, self.pks(1, 2, 3, 4, 5), self.editor)
+        with self.assertRaises(reschedule.CannotMove):
+            reschedule.reorder_plan(self.trip, self.pks(1, 2, 3, 4))  # a day left out
+        self.d[5].delete()
+        with self.assertRaises(reschedule.CannotMove):
+            reschedule.reorder_plan(self.trip, self.pks(1, 2, 3, 4))
+        response = self.client.get(reverse("trips:trip_reorder", args=[self.trip.pk]))
+        self.assertContains(response, "fit the days first")
+
+    def test_one_line_and_undo(self):
+        Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
+        before = self.dates()
+        count = TripChange.objects.filter(trip=self.trip).count()
+        line = reschedule.reorder(self.trip, self.pks(5, 1, 2, 3, 4), self.editor)["change"]
+        self.assertEqual(TripChange.objects.filter(trip=self.trip).count(), count + 1)
+        self.assertTrue(line.summary.startswith("Reordered days: Sep 10 Theme 5, Sep 11 Theme 1"))
+        self.assertTrue(changes.can_undo(line, changes.latest_change_ids(self.trip)))
+        response = self.client.post(reverse("trips:change_undo", args=[self.trip.pk, line.pk]), follow=True)
+        self.assertContains(response, "the days are back in their old order")
+        self.assertEqual(self.dates(), before)
+        self.train.refresh_from_db(), self.hotel.refresh_from_db()
+        self.assertEqual(self.train.departure_at, datetime(2027, 9, 11, 8, 15, tzinfo=UTC))
+        self.assertEqual(self.hotel.check_in, date(2027, 9, 11))
+        self.assertFalse(BookingTask.objects.filter(trip=self.trip).exists())
+
+
+class PageTests(Fixture):
+    def url(self, **query):
+        return reverse("trips:trip_reorder", args=[self.trip.pk]) + (f"?day={query['day']}" if query else "")
+
+    def test_rows_preview_and_apply(self):
+        html = self.client.get(self.url(day=self.d[3].pk)).content.decode()
+        self.assertEqual(html.count("data-reorder-row data-day="), 5)
+        self.assertIn(f'data-day="{self.d[3].pk}" data-focus', html)
+        self.assertIn('name="pos_', html)  # the no-JavaScript position boxes
+        order = self.pks(1, 3, 2, 4, 5)
+        preview = self.client.post(self.url(), {"order": order, "action": "preview"}).content.decode()
+        self.assertIn("data-reorder-preview", preview)
+        self.assertIn("Hotel Laimer Hof (Sep 11–14) now covers", preview)
+        self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 11))  # nothing saved
+        response = self.client.post(self.url(), {"order": order, "action": "apply"})
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]) + "#days",
+                             fetch_redirect_response=False)
+        self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 12))
+
+    def test_position_boxes_win_without_javascript(self):
+        data = {"order": self.pks(1, 2, 3, 4, 5), "action": "apply",
+                **{f"pos_{self.d[n].pk}": str(p) for n, p in ((1, 2), (2, 1), (3, 3), (4, 4), (5, 5))}}
+        self.client.post(self.url(), data)
+        self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 10))
+
+    def test_a_fixed_number_of_queries(self):
+        url = self.url()
+        Meal.objects.create(day=self.d[1], name="Breakfast")  # each prefetch runs once there is one (Django skips
+        TripActivity.objects.create(trip=self.trip, day=self.d[1], title="Tour")  # an empty one)
+        self.client.get(url)
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get(url)
+        before = len(ctx.captured_queries)
+        for day in self.d.values():
+            Meal.objects.create(day=day, name="Lunch")
+            TripActivity.objects.create(trip=self.trip, day=day, title="Walk")
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get(url)
+        self.assertEqual(len(ctx.captured_queries), before)
+
+    def test_editors_only_and_the_links(self):
+        detail = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
+        self.assertIn(f'href="{self.url()}" data-reorder-link>Reorder</a>', detail)
+        settings_page = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])).content.decode()
+        self.assertIn("data-reorder-link>Reorder days</a>", settings_page)
+        day_page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.d[2].pk])).content.decode()
+        self.assertIn(f'href="{self.url(day=self.d[2].pk)}" data-reorder-link>Move this day…</a>', day_page)
+        viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
+        TripGrant.objects.create(trip=self.trip, user=viewer, role=TripRole.VIEWER)
+        self.client.force_login(viewer)
+        self.assertEqual(self.client.get(self.url()).status_code, 403)
+        self.assertNotIn("data-reorder-link", self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
+                         .content.decode())
+        self.client.force_login(User.objects.create_user("st", "st@example.com", "pw-1234-abcd"))
+        self.assertEqual(self.client.get(self.url()).status_code, 404)

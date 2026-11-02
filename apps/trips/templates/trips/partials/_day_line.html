@@ -1,0 +1,15 @@
+{% comment %}A day's folded line (the trip page's day <summary>, and the reorder page, shift-and-reorder DR2): line 1 (Day N · date · city — theme) and line 2, the day at a glance (itinerary.overview / attach_stays). Pass day; plain=True draws it without links.{% endcomment %}
+<span class="font-semibold text-zinc-900">Day {{ day.day_number }}</span>
+{% if day.date %}<span class="text-zinc-500">{{ day.date|date:"D M j" }}</span>{% endif %}
+{% if day.city %}<span class="text-zinc-700">{{ day.city.name }}</span>{% endif %}
+{% if day.theme %}<span class="min-w-0 truncate text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
+{% comment %}Line 2, the day at a glance (itinerary.overview): only the parts it has. Links inside a summary follow without toggling it.{% endcomment %}
+{% if day.stay or day.checking_out or day.overnight or day.travel_summary or day.ordered_activities or day.attention %}
+  <span class="day-glance" data-day-glance>
+    {% if day.stay %}<span>🛏 {% if plain %}{{ day.stay.name }}{% else %}<a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% endif %}{% if day.stay in day.checking_in %} (check in){% endif %}</span>{% elif day.checking_out %}<span>🛏 {% if plain %}{{ day.checking_out.0.name }}{% else %}<a class="link-quiet" href="#stay-{{ day.checking_out.0.pk }}">{{ day.checking_out.0.name }}</a>{% endif %} (check out)</span>{% endif %}
+    {% if day.overnight %}<span>✈ overnight</span>{% endif %}
+    {% if day.travel_summary %}<span class="whitespace-nowrap">{{ day.travel_icons }} {{ day.travel_summary }}</span>{% endif %}
+    {% if day.ordered_activities %}<span class="min-w-0 truncate">{{ day.highlights|join:" · " }}</span>{% endif %}
+    {% if day.attention %}{% if plain %}<span class="font-medium text-amber-700">⚠{{ day.attention }}</span>{% else %}<a class="font-medium text-amber-700" href="#needs-attention" title="Not booked or still to do">⚠{{ day.attention }}</a>{% endif %}{% endif %}
+  </span>
+{% endif %}

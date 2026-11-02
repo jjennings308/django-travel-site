@@ -1623,7 +1623,8 @@ times, stays — with a preview, booking to-dos for booked items and one undoabl
 fit-the-days page after a start-date change — DR1; then a page to put days in a new order between fixed dates, their
 contents and journeys following, stays only when their nights stay together — DR2). Decided 2026-11-02. Phases
 DR1–DR2, one branch each, in order. Status: DR1 (move the whole trip, `apps/trips/reschedule.py`, `trips:trip_shift`)
-done on branch `dr1-shift-trip`.
+done on branch `dr1-shift-trip`; DR2 (put days in a new order, `trips:trip_reorder`) done on branch `dr2-reorder-days`.
+Complete.
 
 - **Move the whole trip** (DR1; no migration): `reschedule.shift_plan(trip, n)` (the preview, over the trip page's
   prefetch with `views._attach_confirmations` + `trip_notes.attach` but *not* `options.attach`, so undecided choices'
@@ -1644,6 +1645,23 @@ done on branch `dr1-shift-trip`.
   fit-the-days page's offer — `trip_settings` passes the old start when it changed — "Your days are still on Sep
   17–20. Move everything to start on Sep 10 instead?") moves the contents only (`move_trip=False`) and then returns
   to fit the days if the end moved by another amount. Tests `test_reschedule`.
+- **Put days in a new order** (DR2; no migration): `reschedule.reorder_plan(trip, order, days)` (`order` = every day's
+  pk once; refused — "fit the days first" — unless every day has its own date and the days fill the trip's dates;
+  the n-th day gets the n-th date) and `reorder(trip, order, user, booking_todos=True)`: days' dates, their journeys by
+  wall clock (`legs` on a moved day's date), a stay only when the days of all its nights moved together, still next
+  to each other and in order (check-in = the first's new date, same length; otherwise left and listed in
+  `kept_stays`: "… now covers Day 3 Füssen and Day 4 Munich: check it"), then `day_fit.renumber`; booking to-dos only
+  for confirmations linked to something that moved. Warnings: booked, events, closed days (from the page's days),
+  and new `tidy._day_slips` over `tidying.snapshot` with the new numbers ("Plan on Day 2 says “Day 3”"). One line
+  "Reordered days: Sep 11 Füssen, …" (`before["reorder"]`, days as `[date, number]`); `reschedule.undo_move` (was
+  `undo_shift`, kept as an alias) undoes either kind and renumbers; `reschedule.is_move` / `changes.can_undo` know
+  both. Page `trips:trip_reorder` (`/trips/<pk>/reorder/`, editors; linked as **Reorder** beside Expand all on the
+  trip page — editors, 2+ days, no query —, **Reorder days** in Settings' Days, **Move this day…** on the day page
+  outside the panel, `?day=` highlights it): rows are `partials/_day_line.html` (the day `<summary>`'s lines, shared
+  with `_day.html`; `plain=True` drops the links) from `_trip_page_context`, so a fixed query count
+  (`test_reorder.PageTests`); the date column stays (`data-slots`), ↑ / ↓ and HTML5 drag in a small inline script,
+  `<noscript>` Position boxes (`pos_<pk>`, win when sent; else the rows' hidden `order`); Preview (POST) → Apply
+  (disabled once a row moves after the preview). Tests `test_reorder`.
 
 ### Rules carried over from the itinerary project
 
