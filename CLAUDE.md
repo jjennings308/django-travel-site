@@ -1616,6 +1616,14 @@ Plan: `docs/plans/booklet-budget.md` (an optional budget in the PDF booklet: off
 unchanged). Decided 2026-10-31. One phase, BB1. Status: BB1 done on branch `bb1-booklet-budget` (see Trips → PDF
 booklet). Complete.
 
+### Shift and reorder days
+
+Plan: `docs/plans/shift-and-reorder-days.md` (move the whole trip by N days — days, journeys with their wall-clock
+times, stays — with a preview, booking to-dos for booked items and one undoable history line, also offered from the
+fit-the-days page after a start-date change — DR1; then a page to put days in a new order between fixed dates, their
+contents and journeys following, stays only when their nights stay together — DR2). Decided 2026-11-02. Phases
+DR1–DR2, one branch each, in order. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
