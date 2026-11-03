@@ -190,7 +190,15 @@ to legs or stays (a stay spans several days, a leg can be overnight); keep the d
 5. **Wording on booked items.** The "Still to book: <to-do>" line on a leg row, stay card and activity row reads
    **"To do: …"** when the item already has a confirmation. Keep "Still to book" for unbooked items. The booklet's
    section is unchanged (snapshot holds).
-6. **Help:** `adding-a-day` / `reading-your-trip` (wherever DR1/DR2 were documented). Explain what moves with a day:
+6. **Spot a stay that doesn't match its day.** Add `itinerary.stay_mismatches(days)` (pure, after `attach_stays`): a
+   night whose day has a city, and whose stay has a different city, where the stay's city isn't on that day's legs
+   (so a day trip from the hotel isn't flagged). Example: "Day 2 Liverpool: sleeping at Hessischer Hof (Butzbach)".
+   - Show it on the day as a quiet ⚠ on the stay line, and in Needs attention as "N stays don't match their day",
+     linking to the first one.
+   - Show the same check in the reorder preview, run against the new order: each row shows its "Sleeping: …" after
+     the move, and mismatches are flagged. Then a stay that's left behind is visible before Apply, not after.
+   - No new queries; the pins hold.
+7. **Help:** `adding-a-day` / `reading-your-trip` (wherever DR1/DR2 were documented). Explain what moves with a day:
    its contents, its journeys and one-night stays; longer stays are offered. Also explain that a day's date can't
    take another day's date (use Reorder), and cover the start-date choice. Bump `updated`.
 
@@ -205,6 +213,8 @@ to legs or stays (a stay spans several days, a leg can be overnight); keep the d
   the start-only "keep length" choice;
 - `BOOKED_FOR` stored and hidden; `back_on_booked_dates` true when moved back, false otherwise; Close works;
 - "To do:" vs "Still to book:" wording;
+- `stay_mismatches`: flagged, a day trip from the stay's city not flagged, the banner count, the reorder preview's
+  sleeping lines;
 - the trip page's and day fragment's query pins unchanged.
 
 ## Not changing
