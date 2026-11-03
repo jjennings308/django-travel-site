@@ -13,7 +13,8 @@ A to-do covers any number of legs, stays and activities (booking-todos K1: ``Tas
   ("Augsburg → Munich and back", "PIT → ATL → FRA", "Hotel Laimer Hof + 1 more") and ``more_labels``,
   and, when it covers nothing, ``suggestion`` — the one stay whose name its title contains, or the one
   leg whose two ends' first words it names ("ICE train seats Frankfurt→Augsburg" → Frankfurt Hof →
-  Augsburg Hof). Two candidates means no suggestion.
+  Augsburg Hof). Two candidates means no suggestion. A "Change booking … to the new dates" to-do made by
+  moving days gets ``back_on_booked_dates`` when everything it covers is on its booked dates again (DR3).
 - ``partners(item, legs)``: a leg's way back and the legs it connects with on the day — offered as
   pre-ticked boxes when a to-do is added from that leg, never linked on their own.
 - ``not_booked(trip)``: items that usually need booking (flights, rental cars, trains with an
@@ -218,6 +219,28 @@ def attach(trip, suggestions=False):
             task.suggestion = suggest(task, legs, stays, activities)
         task.item_info = describe(task.item) if task.item is not None else None
         task.suggestion_info = describe(task.suggestion) if task.suggestion is not None else None
+        task.back_on_booked_dates = not task.done and back_on_booked_dates(task, task.items)
+
+
+def dates_key(item):
+    """An item's dates as ``BookingTask.BOOKED_FOR`` writes them: "2027-09-18", or "in/out" for a stay."""
+    iso = lambda value: value.isoformat() if value else ""  # noqa: E731
+    kind = kind_of(item)
+    if kind == "stay":
+        return f"{iso(item.check_in)}/{iso(item.check_out)}"
+    if kind == "activity":
+        return iso(item.day.date if item.day_id else None)
+    return iso(item.date)
+
+
+def back_on_booked_dates(task, items):
+    """A "Change booking … to the new dates" to-do (shift-and-reorder DR3) whose every covered item is on its
+    booked dates again (its hidden ``BOOKED_FOR`` line): nothing left to change; offered for closing, never closed."""
+    booked = task.booked_for()
+    if not booked:
+        return False
+    now = {f"{kind_of(item)}-{item.pk}": dates_key(item) for item in items}
+    return all(key in now and now[key] == when for key, when in booked.items())
 
 
 def _tasked(trip):

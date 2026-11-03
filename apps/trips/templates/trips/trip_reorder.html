@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Put the days in a new order (trips:trip_reorder, shift-and-reorder DR2; apps/trips/reschedule.py). The dates stay in their column; the days' folded lines (trips/partials/_day_line.html) move between them with ↑ / ↓ or by dragging (a small script, no new CDN file), or a Position box each without JavaScript (inside noscript, so it is only sent then). Preview (nothing saved) shows what moves and what to check; Apply saves it as one history line that can be undone.
+Put the days in a new order (trips:trip_reorder, shift-and-reorder DR2; apps/trips/reschedule.py). The dates stay in their column; the days' folded lines (trips/partials/_day_line.html) move between them with ↑ / ↓ or by dragging (a small script, no new CDN file), or a Position box each without JavaScript (inside noscript, so it is only sent then). Preview (nothing saved) shows what moves and what to check — a stay left behind with a ticked offer to move it with its days (DR3) —; Apply saves it as one history line that can be undone.
 {% endcomment %}
 {% block title %}Reorder days — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
@@ -48,7 +48,7 @@ Put the days in a new order (trips:trip_reorder, shift-and-reorder DR2; apps/tri
               <div class="callout callout-info mb-3" data-reorder-warnings>
                 <p class="font-medium">Check these</p>
                 <ul class="mt-1 list-disc pl-5 text-sm">
-                  {% for text in preview.kept_stays %}<li data-reorder-stay>{{ text }}.</li>{% endfor %}
+                  {% for row in preview.kept_stays %}<li data-reorder-stay>{{ row.text }}.{% if row.suggestion %}<label class="mt-1 flex min-h-11 items-center gap-2" data-reorder-stay-offer><input type="checkbox" name="move_stays" value="{{ row.stay.pk }}" checked> {{ row.suggestion.text }}</label>{% endif %}</li>{% endfor %}
                   {% for text in preview.events %}<li data-reorder-event>{{ text }}.</li>{% endfor %}
                   {% for text in preview.closed %}<li data-reorder-closed>{{ text }}.</li>{% endfor %}
                   {% for text in preview.slips %}<li data-reorder-slip>{{ text }}</li>{% endfor %}

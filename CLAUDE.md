@@ -1626,7 +1626,7 @@ DR1–DR2, one branch each, in order. Status: DR1 (move the whole trip, `apps/tr
 done on branch `dr1-shift-trip`; DR2 (put days in a new order, `trips:trip_reorder`) done on branch `dr2-reorder-days`;
 DR3 (fixes after first use: a day's date edit moves its journeys and one-night stays and can't take another day's
 date, reorder offers to move the stays it leaves, the start-date offer always shows, "Change booking" to-dos know when
-they're not needed, "To do:" wording on booked items) not started.
+they're not needed, "To do:" wording on booked items) done on branch `dr3-day-move-fixes`. Complete.
 
 - **Move the whole trip** (DR1; no migration): `reschedule.shift_plan(trip, n)` (the preview, over the trip page's
   prefetch with `views._attach_confirmations` + `trip_notes.attach` but *not* `options.attach`, so undecided choices'
@@ -1664,6 +1664,28 @@ they're not needed, "To do:" wording on booked items) not started.
   (`test_reorder.PageTests`); the date column stays (`data-slots`), ↑ / ↓ and HTML5 drag in a small inline script,
   `<noscript>` Position boxes (`pos_<pk>`, win when sent; else the rows' hidden `order`); Preview (POST) → Apply
   (disabled once a row moves after the preview). Tests `test_reorder`.
+- **Fixes after first use** (DR3; no migration): **a day's date** — `DayForm` has no `day_number` (days are numbered
+  by date, `day_fit.renumber`, after `day_create` and any date change) and refuses a date another day has ("Sep 18 is
+  Day 9 Butzbach. To swap days, use Reorder days.", `form.date_problem` "clash" → a Reorder days link) or one outside
+  the trip's dates ("outside" → Settings / Move the whole trip), via `reschedule.move_day_check(trip, date,
+  exclude_pk)`; `day_edit` saves the other fields on the old date, then `reschedule.move_day(day, new, user)`: the day,
+  its journeys by wall clock and stays whose nights' days all moved together (a one-night stay), then renumber, one
+  line ("Moved Day 2 Munich from Sep 11 to Sep 16", `before["reorder"]`'s shape, so `undo_move`), booking to-dos for
+  bookings linked to what moved, and longer stays touching the day returned as `kept` (a warning message each).
+  `reorder_plan` and `move_day` share `reschedule._moves(trip, days, new)` (legs, stays, kept, booked) and
+  `_apply_moves`. **Stays left behind** carry a `suggestion` (`_stay_suggestion`: their nights' days still next to
+  each other in any order → from the first, same length; else most nights one city's days, together now → that run;
+  else none): the reorder preview shows it ticked (`move_stays`), `reorder(…, move_stays=[pk])` applies it in the
+  same line (its bookings get to-dos too). **Start-date offer**: `trip_days_fit` offers the move whenever `moved_from`
+  differs and the days don't start on the new start; Settings adds `&start_only=1` when the end didn't change, and
+  the page asks "Move the whole trip (keeps 17 days, ends Sep 26) or keep the end at Oct 3 (adds 7 empty days)?" —
+  the first is `trip_shift?moved_from=…&keep_length=1` (`shift(…, move_trip=False, new_end=…)`; `before["restore_trip"]`
+  makes undo put the end back). **Booked dates**: `_booking_todos(…, booked_for=_booked_print(trip))` writes a hidden
+  `BookingTask.BOOKED_FOR` line ("Booked for: leg-12 2027-09-18; stay-15 2027-09-18/2027-09-20"; `task.booked_for()`,
+  hidden by `visible_notes`); `booking_tasks.attach` sets `task.back_on_booked_dates` when every covered item is on
+  them again → "Back on its booked dates: nothing to change" and **Close this to-do** (Mark done) in To book and on
+  the To do page; offered, never automatic. Item rows' "Still to book:" reads **"To do:"** when the item has a
+  confirmation (not in the booklet). Tests `test_day_move`.
 
 ### Rules carried over from the itinerary project
 

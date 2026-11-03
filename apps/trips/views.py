@@ -19,7 +19,7 @@ app's models, so nothing private is reachable from it even by a mistake in a
 template.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import quote
 
 from django.conf import settings
@@ -30,7 +30,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.db import transaction
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Max, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone as django_timezone
@@ -966,6 +966,8 @@ def trip_settings(request, pk):
                 url = reverse("trips:trip_days_fit", args=[trip.pk])
                 if before[0] and trip.start_date and trip.start_date != before[0]:
                     url += f"?moved_from={before[0]:%Y-%m-%d}"  # offer to move everything instead (DR1)
+                    if trip.end_date == before[1]:
+                        url += "&start_only=1"  # only the start moved: keep the length, or keep the end (DR3)
                 return redirect(url)
         return redirect("trips:trip_detail", pk=trip.pk)
 
@@ -1014,14 +1016,24 @@ def trip_days_fit(request, pk):
                 f"removed {removed}" if removed else "") if part).capitalize() + ".")
         return redirect(settings_url + "#days")
     # The start date moved (Settings passes the old one): offer to move everything instead (DR1).
+    # DR3: offered whenever the start moved and the days don't start on the new start yet (not only when some fall
+    # outside: moving the start earlier leaves them all inside). ``old_end`` = Settings moved only the start: then
+    # the first choice keeps the trip's length (moving the end with it), the second keeps the end (the list below).
     shift_offer = None
     moved_from = _date_param(request.GET.get("moved_from"))
-    if moved_from and trip.start_date and moved_from != trip.start_date and found["outside"]:
-        dated = sorted(day.date for day in trip.days.all() if day.date)
-        if dated:
-            from .reschedule import span
-            shift_offer = {"url": reverse("trips:trip_shift", args=[trip.pk]) + f"?moved_from={moved_from:%Y-%m-%d}",
-                           "days_span": span(dated[0], dated[-1]), "start": trip.start_date}
+    dated = sorted(day.date for day in trip.days.all() if day.date)
+    if moved_from and trip.start_date and moved_from != trip.start_date and dated and dated[0] != trip.start_date:
+        from .reschedule import span, _d
+        n = (trip.start_date - moved_from).days
+        shift_url = reverse("trips:trip_shift", args=[trip.pk]) + f"?moved_from={moved_from:%Y-%m-%d}"
+        shift_offer = {"url": shift_url, "days_span": span(dated[0], dated[-1]), "start": trip.start_date}
+        if request.GET.get("start_only") == "1" and trip.end_date:
+            new_end = trip.end_date + timedelta(days=n)  # the end moves with the start: the same length
+            length = (new_end - trip.start_date).days + 1
+            shift_offer.update({
+                "start_only": True, "url": shift_url + "&keep_length=1", "length": length,
+                "new_end": new_end, "end": trip.end_date, "added": len(found["missing"]),
+                "removed": len(found["outside"]), "start_text": _d(trip.start_date)})
     return render(request, "trips/trip_days_fit.html", {"trip": trip, **found, "settings_url": settings_url,
                                                         "shift_offer": shift_offer})
 
@@ -1048,7 +1060,8 @@ def trip_reorder(request, pk):
         try:
             if request.POST.get("action") == "apply":
                 done = reschedule.reorder(trip, order, request.user,
-                                          booking_todos=request.POST.get("booking_todos") == "1")
+                                          booking_todos=request.POST.get("booking_todos") == "1",
+                                          move_stays=[v for v in request.POST.getlist("move_stays") if v.isdigit()])
                 text = "The days are in their new order."
                 if done["made"]:
                     count = len(done["made"])
@@ -1105,10 +1118,14 @@ def trip_shift(request, pk):
         n = (trip.start_date - moved_from).days
     elif start and trip.start_date:
         n = (start - trip.start_date).days
+    # Settings moved only the start and the fit page's "Move the whole trip" keeps the length: the end moves too (DR3).
+    new_end = trip.end_date + timedelta(days=n) if (moved_from and n and trip.end_date
+                                                    and data.get("keep_length") == "1") else None
     if request.method == "POST" and n:
         try:
             done = reschedule.shift(trip, n, request.user, move_due=data.get("move_due") == "1",
-                                    booking_todos=data.get("booking_todos") == "1", move_trip=moved_from is None)
+                                    booking_todos=data.get("booking_todos") == "1", move_trip=moved_from is None,
+                                    new_end=new_end)
         except reschedule.CannotMove as reason:
             messages.error(request, str(reason))
             return redirect("trips:trip_shift", pk=trip.pk)
@@ -1129,7 +1146,7 @@ def trip_shift(request, pk):
         page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
         _attach_confirmations(page_trip)
         trip_notes.attach(page_trip, list(page_trip.days.all()))
-        preview = reschedule.shift_plan(page_trip, n, move_trip=moved_from is None)
+        preview = reschedule.shift_plan(page_trip, n, move_trip=moved_from is None, new_end=new_end)
     elif start and start == trip.start_date:
         messages.info(request, "That's the trip's start date already.")
     length = (trip.end_date - trip.start_date).days if trip.start_date and trip.end_date else None
@@ -1314,10 +1331,16 @@ def day_create(request, trip_pk):
     if request.method == "POST":
         form = DayForm(request.POST, trip=trip)
         if form.is_valid():
-            day = form.save(commit=False)
-            day.trip = trip
-            day.save()
-            form.save_m2m()
+            from . import day_fit
+            with transaction.atomic():
+                day = form.save(commit=False)
+                day.trip = trip
+                # Numbered by date (DR3): last for now, then every day in date order.
+                day.day_number = (trip.days.aggregate(Max("day_number"))["day_number__max"] or 0) + 1
+                day.save()
+                form.save_m2m()
+                day_fit.renumber(trip)
+            day.refresh_from_db(fields=["day_number"])
             messages.success(request, f"Added day {day.day_number}.")
             return redirect(
                 reverse("trips:trip_settings", args=[trip.pk]) + f"#day-{day.pk}"
@@ -1347,11 +1370,33 @@ def day_edit(request, trip_pk, pk):
         day_ok = form.is_valid()
         meals_ok = meal_formset.is_valid()
         if day_ok and meals_ok:
+            from . import day_fit, reschedule
+            old, new = form.old_date, form.cleaned_data.get("date")
+            moved = None
             with transaction.atomic():
-                form.save()
-                meal_formset.save()
-                trip_cities.sync(trip)  # a meal's catalogue place brings its city (P1)
-            messages.success(request, f"Saved day {day.day_number}.")
+                if old and new and old != new:
+                    # A new date moves the day with its journeys and one-night stays (DR3): the other changes save
+                    # first on the old date, then the move is its own undoable history line.
+                    saved = form.save(commit=False)
+                    saved.date = old
+                    saved.save()
+                    form.save_m2m()
+                    meal_formset.save()
+                    trip_cities.sync(trip)
+                    moved = reschedule.move_day(saved, new, request.user)
+                else:
+                    form.save()
+                    meal_formset.save()
+                    trip_cities.sync(trip)  # a meal's catalogue place brings its city (P1)
+                    if old != new:
+                        day_fit.renumber(trip)
+            day.refresh_from_db()
+            messages.success(request, f"Saved day {day.day_number}." + (_moved_day_text(moved, new) if moved else ""))
+            for row in (moved or {}).get("kept", []):
+                text = f"{row['label']} ({reschedule.span(*row['old'])}) wasn't moved: check it."
+                if row["suggestion"]:
+                    text += f" {reschedule.span(*row['suggestion']['new'])} would keep it {row['suggestion']['why']}."
+                messages.warning(request, text)
             return redirect(_day_back(request, trip, day))
 
     return render(
@@ -1374,6 +1419,19 @@ def day_edit(request, trip_pk, pk):
             "panel_comments": _target_comments(request.user, "day", day) if _is_panel(request) else None,
         },
     )
+
+
+def _moved_day_text(moved, new):
+    """" Moved it to Sep 12 with 2 journeys and its stay. 1 booking to change: see To book." (DR3)"""
+    from .reschedule import _d
+    parts = [f"{len(moved['legs'])} journey{'s' if len(moved['legs']) != 1 else ''}" if moved["legs"] else "",
+             f"{len(moved['stays'])} stay{'s' if len(moved['stays']) != 1 else ''}" if moved["stays"] else ""]
+    parts = [part for part in parts if part]
+    text = f" Moved it to {_d(new)}" + (f" with {' and '.join(parts)}" if parts else "") + "."
+    if moved["made"]:
+        count = len(moved["made"])
+        text += f" {count} booking{'s' if count != 1 else ''} to change: see To book."
+    return text
 
 
 @login_required

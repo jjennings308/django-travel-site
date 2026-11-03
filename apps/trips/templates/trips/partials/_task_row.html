@@ -1,5 +1,5 @@
 {% comment %}
-One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, task and can_edit. "For:" links to the item on the trip page. Editors get Edit · Mark done · Delete, all coming back here.
+One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, task and can_edit. "For:" links to the item on the trip page. Editors get Edit · Mark done · Delete, all coming back here. A "Change booking" to-do whose items are back on their booked dates says so, and Mark done reads Close this to-do (DR3).
 {% endcomment %}
 <li class="px-4 py-3" id="task-{{ task.pk }}">
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -9,11 +9,12 @@ One to-do on the To do page (trips:trip_todo, edit-by-day plan E2). Pass trip, t
     {% elif task.day %}<a class="link-quiet text-zinc-500" href="{% url 'trips:trip_detail' trip.pk %}#day-{{ task.day.day_number }}">Day {{ task.day.day_number }}</a>{% endif %}
     {% if task.due or task.due_note %}<span class="text-zinc-500">{% if task.due %}Due {{ task.due|date:"D M j" }}{% endif %}{% if task.due and task.due_note %} &mdash; {% endif %}{{ task.due_note }}</span>{% endif %}
   </div>
+  {% if task.back_on_booked_dates %}<p class="mt-1 font-medium text-emerald-700" data-back-on-booked>Back on its booked dates: nothing to change.</p>{% endif %}
   {% if task.visible_notes %}<p class="mt-1 text-zinc-500">{{ task.visible_notes|linebreaksbr }}</p>{% endif %}
   {% if can_edit %}
     <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
       <a class="link-quiet font-medium" href="{% url 'trips:task_edit' trip.pk task.pk %}?next={{ request.path|urlencode }}%23task-{{ task.pk }}">Edit</a>
-      <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}"{% if not task.done %} data-mark-done{% endif %}>{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% else %}Mark done{% endif %}</button></form>
+      <form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}"{% if not task.done %} data-mark-done{% endif %}>{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#task-{{ task.pk }}"><input type="hidden" name="done" value="{% if task.done %}0{% else %}1{% endif %}"><button type="submit" class="link-quiet font-medium" data-task-done>{% if task.done %}Not done yet{% elif task.back_on_booked_dates %}Close this to-do{% else %}Mark done{% endif %}</button></form>
       <a class="link-quiet font-medium hover:text-red-700" href="{% url 'trips:task_delete' trip.pk task.pk %}?next={{ request.path|urlencode }}">Delete</a>
     </div>
   {% endif %}

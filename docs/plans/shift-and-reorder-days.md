@@ -1,6 +1,6 @@
 # Plan: move the whole trip to new dates, and put days in a new order
 
-Status: DR1 and DR2 done; DR3 (fixes after first use) not started. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
+Status: DR1, DR2 and DR3 done. DR3 (2026-11-02) on branch `dr3-day-move-fixes`. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
 some days need to swap round). Two phases, one branch each, in order: DR1 (shift the trip by N days), DR2 (reorder
 days). Read with `CLAUDE.md` → Trips → "One page to read and edit; trip-wide pages are views; Settings holds
 trip-level things" (the fit-the-days page, `apps/trips/day_fit.py`), "Leg times", "Planned legs", "Change digest",

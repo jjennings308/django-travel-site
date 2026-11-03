@@ -68,7 +68,6 @@ class DayEditingFixture(TestCase):
 
     def day_payload(self, **overrides):
         data = {
-            "day_number": 1,
             "date": "2027-09-25",
             "theme": "Fly to England",
             "meals_included": "",
@@ -96,7 +95,7 @@ class DayCreateTests(DayEditingFixture):
         self.client.force_login(self.alice)
         response = self.client.post(
             self.url(),
-            self.day_payload(day_number=2, date="2027-09-26", theme="Marburg"),
+            self.day_payload(date="2027-09-26", theme="Marburg"),
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
@@ -106,19 +105,19 @@ class DayCreateTests(DayEditingFixture):
 
     def test_a_blank_roster_means_the_whole_group(self):
         self.client.force_login(self.alice)
-        self.client.post(self.url(), self.day_payload(day_number=3))
-        day = Day.objects.get(day_number=3)
+        self.client.post(self.url(), self.day_payload(date="2027-09-27"))
+        day = Day.objects.get(day_number=2)
         self.assertFalse(day.is_split)
         self.assertEqual(list(day.roster), list(self.trip.travelers.all()))
 
-    def test_the_next_free_day_number_is_prefilled(self):
+    def test_a_new_day_is_numbered_by_date(self):
+        # No day number on the form (shift-and-reorder DR3): the days are numbered by date after the save.
         self.client.force_login(self.alice)
-        # Gaps matter: the prefill is max+1, not "count of days", so the
-        # pre-existing day 1 in setUp plus these two make the answer 8.
-        Day.objects.create(trip=self.trip, day_number=4, date=date(2027, 9, 28))
-        Day.objects.create(trip=self.trip, day_number=7, date=date(2027, 10, 1))
-        response = self.client.get(self.url())
-        self.assertEqual(response.context["form"]["day_number"].initial, 8)
+        self.assertNotIn("day_number", self.client.get(self.url()).context["form"].fields)
+        Day.objects.filter(pk=self.day.pk).update(date=date(2027, 9, 26))
+        self.client.post(self.url(), self.day_payload(date="2027-09-25", theme="Arrive"))
+        self.assertEqual(Day.objects.get(theme="Arrive").day_number, 1)
+        self.assertEqual(Day.objects.get(pk=self.day.pk).day_number, 2)
 
     def test_date_is_not_prefilled(self):
         # A wrong date prefill is a wrong date nobody notices. The day number is
@@ -151,13 +150,19 @@ class DayCreateTests(DayEditingFixture):
         queryset = response.context["form"].fields["travelers"].queryset
         self.assertNotIn(theirs, queryset)
 
-    def test_a_duplicate_day_number_is_rejected(self):
-        # setUp already made day 1.
+    def test_a_date_another_day_has_is_rejected(self):
+        # setUp already made day 1 on Sep 25.
         self.client.force_login(self.alice)
-        response = self.client.post(self.url(), self.day_payload(day_number=1))
+        response = self.client.post(self.url(), self.day_payload(date="2027-09-25"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(Day.objects.filter(day_number=1).count(), 1)
-        self.assertTrue(response.context["form"].errors)
+        self.assertEqual(Day.objects.filter(trip=self.trip).count(), 1)
+        self.assertEqual(response.context["form"].errors["date"], ["Sep 25 is Day 1 — Fly to England."])
+
+    def test_a_date_outside_the_trip_is_rejected(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(self.url(), self.day_payload(date="2027-11-01"))
+        self.assertEqual(Day.objects.filter(trip=self.trip).count(), 1)
+        self.assertIn("outside the trip", response.context["form"].errors["date"][0])
 
 
 class DayEditTests(DayEditingFixture):

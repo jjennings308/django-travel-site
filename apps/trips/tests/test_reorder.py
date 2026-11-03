@@ -85,7 +85,7 @@ class ReorderTests(Fixture):
         Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
         Confirmation.objects.create(trip=self.trip, confirmation_number="STAY1").link(self.hotel)
         plan = reschedule.reorder_plan(self.trip, self.pks(1, 3, 2, 4, 5))
-        self.assertEqual(plan["kept_stays"], ["Hotel Laimer Hof (Sep 11–14) now covers Day 2 — Theme 3, "
+        self.assertEqual([row["text"] for row in plan["kept_stays"]], ["Hotel Laimer Hof (Sep 11–14) now covers Day 2 — Theme 3, "
                                               "Day 3 — Theme 2 and Day 4 — Theme 4: check it"])
         self.assertEqual([row["confirmation"].confirmation_number for row in plan["booked"]], ["GCH7JS"])
         self.assertEqual(plan["slips"], ["Plan on Day 2 says “Day 3”: “Same as Day 3 last year.”"])
