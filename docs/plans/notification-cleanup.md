@@ -98,8 +98,11 @@ dropped columns and tables are in that dump if anything is ever wanted back.
 
 ## Not in this phase
 
-The other leftovers found on 2026-11-03 (unused `Event` fields and `EventTag` / `EventPerformer` /
+The other leftovers found on 2026-11-03 (unused `Event` fields and `EventTag` /
 `EventSchedule`, `MediaCategory`, `core.SoftDeleteModel` / `PublishableModel`, leftover fields on `Review`,
 `Media`, `BucketListItem`, the vendor and content-provider profiles, `ApprovalRule`'s auto fields,
 `UserPreferences`, and finishing the locations `ReviewableMixin` → `Approvable` move) wait for James's
 decision. The `vendors` app and `accounts.UserRole` stay on purpose.
+
+**Correction (2026-11-03):** `EventPerformer` is in use and stays: the event admin's inline edits it and the event
+page shows it as **Line-up** (`event.performers`). Only its `performer_type` field is unused.
