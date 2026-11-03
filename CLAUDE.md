@@ -1687,6 +1687,12 @@ they're not needed, "To do:" wording on booked items) done on branch `dr3-day-mo
   the To do page; offered, never automatic. Item rows' "Still to book:" reads **"To do:"** when the item has a
   confirmation (not in the booklet). Tests `test_day_move`.
 
+### Blank currencies
+
+Plan: `docs/plans/blank-currencies.md` (a cost with no stored currency takes the local currency of its place, never the
+reader's: one resolver used by the day's cost notes, the Budget page, choices and the booklet; edit forms start such
+items on it; `fill_currencies` fills the stored blanks once). Found 2026-11-02. One phase, CU1. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
