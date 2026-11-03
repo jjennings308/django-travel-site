@@ -1726,6 +1726,13 @@ notification or preference row using a removed field; the seed's `is_system` / `
 with James's OK). Also fixed the Notification admin list's channel badges (`format_html` with no arguments, a 500
 under Django 6). Complete.
 
+### Tags
+
+Plan: `docs/plans/tags.md` (one set of tags, on activities: `EventTag` removed, events show and filter by their
+activity's tags; `?tag=` on the activity list, the event list and search; `usage_count` dropped for a counted
+column in the admin; a CSV `tags` column). Decided 2026-11-03. One phase, TG1, on branch `tg1-tags`; step 0 stops
+if any event has tags. Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
