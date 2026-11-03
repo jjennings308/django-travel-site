@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-10-31
+updated: 2026-11-02
 
 # The budget and splitting costs
 
@@ -47,6 +47,10 @@ Costs are split equally. If a cost doesn't divide exactly, the odd cents go to w
 ## Currency choices
 
 Every **Currency** on a trip (costs, stays, journeys, activities, confirmations and a decision's options) offers a short list: the trip's **home currency** first, then the local currency of the place involved, such as EUR for a hotel in Munich, or both ends of a flight from Pittsburgh to Frankfurt. Something new starts on the local currency when there's only one, otherwise on the home currency. For anything else, pick **Other…** and type the three-letter code, such as CHF.
+
+**A cost is in the currency of its place unless you choose another.** Something with an amount but no currency (made before currencies were offered, or brought in from a document) is read as its place's local currency, never as yours: a catalogue place's own entry-fee currency, else its city's, else its day's city, else the trip's. The day, the Plan, choices and the booklet all read it that way, and its edit page starts on it, so saving it stores it.
+
+An activity linked to a catalogue place that has an entry fee, and with no estimate of its own, offers it on its page: **Use Hohenschwangau Castle's entry fee: €21 per person**. Nothing is filled in until you click it.
 
 The home currency is set on the trip's **Settings** under The trip. A new trip starts with the currency in your Settings.
 

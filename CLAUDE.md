@@ -1691,7 +1691,29 @@ they're not needed, "To do:" wording on booked items) done on branch `dr3-day-mo
 
 Plan: `docs/plans/blank-currencies.md` (a cost with no stored currency takes the local currency of its place, never the
 reader's: one resolver used by the day's cost notes, the Budget page, choices and the booklet; edit forms start such
-items on it; `fill_currencies` fills the stored blanks once). Found 2026-11-02. One phase, CU1. Status: not started.
+items on it; `fill_currencies` fills the stored blanks once). Found 2026-11-02. One phase, CU1. Status: CU1 done on branch
+`cu1-blank-currencies` (no migration). Complete — run `manage.py fill_currencies` (dry run, then `--apply`) on production
+after the deploy.
+
+- **A cost always has a currency** (CU1): `currencies.currency_of(item, trip, day=None)` = the stored code, else
+  `place_currency` — a trip activity's catalogue place's `entry_fee_currency`, then its place's city
+  (`place_cities`: a leg's origin, a stay's city, the catalogue place / event venue / activity of an activity, meal,
+  section or option, an option's city), then its day's city, else `default_for(trip)`; a confirmation's = the places of
+  what it covers when they agree, else `default_for`. Never the reader's. Used by `costs.estimate` (so the day's
+  `cost_note`, the Plan's rows and `to_pay`), `costs.note_for` / the Plan / `to_pay` for confirmations, `options._costs`,
+  `Option.kind_line` (`Option.cost_currency`; `options.attach` sets `option._trip`) and `options.make_item`;
+  `budget_plan._Money` keeps `or self.target` only for expenses. No queries: the trip page's prefetch (and
+  `options.load`) brings each city's country with it (`days` / `cities` / `lodging` / `transport` / catalogue places
+  `…__city__country`), and `currencies._cache` reads loaded countries before querying (one query otherwise). Forms:
+  `currencies.setup` starts an existing item with no stored currency on `currency_of` (an option row on its page's city
+  ids). `manage.py fill_currencies [--trip <pk>] [--apply]` (`currencies.blanks` / `fill`): lists every leg, stay,
+  activity, meal, option and confirmation with an amount and no currency ("Neuschwanstein Castle (Day 15): EUR, from
+  Schwangau"); `--apply` stores them (`update`, nothing else touched) under one history line per trip ("Filled in 6
+  missing currencies"); items with no amount stay blank. **Entry fee offer**: an activity linked to a place with
+  `entry_fee` and no `est_cost` shows "Use Hohenschwangau Castle's entry fee: €21 per person" on its page
+  (`currencies.fee_offer`) → `trips:activity_use_fee` (POST, editors: estimate, currency, per person); never automatic.
+  Found on the way: `TripActivityForm` never called `setup_cost`, so the activity page hid Currency / Cost is / People
+  and saving it stored a blank currency — now it does. Tests `test_blank_currencies`.
 
 ### Rules carried over from the itinerary project
 

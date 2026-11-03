@@ -58,7 +58,9 @@ def load(trip):
     from django.db.models import Prefetch
     from .models import Option, Vote
     # An option's catalogue link (typed-choices T1) comes with it, so its line costs no query.
-    options = Option.objects.select_related("poi", "activity", "event__related_activity", "event__poi", "city")
+    # Their places' countries too, so a blank currency is read as the place's (CU1) without a query.
+    options = Option.objects.select_related("poi__city__country", "activity__city__country", "event__related_activity",
+                                            "event__poi__city__country", "event__city__country", "city__country")
     return list(OptionGroup.objects.filter(trip=trip)
                 .prefetch_related(Prefetch("options", queryset=options), "options__travelers",
                                   Prefetch("options__votes", queryset=Vote.objects.select_related("user").order_by("pk"))))
@@ -106,15 +108,17 @@ def _costs(trip, groups):
     currency when they share one, else in the trip's home currency (``budget``'s rates, loaded once when
     some option mixes currencies; an option with a cost there's no rate for shows none)."""
     from .budget import _cents, _money, rates_for
+    from .currencies import currency_of
     home = (trip.home_currency or "USD").upper()
     wanted = []
     for group in groups:
+        day = next((d for d in trip.days.all() if d.pk == group.day_id), None)
         for option in group.options.all():
-            parts = [(option.own_cost, option.currency)]  # a stay's nightly price × its nights (T1)
-            parts += [(a.est_cost, a.currency) for a in option.items["activities"]]
-            parts += [(leg.cost, leg.currency) for leg in option.items["legs"]]
-            wanted.append((option, [(amount, (currency or home).upper()) for amount, currency in parts
-                                    if amount is not None]))
+            # A blank currency is the place's (CU1), never home's by default.
+            parts = [(option.own_cost, currency_of(option, trip, day))]  # a stay's nightly price × its nights (T1)
+            parts += [(a.est_cost, currency_of(a, trip, day)) for a in option.items["activities"]]
+            parts += [(leg.cost, currency_of(leg, trip)) for leg in option.items["legs"]]
+            wanted.append((option, [(amount, currency) for amount, currency in parts if amount is not None]))
     foreign = {currency for _, parts in wanted if len({c for _, c in parts}) > 1 for _, currency in parts} - {home}
     rates = rates_for(trip, foreign | {home}) if foreign else None
     for option, parts in wanted:
@@ -167,6 +171,7 @@ def attach(trip, days, viewer=None, groups=None):
         for option in group.options.all():
             option.group_ref = group
             option.group = group  # the cached object, so taken() costs no query
+            option._trip = trip  # a blank currency's place (CU1) without a query
             # Who its cost is for (budget-estimates B1), from the page's prefetched rosters: no query.
             option._people = people_for(option, day_by_pk.get(group.day_id), trip)
             option.items = {kind: [] for kind in KINDS}
@@ -276,7 +281,7 @@ def make_item(option, actor=None):
     Kind = OptionGroup.Kind
     city = _city_of(option)
     notes = "\n".join(p for p in (option.notes, option.url) if p)
-    currency = option.currency or currencies.default_for(trip, [getattr(city, "pk", None) or day.city_id])
+    currency = currencies.currency_of(option, trip, day)  # blank: the option's place's (CU1)
 
     def next_order(queryset):
         return (queryset.aggregate(m=Max("order"))["m"] or 0) + 1
