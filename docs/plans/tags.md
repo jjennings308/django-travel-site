@@ -2,6 +2,8 @@
 
 Decided 2026-11-03 (James). One phase, **TG1**, on branch `tg1-tags`.
 
+Status: TG1 done 2026-11-03.
+
 ## Why
 
 There are two tag models. Both were meant for the same thing: descriptors that cut across categories ("family-friendly",

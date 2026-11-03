@@ -3,7 +3,7 @@ from django.contrib import admin
 
 from apps.approval_system.admin import ApprovableAdminMixin
 
-from .models import Event, EventPerformer, EventTag
+from .models import Event, EventPerformer
 
 
 class EventPerformerInline(admin.TabularInline):
@@ -44,9 +44,3 @@ class EventAdmin(ApprovableAdminMixin, admin.ModelAdmin):
         }),
     )
 
-
-
-@admin.register(EventTag)
-class EventTagAdmin(admin.ModelAdmin):
-    list_display = ['name', 'usage_count']
-    search_fields = ['name']

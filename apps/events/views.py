@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import Http404
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import date as date_cls
 
-from apps.activities.models import Activity, ActivityCategory
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.locations.models import City, Country, Region
@@ -45,6 +45,11 @@ def event_list(request):
         when = "upcoming"
         events = events.filter(end_date__gte=today).order_by("start_date", "start_time")
 
+    # The Tag select: tags of activities with an event in this list (upcoming or past), counted in events.
+    tag = request.GET.get("tag", "")
+    tags = ActivityTag.keeping(ActivityTag.objects.filter(activities__events__in=events)
+                               .annotate(n=Count("activities__events", distinct=True)).order_by("name"), tag)
+
     activity = None
     if request.GET.get("activity"):
         activity = get_object_or_404(Activity.get_public_activities(), slug=request.GET["activity"])
@@ -52,6 +57,8 @@ def event_list(request):
     category = request.GET.get("category")
     if category:
         events = events.filter(category__slug=category)
+    if tag:  # an event takes its activity's tags (tags plan TG1); with no activity it never matches
+        events = events.filter(related_activity__tags__slug=tag).distinct()
     country = request.GET.get("country")
     if country:
         events = events.filter(Q(city__country__slug=country) | Q(country__slug=country))
@@ -73,9 +80,10 @@ def event_list(request):
         "page_obj": page_obj,
         "categories": ActivityCategory.objects.filter(is_active=True),
         "countries": countries,
+        "tags": tags,
         "when": when,
         "activity": activity,
-        "filters": {"category": category or "", "country": country or "", "free": bool(request.GET.get("free")), "q": q},
+        "filters": {"category": category or "", "tag": tag, "country": country or "", "free": bool(request.GET.get("free")), "q": q},
         "breadcrumb_list": build_breadcrumbs([("Events", None)]),
     })
 

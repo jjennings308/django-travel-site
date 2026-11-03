@@ -1,5 +1,6 @@
 # activities/models.py
 from django.db import models
+from django.db.models import Count
 from django.conf import settings
 from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -638,7 +639,8 @@ class Activity(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
 
 
 class ActivityTag(TimeStampedModel, SlugMixin):
-    """Tags for filtering and categorizing activities"""
+    """Descriptors that cut across categories ("outdoor", "free", "family-friendly"). On activities only: an
+    event shows and filters by its activity's tags (tags plan TG1)."""
     
     name = models.CharField(
         max_length=50,
@@ -652,11 +654,6 @@ class ActivityTag(TimeStampedModel, SlugMixin):
         Activity,
         related_name='tags',
         blank=True
-    )
-    
-    usage_count = models.IntegerField(
-        default=0,
-        help_text="How many activities use this tag"
     )
     
     # Can users add this tag or is it staff-only?
@@ -677,6 +674,24 @@ class ActivityTag(TimeStampedModel, SlugMixin):
             from apps.core.utils import generate_unique_slug
             self.slug = generate_unique_slug(ActivityTag, self.name, self.id)
         super().save(*args, **kwargs)
+
+    @classmethod
+    def used_by(cls, activities, selected=""):
+        """A Tag select's options: the tags these activities use, each with its count ``n`` (one query)."""
+        return cls.keeping(cls.objects.filter(activities__in=activities)
+                           .annotate(n=Count("activities", distinct=True)).order_by("name"), selected)
+
+    @classmethod
+    def keeping(cls, tags, selected=""):
+        """``tags`` as a list, plus the tag being filtered by when it isn't among them (a link from an event's
+        page to a tag with nothing upcoming), so the select still says what the list is showing."""
+        tags = list(tags)
+        if selected and not any(tag.slug == selected for tag in tags):
+            current = cls.objects.filter(slug=selected).first()
+            if current is not None:
+                current.n = 0
+                tags = sorted([*tags, current], key=lambda tag: tag.name.casefold())
+        return tags
 
 
 class UserActivityBookmark(TimeStampedModel):

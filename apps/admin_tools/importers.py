@@ -27,7 +27,7 @@ from django.forms.models import model_to_dict
 from django.utils import timezone
 
 from apps.activities.forms import ActivityEditForm
-from apps.activities.models import Activity, ActivityCategory
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.events.forms import EventForm
 from apps.events.models import Event
@@ -152,12 +152,12 @@ KINDS = {
          "indoor_outdoor": ("indoor_outdoor", "choice"), "booking_required": ("booking_required", "bool"),
          "suitable_for_children": ("suitable_for_children", "bool"),
          "wheelchair_accessible": ("wheelchair_accessible", "bool"), "equipment_needed": ("equipment_needed", "text"),
-         "safety_notes": ("safety_notes", "text")},
+         "safety_notes": ("safety_notes", "text"), "tags": (None, "tags")},
         ("name", "category", "description"),
         {"name": "Oktoberfest", "category": "Festival", "description": "The world's largest beer festival.",
          "country": "Germany", "city": "Munich", "recurrence": "yearly", "usual_months": "Sep;Oct",
          "timing_notes": "Mid September to the first Sunday in October", "cost_level": "moderate",
-         "booking_required": "no"},
+         "booking_required": "no", "tags": "Food; Music"},
         "activities:activity_detail", ("name",)),
     "event": Kind(
         "Events", Event, EventForm,
@@ -193,6 +193,8 @@ def template_csv(kind):
 # ---- export ---------------------------------------------------------------
 def _cell(obj, kind, column, form_field, how):
     """One exported cell: the inverse of Importer._convert."""
+    if how == "tags":  # names in name order, "; " between
+        return "; ".join(sorted((tag.name for tag in obj.tags.all()), key=str.casefold))
     if how == "context":  # POI region / country, from its city
         city = obj.city
         place = city.region if column == "region" else city.country
@@ -220,7 +222,7 @@ def export_queryset(kind):
     spec = KINDS[kind]
     qs = spec.model.objects.filter(approval_status=APPROVED)
     if kind == "activity":
-        qs = qs.filter(visibility="public").select_related("category", "country", "region", "city", "venue")
+        qs = qs.filter(visibility="public").select_related("category", "country", "region", "city", "venue").prefetch_related("tags")
     elif kind == "event":
         qs = qs.select_related("category", "country", "city__country", "related_activity", "poi")
     elif kind == "region":
@@ -254,6 +256,7 @@ class Row:
     changes: list = field(default_factory=list)  # field labels an update changes
     form: object = None
     instance: object = None
+    tags: list = None  # an activity's tags from a filled `tags` cell; None (blank) keeps what it has
 
 
 def _norm(header):
@@ -369,6 +372,22 @@ class Importer:
             return matches.get().pk
         raise ValueError("unknown column type")
 
+    def _tags(self, value, row):
+        """The existing tags a `tags` cell names ("; " between, capitals ignored); an unknown name is the row's
+        error, so an import never creates a tag."""
+        if not hasattr(self, "_known_tags"):
+            self._known_tags = {tag.name.casefold(): tag for tag in ActivityTag.objects.all()}
+        tags = []
+        for name in (part.strip() for part in value.split(";")):
+            if not name:
+                continue
+            tag = self._known_tags.get(name.casefold())
+            if tag is None:
+                row.errors.append(f"Unknown tag: {name}; add it in the admin first")
+            elif tag not in tags:
+                tags.append(tag)
+        return tags
+
     # ---- matching an existing item --------------------------------------
     def _existing(self, cells, data):
         model = self.spec.model
@@ -426,9 +445,8 @@ class Importer:
         form_class = self.spec.form
         form = form_class(instance=instance) if instance else form_class()
         if instance is not None:
+            # Not tags: the importer sets them itself (the form only offers tags members may add).
             data = model_to_dict(instance, fields=[f for f in form.fields if f not in ("picture", "remove_picture", "tags")])
-            if "tags" in form.fields:
-                data["tags"] = [t.pk for t in instance.tags.all()]
         else:
             data = {}
             for name in form.fields:
@@ -483,6 +501,8 @@ class Importer:
                     converted[form_name] = self._convert(how, probe.fields.get(form_name), value, cells)
                 except ValueError as exc:
                     row.errors.append(f"{column} “{value}” {exc}")
+            if cells.get("tags"):
+                row.tags = self._tags(cells["tags"], row)
             if "city" in converted and converted["city"] is None:
                 # Not in the catalogue: keep it as a typed place (staff can link it later).
                 converted.pop("city")
@@ -518,7 +538,10 @@ class Importer:
             row.form, row.instance = form, instance
             if instance is not None:
                 row.action = "update"
-                row.changes = [form.fields[n].label or n for n in form.changed_data if n not in ("picture", "remove_picture")]
+                row.changes = [form.fields[n].label or n for n in form.changed_data
+                               if n not in ("picture", "remove_picture", "tags")]
+                if row.tags is not None and {t.pk for t in row.tags} != {t.pk for t in instance.tags.all()}:
+                    row.changes.append("tags")
         return self
 
     @property
@@ -545,6 +568,8 @@ class Importer:
                         obj.visibility, obj.source = "public", "import"
                 obj.save()
                 row.form.save_m2m()
+                if row.tags is not None:
+                    obj.tags.set(row.tags)
                 if row.instance is None and self.spec.model is Country:
                     from apps.locations import flags
                     flags.attach(obj)  # a new country's flag as its picture (country-flags plan C1)

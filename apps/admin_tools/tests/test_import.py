@@ -1,4 +1,6 @@
 """Staff CSV import of activities and events: preview, create, update, errors."""
+import csv as csv_module
+import io
 from datetime import date, time
 
 from django.contrib.auth import get_user_model
@@ -7,7 +9,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.activities.models import Activity, ActivityCategory
+from apps.admin_tools import importers
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
@@ -57,11 +60,48 @@ class ImportTests(ImportFixture):
             self.assertIn(b"Oktoberfest", response.content)
 
     def test_template_imports_cleanly(self):
-        """The downloadable examples are valid: activity first, then the event that refers to it."""
+        """The downloadable examples are valid: activity first, then the event that refers to it. (The activity's
+        example names tags, which must exist: an import never creates one.)"""
+        for name in ("Food", "Music"):
+            ActivityTag.objects.create(name=name)
         self.preview("activity", self.client.get(reverse("admin_tools:import_template", args=["activity"])).content.decode())
         self.confirm()
         page = self.preview("event", self.client.get(reverse("admin_tools:import_template", args=["event"])).content.decode())
         self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 0})
+
+    def test_tags_column_round_trips_keeps_on_blank_and_refuses_unknown(self):
+        food, music = ActivityTag.objects.create(name="Food"), ActivityTag.objects.create(name="Music")
+        staff_only = ActivityTag.objects.create(name="Zoo", user_can_add=False)
+        csv = "name,category,description,tags\nOktoberfest,Festival,Beer.,zoo; MUSIC;food\n"
+        self.assertEqual(self.preview("activity", csv).context["counts"], {"create": 1, "update": 0, "error": 0})
+        self.confirm()
+        okto = Activity.objects.get()
+        self.assertEqual(set(okto.tags.all()), {food, music, staff_only})  # capitals ignored; staff-only tags too
+
+        out = io.StringIO()
+        importers.export_csv("activity", out)
+        exported = out.getvalue()
+        row = next(csv_module.DictReader(io.StringIO(exported)))
+        self.assertEqual(row["tags"], "Food; Music; Zoo")
+        page = self.preview("activity", exported)  # export → import changes nothing
+        self.assertEqual(page.context["counts"], {"create": 0, "update": 1, "error": 0})
+        self.assertNotIn("tags", page.context["importer"].rows[0].changes)
+        self.confirm()
+        self.assertEqual(okto.tags.count(), 3)
+
+        self.preview("activity", "name,category,description,tags\nOktoberfest,Festival,Beer.,\n")  # blank keeps them
+        self.confirm()
+        self.assertEqual(okto.tags.count(), 3)
+
+        page = self.preview("activity", "name,category,description,tags\nOktoberfest,Festival,Beer.,Food\n")
+        self.assertIn("tags", page.context["importer"].rows[0].changes)
+        self.confirm()
+        self.assertEqual(list(okto.tags.all()), [food])
+
+        page = self.preview("activity", "name,category,description,tags\nOktoberfest,Festival,Beer.,Food; Outdoorsy\n")
+        self.assertEqual(page.context["counts"]["error"], 1)
+        self.assertContains(page, "Unknown tag: Outdoorsy; add it in the admin first")
+        self.assertFalse(ActivityTag.objects.filter(name="Outdoorsy").exists())
 
     def test_activity_create_then_update(self):
         csv = ("Name,Category,Description,City,Country,Recurrence,Usual Months,Booking required\n"

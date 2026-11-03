@@ -3,7 +3,7 @@ summary: Browse what there is to do, suggest new places, activities and events, 
 audience: everyone
 section: Places & events
 order: 10
-updated: 2026-10-28
+updated: 2026-11-03
 
 # Places, activities and events
 
@@ -11,7 +11,7 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 ## Browse
 
-Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)), or **Add to a trip** to put it on one of your trips' Ideas shelves ([ideas and goals](/help/ideas-and-goals/#adding-ideas)).
+Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. Once activities carry tags (*outdoor*, *free*, *family-friendly*: words that cut across categories), the Activities and Events lists have a **Tag** filter, and the tags on a page link to everything else with that tag. An event shows its activity's tags: it has none of its own, so an event with no activity never matches a tag. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)), or **Add to a trip** to put it on one of your trips' Ideas shelves ([ideas and goals](/help/ideas-and-goals/#adding-ideas)).
 
 ## Searching
 
@@ -19,7 +19,7 @@ The **search box** at the top of every page looks through the whole catalogue at
 
 - Type a place (*Kyoto*, *Bavaria*), something to do (*food tour*, *museum*) or an event (*Oktoberfest*). Small spelling slips and missing accents are fine: *Neuschwanstien* and *Munchen* both work.
 - Results are grouped by kind, best match first. A name match comes before a match on where something is, which comes before a match in its description. **More …** shows all of one kind.
-- Narrow it with **Country**, **Month** (when an event starts, or the months an activity usually happens), **Category** and **Show**. A month or category leaves only activities and events.
+- Narrow it with **Country**, **Month** (when an event starts, or the months an activity usually happens), **Category**, **Tag** and **Show**. A month, category or tag leaves only activities and events.
 - Past events are left out unless you tick **Include past events**.
 
 Only published items are found; your own suggestions waiting for approval show up for you alone.

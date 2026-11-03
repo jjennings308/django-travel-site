@@ -3,7 +3,7 @@ summary: The staff dashboard, approving submissions, giving people access to tri
 audience: staff
 section: Staff
 order: 10
-updated: 2026-10-27
+updated: 2026-11-03
 
 # Running the site
 
@@ -50,7 +50,7 @@ Staff see every trip, with no grant needed. See [sharing and access](/help/shari
 
 Dates are month/day/year, like 9/18/2027 (how Excel shows them); 2027-09-18 works too, but day-first dates such as 18/9/2027 are refused. Times are 20:00 or 8:00 PM.
 
-A **blank template** shows the columns; **export what's loaded now** downloads the published items in the same columns, ready to edit and import again. Imported items are published straight away.
+A **blank template** shows the columns; **export what's loaded now** downloads the published items in the same columns, ready to edit and import again. Imported items are published straight away. An activity's **tags** column holds tag names with "; " between them; a blank cell keeps the activity's tags, and a name that doesn't exist yet is an error, so add new tags in the admin first.
 
 ## Country flags
 

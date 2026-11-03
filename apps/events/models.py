@@ -468,39 +468,6 @@ class Event(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
         super().save(*args, **kwargs)
 
 
-class EventTag(TimeStampedModel, SlugMixin):
-    """Tags for categorizing and filtering events"""
-    
-    name = models.CharField(
-        max_length=50,
-        unique=True,
-        help_text="E.g., family-friendly, outdoor, free, food, music"
-    )
-    description = models.CharField(max_length=200, blank=True)
-    
-    # Many-to-many with events
-    events = models.ManyToManyField(
-        Event,
-        related_name='tags',
-        blank=True
-    )
-    
-    usage_count = models.IntegerField(default=0)
-    
-    class Meta:
-        db_table = 'event_tags'
-        ordering = ['name']
-    
-    def __str__(self):
-        return self.name
-    
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            from apps.core.utils import generate_unique_slug
-            self.slug = generate_unique_slug(EventTag, self.name, self.id)
-        super().save(*args, **kwargs)
-
-
 class EventPerformer(TimeStampedModel):
     """Performers/speakers/artists for events"""
     

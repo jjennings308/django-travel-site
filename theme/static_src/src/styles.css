@@ -730,7 +730,7 @@
   @media (max-width: 639.98px) {
     .btn, .btn-quiet, .sbl-btn,
     .trips-ui button.link-quiet, .trips-ui a.link-quiet.font-medium:not(p a):not(li > a),
-    a.chip, button.chip,
+    a.chip, button.chip, a.sbl-badge,
     select, input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]) {
       min-height: 44px;
     }
