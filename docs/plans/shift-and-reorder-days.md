@@ -1,6 +1,6 @@
 # Plan: move the whole trip to new dates, and put days in a new order
 
-Status: done. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
+Status: DR1 and DR2 done; DR3 (fixes after first use) not started. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
 some days need to swap round). Two phases, one branch each, in order: DR1 (shift the trip by N days), DR2 (reorder
 days). Read with `CLAUDE.md` → Trips → "One page to read and edit; trip-wide pages are views; Settings holds
 trip-level things" (the fit-the-days page, `apps/trips/day_fit.py`), "Leg times", "Planned legs", "Change digest",
@@ -138,6 +138,74 @@ Every day, journey and stay carries its own date. `day_number` is only the count
     query).
 - **Help:** `adding-a-day` (or `reading-your-trip`, wherever days are explained): "Changing the order of days", the
     stay rule, Undo; bump `updated`.
+
+## DR3 — Fixes after first use (branch `dr3-day-move-fixes`)
+
+James used DR1/DR2 on Europe 2027 on 2026-11-02 (flipping the trip: UK first, then Germany, starting 9/10) and hit
+these. Decided 2026-11-02.
+
+**What James expected, and the rule to make true:** "moving a day moves everything on it". Meals, notes, activities
+and choices already hang off the `Day` row. Journeys and stays don't: they carry their own dates. The fixes below
+make every way of moving a day also move the journeys on its date, and handle stays explicitly. Don't add a `day` FK
+to legs or stays (a stay spans several days, a leg can be overnight); keep the date rule and move them alongside.
+
+1. **Changing a day's date by hand moves its journeys too.** Today `DayForm` (the day page and Settings' Days) lets
+   anyone retype `date` (and `day_number`). Doing so moved only the day's own contents and left its journeys and
+   stays on the old date, which is what scattered Day 2's hotels. New rule, in `DayForm` / `day_edit`:
+   - `day_number` is no longer on the form. Numbers always come from `day_fit.renumber` (by date) after any date
+     change.
+   - A new date that another day of the trip already has is refused: "Sep 18 is Day 9 (Butzbach). To swap days, use
+     Reorder days." Link `trips:trip_reorder?day=<pk>`.
+   - A new date outside the trip's dates is refused with a pointer to Settings → Move the whole trip / the dates.
+   - Otherwise the save goes through `reschedule.move_day(day, new_date, user)`. It moves the day, its journeys by
+     wall clock (as DR2), and the stays whose nights are all on this day (a one-night stay checking in that day).
+     Then `renumber` runs, and longer stays touching the day are listed in the message ("Hotel Laimer Hof Sep
+     18–21 wasn't moved: check it"). All of it is one history line, undone by `undo_move`, with
+     `before["reorder"]`'s shape so the existing undo works.
+2. **Stays a reorder leaves behind get an offer, not just a warning.** In `reorder_plan`, for each entry of
+   `kept_stays`, work out a suggestion: follow the days that held its nights. If those days are still consecutive
+   after the reorder, check-in = the first one's new date and the length is kept. Otherwise, if most of its nights'
+   days share one city and those days are consecutive now, use that run. Otherwise, no suggestion.
+   - The preview shows each suggestion as a ticked box: "Move Hard Days Night Hotel to Sep 11–14 (with Liverpool's
+     days)". Stays with no suggestion stay listed as today.
+   - `reorder(…, move_stays=[pk, …])` applies the ticked ones inside the same transaction and history line, so Undo
+     covers them.
+   - The same suggestion is used for item 1's listed stays.
+3. **The start-date offer appears whenever the start date changes.** `trip_days_fit` shows "Move everything to
+   start on Sep 10 instead?" only when some day falls outside the new dates. So moving the start earlier and
+   leaving the end alone (what James did first) never offered it. Show the offer whenever `moved_from` differs from
+   the new start and at least one day still sits on its old date (i.e. the days don't already start on the new
+   start date).
+   - Also: when Settings changes **only** the start date, keep the length by default and say so. The fit page heads
+     with "You moved the start to Sep 10. Move the whole trip (keeps 17 days, ends Sep 26) or keep the end at Oct 3
+     (adds 7 empty days)?". The first choice is the shift, the second is today's add/remove list.
+4. **"Change booking" to-dos know when they're not needed.** When `_booking_todos` makes one, it stores each
+   covered item's booked dates on the to-do in a hidden notes line, like `FROM_NOTE` (`BOOKED_FOR`: `leg-12
+   2027-09-18; stay-15 2027-09-18/2027-09-20`), hidden by `visible_notes`.
+   - `booking_tasks.attach` marks such a to-do `back_on_booked_dates` when every covered item's date(s) equal the
+     stored ones again. To book / the To do page then show "Back on its booked dates" and **Close this to-do** (Mark
+     done). Offered, never automatic.
+   - Undo of a move already deletes untouched made to-dos. This covers the case where the items were moved back by
+     hand.
+5. **Wording on booked items.** The "Still to book: <to-do>" line on a leg row, stay card and activity row reads
+   **"To do: …"** when the item already has a confirmation. Keep "Still to book" for unbooked items. The booklet's
+   section is unchanged (snapshot holds).
+6. **Help:** `adding-a-day` / `reading-your-trip` (wherever DR1/DR2 were documented). Explain what moves with a day:
+   its contents, its journeys and one-night stays; longer stays are offered. Also explain that a day's date can't
+   take another day's date (use Reorder), and cover the start-date choice. Bump `updated`.
+
+**Tests** (`test_reschedule`, `test_reorder`, plus the day form's tests):
+- changing a day's date moves its journeys (wall clock) and its one-night stay, renumbers, lists a longer stay, and
+  is one undoable line;
+- refused for a date another day has (message names the day and links Reorder) and for a date outside the trip;
+- `day_number` is gone from the form and Settings' Days still renders;
+- the reorder suggestion for a split stay (consecutive again; by city run; none), applied when ticked, skipped when
+  not, and undone with the rest;
+- the fit page offers the move after an earlier-start-only change (James's case) and after a start+end change, and
+  the start-only "keep length" choice;
+- `BOOKED_FOR` stored and hidden; `back_on_booked_dates` true when moved back, false otherwise; Close works;
+- "To do:" vs "Still to book:" wording;
+- the trip page's and day fragment's query pins unchanged.
 
 ## Not changing
 

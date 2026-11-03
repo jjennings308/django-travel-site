@@ -1623,8 +1623,10 @@ times, stays — with a preview, booking to-dos for booked items and one undoabl
 fit-the-days page after a start-date change — DR1; then a page to put days in a new order between fixed dates, their
 contents and journeys following, stays only when their nights stay together — DR2). Decided 2026-11-02. Phases
 DR1–DR2, one branch each, in order. Status: DR1 (move the whole trip, `apps/trips/reschedule.py`, `trips:trip_shift`)
-done on branch `dr1-shift-trip`; DR2 (put days in a new order, `trips:trip_reorder`) done on branch `dr2-reorder-days`.
-Complete.
+done on branch `dr1-shift-trip`; DR2 (put days in a new order, `trips:trip_reorder`) done on branch `dr2-reorder-days`;
+DR3 (fixes after first use: a day's date edit moves its journeys and one-night stays and can't take another day's
+date, reorder offers to move the stays it leaves, the start-date offer always shows, "Change booking" to-dos know when
+they're not needed, "To do:" wording on booked items) not started.
 
 - **Move the whole trip** (DR1; no migration): `reschedule.shift_plan(trip, n)` (the preview, over the trip page's
   prefetch with `views._attach_confirmations` + `trip_notes.attach` but *not* `options.attach`, so undecided choices'
