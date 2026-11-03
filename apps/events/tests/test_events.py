@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.approval_system.models import ApprovalStatus
-from apps.activities.models import ActivityCategory
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.events.models import Event
 from apps.locations.models import City, Country, Region
 
@@ -374,3 +374,45 @@ class SeasonalActivityTests(EventFixture):
         self.assertEqual([[e.name for e in events] for _, events in page.context["past_seasons"]], [["Old game"]])
         self.assertContains(page, "Past dates (1)")
         self.assertContains(page, "Happens several times a year, usually September, October")
+
+
+class TagTests(EventFixture):
+    """An event takes its activity's tags (tags plan TG1)."""
+
+    def setUp(self):
+        super().setUp()
+        self.fest = Activity.objects.create(category=self.music, name="Fest", description="d", visibility="public",
+                                            approval_status=ApprovalStatus.APPROVED)
+        self.other = Activity.objects.create(category=self.music, name="Other", description="d", visibility="public",
+                                             approval_status=ApprovalStatus.APPROVED)
+        self.tag = ActivityTag.objects.create(name="Outdoor")
+        self.tag.activities.add(self.fest)
+        self.free = ActivityTag.objects.create(name="Free")
+        self.free.activities.add(self.fest, self.other)
+        self.one = self.make("Fest 2027", related_activity=self.fest)
+        self.two = self.make("Fest 2028", related_activity=self.fest)
+        self.gone = self.make("Fest 2020", related_activity=self.fest, start=TODAY - timedelta(days=400))
+        self.other_event = self.make("Other 2027", related_activity=self.other)
+        self.loose = self.make("Loose gig")
+        self.url = reverse("events:event_list")
+
+    def test_filter_keeps_events_of_activities_with_the_tag_each_once(self):
+        names = [e.name for e in self.client.get(self.url, {"tag": "outdoor"}).context["page_obj"]]
+        self.assertEqual(sorted(names), ["Fest 2027", "Fest 2028"])
+
+    def test_select_counts_upcoming_events(self):
+        response = self.client.get(self.url)
+        self.assertEqual([(t.name, t.n) for t in response.context["tags"]], [("Free", 3), ("Outdoor", 2)])
+        self.assertContains(response, "Outdoor (2)")
+
+    def test_a_tag_with_nothing_upcoming_still_shows_as_selected(self):
+        ActivityTag.objects.create(name="Quiet")
+        response = self.client.get(self.url, {"tag": "quiet"})
+        self.assertEqual(list(response.context["page_obj"]), [])
+        self.assertContains(response, 'value="quiet" selected')
+
+    def test_page_shows_its_activitys_tags_as_links(self):
+        page = self.client.get(reverse("events:event_detail", args=[self.one.slug]))
+        self.assertContains(page, f"{self.url}?tag=outdoor")
+        self.assertContains(page, "data-event-tags")
+        self.assertNotContains(self.client.get(reverse("events:event_detail", args=[self.loose.slug])), "data-event-tags")

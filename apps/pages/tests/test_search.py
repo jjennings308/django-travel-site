@@ -8,7 +8,7 @@ from django.db import connection
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.activities.models import Activity, ActivityCategory
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
@@ -131,6 +131,18 @@ class PageTests(Fixture):
         self.assertContains(response, "All results")
         area = self.page(q="bavaria", kind="area")
         self.assertContains(area, reverse("locations:region_detail", args=["bavaria"]))
+
+    def test_tag_leaves_only_activities_and_events(self):
+        tag = ActivityTag.objects.create(name="Beer")
+        tag.activities.add(self.okto)
+        self.assertEqual(search.Filters(tag="beer").kinds(), ["activity", "event"])
+        response = self.page(q="oktoberfest", tag="beer")
+        kinds = {group.kind: group.items for group in response.context["groups"]}
+        self.assertEqual(kinds["activity"], [self.okto])
+        self.assertEqual(kinds["event"], [self.next_okto])
+        self.assertContains(response, "category or tag only applies")
+        self.assertContains(response, 'value="beer" selected')
+        self.assertEqual(self.page(q="castle walk", tag="beer").context.get("groups"), [])
 
     def test_query_count_is_fixed(self):
         def count(q):

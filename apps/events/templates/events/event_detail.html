@@ -23,6 +23,7 @@
         <section class="sbl-card p-5">
           <h2 class="mb-3 text-xl font-semibold text-warm-900">Part of</h2>
           <p class="text-warm-700"><i class="bi bi-signpost-2"></i> This is a date for <a class="sbl-link font-medium" href="{% url 'activities:activity_detail' event.related_activity.slug %}">{{ event.related_activity.name }}</a>. <a class="sbl-link" href="{% url 'events:event_list' %}?activity={{ event.related_activity.slug }}">See its other dates</a>.</p>
+          {% with tags=event.related_activity.tags.all %}{% if tags %}<div class="mt-3 flex flex-wrap gap-2" data-event-tags>{% for tag in tags %}<a class="sbl-badge sbl-badge-neutral hover:underline" href="{% url 'events:event_list' %}?tag={{ tag.slug }}">{{ tag.name }}</a>{% endfor %}</div>{% endif %}{% endwith %}
         </section>
       {% endif %}
 

@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import HttpResponseForbidden
 from django.utils import timezone
-from .models import Activity, ActivityCategory, UserActivityBookmark
+from .models import Activity, ActivityCategory, ActivityTag, UserActivityBookmark
 from .forms import ActivityCreateForm, ActivityEditForm, ActivityQuickCreateForm
 from .seo import activity_meta
 from apps.approval_system.models import ApprovalStatus
@@ -23,6 +23,10 @@ def activity_list(request):
     if category_slug:
         activities = activities.filter(category__slug=category_slug)
     
+    tag = request.GET.get('tag')
+    if tag:
+        activities = activities.filter(tags__slug=tag).distinct()
+
     skill_level = request.GET.get('skill')
     if skill_level:
         activities = activities.filter(skill_level=skill_level)
@@ -66,7 +70,8 @@ def activity_list(request):
         'page_obj': page_obj,
         'categories': categories,
         'countries': Country.objects.filter(activities__in=Activity.get_public_activities()).distinct().order_by('name'),
-        'filters': {'q': search or '', 'category': category_slug or '', 'country': country_slug or ''},
+        'tags': ActivityTag.used_by(Activity.get_public_activities(), tag or ''),
+        'filters': {'q': search or '', 'category': category_slug or '', 'tag': tag or '', 'country': country_slug or ''},
         'current_sort': sort,
         'sorts': [('-popularity_score', 'Most popular'), ('-bucket_list_count', 'Most bucket-listed'),
                   ('name', 'Name'), ('-created_at', 'Newest')],

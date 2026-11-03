@@ -304,9 +304,9 @@ def search(request):
     context = {"search_q": q, "filters": filters, "kinds": catalogue_search.KINDS,
                "kind_heading": catalogue_search.KINDS.get(filters.kind, ""),
                "months": [(n, date_cls(2000, n, 1).strftime("%B")) for n in range(1, 13)],
-               "narrowed": bool(filters.month or filters.category),
+               "narrowed": bool(filters.month or filters.category or filters.tag),
                "breadcrumb_list": build_breadcrumbs([("Search", None)]),
-               **catalogue_search.filter_choices()}
+               **catalogue_search.filter_choices(filters)}
     if len(q) >= 2:
         if filters.kind:
             querysets = catalogue_search.results(filters.kind, q, request.user, filters)

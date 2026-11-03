@@ -26,11 +26,13 @@
 {% endif %}
 <form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
   {% if activity %}<input type="hidden" name="activity" value="{{ activity.slug }}">{% endif %}
-  <div class="md:col-span-2"><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
+  <div{% if not tags %} class="md:col-span-2"{% endif %}><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
   <div><label class="sbl-label" for="when">When</label>
     <select id="when" name="when" class="sbl-input"><option value="upcoming" {% if when == 'upcoming' %}selected{% endif %}>Upcoming</option><option value="past" {% if when == 'past' %}selected{% endif %}>Past</option></select></div>
   <div><label class="sbl-label" for="category">Category</label>
     <select id="category" name="category" class="sbl-input"><option value="">All</option>{% for c in categories %}<option value="{{ c.slug }}" {% if filters.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  {% if tags %}<div><label class="sbl-label" for="tag">Tag</label>
+    <select id="tag" name="tag" class="sbl-input"><option value="">All</option>{% for t in tags %}<option value="{{ t.slug }}" {% if filters.tag == t.slug %}selected{% endif %}>{{ t.name }} ({{ t.n }})</option>{% endfor %}</select></div>{% endif %}
   <div><label class="sbl-label" for="country">Country</label>
     <select id="country" name="country" class="sbl-input"><option value="">All</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
   <div class="flex items-center justify-between gap-3 md:block">

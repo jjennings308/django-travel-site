@@ -1,5 +1,6 @@
 # activities/admin.py
 from django.contrib import admin
+from django.db.models import Count
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils import timezone
@@ -272,17 +273,18 @@ class ActivityAdmin(admin.ModelAdmin):
 
 @admin.register(ActivityTag)
 class ActivityTagAdmin(admin.ModelAdmin):
-    list_display = ['name', 'usage_count', 'user_can_add', 'created_at']
+    list_display = ['name', 'activity_count', 'user_can_add', 'created_at']
     list_filter = ['user_can_add', 'created_at']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
     filter_horizontal = ['activities']
-    
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        # Update usage count
-        obj.usage_count = obj.activities.count()
-        obj.save()
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(activity_total=Count('activities'))
+
+    @admin.display(description='Activities', ordering='activity_total')
+    def activity_count(self, obj):
+        return obj.activity_total
 
 
 @admin.register(UserActivityBookmark)

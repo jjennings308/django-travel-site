@@ -16,7 +16,7 @@ from django.db.models import Case, F, FloatField, Func, Q, TextField, Value, Whe
 from django.db.models.functions import Lower
 from django.utils import timezone
 
-from apps.activities.models import Activity, ActivityCategory
+from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
@@ -30,7 +30,7 @@ GROUP_SIZE = 8
 KINDS = {"area": "Countries & regions", "city": "Cities", "place": "Places", "activity": "Activities",
          "event": "Events"}
 #: Kinds a filter applies to; choosing the filter leaves only these.
-MONTH_KINDS = CATEGORY_KINDS = ("activity", "event")
+MONTH_KINDS = CATEGORY_KINDS = TAG_KINDS = ("activity", "event")
 
 
 def strip_accents(text):
@@ -93,6 +93,7 @@ class Filters:
     country: str = ""   # country slug
     month: int = 0      # 1-12
     category: str = ""  # activity category slug
+    tag: str = ""       # activity tag slug; an event takes its activity's (TG1)
     past: bool = False
 
     @classmethod
@@ -101,12 +102,12 @@ class Filters:
         month = get.get("month", "")
         return cls(kind=kind if kind in KINDS else "", country=get.get("country", "").strip(),
                    month=int(month) if month.isdigit() and 1 <= int(month) <= 12 else 0,
-                   category=get.get("category", "").strip(), past=get.get("past") == "1")
+                   category=get.get("category", "").strip(), tag=get.get("tag", "").strip(), past=get.get("past") == "1")
 
     def kinds(self):
         """The kinds these filters leave, in page order."""
         kinds = list(KINDS)
-        if self.month or self.category:
+        if self.month or self.category or self.tag:
             kinds = [k for k in kinds if k in MONTH_KINDS]
         return [k for k in kinds if not self.kind or k == self.kind]
 
@@ -135,6 +136,8 @@ def _published(kind, user, filters):
             qs = qs.filter(usual_months__contains=[filters.month])
         if filters.category:
             qs = qs.filter(category__slug=filters.category)
+        if filters.tag:  # tag slugs are unique, so this can't repeat a row
+            qs = qs.filter(tags__slug=filters.tag)
         return qs
     if kind == "event":
         today = timezone.localdate()
@@ -148,6 +151,8 @@ def _published(kind, user, filters):
             qs = qs.filter(start_date__month=filters.month)
         if filters.category:
             qs = qs.filter(category__slug=filters.category)
+        if filters.tag:
+            qs = qs.filter(related_activity__tags__slug=filters.tag)
         return qs
     raise ValueError(kind)
 
@@ -188,10 +193,11 @@ def grouped(q, user, filters, size=GROUP_SIZE):
     return groups
 
 
-def filter_choices():
-    """Countries and categories for the filter selects (two queries)."""
+def filter_choices(filters):
+    """Countries, categories and the tags public activities use, for the filter selects (three queries)."""
     return {
         "countries": Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by("name")
         .only("name", "slug"),
         "categories": ActivityCategory.objects.filter(is_active=True).only("name", "slug"),
+        "tags": ActivityTag.used_by(Activity.get_public_activities(), filters.tag),
     }
