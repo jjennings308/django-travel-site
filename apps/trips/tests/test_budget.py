@@ -117,7 +117,7 @@ class FormFieldsRenderTests(BudgetFixture):
         day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 4, 1))
         self.client.force_login(editor)
         day_page = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, day.pk]))
-        for name in ("day_number", "theme", "city"):
+        for name in ("date", "theme", "city"):  # no day number since DR3
             self.assertContains(day_page, f'name="{name}"')
         budget = self.client.get(reverse("trips:trip_budget", args=[self.trip.pk]))
         for name in ("description", "amount", "paid_by", "shared_with"):

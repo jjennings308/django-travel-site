@@ -79,6 +79,8 @@ Change **Start date** or **End date** on **Settings** and save. If the days no l
 
 If the trip moves as a whole (it starts a week earlier, say), use [moving the whole trip](#moving-the-whole-trip) instead, so the days keep what's on them. When you've already changed the start date, the page that fits the days offers it at the top: "Your days are still on Sep 17–29. **Move everything to start on Sep 10** instead?"
 
+If you changed **only** the start date, it asks which you meant: "You moved the start to Sep 10. **Move the whole trip** (keeps 17 days, ends Sep 26) or keep the end at Oct 3 (adds 7 empty days, below)?" **Move the whole trip** moves the days, journeys and stays and the end date with them, so the trip keeps its length (with a preview first). To keep the end instead, use the list below it.
+
 ## Moving the whole trip
 
 On **Settings**, under the dates, click **Move the whole trip…**. Pick the new start date and click **Preview**: the end date moves by the same number of days, so the trip stays the same length. Nothing changes until you click **Apply**.
@@ -90,7 +92,7 @@ On **Settings**, under the dates, click **Move the whole trip…**. Pick the new
 
 The preview lists what moves and what to check:
 
-- **Booked**: journeys and stays with a confirmation number. They move on this site only; the booking itself still has the old dates. **Add a to-do to change each booking** (ticked) adds one to-do per booking, "Change booking GCH7JS to the new dates", which shows under **To book**.
+- **Booked**: journeys and stays with a confirmation number. They move on this site only; the booking itself still has the old dates. **Add a to-do to change each booking** (ticked) adds one to-do per booking, "Change booking GCH7JS to the new dates", which shows under **To book** and says when everything is back on its booked dates ([moving booked items](/help/adding-a-day/#moving-booked-items)).
 - An activity linked to an event whose dates its new day falls outside.
 - A place whose catalogue note says it's closed on the new day of the week.
 - A journey on a date that isn't one of the trip's days (it moves too).

@@ -1435,7 +1435,8 @@ class DayForm(SyncsTripCitiesMixin, forms.ModelForm):
 
     class Meta:
         model = Day
-        fields = ["day_number", "date", "city", "theme", "meals_included", "travelers"]
+        # No day number (shift-and-reorder DR3): the days are numbered by date (``day_fit.renumber``) after any change.
+        fields = ["date", "city", "theme", "meals_included", "travelers"]
         widgets = {
             "travelers": forms.SelectMultiple(attrs={"size": 6}),
             "date": DateInput(styled=False),
@@ -1456,39 +1457,24 @@ class DayForm(SyncsTripCitiesMixin, forms.ModelForm):
                 "Where you spend the day (Munich for Oktoberfest, even if you sleep in Augsburg). "
                 "Days a stay covers are filled in from its city when blank; change day trips here. "
                 "Add the trains, flights or drives with + Leg above.")
-        # Prefill the next free day number: a new day is nearly always the next
-        # one, and the unique constraint on (trip, day_number) would otherwise
-        # make the first thing to do a guess. `date` is deliberately left alone —
-        # a wrong prefill is a wrong date nobody notices, and this field is
-        # never required.
-        if not self.instance.pk and not self.is_bound:
-            last = (
-                trip.days.aggregate(models.Max("day_number"))["day_number__max"] or 0
-            )
-            self.fields["day_number"].initial = last + 1
+        # A new date must be free and inside the trip (DR3); a clash points at Reorder days.
+        self.old_date = self.instance.date if self.instance.pk else None
+        self.date_problem = None
 
     def clean(self):
         cleaned_data = super().clean()
         trip = getattr(self, "trip", None)
         validate_day_roster(trip, cleaned_data.get("travelers"))
 
-        # Checked by hand rather than left to the model. `BaseModelForm
-        # ._post_clean` calls `full_clean(validate_unique=False)`, so a
-        # ModelForm never enforces `unique_together` — and `trip` is not even
-        # assigned to the instance until after validation, so the model could
-        # not match a row even if it were asked to. Without this, posting a
-        # day number that already exists is a 500 from the database rather than
-        # an error on the field.
-        number = cleaned_data.get("day_number")
-        if trip is not None and number is not None:
-            clash = Day.objects.filter(trip=trip, day_number=number)
-            if self.instance.pk:
-                # Re-saving a day without changing its number is not a clash.
-                clash = clash.exclude(pk=self.instance.pk)
-            if clash.exists():
-                self.add_error(
-                    "day_number", f"Day {number} already exists on this trip."
-                )
+        new = cleaned_data.get("date")
+        if trip is not None and new and new != getattr(self, "old_date", None):
+            from .reschedule import move_day_check
+            problem = move_day_check(trip, new, exclude_pk=self.instance.pk)
+            if problem:
+                self.date_problem, text = problem
+                if not self.instance.pk and self.date_problem == "clash":
+                    text = text.split(". To swap")[0] + "."
+                self.add_error("date", text)
         return cleaned_data
 
 

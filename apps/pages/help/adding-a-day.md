@@ -17,8 +17,7 @@ A day is one date of the trip. Everything that happens on that date hangs off it
 
 Have these ready:
 
-- The **date** (required).
-- The **day number** (the site suggests the next one).
+- The **date** (required). Each day of a trip has its own date, inside the trip's dates.
 - Optionally: the **city** you spend the day in, a **one-line theme** such as "Oktoberfest — Munich day trip", and who is on the day if the group splits up.
 
 ## Add the day
@@ -35,12 +34,11 @@ You land back on Settings with a green "Added day N" message, and the new day ap
 
 ## Fill in the day's details
 
-Only the date and day number are required; leave the rest blank if you don't know yet.
+Only the date is required; leave the rest blank if you don't know yet. There's no day number to fill in: the days are always numbered in date order, so a day you add on an earlier date becomes that number and the later ones move up.
 
 | Field | What to enter | Example |
 | --- | --- | --- |
-| Day number | Pre-filled with the next free number. Two days on one trip can't share a number. | 5 |
-| Date | The calendar date of this day. Required. | Sep 21, 2027 |
+| Date | The calendar date of this day. Required; it can't be another day's date or outside the trip's dates. | Sep 21, 2027 |
 | City | Where you *spend* the day, not where you sleep. Type to find it; the trip's cities are offered first. | Munich (even if you sleep in Augsburg) |
 | Theme | A one-line summary shown as the day's title. | Oktoberfest — Munich day trip |
 | Meals included | Tick only if meals are already covered by the trip price, such as on a tour. | Unticked |
@@ -103,6 +101,17 @@ A meal can name its catalogue **Place** (in the Meals form), a section a **Place
 
 When a meal's name or a section's title is the name of one catalogue place or activity in the trip's cities (capitals, punctuation and accents don't matter, and German ö, ä, ü may be written oe, ae, ue), **On this day** shows **Looks like … — Link / Not this one**. Nothing is linked until you click **Link**; **Not this one** stops suggesting it.
 
+## Changing a day's date
+
+Change **Date** on the day's page and save: the day moves with everything on it. Its contents (city, theme, meals, notes, activities, choices and comments) ride along, **its journeys** get the new date and keep their local times, and **a one-night stay** checking in that day moves with it. The days are then numbered again in date order, and the message says what moved ("Saved day 5. Moved it to Sep 16 with 1 journey and 1 stay.").
+
+- **A longer stay** that covers the day isn't moved: the message names it ("Hotel Laimer Hof (Sep 12–15) wasn't moved: check it"), with the dates that would keep it with its days when there are some. Change it on the stay's page.
+- **A booking** linked to something that moved gets a to-do, "Change booking GCH7JS to the new dates" (see [moving booked items](#moving-booked-items)).
+- **A date another day already has** is refused: "Sep 18 is Day 9 Butzbach. To swap days, use Reorder days." Use **Reorder days** (next section), which swaps them.
+- **A date outside the trip** is refused too: change the trip's dates or [move the whole trip](/help/starting-a-trip/#moving-the-whole-trip) on **Settings**.
+
+The move is one line in the trip's history, which **Undo** puts back like a reorder.
+
 ## Changing the order of days
 
 To swap two days, or move one to another place in the trip, click **Reorder** above the days on the trip page (also **Reorder days** under Settings' Days, and **Move this day…** on a day's page, which picks that day out).
@@ -111,12 +120,18 @@ The dates stay in their column; the days move between them. Use **↑** and **�
 
 - **Each day keeps what's on it**: its city, theme, who's on it, meals, notes, activities, choices and comments.
 - **Its journeys get its new date** and keep their local times.
-- **A stay moves with its nights** when those days stay next to each other and in the same order. Otherwise it stays where it was, and the preview says which days it now covers ("Hotel Laimer Hof (Sep 17–21) now covers Day 3 Füssen and Day 4 Munich: check it").
+- **A stay moves with its nights** when those days stay next to each other and in the same order. Otherwise it stays where it was, and the preview says which days it now covers ("Hotel Laimer Hof (Sep 17–21) now covers Day 3 Füssen and Day 4 Munich: check it"). When its nights' days are still next to each other in another order, or most of them are one city's days and those are together, the preview offers a ticked box to move it with them: "Move Hard Days Night Hotel to Sep 11–14 (with Liverpool's days)". Untick it to leave the stay where it is.
 - The days are then numbered again in date order.
 
 The preview also lists booked items that move (they move on this site only; **Add a to-do to change each booking** is ticked), an activity whose new day falls outside its event's dates, a place newly closed on its new weekday, and text that names a day which is now a different number ("Plan on Day 2 says “Day 3”"). Click **Apply** to save it. If you move a day after the preview, preview again before applying.
 
 The new order is one line in the trip's history, and **Undo** on it puts the days back while nothing else on the trip has changed since ([undo a change](/help/trip-history/#undo-a-change)). To move the whole trip to other dates instead, see [moving the whole trip](/help/starting-a-trip/#moving-the-whole-trip).
+
+## Moving booked items
+
+Moving a day (its date, a new order, or [the whole trip](/help/starting-a-trip/#moving-the-whole-trip)) moves booked journeys and stays on this site only: the booking still has the old dates. So each booking linked to something that moved gets a to-do, "Change booking GCH7JS to the new dates", under **To book**. It remembers the dates it was booked for: if everything it covers is moved back onto them, it says **Back on its booked dates: nothing to change** and offers **Close this to-do**. It never closes on its own.
+
+On a booked journey, stay or activity, a to-do covering it reads **To do:** rather than **Still to book:**.
 
 ## Check it on the trip page and in the booklet
 
@@ -129,7 +144,7 @@ Open the trip page. Your day appears in two places:
 
 | Problem | Fix |
 | --- | --- |
-| "Day N already exists on this trip." | Pick an unused day number. Each day of a trip needs its own number. |
+| "Sep 18 is Day 9 …" | Another day has that date. To swap them, use **Reorder days** ([changing the order of days](#changing-the-order-of-days)). |
 | No **Settings** button | You have view-only access. Ask the trip's owner to make you an editor. |
 | The city you want isn't found | It isn't in the catalogue yet: click **Add “…” as a new city** in the box, or leave the city blank. |
 | A train or flight shows on the wrong day | Edit the leg and correct its date. A leg appears on the day whose date matches its departure. |

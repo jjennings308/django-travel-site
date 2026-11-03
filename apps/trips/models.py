@@ -1981,12 +1981,23 @@ class BookingTask(models.Model):
     #: A to-do made from a catalogue note's lead time (catalogue-notes N3) remembers the note in its notes
     #: on a line like this; the line is hidden, and the note's "Book by" warning goes quiet.
     FROM_NOTE = "Catalogue note: "
+    #: A "Change booking … to the new dates" to-do made by moving days (shift-and-reorder DR3) remembers each
+    #: covered item's booked dates: "Booked for: leg-12 2027-09-18; stay-15 2027-09-18/2027-09-20" (hidden).
+    BOOKED_FOR = "Booked for: "
 
     @property
     def visible_notes(self):
         """The notes without the "Not about: …" lines (those are for the suggestion only)."""
         return "\n".join(line for line in self.notes.splitlines()
-                         if not line.startswith((self.NOT_ABOUT, self.FROM_NOTE))).strip()
+                         if not line.startswith((self.NOT_ABOUT, self.FROM_NOTE, self.BOOKED_FOR))).strip()
+
+    def booked_for(self):
+        """{"leg-12": "2027-09-18", "stay-15": "2027-09-18/2027-09-20"} from the ``BOOKED_FOR`` line, else {}."""
+        for line in self.notes.splitlines():
+            if line.startswith(self.BOOKED_FOR):
+                pairs = (part.strip().split(" ", 1) for part in line[len(self.BOOKED_FOR):].split(";"))
+                return {pair[0]: pair[1].strip() for pair in pairs if len(pair) == 2}
+        return {}
 
     def note_ids(self):
         """The catalogue notes this to-do was made from (``FROM_NOTE`` lines)."""

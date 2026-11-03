@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the days at a glance, each day's plan
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-10-31
+updated: 2026-11-02
 
 # Reading your trip
 
@@ -52,7 +52,7 @@ Each day is folded to its summary ([see above](#days-at-a-glance)). Click a day 
 An open day reads from top to bottom:
 
 1. **Where you sleep.** On the day you arrive at a hotel you see its full card: address, nights, rate, confirmation number and notes. On the other nights you see **Sleeping:** with the hotel's name, and on the last morning **Check out:**. Both link to the card.
-2. **The timeline.** Trains, flights, activities and booked meals, in time order. Each has its time, what it is, its confirmation number, its cost when it has one ("≈ €190 pp", or "€1,140 · booked"; [the budget](/help/budget/#what-a-cost-means)) and, if it isn't booked yet, a **Still to book** line. Times of trains and flights are always local to where they leave and arrive, wherever you are reading from. **Travel:** above the timeline adds up the day's journeys.
+2. **The timeline.** Trains, flights, activities and booked meals, in time order. Each has its time, what it is, its confirmation number, its cost when it has one ("≈ €190 pp", or "€1,140 · booked"; [the budget](/help/budget/#what-a-cost-means)) and, if it isn't booked yet, a **Still to book** line (on a booked item, an open to-do reads **To do**). Times of trains and flights are always local to where they leave and arrive, wherever you are reading from. **Travel:** above the timeline adds up the day's journeys.
 3. **Any time.** Things without a set time: planned journeys in their order, then activities.
 4. **The write-up.** The day's plans, tips, tables and choices, in the order they were written.
 5. **Good to know.** Phone numbers and tips for the whole day.

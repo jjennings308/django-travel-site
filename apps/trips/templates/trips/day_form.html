@@ -92,8 +92,10 @@
     {% csrf_token %}
     <section class="form-section">
       <h2 class="form-section-title">Day details</h2>
-      <p class="form-section-lede">When it is, what it is about, and who is there.</p>
+      <p class="form-section-lede">When it is, what it is about, and who is there.{% if not is_create %} A new date moves the day with its journeys and one-night stays; the days are then numbered by date.{% endif %}</p>
       {% include "trips/_form_fields.html" with form=form %}
+      {% if form.date_problem == "clash" and day %}<p class="mt-2 text-sm" data-date-clash><a class="link-quiet font-medium" href="{% url 'trips:trip_reorder' trip.pk %}?day={{ day.pk }}">Reorder days</a></p>
+      {% elif form.date_problem == "outside" %}<p class="mt-2 text-sm" data-date-outside><a class="link-quiet font-medium" href="{% url 'trips:trip_settings' trip.pk %}">Settings</a> · <a class="link-quiet font-medium" href="{% url 'trips:trip_shift' trip.pk %}">Move the whole trip…</a></p>{% endif %}
     </section>
 
     {% if meal_formset %}

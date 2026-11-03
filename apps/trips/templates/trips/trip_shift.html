@@ -13,7 +13,7 @@ Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/resched
   <div class="card p-6" data-trip-shift>
     <h1 class="page-title mb-1">Move the whole trip</h1>
     {% if moved_from %}
-      <p class="mb-4 text-zinc-500">The trip now starts {{ trip.start_date|date:"l, F j" }}, but its days, journeys and stays still start {{ moved_from|date:"l, F j" }}. This moves them all {{ preview.describe|default:"" }} to match; nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
+      <p class="mb-4 text-zinc-500">The trip now starts {{ trip.start_date|date:"l, F j" }}, but its days, journeys and stays still start {{ moved_from|date:"l, F j" }}. This moves them all {{ preview.describe|default:"" }} to match{% if preview.new_end %}, and the trip's end to {{ preview.new_end|date:"l, F j" }} so it keeps its length{% endif %}; nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
     {% else %}
       <p class="mb-4 text-zinc-500">Every day moves with what's on it, every journey keeps its local times on its new date, and every stay keeps its length. Payments, catalogue events and to-do due dates stay where they are. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
       <form method="get" class="mb-2 flex flex-wrap items-end gap-3" data-shift-pick>
@@ -28,7 +28,7 @@ Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/resched
 
     {% if preview %}
       <div class="mt-5 border-t border-zinc-100 pt-5" data-shift-preview>
-        <h2 class="form-section-title">{% if preview.move_trip %}{{ preview.old_span }} → {{ preview.new_span }}{% else %}Days, journeys and stays {{ preview.describe }}{% endif %}</h2>
+        <h2 class="form-section-title">{% if preview.move_trip %}{{ preview.old_span }} → {{ preview.new_span }}{% elif preview.new_end %}{{ preview.new_span }}{% else %}Days, journeys and stays {{ preview.describe }}{% endif %}</h2>
         <p class="mb-3 text-sm text-zinc-500">{{ preview.describe|capfirst }}: {{ preview.days|length }} day{{ preview.days|length|pluralize }}, {{ preview.legs|length }} journey{{ preview.legs|length|pluralize }}, {{ preview.stays|length }} stay{{ preview.stays|length|pluralize }}.</p>
 
         {% if preview.booked %}
@@ -66,7 +66,7 @@ Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/resched
 
         <form method="post" class="mt-4" data-shift-apply>
           {% csrf_token %}
-          {% if moved_from %}<input type="hidden" name="moved_from" value="{{ moved_from|date:'Y-m-d' }}">{% else %}<input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">{% endif %}
+          {% if moved_from %}<input type="hidden" name="moved_from" value="{{ moved_from|date:'Y-m-d' }}">{% if preview.new_end %}<input type="hidden" name="keep_length" value="1">{% endif %}{% else %}<input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">{% endif %}
           {% if preview.booked %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="booking_todos" value="1" checked> Add a to-do to change each booking ({{ preview.booked|length }})</label>{% endif %}
           {% if preview.tasks %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="move_due" value="1"> Also move to-do due dates ({{ preview.tasks|length }}) <span class="text-sm text-zinc-500">— usually booking deadlines, which don't move with the trip</span></label>{% endif %}
           <div class="mt-3 flex flex-wrap items-center gap-3">

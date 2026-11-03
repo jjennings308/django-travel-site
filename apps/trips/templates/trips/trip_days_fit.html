@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/day_fit.py): offered after Settings moves the trip's dates. Days for the new dates, ticked; days now outside the dates, ticked only when nothing is on them. Nothing changes until "Fit the days"; the days are then numbered again in date order.
+Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/day_fit.py): offered after Settings moves the trip's dates. Days for the new dates, ticked; days now outside the dates, ticked only when nothing is on them. When the start moved and the days don't start on it yet, it first offers to move everything (trips:trip_shift?moved_from=); when only the start moved, as a choice between keeping the length (the shift, which moves the end too) and keeping the end (this list) (shift-and-reorder DR3). Nothing changes until "Fit the days"; the days are then numbered again in date order.
 {% endcomment %}
 {% block title %}Fit the days — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -14,7 +14,12 @@ Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/da
     {% csrf_token %}
     <h1 class="page-title mb-1">The days and the new dates</h1>
     <p class="mb-4 text-zinc-500">The trip now runs {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}. Choose what to do with the days; nothing changes until you click <strong>Fit the days</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="changing-the-dates" label="changing the dates" text="How this works" %}</p>
-    {% if shift_offer %}
+    {% if shift_offer.start_only %}
+      <div class="callout callout-info mb-4" data-shift-offer data-start-only>
+        <p>You moved the start to {{ shift_offer.start_text }}. <a class="font-medium underline" href="{{ shift_offer.url }}">Move the whole trip</a> (keeps {{ shift_offer.length }} days, ends {{ shift_offer.new_end|date:"M j" }}) or keep the end at {{ shift_offer.end|date:"M j" }} ({% if shift_offer.added %}adds {{ shift_offer.added }} empty day{{ shift_offer.added|pluralize }}{% if shift_offer.removed %} and {% endif %}{% endif %}{% if shift_offer.removed %}removes {{ shift_offer.removed }} day{{ shift_offer.removed|pluralize }}{% endif %}, below)?</p>
+        <p class="mt-1 text-sm">Moving the whole trip takes its days, journeys and stays with it, with a preview first.</p>
+      </div>
+    {% elif shift_offer %}
       <div class="callout callout-info mb-4" data-shift-offer>
         <p>Your days are still on {{ shift_offer.days_span }}. <a class="font-medium underline" href="{{ shift_offer.url }}">Move everything to start on {{ shift_offer.start|date:"M j" }}</a> instead? The days, journeys and stays move together, with a preview first.</p>
       </div>
