@@ -4,20 +4,7 @@ One day of the trip page (U2/U3). The trip page includes it per day; trips:day_f
 {% endcomment %}
 <details class="day day-fold" id="day-{{ day.day_number }}"{% if day.pk == open_day_pk %} open{% endif %} data-day-pk="{{ day.pk }}" data-day-fragment="{% url 'trips:day_fragment' trip.pk day.pk %}">
   <summary class="day-summary">
-    <span class="font-semibold text-zinc-900">Day {{ day.day_number }}</span>
-    {% if day.date %}<span class="text-zinc-500">{{ day.date|date:"D M j" }}</span>{% endif %}
-    {% if day.city %}<span class="text-zinc-700">{{ day.city.name }}</span>{% endif %}
-    {% if day.theme %}<span class="min-w-0 truncate text-zinc-500">&mdash; {{ day.theme }}</span>{% endif %}
-    {% comment %}Line 2, the day at a glance (itinerary.overview): only the parts it has. Links inside a summary follow without toggling it.{% endcomment %}
-    {% if day.stay or day.checking_out or day.overnight or day.travel_summary or day.ordered_activities or day.attention %}
-      <span class="day-glance" data-day-glance>
-        {% if day.stay %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.stay.pk }}">{{ day.stay.name }}</a>{% if day.stay in day.checking_in %} (check in){% endif %}</span>{% elif day.checking_out %}<span>🛏 <a class="link-quiet" href="#stay-{{ day.checking_out.0.pk }}">{{ day.checking_out.0.name }}</a> (check out)</span>{% endif %}
-        {% if day.overnight %}<span>✈ overnight</span>{% endif %}
-        {% if day.travel_summary %}<span class="whitespace-nowrap">{{ day.travel_icons }} {{ day.travel_summary }}</span>{% endif %}
-        {% if day.ordered_activities %}<span class="min-w-0 truncate">{{ day.highlights|join:" · " }}</span>{% endif %}
-        {% if day.attention %}<a class="font-medium text-amber-700" href="#needs-attention" title="Not booked or still to do">⚠{{ day.attention }}</a>{% endif %}
-      </span>
-    {% endif %}
+    {% include "trips/partials/_day_line.html" %}
   </summary>
   <div class="day-body">
   {% if can_edit %}<p class="mb-2 text-right text-sm"><a class="btn-quiet px-3 py-1" href="{% url 'trips:day_edit' trip.pk day.pk %}?next={{ request.path|urlencode }}%23day-{{ day.day_number }}" data-panel-link>Edit this day</a></p>{% endif %}

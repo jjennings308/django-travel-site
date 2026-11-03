@@ -116,7 +116,7 @@
   <section id="days" class="scroll-mt-32">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h2 class="day-heading">Days {% include "partials/_help_link.html" with slug="reading-your-trip" anchor="days-at-a-glance" label="the days" %}</h2>
-      {% if days %}<p class="flex gap-3 text-sm"><button type="button" class="link-quiet font-medium" data-days-toggle="open">Expand all</button><button type="button" class="link-quiet font-medium" data-days-toggle="close">Collapse all</button></p>{% endif %}
+      {% if days %}<p class="flex gap-3 text-sm">{% if can_edit and days|length > 1 %}<a class="link-quiet font-medium" href="{% url 'trips:trip_reorder' trip.pk %}" data-reorder-link>Reorder</a>{% endif %}<button type="button" class="link-quiet font-medium" data-days-toggle="open">Expand all</button><button type="button" class="link-quiet font-medium" data-days-toggle="close">Collapse all</button></p>{% endif %}
     </div>
     {# About this trip: what the old Overview held besides its table. Closed by default; open while there are no days. #}
     <details class="about-fold" id="about"{% if not days %} open{% endif %}>

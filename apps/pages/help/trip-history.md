@@ -30,7 +30,7 @@ The item goes back to how it was before that change. Undoing is itself a change,
 
 **Undo** only shows on an item's most recent change. If an item was changed several times, undo the newest first. If it was edited in a way the history didn't record, the site says so and changes nothing, so no edit is lost.
 
-**Moving the whole trip** is one line, "Moved the trip 7 days earlier: Sep 17–29 → Sep 10–22" ([moving the whole trip](/help/starting-a-trip/#moving-the-whole-trip)). Its **Undo** puts every day, journey, stay and date back and removes the "Change booking …" to-dos it added (one you've edited or ticked off stays, and the message says so). It shows only while the move is the trip's newest change.
+**Moving the whole trip** is one line, "Moved the trip 7 days earlier: Sep 17–29 → Sep 10–22" ([moving the whole trip](/help/starting-a-trip/#moving-the-whole-trip)). Its **Undo** puts every day, journey, stay and date back and removes the "Change booking …" to-dos it added (one you've edited or ticked off stays, and the message says so). It shows only while the move is the trip's newest change. Putting the days in a new order works the same way ([changing the order of days](/help/adding-a-day/#changing-the-order-of-days)).
 
 ## Bring back something removed
 
@@ -42,6 +42,6 @@ Whole days and confirmations can't be restored: add them again. (A confirmation'
 
 | Problem | What to do |
 | --- | --- |
-| No **Undo** button | You're not an editor, it isn't the item's most recent change, or it was an addition (remove the item instead). On a move of the whole trip: something else on the trip has changed since. |
+| No **Undo** button | You're not an editor, it isn't the item's most recent change, or it was an addition (remove the item instead). On a move of the whole trip or a new order of days: something else on the trip has changed since. |
 | "Its day was removed, so there's nowhere to put it back" | The day it was on has gone. Add the day again first, then restore. |
 | A change isn't in the history | Changes made before October 18, 2026 weren't recorded, and the history keeps 180 days. |

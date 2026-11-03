@@ -65,14 +65,15 @@ def change_undo(request, pk, change_pk):
     if not trip.can(request.user, "edit"):
         raise PermissionDenied
     change = get_object_or_404(TripChange, pk=change_pk, trip=trip)
-    if change.before and "shift" in change.before:  # the whole trip moved (shift-and-reorder DR1)
-        from . import reschedule
+    from . import reschedule
+    if reschedule.is_move(change):  # the whole trip moved, or its days were reordered (shift-and-reorder DR1, DR2)
         try:
-            kept = reschedule.undo_shift(change, request.user)
+            kept = reschedule.undo_move(change, request.user)
         except reschedule.CannotMove as reason:
             messages.error(request, f"Couldn't undo: {reason}")
         else:
-            text = "Undone: the trip is back on its old dates."
+            text = ("Undone: the days are back in their old order." if "reorder" in change.before
+                    else "Undone: the trip is back on its old dates.")
             if kept:
                 text += (" Kept the booking to-dos edited or done since: "
                          + ", ".join(f"“{task.title}”" for task in kept) + ".")

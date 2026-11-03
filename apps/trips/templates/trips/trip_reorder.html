@@ -1,0 +1,127 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Put the days in a new order (trips:trip_reorder, shift-and-reorder DR2; apps/trips/reschedule.py). The dates stay in their column; the days' folded lines (trips/partials/_day_line.html) move between them with ↑ / ↓ or by dragging (a small script, no new CDN file), or a Position box each without JavaScript (inside noscript, so it is only sent then). Preview (nothing saved) shows what moves and what to check; Apply saves it as one history line that can be undone.
+{% endcomment %}
+{% block title %}Reorder days — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-4xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{{ settings_url }}#days">Settings</a><span>/</span>
+    <span>Reorder days</span>
+  </nav>
+  <div class="card p-6" data-trip-reorder>
+    <h1 class="page-title mb-1">Put the days in a new order</h1>
+    <p class="mb-4 text-zinc-500">The dates stay where they are; the days move between them, with everything on them and their journeys. A stay moves with its nights when they stay together and in order. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="adding-a-day" anchor="changing-the-order-of-days" label="changing the order of days" text="How this works" %}</p>
+
+    {% if problem %}
+      <div class="callout callout-warning" data-reorder-problem><p>{{ problem }} <a class="font-medium underline" href="{% url 'trips:trip_days_fit' trip.pk %}">Fit the days</a></p></div>
+    {% else %}
+      <form method="post" data-reorder-form>
+        {% csrf_token %}
+        <ol class="space-y-2" data-reorder-list data-slots="{{ slots|join:'|' }}">
+          {% for row in rows %}
+            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg border p-2 sm:grid-cols-[6rem_minmax(0,1fr)_auto] {% if row.focus %}border-amber-400 bg-white ring-2 ring-amber-200{% elif row.moved %}border-sky-300 bg-sky-50{% else %}border-zinc-200 bg-white{% endif %}" draggable="true" data-reorder-row data-day="{{ row.day.pk }}"{% if row.focus %} data-focus{% endif %}>
+              <input type="hidden" name="order" value="{{ row.day.pk }}">
+              <span class="col-start-1 row-start-1 pt-2 text-sm font-semibold text-zinc-700" data-slot>{{ row.slot|date:"D M j" }}</span>
+              <span class="col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3">
+                <noscript><label class="sr-only" for="pos-{{ row.day.pk }}">Position of Day {{ row.day.day_number }}</label><input class="w-16" type="number" min="1" max="{{ rows|length }}" id="pos-{{ row.day.pk }}" name="pos_{{ row.day.pk }}" value="{{ row.position }}"></noscript>
+                <button type="button" class="btn-quiet hidden min-h-11 min-w-11 px-2" data-move="up" aria-label="Move Day {{ row.day.day_number }} up">↑</button>
+                <button type="button" class="btn-quiet hidden min-h-11 min-w-11 px-2" data-move="down" aria-label="Move Day {{ row.day.day_number }} down">↓</button>
+              </span>
+              <span class="col-span-2 flex min-w-0 cursor-grab flex-wrap items-baseline gap-x-3 gap-y-1 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:pt-2">{% include "trips/partials/_day_line.html" with day=row.day plain=True %}</span>
+            </li>
+          {% endfor %}
+        </ol>
+
+        {% if preview %}
+          <div class="mt-5 border-t border-zinc-100 pt-5" data-reorder-preview>
+            <h2 class="form-section-title">What would change</h2>
+            <p class="mb-3 text-sm text-zinc-500">{{ preview.moved|length }} day{{ preview.moved|length|pluralize }} move{{ preview.moved|length|pluralize:"s," }} with {{ preview.legs|length }} journey{{ preview.legs|length|pluralize }} and {{ preview.stays|length }} stay{{ preview.stays|length|pluralize }}; the days are then numbered again by date.</p>
+            {% if preview.booked %}
+              <div class="callout callout-warning mb-3" data-reorder-booked>
+                <p class="font-medium">Booked: these move on this site, not at the provider.</p>
+                <ul class="mt-1 list-disc pl-5 text-sm">{% for row in preview.booked %}<li><span class="font-mono">{{ row.confirmation.confirmation_number }}</span> · {{ row.items|join:", " }}</li>{% endfor %}</ul>
+              </div>
+            {% endif %}
+            {% if preview.kept_stays or preview.events or preview.closed or preview.slips %}
+              <div class="callout callout-info mb-3" data-reorder-warnings>
+                <p class="font-medium">Check these</p>
+                <ul class="mt-1 list-disc pl-5 text-sm">
+                  {% for text in preview.kept_stays %}<li data-reorder-stay>{{ text }}.</li>{% endfor %}
+                  {% for text in preview.events %}<li data-reorder-event>{{ text }}.</li>{% endfor %}
+                  {% for text in preview.closed %}<li data-reorder-closed>{{ text }}.</li>{% endfor %}
+                  {% for text in preview.slips %}<li data-reorder-slip>{{ text }}</li>{% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            {% if preview.legs %}
+              <details class="mb-2"><summary class="cursor-pointer font-medium">Journeys ({{ preview.legs|length }})</summary>
+                <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.legs %}<li>{{ row.label }}: {{ row.old|date:"M j" }} → <strong>{{ row.new|date:"M j" }}{% if row.time %} {{ row.time }}{% endif %}</strong></li>{% endfor %}</ul>
+              </details>
+            {% endif %}
+            {% if preview.stays %}
+              <details class="mb-2"><summary class="cursor-pointer font-medium">Stays ({{ preview.stays|length }})</summary>
+                <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.stays %}<li>{{ row.label }}: {{ row.old.0|date:"M j" }}–{{ row.old.1|date:"M j" }} → <strong>{{ row.new.0|date:"M j" }}–{{ row.new.1|date:"M j" }}</strong></li>{% endfor %}</ul>
+              </details>
+            {% endif %}
+            {% if preview.booked %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="booking_todos" value="1" checked> Add a to-do to change each booking ({{ preview.booked|length }})</label>{% endif %}
+          </div>
+        {% endif %}
+
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button type="submit" name="action" value="preview" class="{% if preview %}btn-quiet{% else %}btn{% endif %}">Preview</button>
+          {% if preview %}<button type="submit" name="action" value="apply" class="btn" data-reorder-apply>Apply</button>{% endif %}
+          <a class="btn-quiet" href="{% url 'trips:trip_detail' trip.pk %}#days">Cancel</a>
+        </div>
+        {% if preview %}<p class="note mt-2" data-reorder-stale hidden>You've moved a day since the preview: preview again before applying.</p>{% endif %}
+        <p class="note mt-2">One line in the trip's history; you can undo it there until something else on the trip changes.</p>
+      </form>
+      <script>
+        (function () {
+          var list = document.querySelector("[data-reorder-list]");
+          if (!list) return;
+          var slots = list.dataset.slots.split("|");
+          list.querySelectorAll("[data-move]").forEach(function (b) { b.classList.remove("hidden"); });
+          function renumber() {
+            list.querySelectorAll("[data-reorder-row]").forEach(function (row, i) {
+              row.querySelector("[data-slot]").textContent = slots[i] || "";
+            });
+          }
+          function changed() {
+            renumber();
+            var apply = document.querySelector("[data-reorder-apply]");
+            if (apply) { apply.disabled = true; document.querySelector("[data-reorder-stale]").hidden = false; }
+          }
+          list.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-move]");
+            if (!button) return;
+            var row = button.closest("[data-reorder-row]");
+            if (button.dataset.move === "up" && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+            else if (button.dataset.move === "down" && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+            else return;
+            changed();
+            button.focus();
+          });
+          var dragged = null;
+          list.addEventListener("dragstart", function (event) {
+            dragged = event.target.closest("[data-reorder-row]");
+            if (dragged) { event.dataTransfer.effectAllowed = "move"; dragged.classList.add("opacity-50"); }
+          });
+          list.addEventListener("dragend", function () { if (dragged) dragged.classList.remove("opacity-50"); dragged = null; });
+          list.addEventListener("dragover", function (event) {
+            var over = event.target.closest("[data-reorder-row]");
+            if (!dragged || !over || over === dragged) return;
+            event.preventDefault();
+            var box = over.getBoundingClientRect();
+            var after = event.clientY > box.top + box.height / 2;
+            list.insertBefore(dragged, after ? over.nextElementSibling : over);
+          });
+          list.addEventListener("drop", function (event) { event.preventDefault(); changed(); });
+          var focus = list.querySelector("[data-focus]");
+          if (focus) focus.scrollIntoView({ block: "center" });
+        })();
+      </script>
+    {% endif %}
+  </div>
+{% endblock %}

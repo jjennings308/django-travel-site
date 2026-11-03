@@ -1026,6 +1026,63 @@ def trip_days_fit(request, pk):
                                                         "shift_offer": shift_offer})
 
 
+@login_required
+def trip_reorder(request, pk):
+    """Put the days in a new order (editors; shift-and-reorder DR2, ``reschedule.reorder``): the trip's dates stay put
+    and the days move between them. Rows are the days' folded lines (the trip page's context, so a fixed number of
+    queries); ↑ / ↓ and drag move them, or a Position box each without JavaScript. Preview (nothing saved) → Apply."""
+    from . import reschedule
+    trip = _readable_trip(request, pk, "edit")
+    page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
+    context = _trip_page_context(request, page_trip)
+    days = sorted(context["days"], key=lambda d: d.day_number)
+    by_pk = {day.pk: day for day in days}
+    order = [day.pk for day in days]
+    preview, problem = None, None
+    try:
+        reschedule._check_order(trip, days, order)
+    except reschedule.CannotMove as reason:
+        problem = str(reason)
+    if request.method == "POST" and not problem:
+        order = _posted_order(request.POST, order)
+        try:
+            if request.POST.get("action") == "apply":
+                done = reschedule.reorder(trip, order, request.user,
+                                          booking_todos=request.POST.get("booking_todos") == "1")
+                text = "The days are in their new order."
+                if done["made"]:
+                    count = len(done["made"])
+                    text += f" {count} booking{'s' if count != 1 else ''} to change: see To book."
+                messages.success(request, text)
+                return redirect(reverse("trips:trip_detail", args=[trip.pk]) + "#days")
+            preview = reschedule.reorder_plan(trip, order, days)
+        except reschedule.CannotMove as reason:
+            messages.error(request, str(reason))
+    slots = sorted(day.date for day in days if day.date)
+    focus = request.GET.get("day", "")
+    rows = [{"day": by_pk[pk], "slot": slots[i] if i < len(slots) else None, "position": i + 1,
+             "moved": bool(preview) and pk in preview["moved"], "focus": str(pk) == focus}
+            for i, pk in enumerate(order)]
+    return render(request, "trips/trip_reorder.html", {
+        "trip": trip, "rows": rows, "slots": [f"{when:%a %b} {when.day}" for when in slots], "preview": preview,
+        "problem": problem, "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
+    })
+
+
+def _posted_order(post, current):
+    """The new order: the Position boxes (no JavaScript) when sent, else the rows' order (``order``)."""
+    index = {pk: i for i, pk in enumerate(current)}
+    positions = {}
+    for pk in current:
+        value = post.get(f"pos_{pk}", "")
+        if value.strip().lstrip("-").isdigit():
+            positions[pk] = int(value)
+    if positions:
+        return sorted(current, key=lambda pk: (positions.get(pk, len(current) + 1), index[pk]))
+    posted = [int(v) for v in post.getlist("order") if v.isdigit()]
+    return posted if sorted(posted) == sorted(current) else current
+
+
 def _date_param(value):
     try:
         return date.fromisoformat(value) if value else None
