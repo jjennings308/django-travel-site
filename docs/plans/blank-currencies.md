@@ -43,6 +43,11 @@ same rule new items already follow. It never depends on who is reading.
   (Day 15): EUR, from Schwangau"). It is a dry run by default. `--apply` saves in one transaction under one history
   line per trip ("Filled in 6 missing currencies"). Items with no amount stay blank. Run it on production after the
   deploy; the PR says so.
+- **A catalogue place's own price comes first.** When the activity's catalogue place has an entry fee with a
+  currency (`POI.entry_fee` / `entry_fee_currency`, e.g. Hohenschwangau Castle EUR 21), `currency_of` for a trip
+  activity with a blank currency uses that place's fee currency before the city's. Also, a trip activity linked to a
+  place with an entry fee and **no estimate of its own** gets an offer on its page: "Use the castle's entry fee:
+  €21 per person". It is never filled in silently.
 - **Confirmations** with a `cost` and blank currency are handled the same way, from the places of the items they
   cover (`confirmation_city_ids`).
 - **Tests:**
