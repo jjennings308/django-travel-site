@@ -198,7 +198,16 @@ to legs or stays (a stay spans several days, a leg can be overnight); keep the d
    - Show the same check in the reorder preview, run against the new order: each row shows its "Sleeping: …" after
      the move, and mismatches are flagged. Then a stay that's left behind is visible before Apply, not after.
    - No new queries; the pins hold.
-7. **Help:** `adding-a-day` / `reading-your-trip` (wherever DR1/DR2 were documented). Explain what moves with a day:
+7. **Overlapping stays and the "covers" wording** (seen 2026-11-02 21:59: the preview kept Hard Days Night Sep 11–14
+   and moved The Christopher Hotel to Sep 12–16, two hotels on the nights of 12 and 13, with no warning).
+   - `reorder_plan`, `shift_plan` and `move_day` list **stays that would overlap** after the change: "Hard Days
+     Night Hotel and The Christopher Hotel would both be booked for the nights of Sep 12 and 13". This is a
+     warning, not a refusal. Split groups' track stays are excluded (they overlap on purpose).
+   - The "now covers …" line for a kept stay names only its **nights** (check-in up to, not including, check-out).
+     Today it also names the check-out day.
+   - The preview's day rows show each day's old date next to its new one ("Liverpool — was Sep 11 → Sep 16"). Then
+     it's clear which day lands where before Apply.
+8. **Help:** `adding-a-day` / `reading-your-trip` (wherever DR1/DR2 were documented). Explain what moves with a day:
    its contents, its journeys and one-night stays; longer stays are offered. Also explain that a day's date can't
    take another day's date (use Reorder), and cover the start-date choice. Bump `updated`.
 
@@ -213,6 +222,8 @@ to legs or stays (a stay spans several days, a leg can be overnight); keep the d
   the start-only "keep length" choice;
 - `BOOKED_FOR` stored and hidden; `back_on_booked_dates` true when moved back, false otherwise; Close works;
 - "To do:" vs "Still to book:" wording;
+- overlapping stays listed (and not for split tracks); "covers" names nights only; old → new date on preview
+  rows;
 - `stay_mismatches`: flagged, a day trip from the stay's city not flagged, the banner count, the reorder preview's
   sleeping lines;
 - the trip page's and day fragment's query pins unchanged.
