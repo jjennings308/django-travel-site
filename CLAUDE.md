@@ -1715,6 +1715,14 @@ after the deploy.
   Found on the way: `TripActivityForm` never called `setup_cost`, so the activity page hid Currency / Cost is / People
   and saving it stored a blank currency — now it does. Tests `test_blank_currencies`.
 
+### Notification clean-up
+
+Plan: `docs/plans/notification-cleanup.md` (remove the never-built parts of `notifications`: the
+`NotificationDigest`, `NotificationTemplate` and `PushDevice` models and the push / SMS / quiet-hours /
+frequency / open-tracking / template fields; in-app and email stay). Decided 2026-11-03. One phase, NC1, on
+branch `nc1-notification-cleanup`; step 0 counts the rows on dev first and stops if anything holds data.
+Status: not started.
+
 ### Rules carried over from the itinerary project
 
 These bit that project once each; they apply here from Phase 1 on.
