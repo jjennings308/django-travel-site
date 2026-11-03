@@ -2248,7 +2248,18 @@ class Option(models.Model):
         """Its ``costs.Cost`` (budget-estimates B1): people from ``options.attach`` when it ran, else its own."""
         from .costs import estimate, people_for
         people = getattr(self, "_people", None)
-        return estimate(self, people=people if people is not None else people_for(self))
+        return estimate(self, trip=self.trip_for_cost(), people=people if people is not None else people_for(self))
+
+    def trip_for_cost(self):
+        """Its trip, for a blank currency's place (CU1): ``options.attach`` sets it, so the page pays no query."""
+        trip = getattr(self, "_trip", None)
+        return trip if trip is not None else self.group.trip
+
+    @property
+    def cost_currency(self):
+        """Its currency: the stored one, else its place's (``currencies.currency_of``, CU1)."""
+        from .currencies import currency_of
+        return currency_of(self, self.trip_for_cost())
 
     @property
     def own_cost(self):
@@ -2274,8 +2285,9 @@ class Option(models.Model):
         A cost on another basis (B1) reads as ``costs``' line: "€95 per room per night × 3 rooms × 4 nights =
         €1,140 · €190 each (6)"."""
         group, parts = self.group, []
-        money = (lambda amount: f"{self.currency or ''} {amount:.2f}".strip())
         priced = self.est_cost is not None
+        currency = self.cost_currency if priced else ""
+        money = (lambda amount: f"{currency} {amount:.2f}".strip())
         plain = self._plain_cost()
         cost_text = (money(self.est_cost) if plain else self.cost_estimate().line) if priced else ""
         if group.kind == OptionGroup.Kind.STAY:

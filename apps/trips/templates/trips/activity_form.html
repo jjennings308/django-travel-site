@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, ticket or pass, table reservation or car hire. Once saved, its confirmations are added on this page, like a leg's.
+An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, ticket or pass, table reservation or car hire. Once saved, its confirmations are added on this page, like a leg's. A catalogue place's entry fee is offered as its estimate while it has none (blank-currencies CU1, trips:activity_use_fee).
 {% endcomment %}
 {% block title %}{% if activity %}{{ activity.title }}{% else %}New activity{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -11,6 +11,14 @@ An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, 
     <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
     <span>{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</span>
   </nav>
+  {% if fee_offer %}
+    <form method="post" action="{% url 'trips:activity_use_fee' trip.pk day.pk activity.pk %}" class="callout callout-info mb-4 flex flex-wrap items-center gap-3" data-panel-tab="details" data-fee-offer>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <p class="min-w-0 flex-1">{{ activity.poi.name }} has an entry fee in the catalogue, and this activity has no estimate yet.</p>
+      <button type="submit" class="btn-quiet">{{ fee_offer.text }}</button>
+    </form>
+  {% endif %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details people">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

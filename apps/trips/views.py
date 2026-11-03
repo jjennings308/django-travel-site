@@ -49,7 +49,8 @@ from .forms import (
     TripForm,
     section_payload_form,
 )
-from . import budget, budget_plan, checklists, costs, itinerary, route, trip_cities, trip_notes
+from apps.locations.models import City
+from . import budget, budget_plan, checklists, costs, currencies, itinerary, route, trip_cities, trip_notes
 from .models import (
     counts_q,
     TripExpense,
@@ -379,24 +380,26 @@ def _trip_page_queryset(user):
             # ordered_sections quietly iterates nothing. Prefetching just the
             # leaves is what makes the template loop work at all.
             # Each day's city rides along with the days query (no extra query).
-            Prefetch("days", queryset=Day.objects.select_related("city")),
+            Prefetch("days", queryset=Day.objects.select_related("city__country")),
             Prefetch(
                 "days__sections",
                 # Their catalogue place (with city) and activity ride along (R18; no extra query).
-                queryset=Section.objects.select_related("poi__city", "activity", "event__related_activity",
-                                                        "event__poi").order_by("order", "id"),
+                queryset=Section.objects.select_related("poi__city__country", "activity__city__country",
+                                                        "event__related_activity", "event__poi__city__country",
+                                                        "event__city__country").order_by("order", "id"),
                 to_attr="ordered_sections",
             ),
             Prefetch(
                 "days__meals",
-                queryset=Meal.objects.select_related("poi__city").order_by("order", "id"),
+                queryset=Meal.objects.select_related("poi__city__country").order_by("order", "id"),
                 to_attr="ordered_meals",
             ),
             # A day's activities (tours, timed entries, tables…) with their place and who's
             # going: two fixed queries.
             Prefetch(
                 "days__activities",
-                queryset=TripActivity.objects.select_related("poi", "event__related_activity", "event__poi")
+                queryset=TripActivity.objects.select_related("poi__city__country", "event__related_activity",
+                                                         "event__poi__city__country", "event__city__country")
                 .prefetch_related("travelers"),
                 to_attr="ordered_activities",
             ),
@@ -406,9 +409,12 @@ def _trip_page_queryset(user):
             # day — 17 for the Europe trip, purely to ask whether a roster is
             # set.
             "days__travelers",
-            "cities",  # the trip's catalogue cities (chips under the title): one query
-            "lodging",
-            "transport",
+            # The trip's catalogue cities (chips under the title): one query. Each city's country rides along
+            # here, on the days, stays, legs and catalogue places, so a cost with no currency is read as its
+            # place's (blank-currencies CU1, ``currencies.currency_of``) without a query.
+            Prefetch("cities", queryset=City.objects.select_related("country")),
+            Prefetch("lodging", queryset=Lodging.objects.select_related("city__country")),
+            Prefetch("transport", queryset=TransportLeg.objects.select_related("origin_city__country")),
             "confirmations",
             # What each confirmation covers (trip-items plan, Phase B): four fixed queries,
             # however many confirmations or items. Legs and stays get their confirmations from
@@ -2412,7 +2418,25 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
         context.update(_item_confirmations_context(request, trip, "activity", activity))
         context.update(_item_links_context(trip, "activity", activity))
         context["open_tasks"] = list(BookingTask.for_item(activity).filter(done=False))
+        context["fee_offer"] = currencies.fee_offer(activity, trip)
     return render(request, "trips/activity_form.html", context)
+
+
+@login_required
+@require_POST
+def activity_use_fee(request, pk, day_pk, activity_pk):
+    """Take the catalogue place's entry fee as the activity's estimate, per person (blank-currencies CU1): offered
+    on the activity's page while it has no estimate, never filled in silently."""
+    trip, day = _editable_day(request, pk, day_pk)
+    activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day).select_related("poi"), pk=activity_pk)
+    offer = currencies.fee_offer(activity, trip)
+    # Back to the page it was offered on (its own address, with ?panel=1 and next when in the panel).
+    page = _back(request, reverse("trips:activity_edit", args=[trip.pk, day.pk, activity.pk]))
+    if offer is not None:
+        activity.est_cost, activity.currency, activity.cost_basis = offer["amount"], offer["currency"], "person"
+        activity.save(update_fields=["est_cost", "currency", "cost_basis"])
+        messages.success(request, f"Estimate set from {activity.poi.name}'s entry fee.")
+    return redirect(page)
 
 
 @login_required

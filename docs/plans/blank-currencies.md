@@ -1,6 +1,7 @@
 # Plan: costs with no currency take the place's currency, not the reader's
 
-Status: not started. Found by James 2026-11-02 on Europe 2027. The Neuschwanstein and Hohenschwangau timed entries
+Status: CU1 done on branch `cu1-blank-currencies` (2026-11-02). Run `manage.py fill_currencies --apply` on production
+after the deploy. Found by James 2026-11-02 on Europe 2027. The Neuschwanstein and Hohenschwangau timed entries
 show "≈ 52 pp" with no symbol, and the Budget page counts them as dollars. One phase, CU1. Read with `CLAUDE.md` →
 Trips → "Currency choices", "Budget in one currency", "Budget estimates" (B1–B3).
 

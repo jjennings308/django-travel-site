@@ -2286,6 +2286,9 @@ class TripActivityForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, for
         # Home + the place's (else the day's) local currency (E4).
         currencies.setup(self, "currency", trip, currencies.activity_city_ids(self.instance),
                          given_initial="currency" in (kwargs.get("initial") or {}))
+        # Cost, Currency, Cost is and People drawn together (B1). Without this the page hid them, and saving it
+        # stored a blank currency (blank-currencies CU1).
+        self.setup_cost("activity", "est_cost")
 
     def clean_order(self):
         return self.cleaned_data.get("order") or 0

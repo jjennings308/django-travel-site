@@ -22,6 +22,7 @@ from decimal import Decimal
 from .costs import (
     _cents, _days_by, _money, day_of, estimate, kind_of, money, planned_items,
 )
+from .currencies import currency_of
 
 
 def planned_total(context, target):
@@ -115,10 +116,11 @@ def plan(context, target, expenses=()):
     by_pk, by_date = _days_by(trip)
     items = planned_items(trip)
     confirmations = list(trip.confirmations.all())
-    currencies = {(getattr(i, "currency", "") or "") for i in items} | {c.currency for c in confirmations}
+    # A blank currency is the item's place's (CU1): the plan never hands ``_Money`` a blank but for expenses.
+    currencies = {currency_of(i, trip) for i in items} | {currency_of(c, trip) for c in confirmations}
     currencies |= {e.currency for e in expenses} | {getattr(trip, "food_allowance_currency", "") or ""}
     for group in context.get("option_groups", []):
-        currencies |= {o.currency for o in group.options.all()}
+        currencies |= {currency_of(o, trip) for o in group.options.all()}
     cash = _Money(trip, target, currencies)
     everyone = list(trip.travelers.all())
     rows = []
@@ -143,7 +145,8 @@ def plan(context, target, expenses=()):
         if confirmation.cost is None:
             continue
         its = covered.get(confirmation.pk, [])  # none: a loose one, or one on a day's notes → Other
-        booked = cash.convert(confirmation.cost, confirmation.currency, confirmation.confirmation_number)
+        its_currency = currency_of(confirmation, trip)
+        booked = cash.convert(confirmation.cost, its_currency, confirmation.confirmation_number)
         names = list(confirmation.travelers.all()) or everyone
         if its:
             booked_items.update((type(i), i.pk) for i in its)
@@ -164,10 +167,10 @@ def plan(context, target, expenses=()):
         add(category, label=label, anchor=anchor, day=day, estimated=None, booked=booked, planned=booked,
             keys=[pay] + [_key(i) for i in its], pay=pay,
             expense_category=_expense_category(its[0]) if its else "other", booked_amount=confirmation.cost,
-            booked_currency=confirmation.currency,
+            booked_currency=its_currency,
             per_person=(booked / len(names)).quantize(Decimal("0.01")) if booked is not None and names else None,
             people=len(names), people_names=names, status="booked",
-            line=f"Booked {money(confirmation.cost, confirmation.currency)} · {confirmation.confirmation_number}")
+            line=f"Booked {money(confirmation.cost, its_currency)} · {confirmation.confirmation_number}")
 
     # Each counted item that isn't booked.
     for item in items:
@@ -395,7 +398,7 @@ def to_pay(item, payments, day=None, trip=None):
             words = _KIND_WORDS.get(kinds.pop(), ("item", "items")) if len(kinds) == 1 else ("item", "items")
             covers = f"{len(covered)} {words[1]}" if len(covered) > 1 else None
             keys = [f"confirmation-{confirmation.pk}"] + [_key(i) for i in covered if type(i).__name__ != "Section"]
-            lines.append(_owed(confirmation.cost, confirmation.currency, payments, keys, True, covers))
+            lines.append(_owed(confirmation.cost, currency_of(confirmation, trip), payments, keys, True, covers))
         return "; ".join(lines) or None  # booked with no cost on file: nothing to say
     cost = estimate(item, day, trip)
     if cost is None or cost.total is None:

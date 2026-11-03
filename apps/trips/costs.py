@@ -5,6 +5,7 @@ Legs, stays, trip activities, meals and choice options each have one amount (as 
 ``cost_basis`` and, where it matters, ``cost_people`` (overrides the people count) and ``rooms`` (stays and
 stay options). ``estimate(item, day, trip)`` works out the item's total and each person's share and says how
 in one ``line``: "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)". Nothing is stored twice.
+A blank currency is the item's place's (``currencies.currency_of``, CU1).
 
 Pure (no queries) over what the trip page prefetches: an activity's and a split option's travellers, the
 day's roster (``days__travelers``) and the trip's travellers. Blank ``cost_basis`` = the kind's default, which is
@@ -18,6 +19,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import models
+
+from .currencies import currency_of
 
 
 class Basis(models.TextChoices):
@@ -151,7 +154,7 @@ def estimate(item, day=None, trip=None, people=None):
     amount = amount_of(item)
     if amount is None:
         return None
-    currency = (item.currency or "").upper()
+    currency = currency_of(item, trip, day)  # blank: its place's (CU1), never the reader's
     basis = basis_of(item)
     count, known = people if people is not None else people_for(item, day, trip)
     nights = nights_for(item) if basis in (Basis.PER_NIGHT, Basis.PER_ROOM_NIGHT, Basis.PER_PERSON_NIGHT) else None
@@ -228,7 +231,7 @@ def note_for(item, day, trip):
     for confirmation in getattr(item, "confirmation_list", None) or []:
         if confirmation.cost is not None:
             covered = len(confirmation.links.all())
-            amount = money(confirmation.cost, confirmation.currency)
+            amount = money(confirmation.cost, currency_of(confirmation, trip))
             return f"{amount} for {covered} · booked" if covered > 1 else f"{amount} · booked"
     cost = estimate(item, day, trip)
     if cost is None:

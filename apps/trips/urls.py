@@ -128,6 +128,8 @@ urlpatterns = [
     path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/", views.activity_edit, name="activity_edit"),
     path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/delete/", views.activity_delete,
          name="activity_delete"),
+    path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/use-fee/", views.activity_use_fee,
+         name="activity_use_fee"),
     path("<int:pk>/days/<int:day_pk>/stays/new/", views.stay_new, name="stay_new"),
     path("<int:pk>/stays/<int:stay_pk>/", views.stay_edit, name="stay_edit"),
     path("<int:pk>/stays/<int:stay_pk>/delete/", views.stay_delete, name="stay_delete"),
