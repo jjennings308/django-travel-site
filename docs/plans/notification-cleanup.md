@@ -2,6 +2,8 @@
 
 Decided 2026-11-03 (James). One phase, **NC1**, on branch `nc1-notification-cleanup`.
 
+Status: NC1 done 2026-11-03 (notifications 0006).
+
 ## Why
 
 The `notifications` app was scaffolded for push, SMS, quiet hours, digests and editable templates. None of
