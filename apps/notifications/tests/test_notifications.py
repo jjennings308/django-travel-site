@@ -35,6 +35,19 @@ class ServiceTests(TestCase):
         notify(ghost, "submission_reviewed", "t", "m")
         self.assertEqual((Notification.objects.count(), len(mail.outbox)), (2, 0))
 
+    def test_a_kind_turned_off_gets_no_email_others_still_do(self):
+        """In-app and email are the only channels (NC1); the per-kind switch is ``email_enabled``."""
+        from apps.notifications.models import UserNotificationPreference
+        from apps.notifications.services import notification_type
+        UserNotificationPreference.objects.create(user=self.ada, notification_type=notification_type("trip_changed"),
+                                                  email_enabled=False)
+        quiet = notify(self.ada, "trip_changed", "Trip changed", "m")
+        loud = notify(self.ada, "trip_access_granted", "Access", "m")
+        self.assertEqual((quiet.channels, quiet.email_sent), (["in_app"], False))
+        self.assertEqual((loud.channels, loud.email_sent), (["in_app", "email"], True))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Access", mail.outbox[0].subject)
+
     def test_mail_failure_does_not_raise(self):
         with mock.patch("apps.notifications.services.EmailMessage.send", side_effect=OSError("smtp down")):
             note = notify(self.ada, "trip_access_granted", "t", "m")
@@ -79,3 +92,22 @@ class PageTests(TestCase):
 
     def test_bell_in_header(self):
         self.assertContains(self.client.get(reverse("notifications:list")), reverse("notifications:unread_count"))
+
+
+class AdminTests(TestCase):
+    """The four admins left after NC1 list and open a row (the Notification list's channel badges once
+    failed: ``format_html`` with no arguments)."""
+
+    def test_the_admins_list_and_open(self):
+        admin = User.objects.create_superuser("root", "root@example.com", "pw-1234-abcd")
+        note = notify(admin, "trip_changed", "Trip changed", "m")
+        self.client.force_login(admin)
+        for name, pk in (("notificationcategory", note.notification_type.category_id),
+                         ("notificationtype", note.notification_type_id), ("notification", note.pk),
+                         ("usernotificationpreference", None)):
+            self.assertEqual(self.client.get(reverse(f"admin:notifications_{name}_changelist")).status_code, 200, name)
+            if pk:
+                url = reverse(f"admin:notifications_{name}_change", args=[pk])
+                self.assertEqual(self.client.get(url).status_code, 200, name)
+        page = self.client.get(reverse("admin:notifications_notification_changelist")).content.decode()
+        self.assertIn(">in_app</span>", page)

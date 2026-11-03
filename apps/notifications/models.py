@@ -1,4 +1,7 @@
 # notifications/models.py
+"""In-app notifications (the bell, /notifications/) and their emails, sent by ``services.notify()``, with a
+per-person, per-kind email switch (``UserNotificationPreference.email_enabled``). Push, SMS, quiet hours,
+frequency, digests and editable templates were never built and were removed (notifications 0006, NC1)."""
 from django.db import models
 from apps.core.models import TimeStampedModel
 from django.conf import settings
@@ -20,12 +23,6 @@ class NotificationCategory(TimeStampedModel):
         max_length=7,
         default='#3B82F6',
         help_text="Hex color code"
-    )
-    
-    # Default settings
-    default_enabled = models.BooleanField(
-        default=True,
-        help_text="Whether this category is enabled by default for new users"
     )
     
     display_order = models.IntegerField(default=0)
@@ -64,36 +61,10 @@ class NotificationType(TimeStampedModel):
         help_text="Description of when this notification is sent"
     )
     
-    # Template
-    title_template = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Template for notification title with variables"
-    )
-    
-    message_template = models.TextField(
-        blank=True,
-        help_text="Template for notification message with variables"
-    )
-    
     # Default settings
     default_email = models.BooleanField(
         default=True,
         help_text="Send email by default"
-    )
-    default_push = models.BooleanField(
-        default=True,
-        help_text="Send push notification by default"
-    )
-    default_in_app = models.BooleanField(
-        default=True,
-        help_text="Show in-app notification by default"
-    )
-    
-    # System settings
-    is_system = models.BooleanField(
-        default=False,
-        help_text="System notification that cannot be disabled"
     )
     
     priority = models.CharField(
@@ -160,8 +131,6 @@ class Notification(TimeStampedModel):
     CHANNEL_CHOICES = [
         ('in_app', 'In-App'),
         ('email', 'Email'),
-        ('push', 'Push Notification'),
-        ('sms', 'SMS')
     ]
     channels = models.JSONField(
         default=list,
@@ -184,19 +153,6 @@ class Notification(TimeStampedModel):
     # Delivery status
     email_sent = models.BooleanField(default=False)
     email_sent_at = models.DateTimeField(null=True, blank=True)
-    email_opened = models.BooleanField(default=False)
-    email_opened_at = models.DateTimeField(null=True, blank=True)
-    
-    push_sent = models.BooleanField(default=False)
-    push_sent_at = models.DateTimeField(null=True, blank=True)
-    
-    # Scheduling
-    scheduled_for = models.DateTimeField(
-        null=True,
-        blank=True,
-        db_index=True,
-        help_text="When notification should be sent (null = send immediately)"
-    )
     
     # Metadata
     metadata = models.JSONField(
@@ -218,7 +174,6 @@ class Notification(TimeStampedModel):
         indexes = [
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['user', 'is_read']),
-            models.Index(fields=['scheduled_for']),
             models.Index(fields=['notification_type', '-created_at']),
         ]
     
@@ -265,41 +220,8 @@ class UserNotificationPreference(TimeStampedModel):
         related_name='user_preferences'
     )
     
-    # Channel preferences
+    # Email on or off for this kind (the unsubscribe link sets it; services.wants_email reads it)
     email_enabled = models.BooleanField(default=True)
-    push_enabled = models.BooleanField(default=True)
-    in_app_enabled = models.BooleanField(default=True)
-    sms_enabled = models.BooleanField(default=False)
-    
-    # Frequency
-    FREQUENCY_CHOICES = [
-        ('instant', 'Instant'),
-        ('hourly', 'Hourly Digest'),
-        ('daily', 'Daily Digest'),
-        ('weekly', 'Weekly Digest'),
-        ('never', 'Never')
-    ]
-    frequency = models.CharField(
-        max_length=20,
-        choices=FREQUENCY_CHOICES,
-        default='instant'
-    )
-    
-    # Quiet hours
-    quiet_hours_enabled = models.BooleanField(
-        default=False,
-        help_text="Don't send notifications during quiet hours"
-    )
-    quiet_hours_start = models.TimeField(
-        null=True,
-        blank=True,
-        help_text="Start of quiet hours"
-    )
-    quiet_hours_end = models.TimeField(
-        null=True,
-        blank=True,
-        help_text="End of quiet hours"
-    )
     
     class Meta:
         db_table = 'user_notification_preferences'
@@ -308,154 +230,3 @@ class UserNotificationPreference(TimeStampedModel):
     
     def __str__(self):
         return f"{self.user.username} - {self.notification_type.display_name}"
-
-
-class NotificationDigest(TimeStampedModel):
-    """Track digest notifications that have been sent"""
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='notification_digests'
-    )
-    
-    DIGEST_TYPES = [
-        ('hourly', 'Hourly'),
-        ('daily', 'Daily'),
-        ('weekly', 'Weekly')
-    ]
-    digest_type = models.CharField(
-        max_length=20,
-        choices=DIGEST_TYPES
-    )
-    
-    # Period covered
-    period_start = models.DateTimeField()
-    period_end = models.DateTimeField()
-    
-    # Content
-    notification_count = models.IntegerField(
-        default=0,
-        help_text="Number of notifications included"
-    )
-    
-    # Status
-    is_sent = models.BooleanField(default=False)
-    sent_at = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        db_table = 'notification_digests'
-        ordering = ['-period_end']
-        indexes = [
-            models.Index(fields=['user', 'digest_type']),
-            models.Index(fields=['is_sent', 'period_end']),
-        ]
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.digest_type} digest ({self.period_start.date()})"
-
-
-class NotificationTemplate(TimeStampedModel):
-    """Email/push templates for notifications"""
-    
-    notification_type = models.ForeignKey(
-        NotificationType,
-        on_delete=models.CASCADE,
-        related_name='templates'
-    )
-    
-    TEMPLATE_TYPES = [
-        ('email_subject', 'Email Subject'),
-        ('email_html', 'Email HTML Body'),
-        ('email_text', 'Email Text Body'),
-        ('push_title', 'Push Notification Title'),
-        ('push_body', 'Push Notification Body'),
-        ('in_app', 'In-App Notification')
-    ]
-    template_type = models.CharField(
-        max_length=20,
-        choices=TEMPLATE_TYPES
-    )
-    
-    content = models.TextField(
-        help_text="Template content with variables like {{user_name}}, {{trip_title}}"
-    )
-    
-    # Version control
-    version = models.IntegerField(default=1)
-    is_active = models.BooleanField(default=True)
-    
-    # Variables documentation
-    available_variables = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of available template variables"
-    )
-    
-    class Meta:
-        db_table = 'notification_templates'
-        unique_together = [['notification_type', 'template_type', 'version']]
-        ordering = ['notification_type', 'template_type', '-version']
-    
-    def __str__(self):
-        return f"{self.notification_type.display_name} - {self.template_type} (v{self.version})"
-
-
-class PushDevice(TimeStampedModel):
-    """User devices registered for push notifications"""
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='push_devices'
-    )
-    
-    DEVICE_TYPES = [
-        ('ios', 'iOS'),
-        ('android', 'Android'),
-        ('web', 'Web Browser')
-    ]
-    device_type = models.CharField(
-        max_length=20,
-        choices=DEVICE_TYPES
-    )
-    
-    # Device identifiers
-    device_token = models.CharField(
-        max_length=500,
-        unique=True,
-        help_text="Push notification token"
-    )
-    
-    device_name = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="User-friendly device name"
-    )
-    
-    # Device info
-    app_version = models.CharField(max_length=50, blank=True)
-    os_version = models.CharField(max_length=50, blank=True)
-    
-    # Status
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Whether device should receive notifications"
-    )
-    
-    last_used_at = models.DateTimeField(
-        auto_now=True,
-        help_text="Last time this device was used"
-    )
-    
-    class Meta:
-        db_table = 'push_devices'
-        ordering = ['user', '-last_used_at']
-        indexes = [
-            models.Index(fields=['user', 'is_active']),
-            models.Index(fields=['device_token']),
-        ]
-    
-    def __str__(self):
-        device_name = self.device_name or f"{self.device_type} device"
-        return f"{self.user.username}'s {device_name}"
