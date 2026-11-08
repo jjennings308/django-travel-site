@@ -47,10 +47,16 @@ docker exec postgres pg_dump -U "$DEV_USER" -Fc "$DEV_DB" > "$DEV_DUMP" 2>>"$LOG
   || { rm -f "$DEV_DUMP"; fail "could not back up dev (is the postgres container running?); dev left unchanged"; }
 chmod 600 "$DEV_DUMP"
 
-# 3. Restore production into dev. The only expected message is Postgres 17's
-#    transaction_timeout setting, unknown to dev's Postgres 16.
+# 3. Restore production into dev. Empty dev's schema first: --clean only drops
+#    what is in the dump, and tables from dev-only migrations (e.g. push_devices
+#    -> users) block those drops. Step 4's migrate puts the dev-only tables back.
+#    The only expected restore message is Postgres 17's transaction_timeout
+#    setting, unknown to dev's Postgres 16.
+docker exec postgres psql -U "$DEV_USER" -d "$DEV_DB" -v ON_ERROR_STOP=1 -q \
+  -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' >>"$LOG" 2>&1 \
+  || fail "could not empty dev before restore (dev backup: $DEV_DUMP)"
 ERRORS=$(PGPASSWORD="$(envval POSTGRES_PASSWORD)" pg_restore -h "$(envval POSTGRES_HOST)" -p "$(envval POSTGRES_PORT)" \
-  -U "$DEV_USER" -d "$DEV_DB" --clean --if-exists --no-owner --no-privileges "$PROD_DUMP" 2>&1 \
+  -U "$DEV_USER" -d "$DEV_DB" --no-owner --no-privileges "$PROD_DUMP" 2>&1 \
   | grep -v -e 'transaction_timeout' -e '^$' -e 'errors ignored on restore: 1$')
 [ -z "$ERRORS" ] || { printf '%s\n' "$ERRORS" >> "$LOG"; fail "restore reported errors (dev backup: $DEV_DUMP)"; }
 
