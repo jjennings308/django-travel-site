@@ -10,9 +10,11 @@ amount but how — the rate, its date and its source — so pages can show "≈"
 date with no rate on or before it (a future trip), or more than ``STALE_DAYS`` after the last rate,
 uses the latest rate and says so. An unknown currency gives None, never a guess.
 """
+
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import date as date_cls, timedelta
+from datetime import date as date_cls
+from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from urllib.request import Request, urlopen
 
@@ -31,7 +33,9 @@ class RatesError(Exception):
 
 def fetch(feed="daily", timeout=20):
     """The ECB XML for ``feed`` (daily / 90d / all), or ``RatesError``."""
-    request = Request(ECB_BASE + FEEDS[feed], headers={"User-Agent": "ShareBucketList rates (+https://sharebucketlist.com)"})
+    request = Request(
+        ECB_BASE + FEEDS[feed], headers={"User-Agent": "ShareBucketList rates (+https://sharebucketlist.com)"}
+    )
     try:
         with urlopen(request, timeout=timeout) as response:  # noqa: S310 - a fixed https URL
             return response.read()
@@ -58,18 +62,23 @@ def parse(xml):
 def store(days):
     """Save parsed rates (new or corrected). Returns how many rows were written."""
     from .models import ExchangeRate
-    rows = [ExchangeRate(date=day, currency=currency, per_euro=rate)
-            for day, rates in days.items() for currency, rate in rates.items()]
-    ExchangeRate.objects.bulk_create(rows, update_conflicts=True, unique_fields=["date", "currency"],
-                                     update_fields=["per_euro"], batch_size=2000)
+
+    rows = [
+        ExchangeRate(date=day, currency=currency, per_euro=rate)
+        for day, rates in days.items()
+        for currency, rate in rates.items()
+    ]
+    ExchangeRate.objects.bulk_create(
+        rows, update_conflicts=True, unique_fields=["date", "currency"], update_fields=["per_euro"], batch_size=2000
+    )
     return len(rows)
 
 
 @dataclass(frozen=True)
 class Conversion:
-    amount: Decimal       # converted, to the cent
-    rate: Decimal         # 1 from = rate to
-    source: str           # "trip" (an editor's rate), "ECB", or "same"
+    amount: Decimal  # converted, to the cent
+    rate: Decimal  # 1 from = rate to
+    source: str  # "trip" (an editor's rate), "ECB", or "same"
     rate_date: object = None  # the ECB day used
     latest: bool = False  # True when the day's own rate wasn't there and the latest was used
 
@@ -87,6 +96,7 @@ class Rates:
 
     def __init__(self, currencies, dates=(), overrides=None):
         from .models import ExchangeRate
+
         self.overrides = {(a.upper(), b.upper()): Decimal(r) for (a, b), r in (overrides or {}).items()}
         wanted = {c.upper() for c in currencies if c} - {"EUR"}
         self.table = {}  # currency -> [(date, per_euro)] newest first
@@ -95,8 +105,11 @@ class Rates:
         today = timezone.localdate()
         known = [d for d in dates if d]
         low = min(known + [today]) - timedelta(days=14)  # no upper bound: there are no future rates
-        rows = (ExchangeRate.objects.filter(currency__in=wanted, date__gte=low)
-                .order_by("currency", "-date").values_list("currency", "date", "per_euro"))
+        rows = (
+            ExchangeRate.objects.filter(currency__in=wanted, date__gte=low)
+            .order_by("currency", "-date")
+            .values_list("currency", "date", "per_euro")
+        )
         for currency, day, per_euro in rows:
             self.table.setdefault(currency, []).append((day, per_euro))
 
@@ -131,5 +144,6 @@ class Rates:
         if from_euro is None or to_euro is None:
             return None
         rate = to_euro / from_euro
-        return Conversion((amount * rate).quantize(CENT, ROUND_HALF_UP), rate, "ECB",
-                          from_day or to_day, from_latest or to_latest)
+        return Conversion(
+            (amount * rate).quantize(CENT, ROUND_HALF_UP), rate, "ECB", from_day or to_day, from_latest or to_latest
+        )

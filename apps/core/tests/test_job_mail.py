@@ -3,6 +3,7 @@
 
 The shell parts run against a fake app (a ``manage.py`` and a ``.venv/bin/python`` that records what it was asked
 to send) or a fake ``sendmail`` on PATH, so nothing is mailed and nothing outside a temporary folder is touched."""
+
 import io
 import os
 import shutil
@@ -27,9 +28,11 @@ ADMINS = ["James <james@example.com>"]
 class ReportTests(TestCase):
     def test_sends_to_admins_with_the_job_prefix(self):
         self.assertTrue(job_mail.report("Backup  failed", "Last lines…"))
-        message, = mail.outbox
-        self.assertEqual((message.subject, message.to, message.from_email, message.body),
-                         ("[ShareBucketList job] Backup failed", ADMINS, "alerts@example.com", "Last lines…"))
+        (message,) = mail.outbox
+        self.assertEqual(
+            (message.subject, message.to, message.from_email, message.body),
+            ("[ShareBucketList job] Backup failed", ADMINS, "alerts@example.com", "Last lines…"),
+        )
 
     @override_settings(ADMINS=[])
     def test_nobody_to_send_to(self):
@@ -44,13 +47,17 @@ class ReportTests(TestCase):
     def test_notify_admins_reads_stdin(self):
         with mock.patch("sys.stdin", io.StringIO("line one\nline two\n")):
             call_command("notify_admins", "--subject", "sync failed", stdout=StringIO(), stderr=StringIO())
-        self.assertEqual((mail.outbox[0].subject, mail.outbox[0].body),
-                         ("[ShareBucketList job] sync failed", "line one\nline two\n"))
+        self.assertEqual(
+            (mail.outbox[0].subject, mail.outbox[0].body), ("[ShareBucketList job] sync failed", "line one\nline two\n")
+        )
 
     def test_notify_admins_exits_0_when_mail_fails(self):
         err = StringIO()
-        with mock.patch("apps.core.job_mail.send_mail", side_effect=OSError("SMTP down")), \
-                mock.patch("sys.stdin", io.StringIO("x")), self.assertLogs("apps.core.job_mail", "WARNING"):
+        with (
+            mock.patch("apps.core.job_mail.send_mail", side_effect=OSError("SMTP down")),
+            mock.patch("sys.stdin", io.StringIO("x")),
+            self.assertLogs("apps.core.job_mail", "WARNING"),
+        ):
             call_command("notify_admins", "--subject", "s", stdout=StringIO(), stderr=err)  # no SystemExit
         self.assertIn("Not sent", err.getvalue())
 
@@ -66,8 +73,10 @@ class ShellFixture(SimpleTestCase):
         (self.app / ".venv" / "bin").mkdir(parents=True)
         (self.app / "manage.py").write_text("# fake\n")
         python = self.app / ".venv" / "bin" / "python"
-        python.write_text(f'#!/usr/bin/env bash\n{{ echo "ARGS: $*"; echo "SETTINGS: ${{DJANGO_SETTINGS_MODULE:-}}"; '
-                          f'cat; echo "--"; }} >> "{self.tmp}/sent.txt"\n')
+        python.write_text(
+            f'#!/usr/bin/env bash\n{{ echo "ARGS: $*"; echo "SETTINGS: ${{DJANGO_SETTINGS_MODULE:-}}"; '
+            f'cat; echo "--"; }} >> "{self.tmp}/sent.txt"\n'
+        )
         python.chmod(python.stat().st_mode | stat.S_IEXEC)
         self.logs = self.tmp / "logs"
 
@@ -85,7 +94,7 @@ class RunJobTests(ShellFixture):
         result = self.run_job("recount", "--", "bash", "-c", "echo counted 12")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.sent(), "")
-        log, = (self.logs / "recount").glob("*.log")
+        (log,) = (self.logs / "recount").glob("*.log")
         self.assertIn("counted 12", log.read_text())
 
     def test_a_failure_is_reported_with_the_last_lines(self):
@@ -109,8 +118,12 @@ class RunJobTests(ShellFixture):
         self.assertEqual(self.sent(), "")
 
     def test_the_settings_reach_the_report(self):
-        env = {**os.environ, "SBL_APP": str(self.app), "SBL_JOB_LOGS": str(self.logs),
-               "DJANGO_SETTINGS_MODULE": "config.settings.prod"}
+        env = {
+            **os.environ,
+            "SBL_APP": str(self.app),
+            "SBL_JOB_LOGS": str(self.logs),
+            "DJANGO_SETTINGS_MODULE": "config.settings.prod",
+        }
         subprocess.run(["bash", str(SCRIPTS / "run_job.sh"), "x", "--", "false"], env=env, capture_output=True)
         self.assertIn("SETTINGS: config.settings.prod", self.sent())
 
@@ -124,8 +137,12 @@ class FailTests(ShellFixture):
         env = {**os.environ, "APP": str(self.app), "LOG": str(self.tmp / "script.log")}
         if path is not None:
             env["PATH"] = path
-        return subprocess.run(["bash", "-c", f'. "{SCRIPTS / "lib" / "sbl_common.sh"}"; {script}'],
-                              capture_output=True, text=True, env=env)
+        return subprocess.run(
+            ["bash", "-c", f'. "{SCRIPTS / "lib" / "sbl_common.sh"}"; {script}'],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
 
     def test_fail_emails_the_log_tail_and_exits_1(self):
         (self.tmp / "script.log").write_text("earlier line\n")
@@ -142,10 +159,13 @@ class FailTests(ShellFixture):
         bin_dir = self.tmp / "bin"
         bin_dir.mkdir()
         sendmail = bin_dir / "sendmail"
-        sendmail.write_text(f'#!/usr/bin/env bash\necho "SENDMAIL $*" >> "{self.tmp}/sent.txt"; cat >> "{self.tmp}/sent.txt"\n')
+        sendmail.write_text(
+            f'#!/usr/bin/env bash\necho "SENDMAIL $*" >> "{self.tmp}/sent.txt"; cat >> "{self.tmp}/sent.txt"\n'
+        )
         sendmail.chmod(sendmail.stat().st_mode | stat.S_IEXEC)
-        result = self.run_bash('echo "backup broke" | sbl_notify "backup failed"; sbl_notify_how',
-                               path=f"{bin_dir}:{os.environ['PATH']}")
+        result = self.run_bash(
+            'echo "backup broke" | sbl_notify "backup failed"; sbl_notify_how', path=f"{bin_dir}:{os.environ['PATH']}"
+        )
         self.assertEqual(result.stdout.strip().splitlines()[-1], "sendmail")
         sent = self.sent()
         self.assertIn("SENDMAIL -t", sent)

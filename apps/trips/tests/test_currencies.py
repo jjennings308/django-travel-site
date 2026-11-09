@@ -1,5 +1,6 @@
 """Currency choices on a trip's forms: the trip's home currency, then the local ones, then Other…
 (docs/plans/edit-by-day.md, E4)."""
+
 import importlib
 from datetime import date, timedelta
 from decimal import Decimal
@@ -21,19 +22,44 @@ User = get_user_model()
 
 
 def country(name, iso, code):
-    return Country.objects.create(name=name, slug=iso.lower(), iso_code=iso, iso3_code=iso + "X", continent="Europe",
-                                  currency_code=code, approval_status=ApprovalStatus.APPROVED)
+    return Country.objects.create(
+        name=name,
+        slug=iso.lower(),
+        iso_code=iso,
+        iso3_code=iso + "X",
+        continent="Europe",
+        currency_code=code,
+        approval_status=ApprovalStatus.APPROVED,
+    )
 
 
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        de, gb, us = country("Germany", "DE", "EUR"), country("United Kingdom", "GB", "GBP"), country("United States", "US", "USD")
-        city = lambda name, c: City.objects.create(name=name, slug=name.lower(), country=c, latitude=0, longitude=0,  # noqa: E731
-                                                   approval_status=ApprovalStatus.APPROVED)
+        de, gb, us = (
+            country("Germany", "DE", "EUR"),
+            country("United Kingdom", "GB", "GBP"),
+            country("United States", "US", "USD"),
+        )
+
+        def city(name, c):
+            return City.objects.create(
+                name=name,
+                slug=name.lower(),
+                country=c,
+                latitude=0,
+                longitude=0,
+                approval_status=ApprovalStatus.APPROVED,
+            )
+
         self.munich, self.london, self.pittsburgh = city("Munich", de), city("London", gb), city("Pittsburgh", us)
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 22),
-                                        created_by=self.editor, home_currency="USD")
+        self.trip = Trip.objects.create(
+            name="Europe",
+            start_date=date(2027, 9, 17),
+            end_date=date(2027, 9, 22),
+            created_by=self.editor,
+            home_currency="USD",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.trip.cities.set([self.munich, self.london])
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 17), city=self.munich)
@@ -46,10 +72,15 @@ class Fixture(TestCase):
 class HomeCurrencyTests(Fixture):
     def test_a_new_trip_takes_its_creators_currency(self):
         AccountSettings.objects.update_or_create(user=self.editor, defaults={"preferred_currency": "eur"})
-        self.assertEqual(Trip.objects.create(name="x", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2),
-                                             created_by=self.editor).home_currency, "EUR")
-        self.assertEqual(Trip.objects.create(name="y", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
-                         .home_currency, "USD")  # no creator: USD
+        self.assertEqual(
+            Trip.objects.create(
+                name="x", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2), created_by=self.editor
+            ).home_currency,
+            "EUR",
+        )
+        self.assertEqual(
+            Trip.objects.create(name="y", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2)).home_currency, "USD"
+        )  # no creator: USD
         form = TripForm(user=self.editor)
         self.assertEqual(form.initial["home_currency"], "EUR")
 
@@ -87,8 +118,14 @@ class ChoiceTests(Fixture):
         self.assertEqual(self.codes(form), ["USD", "EUR", "GBP"])
 
     def test_an_odd_stored_code_is_shown_and_kept(self):
-        stay = Lodging.objects.create(trip=self.trip, name="Inn", city=self.munich, check_in=self.day.date,
-                                      check_out=self.day.date + timedelta(days=1), currency="SEK")
+        stay = Lodging.objects.create(
+            trip=self.trip,
+            name="Inn",
+            city=self.munich,
+            check_in=self.day.date,
+            check_out=self.day.date + timedelta(days=1),
+            currency="SEK",
+        )
         form = LodgingForm(instance=stay)
         self.assertEqual(self.codes(form), ["USD", "EUR", "SEK"])
         self.assertIn('<option value="SEK" selected>', form["currency"].as_widget())
@@ -97,8 +134,18 @@ class ChoiceTests(Fixture):
 class SavingTests(Fixture):
     def post_stay(self, **currency):
         self.client.force_login(self.editor)
-        data = {"name": "Hotel", "address": "", "city": self.munich.pk, "latitude": "", "longitude": "",
-                "check_in": "2027-09-17", "check_out": "2027-09-18", "nightly_rate": "", "notes": "", **currency}
+        data = {
+            "name": "Hotel",
+            "address": "",
+            "city": self.munich.pk,
+            "latitude": "",
+            "longitude": "",
+            "check_in": "2027-09-17",
+            "check_out": "2027-09-18",
+            "nightly_rate": "",
+            "notes": "",
+            **currency,
+        }
         return self.client.post(reverse("trips:stay_new", args=[self.trip.pk, self.day.pk]), data)
 
     def test_other_accepts_a_typed_code(self):
@@ -116,8 +163,10 @@ class SavingTests(Fixture):
 
     def test_quick_add_legs_start_on_the_local_currency(self):
         self.client.force_login(self.editor)
-        self.client.post(reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]),
-                         {"origin": "Munich", "destination": "Munich", "mode": "train"})
+        self.client.post(
+            reverse("trips:leg_quick_add", args=[self.trip.pk, self.day.pk]),
+            {"origin": "Munich", "destination": "Munich", "mode": "train"},
+        )
         self.assertEqual(TransportLeg.objects.get().currency, "EUR")
 
 
@@ -131,8 +180,13 @@ class RatesTests(Fixture):
         return response, len(ctx.captured_queries)
 
     def test_rate_selects_offer_the_trips_currencies_without_a_query_per_row(self):
-        Lodging.objects.create(trip=self.trip, name="Inn", check_in=self.day.date,
-                               check_out=self.day.date + timedelta(days=1), currency="GBP")
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Inn",
+            check_in=self.day.date,
+            check_out=self.day.date + timedelta(days=1),
+            currency="GBP",
+        )
         TripRate.objects.create(trip=self.trip, from_currency="EUR", to_currency="USD", rate=Decimal("1.1"))
         response, one = self.budget_queries()
         form = response.context["rate_formset"].forms[0]

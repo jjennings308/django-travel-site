@@ -1,7 +1,9 @@
 """activities.0010 links free-text suggested_location to catalogue places."""
-from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
+
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 
 # trips 0044 (R18) needs today's activities, so trips is pinned below it.
 TRIPS = ("trips", "0043_alter_comment_author")
@@ -37,19 +39,43 @@ class LinkLocationsMigrationTests(RestoringTransactionTestCase):
         City = apps.get_model("locations", "City")
         user = User.objects.create(username="u", email="u@example.com")
         cat, _ = Category.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
-        germany = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU", continent="Europe")
+        germany = Country.objects.create(
+            name="Germany", slug="germany", iso_code="DE", iso3_code="DEU", continent="Europe"
+        )
         bavaria = Region.objects.create(country=germany, name="Bavaria", slug="bavaria")
-        munich = City.objects.create(name="Munich", slug="munich", country=germany, region=bavaria, latitude=48, longitude=11)
-        make = lambda name, where: Activity.objects.create(category=cat, name=name, slug=name.lower(), description="d",
-                                                           created_by=user, suggested_location=where)
-        okto, berlin, sphere = make("Okto", "Munich, Germany"), make("Wall", "Berlin, Germany"), make("Sphere", "Vegas Sphere")
+        munich = City.objects.create(
+            name="Munich", slug="munich", country=germany, region=bavaria, latitude=48, longitude=11
+        )
+
+        def make(name, where):
+            return Activity.objects.create(
+                category=cat,
+                name=name,
+                slug=name.lower(),
+                description="d",
+                created_by=user,
+                suggested_location=where,
+            )
+
+        okto, berlin, sphere = (
+            make("Okto", "Munich, Germany"),
+            make("Wall", "Berlin, Germany"),
+            make("Sphere", "Vegas Sphere"),
+        )
 
         apps = self.migrate(AFTER)
         Activity = apps.get_model("activities", "Activity")
         okto, berlin, sphere = (Activity.objects.get(pk=a.pk) for a in (okto, berlin, sphere))
-        self.assertEqual((okto.city_id, okto.region_id, okto.country_id, okto.suggested_location), (munich.pk, bavaria.pk, germany.pk, ""))
-        self.assertEqual((berlin.city_id, berlin.country_id, berlin.suggested_location), (None, germany.pk, "Berlin, Germany"))
+        self.assertEqual(
+            (okto.city_id, okto.region_id, okto.country_id, okto.suggested_location),
+            (munich.pk, bavaria.pk, germany.pk, ""),
+        )
+        self.assertEqual(
+            (berlin.city_id, berlin.country_id, berlin.suggested_location), (None, germany.pk, "Berlin, Germany")
+        )
         self.assertEqual((sphere.country_id, sphere.suggested_location), (None, "Vegas Sphere"))
 
         apps = self.migrate(BEFORE)
-        self.assertEqual(apps.get_model("activities", "Activity").objects.get(pk=okto.pk).suggested_location, "Munich, Germany")
+        self.assertEqual(
+            apps.get_model("activities", "Activity").objects.get(pk=okto.pk).suggested_location, "Munich, Germany"
+        )

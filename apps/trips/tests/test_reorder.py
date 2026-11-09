@@ -1,7 +1,9 @@
 """Put the days in a new order (docs/plans/shift-and-reorder-days.md, DR2): ``reschedule.reorder_plan`` / ``reorder``
 and ``trips:trip_reorder`` — the dates stay, days move between them with their contents and journeys, stays move
 only when their nights stay together, warnings (including text naming a day), booking to-dos, one undoable line."""
-from datetime import date, datetime, timezone as dt_timezone
+
+from datetime import date, datetime
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -10,8 +12,22 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.trips import changes, reschedule
-from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, Meal, OptionGroup, Section, TransportLeg,
-                               Traveler, Trip, TripActivity, TripChange, TripGrant, TripRole)
+from apps.trips.models import (
+    BookingTask,
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    OptionGroup,
+    Section,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
+)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -20,23 +36,38 @@ UTC = dt_timezone.utc
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 10), end_date=date(2027, 9, 14),
-                                        created_by=self.editor, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 10),
+            end_date=date(2027, 9, 14),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.ada, self.bo = Traveler.objects.create(name="Ada"), Traveler.objects.create(name="Bo")
         self.trip.travelers.set([self.ada, self.bo])
-        self.d = {n: Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 9 + n), theme=f"Theme {n}")
-                  for n in range(1, 6)}
+        self.d = {
+            n: Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 9 + n), theme=f"Theme {n}")
+            for n in range(1, 6)
+        }
         # 10:15 CEST on Sep 11 (Day 2).
         self.train = TransportLeg.objects.create(
-            trip=self.trip, mode="train", origin="Augsburg", destination="Munich", origin_timezone="Europe/Berlin",
-            destination_timezone="Europe/Berlin", departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
-            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC))
-        self.planned = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Munich", destination="Füssen",
-                                                   date=date(2027, 9, 13))  # Day 4
+            trip=self.trip,
+            mode="train",
+            origin="Augsburg",
+            destination="Munich",
+            origin_timezone="Europe/Berlin",
+            destination_timezone="Europe/Berlin",
+            departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
+            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC),
+        )
+        self.planned = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Munich", destination="Füssen", date=date(2027, 9, 13)
+        )  # Day 4
         # Three nights on Days 2–4.
-        self.hotel = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 11),
-                                            check_out=date(2027, 9, 14))
+        self.hotel = Lodging.objects.create(
+            trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 11), check_out=date(2027, 9, 14)
+        )
         self.client.force_login(self.editor)
 
     def pks(self, *numbers):
@@ -80,13 +111,16 @@ class ReorderTests(Fixture):
         self.assertEqual(self.train.date, date(2027, 9, 12))
 
     def test_the_plan_lists_the_split_stay_bookings_and_text_naming_a_day(self):
-        Section.objects.create(day=self.d[3], section_type="note", title="Plan",
-                               content={"paragraphs": ["Same as Day 3 last year."]})
+        Section.objects.create(
+            day=self.d[3], section_type="note", title="Plan", content={"paragraphs": ["Same as Day 3 last year."]}
+        )
         Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
         Confirmation.objects.create(trip=self.trip, confirmation_number="STAY1").link(self.hotel)
         plan = reschedule.reorder_plan(self.trip, self.pks(1, 3, 2, 4, 5))
-        self.assertEqual([row["text"] for row in plan["kept_stays"]], ["Hotel Laimer Hof (Sep 11–14) now covers Day 2 — Theme 3, "
-                                              "Day 3 — Theme 2 and Day 4 — Theme 4: check it"])
+        self.assertEqual(
+            [row["text"] for row in plan["kept_stays"]],
+            ["Hotel Laimer Hof (Sep 11–14) now covers Day 2 — Theme 3, Day 3 — Theme 2 and Day 4 — Theme 4: check it"],
+        )
         self.assertEqual([row["confirmation"].confirmation_number for row in plan["booked"]], ["GCH7JS"])
         self.assertEqual(plan["slips"], ["Plan on Day 2 says “Day 3”: “Same as Day 3 last year.”"])
         self.assertEqual(plan["summary"], "Reordered days: Sep 11 Theme 3, Sep 12 Theme 2")
@@ -142,13 +176,17 @@ class PageTests(Fixture):
         self.assertIn("Hotel Laimer Hof (Sep 11–14) now covers", preview)
         self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 11))  # nothing saved
         response = self.client.post(self.url(), {"order": order, "action": "apply"})
-        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]) + "#days",
-                             fetch_redirect_response=False)
+        self.assertRedirects(
+            response, reverse("trips:trip_detail", args=[self.trip.pk]) + "#days", fetch_redirect_response=False
+        )
         self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 12))
 
     def test_position_boxes_win_without_javascript(self):
-        data = {"order": self.pks(1, 2, 3, 4, 5), "action": "apply",
-                **{f"pos_{self.d[n].pk}": str(p) for n, p in ((1, 2), (2, 1), (3, 3), (4, 4), (5, 5))}}
+        data = {
+            "order": self.pks(1, 2, 3, 4, 5),
+            "action": "apply",
+            **{f"pos_{self.d[n].pk}": str(p) for n, p in ((1, 2), (2, 1), (3, 3), (4, 4), (5, 5))},
+        }
         self.client.post(self.url(), data)
         self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 10))
 
@@ -178,7 +216,8 @@ class PageTests(Fixture):
         TripGrant.objects.create(trip=self.trip, user=viewer, role=TripRole.VIEWER)
         self.client.force_login(viewer)
         self.assertEqual(self.client.get(self.url()).status_code, 403)
-        self.assertNotIn("data-reorder-link", self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
-                         .content.decode())
+        self.assertNotIn(
+            "data-reorder-link", self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
+        )
         self.client.force_login(User.objects.create_user("st", "st@example.com", "pw-1234-abcd"))
         self.assertEqual(self.client.get(self.url()).status_code, 404)

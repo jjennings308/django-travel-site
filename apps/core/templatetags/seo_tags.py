@@ -1,5 +1,6 @@
 """``{{ data|jsonld }}``: a dict as a ``<script type="application/ld+json">`` block (site roadmap R22),
 escaped like ``json_script`` so a name containing ``</script>`` can't break out."""
+
 import json
 
 from django import template

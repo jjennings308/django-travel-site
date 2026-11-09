@@ -1,4 +1,5 @@
 """Tickets and documents on confirmations (site roadmap R5)."""
+
 import io
 import os
 import shutil
@@ -37,13 +38,18 @@ class FilesFixture(TestCase):
         self.commentor = User.objects.create_user("co", "co@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 4),
-                                        created_by=self.editor)
-        for user, role in ((self.editor, TripRole.EDITOR), (self.commentor, TripRole.COMMENTOR),
-                           (self.viewer, TripRole.VIEWER)):
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 4), created_by=self.editor
+        )
+        for user, role in (
+            (self.editor, TripRole.EDITOR),
+            (self.commentor, TripRole.COMMENTOR),
+            (self.viewer, TripRole.VIEWER),
+        ):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
-        self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Roma", check_in=date(2027, 5, 1),
-                                           check_out=date(2027, 5, 4))
+        self.stay = Lodging.objects.create(
+            trip=self.trip, name="Hotel Roma", check_in=date(2027, 5, 1), check_out=date(2027, 5, 4)
+        )
         self.confirmation = Confirmation.attach_number(self.trip, "ROMA1", self.stay, provider="Booking.com")
         self.add_url = reverse("trips:confirmation_file_add", args=[self.trip.pk, self.confirmation.pk])
 
@@ -57,8 +63,11 @@ class FilesFixture(TestCase):
 
 class UploadTests(FilesFixture):
     def test_pdf_png_jpeg(self):
-        for name, content, kind in (("pass.pdf", PDF, "application/pdf"), ("map.png", image_bytes("PNG"), "image/png"),
-                                    ("ticket.jpeg", image_bytes("JPEG"), "image/jpeg")):
+        for name, content, kind in (
+            ("pass.pdf", PDF, "application/pdf"),
+            ("map.png", image_bytes("PNG"), "image/png"),
+            ("ticket.jpeg", image_bytes("JPEG"), "image/jpeg"),
+        ):
             self.upload(name, content)
             record = ConfirmationFile.objects.get(original_name__startswith=os.path.splitext(name)[0])
             self.assertEqual(record.content_type, kind)
@@ -149,8 +158,9 @@ class DownloadAndDeleteTests(FilesFixture):
         other = Trip.objects.create(name="Paris", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         TripGrant.objects.create(trip=other, user=self.viewer, role=TripRole.VIEWER)
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.get(reverse("trips:confirmation_file", args=[other.pk, self.record.pk])).status_code,
-                         404)
+        self.assertEqual(
+            self.client.get(reverse("trips:confirmation_file", args=[other.pk, self.record.pk])).status_code, 404
+        )
 
     def test_remove_deletes_the_stored_file(self):
         path = self.record.file.path

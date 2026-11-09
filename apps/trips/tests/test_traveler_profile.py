@@ -15,8 +15,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import TripRole
-from apps.trips.models import RewardsMembership, Traveler, Trip, TripGrant
+from apps.trips.models import RewardsMembership, Traveler, Trip, TripGrant, TripRole
 from apps.trips.public import public_trip
 
 User = get_user_model()
@@ -25,9 +24,7 @@ URL = reverse("trips:traveler_profile")
 
 
 def make_user(username, **kwargs):
-    return User.objects.create_user(
-        username, f"{username}@example.com", "pw-1234-abcd", **kwargs
-    )
+    return User.objects.create_user(username, f"{username}@example.com", "pw-1234-abcd", **kwargs)
 
 
 def profile_payload(rows=1, initial=0, **overrides):
@@ -89,9 +86,7 @@ class ProfilePageTests(TestCase):
         self.assertContains(response, "TT1234567")
 
     def test_saving_updates_the_profile_and_normalises_codes(self):
-        response = self.client.post(
-            URL, profile_payload(known_traveler_number="TT1", passport_expires="2031-05-01")
-        )
+        response = self.client.post(URL, profile_payload(known_traveler_number="TT1", passport_expires="2031-05-01"))
         self.assertRedirects(response, URL)
         self.traveler.refresh_from_db()
         self.assertEqual(self.traveler.seat_preference, "aisle")
@@ -182,9 +177,7 @@ class ProfilePageTests(TestCase):
         self.assertFalse(RewardsMembership.objects.exists())
 
     def test_the_formset_summary_does_not_show_the_member_number(self):
-        RewardsMembership.objects.create(
-            traveler=self.traveler, program="Hilton Honors", member_number="55443322"
-        )
+        RewardsMembership.objects.create(traveler=self.traveler, program="Hilton Honors", member_number="55443322")
         response = self.client.get(URL)
         # The number is in its input (it is the person's own page), but the
         # one-line row summary is __str__, which must not carry it.
@@ -237,18 +230,14 @@ class NoSidewaysLeakTests(TestCase):
         traveler.known_traveler_number = "TT1234567"
         traveler.passport_number = "X12345678"
         traveler.save()
-        RewardsMembership.objects.create(
-            traveler=traveler, program="Delta SkyMiles", member_number="9988776655"
-        )
+        RewardsMembership.objects.create(traveler=traveler, program="Delta SkyMiles", member_number="9988776655")
         self.trip = Trip.objects.create(
             name="Shared",
             start_date=date(2026, 9, 12),
             end_date=date(2026, 9, 19),
         )
         self.trip.travelers.add(traveler, Traveler.objects.get(user=self.bob))
-        TripGrant.objects.create(
-            trip=self.trip, user=self.bob, role=TripRole.EDITOR, granted_by=admin
-        )
+        TripGrant.objects.create(trip=self.trip, user=self.bob, role=TripRole.EDITOR, granted_by=admin)
 
     def test_the_trip_page_shows_the_name_not_the_numbers(self):
         self.client.force_login(self.bob)
@@ -268,23 +257,15 @@ class DedupeMembershipTests(TestCase):
     def setUp(self):
         self.donor = Traveler.objects.create(name="Debbie", redress_number="R1")
         self.keeper = Traveler.objects.create(name="Debbie Fowler")
-        RewardsMembership.objects.create(
-            traveler=self.donor, program="Delta SkyMiles", member_number="D-1"
-        )
-        RewardsMembership.objects.create(
-            traveler=self.donor, program="Hilton Honors", member_number="D-2"
-        )
-        RewardsMembership.objects.create(
-            traveler=self.keeper, program="Hilton Honors", member_number="K-2"
-        )
+        RewardsMembership.objects.create(traveler=self.donor, program="Delta SkyMiles", member_number="D-1")
+        RewardsMembership.objects.create(traveler=self.donor, program="Hilton Honors", member_number="D-2")
+        RewardsMembership.objects.create(traveler=self.keeper, program="Hilton Honors", member_number="K-2")
 
     def test_programs_move_to_the_keeper_and_the_keeper_wins_a_clash(self):
         out = io.StringIO()
         call_command("dedupe_travelers", apply=True, stdout=out)
         self.assertIn("kept Debbie Fowler's programs: Hilton Honors", out.getvalue())
-        numbers = dict(
-            self.keeper.memberships.values_list("program", "member_number")
-        )
+        numbers = dict(self.keeper.memberships.values_list("program", "member_number"))
         self.assertEqual(numbers, {"Delta SkyMiles": "D-1", "Hilton Honors": "K-2"})
         self.keeper.refresh_from_db()
         self.assertEqual(self.keeper.redress_number, "R1")

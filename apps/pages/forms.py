@@ -1,4 +1,3 @@
-# pages/forms.py
 from django import forms
 
 INPUT = {"class": "sbl-input"}

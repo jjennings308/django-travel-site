@@ -1,5 +1,7 @@
 """The trip calendar feed and its page (site roadmap R4)."""
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -8,7 +10,16 @@ from django.urls import reverse
 from icalendar import Calendar
 
 from apps.trips.models import (
-    Confirmation, Day, Lodging, Meal, TransportLeg, Traveler, Trip, TripActivity, TripCalendarToken, TripGrant,
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripCalendarToken,
+    TripGrant,
     TripRole,
 )
 
@@ -22,31 +33,58 @@ class CalendarFixture(TestCase):
         ContentType.objects.get_for_models(TransportLeg, TripActivity, Meal, Lodging)  # warm, as in production
         self.owner = User.objects.create_user("owner", "owner@example.com", "pw-1234-abcd", first_name="Olive")
         self.viewer = User.objects.create_user("vera", "vera@example.com", "pw-1234-abcd", first_name="Vera")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.owner)
+        self.trip = Trip.objects.create(
+            name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21), created_by=self.owner
+        )
         TripGrant.objects.create(trip=self.trip, user=self.owner, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.olive = Traveler.objects.get(user=self.owner)
         self.vera = Traveler.objects.get(user=self.viewer)
-        self.d1, self.d2, self.d3 = (Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 17 + n))
-                                     for n in range(1, 4))
+        self.d1, self.d2, self.d3 = (
+            Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 17 + n)) for n in range(1, 4)
+        )
         self.flight = TransportLeg.objects.create(
-            trip=self.trip, mode="plane", operator="Lufthansa", service_number="LH 401", origin="JFK",
-            destination="FRA", departure_at=datetime(2027, 9, 18, 22, 0, tzinfo=dt_timezone.utc),
+            trip=self.trip,
+            mode="plane",
+            operator="Lufthansa",
+            service_number="LH 401",
+            origin="JFK",
+            destination="FRA",
+            departure_at=datetime(2027, 9, 18, 22, 0, tzinfo=dt_timezone.utc),
             arrival_at=datetime(2027, 9, 19, 6, 0, tzinfo=dt_timezone.utc),
-            origin_timezone="America/New_York", destination_timezone="Europe/Berlin")
-        self.planned = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Frankfurt Hbf",
-                                                   destination="Augsburg Hbf", date=self.d2.date,
-                                                   est_duration=timedelta(minutes=45))
-        self.tour = TripActivity.objects.create(trip=self.trip, day=self.d2, title="Brewery tour", kind="tour",
-                                                provider="Augustiner", start_time=time(14, 30), place_text="Old town")
+            origin_timezone="America/New_York",
+            destination_timezone="Europe/Berlin",
+        )
+        self.planned = TransportLeg.objects.create(
+            trip=self.trip,
+            mode="train",
+            origin="Frankfurt Hbf",
+            destination="Augsburg Hbf",
+            date=self.d2.date,
+            est_duration=timedelta(minutes=45),
+        )
+        self.tour = TripActivity.objects.create(
+            trip=self.trip,
+            day=self.d2,
+            title="Brewery tour",
+            kind="tour",
+            provider="Augustiner",
+            start_time=time(14, 30),
+            place_text="Old town",
+        )
         self.tour.travelers.add(self.olive)
         self.stroll = TripActivity.objects.create(trip=self.trip, day=self.d3, title="Stroll")
-        self.dinner = Meal.objects.create(day=self.d2, name="Bräustüberl", meal_type="dinner",
-                                          reserved_time=time(19, 0))
+        self.dinner = Meal.objects.create(
+            day=self.d2, name="Bräustüberl", meal_type="dinner", reserved_time=time(19, 0)
+        )
         Meal.objects.create(day=self.d2, name="Idea only", meal_type="lunch")
-        self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Drei Mohren", address="Maximilianstr. 40\nAugsburg",
-                                           check_in=date(2027, 9, 19), check_out=date(2027, 9, 21))
+        self.stay = Lodging.objects.create(
+            trip=self.trip,
+            name="Hotel Drei Mohren",
+            address="Maximilianstr. 40\nAugsburg",
+            check_in=date(2027, 9, 19),
+            check_out=date(2027, 9, 21),
+        )
         Confirmation.attach_number(self.trip, "GCH7JS", self.flight, provider="Lufthansa")
         Confirmation.attach_number(self.trip, "HOTEL-77", self.stay, provider="Booking.com")
 
@@ -65,8 +103,17 @@ class CalendarFixture(TestCase):
 class FeedTests(CalendarFixture):
     def test_every_kind_of_item(self):
         events = self.events(self.feed())
-        self.assertEqual(set(events), {f"leg-{self.flight.pk}", f"leg-{self.planned.pk}", f"activity-{self.tour.pk}",
-                                       f"activity-{self.stroll.pk}", f"meal-{self.dinner.pk}", f"stay-{self.stay.pk}"})
+        self.assertEqual(
+            set(events),
+            {
+                f"leg-{self.flight.pk}",
+                f"leg-{self.planned.pk}",
+                f"activity-{self.tour.pk}",
+                f"activity-{self.stroll.pk}",
+                f"meal-{self.dinner.pk}",
+                f"stay-{self.stay.pk}",
+            },
+        )
 
     def test_legs_in_utc_with_operator_number_and_confirmation(self):
         event = self.events(self.feed())[f"leg-{self.flight.pk}"]
@@ -77,7 +124,9 @@ class FeedTests(CalendarFixture):
         description = str(event["DESCRIPTION"])
         self.assertIn("Lufthansa LH 401", description)
         self.assertIn("Confirmation: GCH7JS (Lufthansa)", description)
-        self.assertIn(f"https://example.test/trips/{self.trip.pk}/?item=leg-{self.flight.pk}#leg-{self.flight.pk}", description)
+        self.assertIn(
+            f"https://example.test/trips/{self.trip.pk}/?item=leg-{self.flight.pk}#leg-{self.flight.pk}", description
+        )
 
     def test_activities_and_meals_are_floating_local_times(self):
         events = self.events(self.feed())
@@ -127,6 +176,7 @@ class FeedTests(CalendarFixture):
         # meals, stays, confirmation links, (day-first plan P4) the undecided groups and their options, and
         # (P5) who takes each option of a split group
         from apps.trips.models import Option, OptionGroup
+
         group = OptionGroup.objects.create(trip=self.trip, day=self.d1, prompt="Afternoon")
         Option.objects.create(group=group, title="Castle")
         with self.assertNumQueries(13):
@@ -175,8 +225,10 @@ class PageTests(CalendarFixture):
         self.assertEqual(TripCalendarToken.objects.filter(trip=self.trip, user=self.viewer).count(), 1)
 
     def test_people_get_different_links(self):
-        self.assertNotEqual(TripCalendarToken.for_user(self.trip, self.viewer).token,
-                            TripCalendarToken.for_user(self.trip, self.owner).token)
+        self.assertNotEqual(
+            TripCalendarToken.for_user(self.trip, self.viewer).token,
+            TripCalendarToken.for_user(self.trip, self.owner).token,
+        )
 
     def test_reset(self):
         self.client.force_login(self.viewer)

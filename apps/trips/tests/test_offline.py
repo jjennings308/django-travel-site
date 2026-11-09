@@ -1,4 +1,5 @@
 """The trip page offline (site roadmap R6): registered only on the trip page, per person."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -15,8 +16,9 @@ class OfflineTripPageTests(TestCase):
     def setUp(self):
         self.ed = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3),
-                                        created_by=self.ed)
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3), created_by=self.ed
+        )
         TripGrant.objects.create(trip=self.trip, user=self.ed, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.vi, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 5, 1))
@@ -35,8 +37,11 @@ class OfflineTripPageTests(TestCase):
         self.assertNotIn(offline_cache_key(self.ed), html)
 
     def test_not_registered_on_other_trip_pages(self):
-        for url in (reverse("trips:trip_settings", args=[self.trip.pk]), reverse("trips:trip_list"),
-                    reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]),
-                    reverse("trips:trip_people", args=[self.trip.pk])):
+        for url in (
+            reverse("trips:trip_settings", args=[self.trip.pk]),
+            reverse("trips:trip_list"),
+            reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]),
+            reverse("trips:trip_people", args=[self.trip.pk]),
+        ):
             with self.subTest(url=url):
                 self.assertNotIn("/sw.js", self.html(url, self.ed))

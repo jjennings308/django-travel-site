@@ -21,23 +21,18 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import TripRole
 from apps.trips.forms import (
     ROW_CELL_SEPARATOR,
     section_payload_form,
-    validate_day_roster,
 )
-from apps.trips.models import BookingTask, Day, Meal, Section, Trip
-
+from apps.trips.models import BookingTask, Day, Meal, Section, Trip, TripRole
 from apps.trips.tests.helpers import give
 
 User = get_user_model()
 
 
 def make_user(username, **kwargs):
-    return User.objects.create_user(
-        username, f"{username}@example.com", "pw-1234-abcd", **kwargs
-    )
+    return User.objects.create_user(username, f"{username}@example.com", "pw-1234-abcd", **kwargs)
 
 
 class DayEditingFixture(TestCase):
@@ -51,17 +46,13 @@ class DayEditingFixture(TestCase):
             end_date=date(2027, 10, 5),
             created_by=self.alice,
         )
-        self.day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2027, 9, 25), theme="Fly to England"
-        )
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 25), theme="Fly to England")
         # The role alone is not access: `visible_to` needs a grant *and* at
         # least viewer, so both have to be set or every test below is a 404.
         self.grant(self.alice, TripRole.EDITOR, trip=self.trip)
 
     def make_trip(self, name="Other trip"):
-        return Trip.objects.create(
-            name=name, start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
-        )
+        return Trip.objects.create(name=name, start_date=date(2027, 1, 1), end_date=date(2027, 1, 5))
 
     def grant(self, user, *roles, trip=None):
         return give(user, *roles, trip=trip, granted_by=self.staff)
@@ -266,9 +257,7 @@ class DayEditTests(DayEditingFixture):
 
     def test_a_day_on_another_trip_is_404(self):
         other = self.make_trip("Taos")
-        theirs = Day.objects.create(
-            trip=other, day_number=1, date=date(2027, 1, 1)
-        )
+        theirs = Day.objects.create(trip=other, day_number=1, date=date(2027, 1, 1))
         self.client.force_login(self.alice)
         url = reverse("trips:day_edit", args=[self.trip.pk, theirs.pk])
         self.assertEqual(self.client.get(url).status_code, 404)
@@ -337,9 +326,7 @@ class SectionViewTests(DayEditingFixture):
         return reverse("trips:section_create", args=[self.trip.pk, self.day.pk, section_type])
 
     def edit_url(self, section=None):
-        return reverse(
-            "trips:section_edit", args=[self.trip.pk, self.day.pk, (section or self.section).pk]
-        )
+        return reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, (section or self.section).pk])
 
     # -- creating ---------------------------------------------------------
 
@@ -398,9 +385,7 @@ class SectionViewTests(DayEditingFixture):
 
     def test_an_invalid_tone_writes_nothing(self):
         self.client.force_login(self.alice)
-        response = self.client.post(
-            self.edit_url(), {"title": "T", "order": "", "tone": "purple", "paragraphs": "x"}
-        )
+        response = self.client.post(self.edit_url(), {"title": "T", "order": "", "tone": "purple", "paragraphs": "x"})
         self.assertEqual(response.status_code, 200)
         self.section.refresh_from_db()
         self.assertEqual(self.section.content["paragraphs"], ["Original text"])
@@ -418,9 +403,7 @@ class SectionViewTests(DayEditingFixture):
         self.assertEqual(self.section.content["paragraphs"], ["Original text"])
 
     def test_a_section_on_another_day_is_404(self):
-        other_day = Day.objects.create(
-            trip=self.trip, day_number=2, date=date(2027, 9, 26)
-        )
+        other_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 26))
         theirs = Section.objects.create(day=other_day, section_type="note", content={})
         self.client.force_login(self.alice)
         url = reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, theirs.pk])
@@ -451,20 +434,14 @@ class UnknownSectionTypeTests(DayEditingFixture):
         # A newer importer can write a type this UI has no form for. The row
         # still renders on the detail page, so refusing would make the day
         # unreachable through the only link that leads to it.
-        section = Section.objects.create(
-            day=self.day, section_type="some_future_type", content={"x": 1}
-        )
+        section = Section.objects.create(day=self.day, section_type="some_future_type", content={"x": 1})
         self.client.force_login(self.alice)
-        response = self.client.get(
-            reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, section.pk])
-        )
+        response = self.client.get(reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, section.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["unsupported_type"], "some_future_type")
 
     def test_an_unknown_type_can_still_have_its_title_edited(self):
-        section = Section.objects.create(
-            day=self.day, section_type="some_future_type", content={"x": 1}
-        )
+        section = Section.objects.create(day=self.day, section_type="some_future_type", content={"x": 1})
         self.client.force_login(self.alice)
         self.client.post(
             reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, section.pk]),
@@ -509,7 +486,13 @@ class LogisticsTableFormTests(TestCase):
             "logistics_table",
             data={
                 "columns": "Leg\nMode\nTime\nNotes",
-                "rows": "1" + ROW_CELL_SEPARATOR + "Train" + ROW_CELL_SEPARATOR + "45 min" + ROW_CELL_SEPARATOR + "window seat",
+                "rows": "1"
+                + ROW_CELL_SEPARATOR
+                + "Train"
+                + ROW_CELL_SEPARATOR
+                + "45 min"
+                + ROW_CELL_SEPARATOR
+                + "window seat",
             },
             content=content,
         )
@@ -546,9 +529,7 @@ class BlankOrderTests(DayEditingFixture):
 
     def test_a_blank_section_order_saves(self):
         self.client.force_login(self.alice)
-        url = reverse(
-            "trips:section_create", args=[self.trip.pk, self.day.pk, Section.Type.NOTE]
-        )
+        url = reverse("trips:section_create", args=[self.trip.pk, self.day.pk, Section.Type.NOTE])
         response = self.client.post(
             url,
             {"title": "Tip", "icon": "", "order": "", "tone": "tip", "paragraphs": "x"},
@@ -605,10 +586,7 @@ class SectionRoundTripTests(TestCase):
         no-op.
         """
         form = section_payload_form(section_type, content=content)
-        data = {
-            name: (field.value() if hasattr(field, "value") else field)
-            for name, field in form.initial.items()
-        }
+        data = {name: (field.value() if hasattr(field, "value") else field) for name, field in form.initial.items()}
         reposted = section_payload_form(section_type, data=data, content=content)
         self.assertTrue(reposted.is_valid(), reposted.errors)
         return reposted.to_content()

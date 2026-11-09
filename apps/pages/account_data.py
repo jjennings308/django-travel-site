@@ -20,6 +20,7 @@ for more than ``GRACE_DAYS`` ago. Purging:
 * then deletes the account: reviews, notes on trips and catalogue items they added stay, with no
   author ("A former member"); everything else of theirs goes with it.
 """
+
 import io
 import json
 import logging
@@ -45,21 +46,57 @@ from apps.media_app.models import Media, MediaAlbum
 from apps.notifications.models import Notification
 from apps.reviews.models import Review
 from apps.trips.models import (
-    BookingTask, Checklist, ChecklistItem, Comment, Confirmation, ConfirmationFile, Day, Lodging, Meal, RewardsMembership,
-    Section, TransportLeg, Traveler, Trip, TripActivity, TripExpense, TripGrant, TripIdea,
+    BookingTask,
+    Checklist,
+    ChecklistItem,
+    Comment,
+    Confirmation,
+    ConfirmationFile,
+    Day,
+    Lodging,
+    Meal,
+    RewardsMembership,
+    Section,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripExpense,
+    TripGrant,
+    TripIdea,
 )
 
 log = logging.getLogger(__name__)
 GRACE_DAYS = 30
 CATALOGUE_PICTURE_MODELS = (Activity, Event, Country, Region, City, POI)
-TRAVELER_PRIVATE = ("home_airport", "dietary_notes", "mobility_notes", "passport_country", "seat_preference",
-                    "cabin_preference", "bed_preference", "meal_preference", "known_traveler_number",
-                    "redress_number", "passport_number", "passport_expires")
-USER_FIELDS = ("username", "email", "first_name", "last_name", "date_joined", "last_login", "is_verified",
-               "profile_visibility")
+TRAVELER_PRIVATE = (
+    "home_airport",
+    "dietary_notes",
+    "mobility_notes",
+    "passport_country",
+    "seat_preference",
+    "cabin_preference",
+    "bed_preference",
+    "meal_preference",
+    "known_traveler_number",
+    "redress_number",
+    "passport_number",
+    "passport_expires",
+)
+USER_FIELDS = (
+    "username",
+    "email",
+    "first_name",
+    "last_name",
+    "date_joined",
+    "last_login",
+    "is_verified",
+    "profile_visibility",
+)
 
 
 # ------------------------------------------------------------------------------- download
+
 
 def _rows(queryset, exclude=()):
     """Plain dicts for a queryset (Django's serializer), minus ``exclude`` fields."""
@@ -93,20 +130,40 @@ def _trip_rows(trip):
 
 def _cost_rows(trip):
     """The trip's recorded costs (budget-estimates B3): who paid and shared by name, and what each was for."""
-    return [{"id": e.pk, "date": e.spent_on, "description": e.description, "category": e.get_category_display(),
-             "amount": e.amount, "currency": e.currency, "paid_by": e.paid_by.name,
-             "shared_with": [t.name for t in e.shared_with.all()] or ["everyone"], "for": e.for_label,
-             "notes": e.notes}
-            for e in TripExpense.objects.filter(trip=trip).select_related("paid_by").prefetch_related("shared_with")]
+    return [
+        {
+            "id": e.pk,
+            "date": e.spent_on,
+            "description": e.description,
+            "category": e.get_category_display(),
+            "amount": e.amount,
+            "currency": e.currency,
+            "paid_by": e.paid_by.name,
+            "shared_with": [t.name for t in e.shared_with.all()] or ["everyone"],
+            "for": e.for_label,
+            "notes": e.notes,
+        }
+        for e in TripExpense.objects.filter(trip=trip).select_related("paid_by").prefetch_related("shared_with")
+    ]
 
 
 def _todo_rows(trip):
     """The trip's to-dos, each with what it covers by label (booking-todos K1: a to-do may cover several)."""
     from apps.trips.booking_tasks import label
-    return [{"id": task.pk, "title": task.title, "priority": task.get_priority_display(), "due": task.due,
-             "due_note": task.due_note, "done": task.done, "notes": task.visible_notes,
-             "covers": [label(item) for item in task.covered()]}
-            for task in BookingTask.objects.filter(trip=trip)]
+
+    return [
+        {
+            "id": task.pk,
+            "title": task.title,
+            "priority": task.get_priority_display(),
+            "due": task.due,
+            "due_note": task.due_note,
+            "done": task.done,
+            "notes": task.visible_notes,
+            "covers": [label(item) for item in task.covered()],
+        }
+        for task in BookingTask.objects.filter(trip=trip)
+    ]
 
 
 def export_data(user):
@@ -141,8 +198,9 @@ def export_data(user):
             "places": _rows(POI.objects.filter(submitted_by=user)),
             "cities": _rows(City.objects.filter(submitted_by=user)),
         },
-        "trips.json": [{"role": grant.role, **_trip_rows(grant.trip)} for grant in grants
-                       if grant.trip.deleted_at is None],
+        "trips.json": [
+            {"role": grant.role, **_trip_rows(grant.trip)} for grant in grants if grant.trip.deleted_at is None
+        ],
     }
 
 
@@ -160,10 +218,14 @@ def export_zip(user):
     """The download, as bytes."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("README.txt", (
-            f"Your data from {settings.SITE_NAME}, {timezone.now():%Y-%m-%d %H:%M %Z}.\n"
-            "Each .json file is one part of your account; files/ holds what you uploaded.\n"
-            "Trips are as you can see them; other people appear by name only.\n"))
+        archive.writestr(
+            "README.txt",
+            (
+                f"Your data from {settings.SITE_NAME}, {timezone.now():%Y-%m-%d %H:%M %Z}.\n"
+                "Each .json file is one part of your account; files/ holds what you uploaded.\n"
+                "Trips are as you can see them; other people appear by name only.\n"
+            ),
+        )
         for name, data in export_data(user).items():
             archive.writestr(name, json.dumps(data, cls=DjangoJSONEncoder, indent=1, ensure_ascii=False))
         for path, field in _files(user):
@@ -176,6 +238,7 @@ def export_zip(user):
 
 
 # ------------------------------------------------------------------------------- delete
+
 
 def deletion_date(user):
     return user.deletion_requested_at + timedelta(days=GRACE_DAYS) if user.deletion_requested_at else None
@@ -190,11 +253,15 @@ def schedule(user):
         try:
             EmailMessage(
                 subject=f"[{settings.SITE_NAME}] Your account will be deleted on {when:%B} {when.day}",
-                body=(f"You asked us to delete your {settings.SITE_NAME} account ({user.username}).\n\n"
-                      f"It will be deleted on {when:%B} {when.day}, {when.year}. Until then it is hidden and we "
-                      "send you no other emails.\n\nChanged your mind? Just sign in before then and the "
-                      f"deletion is cancelled.\n\n— {settings.SITE_NAME}\n"),
-                from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email]).send()
+                body=(
+                    f"You asked us to delete your {settings.SITE_NAME} account ({user.username}).\n\n"
+                    f"It will be deleted on {when:%B} {when.day}, {when.year}. Until then it is hidden and we "
+                    "send you no other emails.\n\nChanged your mind? Just sign in before then and the "
+                    f"deletion is cancelled.\n\n— {settings.SITE_NAME}\n"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            ).send()
         except Exception:  # noqa: BLE001 - the request stands even if the email fails
             log.exception("Could not email deletion notice to user %s", user.pk)
     return when
@@ -225,11 +292,16 @@ def _catalogue_picture_ids():
 
 def _hand_over_or_delete_trips(user):
     from django.contrib.contenttypes.models import ContentType
+
     handed, deleted = 0, 0
     trip_type = ContentType.objects.get_for_model(Trip)
     for trip in Trip.objects.filter(created_by=user):
-        others = list(trip.grants.exclude(user=user).filter(user__is_active=True).select_related("user")
-                      .order_by("granted_at", "pk"))
+        others = list(
+            trip.grants.exclude(user=user)
+            .filter(user__is_active=True)
+            .select_related("user")
+            .order_by("granted_at", "pk")
+        )
         if others:
             heir = next((g for g in others if g.role == "editor"), others[0])
             if heir.role != "editor":
@@ -254,8 +326,13 @@ def _scrub_traveler(user):
         setattr(traveler, name, None if field.null else "")
     traveler.user = None
     traveler.save()
-    used = (traveler.trips.exists() or traveler.days.exists() or traveler.expenses_paid.exists()
-            or traveler.confirmations.exists() or traveler.trip_activities.exists())
+    used = (
+        traveler.trips.exists()
+        or traveler.days.exists()
+        or traveler.expenses_paid.exists()
+        or traveler.confirmations.exists()
+        or traveler.trip_activities.exists()
+    )
     if not used:
         traveler.delete()
 

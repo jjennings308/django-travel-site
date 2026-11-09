@@ -62,9 +62,7 @@ DATE_RANGE_RE = re.compile(
     r"(?:(?P<mon2>[A-Za-z]+)\.?\s+)?(?P<day2>\d{1,2})"
 )
 PRIORITY_RE = re.compile(r"\b(critical|high|medium|low)\b", re.IGNORECASE)
-MONTHS_RE = re.compile(
-    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)", re.IGNORECASE
-)
+MONTHS_RE = re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)", re.IGNORECASE)
 MEAL_HEADER = ("restaurant", "venue")
 PRICE_PREFIX_RE = re.compile(r"^[€$£]")
 
@@ -156,9 +154,7 @@ def _collect_globals(document):
         if header[:2] == ["detail", "info"]:
             for row in rows[1:]:
                 if row and row[0].strip():
-                    found["overview"][row[0].strip().lower()] = " | ".join(
-                        c.strip() for c in row[1:] if c.strip()
-                    )
+                    found["overview"][row[0].strip().lower()] = " | ".join(c.strip() for c in row[1:] if c.strip())
         elif header[:3] == ["badge", "travelers", "leg"]:
             found["group_key"] = rows
         elif header[:3] == ["hotel", "location", "dates"]:
@@ -228,9 +224,7 @@ def _build_trip(parsed, lines, year_hint, overview, warn):
     destinations = ""
     for line in lines[1:]:
         if "·" in line and "2027" not in line and "20" not in line[:4]:
-            destinations = " · ".join(
-                part.strip() for part in line.split("·") if part.strip()
-            )
+            destinations = " · ".join(part.strip() for part in line.split("·") if part.strip())
             break
     if not destinations:
         warn("Could not read the destination list from the title block")
@@ -326,9 +320,7 @@ def _build_lodging(parsed, hotels, year_hint, warn):
             warn(f"Could not read the stay dates for {name!r} from {dates!r}")
             continue
         check_in = _to_date(span.group("mon"), span.group("day"), year_hint)
-        check_out = _to_date(
-            span.group("mon2") or span.group("mon"), span.group("day2"), year_hint
-        )
+        check_out = _to_date(span.group("mon2") or span.group("mon"), span.group("day2"), year_hint)
         if check_in is None or check_out is None:
             warn(f"Could not build dates for {name!r} from {dates!r}")
             continue
@@ -572,9 +564,7 @@ def _handle_paragraph(day, text, paragraph, warn):
         else:
             current["content"]["summary"] = text
     else:
-        day["sections"].append(
-            _section("free_text", len(day["sections"]) + 1, paragraphs=[text])
-        )
+        day["sections"].append(_section("free_text", len(day["sections"]) + 1, paragraphs=[text]))
 
 
 CALLOUT_TONES = {

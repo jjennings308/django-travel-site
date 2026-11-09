@@ -4,6 +4,7 @@ it says it's staging on every page, and search engines are told not to index it.
 Its data is a nightly, disguised copy of production (scripts/sync_staging_from_prod.sh); nginx puts
 the whole site behind basic auth (deploy/staging/). Set up from deploy/staging/README.md.
 """
+
 from .prod import *  # noqa: F401,F403
 
 STAGING = True

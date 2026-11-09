@@ -12,6 +12,7 @@ section (title kept), linked and created rows leave its rows, "Total…" rows go
 total is computed from its legs; their other text is added to the last leg's notes), and the
 remaining rows stay as reference rows (a Bayern Ticket's price and what it covers).
 """
+
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -26,6 +27,7 @@ def _norm(text):
 
 def _contains(outer, inner):
     import re
+
     outer, inner = _norm(outer), _norm(inner)
     return bool(inner) and re.search(r"(?<!\w)" + re.escape(inner) + r"(?!\w)", outer) is not None
 
@@ -59,6 +61,7 @@ def city_finder(trip):
     """``city_for(text)``: a city named in ``text``, the trip's own first, then the catalogue."""
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import City
+
     trip_cities = list(trip.cities.select_related("country"))
     catalogue = None
 
@@ -70,14 +73,18 @@ def city_finder(trip):
                 catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related("country"))
             found = match_city(text, catalogue)
         return found
+
     city_for.trip_cities = trip_cities
     return city_for
 
 
 def logistics_sections(trip):
     """The trip's logistics tables that have at least one hop, in day order."""
-    sections = (Section.objects.filter(day__trip=trip, section_type=Section.Type.LOGISTICS_TABLE)
-                .select_related("day").order_by("day__date", "day__day_number", "order", "id"))
+    sections = (
+        Section.objects.filter(day__trip=trip, section_type=Section.Type.LOGISTICS_TABLE)
+        .select_related("day")
+        .order_by("day__date", "day__day_number", "order", "id")
+    )
     return [s for s in sections if proposed_legs((s.content or {}).get("columns"), (s.content or {}).get("rows"))]
 
 
@@ -99,15 +106,27 @@ def plan(trip, sections, city_for=None):
         section_plan = SectionPlan(section=section, day=section.day, totals=total_notes(columns, rows))
         for proposal in proposed_legs(columns, rows):
             a, b = city_for(proposal["origin"]), city_for(proposal["destination"])
-            match = next((leg for leg in legs_by_date.get(section.day.date, [])
-                          if leg.pk not in taken and _same_hop(proposal, leg, a, b, city_for)), None)
+            match = next(
+                (
+                    leg
+                    for leg in legs_by_date.get(section.day.date, [])
+                    if leg.pk not in taken and _same_hop(proposal, leg, a, b, city_for)
+                ),
+                None,
+            )
             if match is not None:
                 taken.add(match.pk)
-            section_plan.rows.append({
-                **proposal, "date": section.day.date, "origin_city": a, "destination_city": b,
-                "leg": match, "action": "link" if match else "create",
-                "include": proposal["strength"] == "arrow",
-            })
+            section_plan.rows.append(
+                {
+                    **proposal,
+                    "date": section.day.date,
+                    "origin_city": a,
+                    "destination_city": b,
+                    "leg": match,
+                    "action": "link" if match else "create",
+                    "include": proposal["strength"] == "arrow",
+                }
+            )
         plans.append(section_plan)
     return plans
 
@@ -118,6 +137,7 @@ def apply(trip, plans, chosen):
     ``destination_city``, ``operator``, ``notes``, ``duration``); rows not in it are left as
     they are. Returns ``{"created": [...], "linked": [...], "sections": n}``."""
     from .changes import batch
+
     created, linked, converted = [], [], 0
     with transaction.atomic(), batch("Turned travel tables into journeys", trip=trip):
         for section_plan in plans:
@@ -136,8 +156,11 @@ def apply(trip, plans, chosen):
                     leg = row["leg"]
                     changed = ["section"]
                     leg.section = section if leg.date == day_date else leg.section
-                    for name, value in (("est_duration", data.get("duration")), ("operator", data.get("operator")),
-                                        ("notes", data.get("notes"))):
+                    for name, value in (
+                        ("est_duration", data.get("duration")),
+                        ("operator", data.get("operator")),
+                        ("notes", data.get("notes")),
+                    ):
                         if value and not getattr(leg, name):
                             setattr(leg, name, value)
                             changed.append(name)
@@ -145,11 +168,19 @@ def apply(trip, plans, chosen):
                     linked.append(leg)
                 else:
                     leg = TransportLeg.objects.create(
-                        trip=trip, date=data["date"], mode=data["mode"], origin=data["origin"],
-                        destination=data["destination"], origin_city=data.get("origin_city"),
-                        destination_city=data.get("destination_city"), operator=data.get("operator") or "",
-                        notes=data.get("notes") or "", est_duration=data.get("duration"), order=row["row"],
-                        section=section if data["date"] == day_date else None)
+                        trip=trip,
+                        date=data["date"],
+                        mode=data["mode"],
+                        origin=data["origin"],
+                        destination=data["destination"],
+                        origin_city=data.get("origin_city"),
+                        destination_city=data.get("destination_city"),
+                        operator=data.get("operator") or "",
+                        notes=data.get("notes") or "",
+                        est_duration=data.get("duration"),
+                        order=row["row"],
+                        section=section if data["date"] == day_date else None,
+                    )
                     created.append(leg)
                 placed.append(leg)
             notes = [t["note"] for t in section_plan.totals if t["note"]]
@@ -171,6 +202,7 @@ def apply(trip, plans, chosen):
             section.save(update_fields=["content"])
         if created:
             from .trip_cities import sync
+
             sync(trip)
     return {"created": created, "linked": linked, "sections": converted}
 

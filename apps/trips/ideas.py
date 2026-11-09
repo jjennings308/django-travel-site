@@ -12,10 +12,12 @@ who added them; votes with their people). ``counted(trip)`` is the ideas placed 
 (P4's rule: an item outside any option or in a chosen / taken one; an option chosen or taken), which is
 what a finished trip's "Tick it off" offers. ``map_features(trip)`` gives the map's faint Ideas pins.
 """
-from apps.approval_system.models import ApprovalStatus
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Prefetch
 from django.urls import reverse
+
+from apps.approval_system.models import ApprovalStatus
 
 from .models import Lodging, Meal, Option, OptionGroup, Section, TransportLeg, TripActivity, TripIdea, Vote
 from .options import counts
@@ -26,13 +28,16 @@ PLACEABLE = (TransportLeg, Lodging, TripActivity, Meal, Section, Option)
 
 
 def queryset(trip):
-    return (TripIdea.objects.filter(trip=trip)
-            .select_related("city", "poi__city", "activity__city", "event__city", "added_by"))
+    return TripIdea.objects.filter(trip=trip).select_related(
+        "city", "poi__city", "activity__city", "event__city", "added_by"
+    )
 
 
 def load(trip, viewer=None):
     """The trip's ideas (two queries), each with ``vote_count``, ``voters``, ``voted`` and ``on_shelf``."""
-    ideas = list(queryset(trip).prefetch_related(Prefetch("votes", queryset=Vote.objects.select_related("user").order_by("pk"))))
+    ideas = list(
+        queryset(trip).prefetch_related(Prefetch("votes", queryset=Vote.objects.select_related("user").order_by("pk")))
+    )
     for idea in ideas:
         votes = list(idea.votes.all())
         idea.vote_count = len(votes)
@@ -45,10 +50,17 @@ def load(trip, viewer=None):
 def place_of(idea):
     """The catalogue place it's at, for the map and the shelf: its place, its activity's or event's
     venue, else (as a city) its city or theirs. Returns (poi, city)."""
-    poi = idea.poi or (idea.event.poi if idea.event_id and idea.event.poi_id else None) or (
-        idea.activity.venue if idea.activity_id and idea.activity.venue_id else None)
-    city = idea.city or (poi.city if poi else None) or (idea.event.city if idea.event_id else None) or (
-        idea.activity.city if idea.activity_id else None)
+    poi = (
+        idea.poi
+        or (idea.event.poi if idea.event_id and idea.event.poi_id else None)
+        or (idea.activity.venue if idea.activity_id and idea.activity.venue_id else None)
+    )
+    city = (
+        idea.city
+        or (poi.city if poi else None)
+        or (idea.event.city if idea.event_id else None)
+        or (idea.activity.city if idea.activity_id else None)
+    )
     return poi, city
 
 
@@ -108,6 +120,7 @@ def fill_option(idea, option):
     event, a journey its place's name as where to — else the place's name typed. Pick then makes the item
     from it (T2). ``option`` is saved."""
     from .models import OptionGroup
+
     Kind = OptionGroup.Kind
     poi, city = place_of(idea)
     kind = option.group.kind
@@ -158,7 +171,8 @@ def counted(trip):
 def return_to_shelf(sender, instance, **kwargs):
     """``post_delete`` of anything an idea can become: the idea goes back on the shelf."""
     TripIdea.objects.filter(placed_type=ContentType.objects.get_for_model(sender), placed_id=instance.pk).update(
-        placed_type=None, placed_id=None)
+        placed_type=None, placed_id=None
+    )
 
 
 def map_features(trip):
@@ -170,13 +184,17 @@ def map_features(trip):
         if spot is None or spot.latitude is None or spot.longitude is None:
             continue
         where = poi.name if poi is not None else city.name
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(spot.longitude), float(spot.latitude)]},
-            "properties": {
-                "layer": "ideas", "marker": "idea", "name": idea.title,
-                "subtitle": f"Idea · {where}" if where != idea.title else "Idea on the shelf",
-                "url": reverse("trips:trip_detail", args=[trip.pk]) + f"#idea-{idea.pk}",
-            },
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(spot.longitude), float(spot.latitude)]},
+                "properties": {
+                    "layer": "ideas",
+                    "marker": "idea",
+                    "name": idea.title,
+                    "subtitle": f"Idea · {where}" if where != idea.title else "Idea on the shelf",
+                    "url": reverse("trips:trip_detail", args=[trip.pk]) + f"#idea-{idea.pk}",
+                },
+            }
+        )
     return features

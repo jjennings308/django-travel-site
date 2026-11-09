@@ -4,6 +4,7 @@ The scripts themselves talk to production and Docker, so they are run by hand (s
 scripts/README.md); what can go quietly wrong without either — a syntax slip, or pruning
 the wrong backups — is pinned here.
 """
+
 import subprocess
 from datetime import date, timedelta
 from pathlib import Path
@@ -25,8 +26,15 @@ def days_back(n, end=date(2026, 10, 18)):
 
 class ScriptSyntaxTests(SimpleTestCase):
     def test_scripts_parse(self):
-        for name in ("backup_prod.sh", "restore_check.sh", "sync_dev_from_prod.sh", "lib/sbl_common.sh",
-                     "deploy.sh", "deploy_staging.sh", "sync_staging_from_prod.sh"):
+        for name in (
+            "backup_prod.sh",
+            "restore_check.sh",
+            "sync_dev_from_prod.sh",
+            "lib/sbl_common.sh",
+            "deploy.sh",
+            "deploy_staging.sh",
+            "sync_staging_from_prod.sh",
+        ):
             with self.subTest(script=name):
                 result = subprocess.run(["bash", "-n", str(SCRIPTS / name)], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)

@@ -1,4 +1,5 @@
 """ECB exchange rates and conversions (site roadmap R10)."""
+
 import io
 from datetime import date
 from decimal import Decimal
@@ -52,7 +53,9 @@ class ConvertTests(TestCase):
         table = rates.Rates(["USD", "GBP"], [date(2027, 9, 18)])
         conversion = table.convert(Decimal("100"), "EUR", "USD", on=date(2027, 9, 18))  # a Saturday-ish gap
         self.assertEqual(conversion.amount, Decimal("108.00"))
-        self.assertEqual((conversion.source, conversion.rate_date, conversion.latest), ("ECB", date(2027, 9, 17), False))
+        self.assertEqual(
+            (conversion.source, conversion.rate_date, conversion.latest), ("ECB", date(2027, 9, 17), False)
+        )
         later = table.convert(Decimal("100"), "EUR", "USD", on=date(2027, 9, 20))
         self.assertEqual(later.amount, Decimal("110.00"))
 
@@ -101,6 +104,7 @@ class CatalogueConversionTests(TestCase):
         from django.template import Context, Template
 
         from apps.core.utils.currency import convert_currency
+
         with mock.patch("apps.core.rates.urlopen", side_effect=AssertionError("no network")):
             self.assertEqual(convert_currency(100, "EUR", "USD"), Decimal("110.00"))  # latest
             self.assertEqual(convert_currency(100, "EUR", "USD", on=date(2027, 9, 18)), Decimal("100.00"))
@@ -108,5 +112,7 @@ class CatalogueConversionTests(TestCase):
             self.assertEqual(convert_currency(5, "USD", "USD"), Decimal("5.00"))
             self.assertIsNone(convert_currency(100, "EUR", "XYZ"))  # unknown: never a guess
             self.assertIsNone(convert_currency(None, "EUR", "USD"))
-            rendered = Template("{% load conversion_tags %}[{{ 100|convert_curr:'EUR:USD' }}|{{ 1|convert_curr:'EUR:XYZ' }}]").render(Context())
+            rendered = Template(
+                "{% load conversion_tags %}[{{ 100|convert_curr:'EUR:USD' }}|{{ 1|convert_curr:'EUR:XYZ' }}]"
+            ).render(Context())
         self.assertEqual(rendered, "[$110.00|]")

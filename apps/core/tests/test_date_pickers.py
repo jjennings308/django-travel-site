@@ -5,6 +5,7 @@ Imports every ``apps/*/forms.py``, builds each form defined there (so fields add
 ``base_fields``) and fails on a field whose widget isn't one of ``apps.core.widgets``'
 pickers with the right type and value format. The Django admin keeps its own widgets.
 """
+
 import importlib
 import inspect
 from pathlib import Path
@@ -68,14 +69,18 @@ class DatePickerTests(TestCase):
                 checked += 1
                 widget_class, input_type, value_format = PICKERS[kind]
                 widget = field.widget
-                if not (isinstance(widget, widget_class) and widget.input_type == input_type
-                        and widget.format == value_format):
+                if not (
+                    isinstance(widget, widget_class)
+                    and widget.input_type == input_type
+                    and widget.format == value_format
+                ):
                     wrong.append(f"{where}: {type(widget).__name__} (want widgets.{widget_class.__name__})")
         self.assertEqual(wrong, [], "\n".join(wrong))
         self.assertGreaterEqual(checked, 20)
 
     def test_widgets_render_the_browser_formats(self):
         from datetime import date, datetime, time
+
         self.assertIn('type="date"', widgets.DateInput().render("d", date(2027, 9, 18)))
         self.assertIn('value="2027-09-18"', widgets.DateInput().render("d", date(2027, 9, 18)))
         self.assertIn('value="20:05"', widgets.TimeInput().render("t", time(20, 5, 30)))

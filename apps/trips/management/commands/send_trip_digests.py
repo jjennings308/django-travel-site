@@ -10,6 +10,7 @@ Nothing changed, nothing sent. ``--dry-run`` prints what would go out and marks 
 It also prunes the history (site roadmap R8): changes older than ``KEEP_DAYS`` that have been
 sent are deleted, so one cron line does both.
 """
+
 from datetime import timedelta
 from itertools import groupby
 
@@ -47,11 +48,15 @@ class Command(BaseCommand):
         # Other apps' daily jobs ride on this run (site roadmap R17: reviews sends "How was your trip?").
         if not dry_run:
             from apps.trips.signals import daily_run
+
             for _receiver, result in daily_run.send(sender=self.__class__):
                 if result:
                     self.stdout.write(str(result))
-        pending = list(TripChange.objects.filter(digest_sent_at=None).select_related("trip", "actor")
-                       .order_by("trip_id", "when", "id"))
+        pending = list(
+            TripChange.objects.filter(digest_sent_at=None)
+            .select_related("trip", "actor")
+            .order_by("trip_id", "when", "id")
+        )
         if not dry_run:
             cutoff = timezone.now() - timedelta(days=KEEP_DAYS)
             pruned, _ = TripChange.objects.filter(when__lt=cutoff).exclude(digest_sent_at=None).delete()

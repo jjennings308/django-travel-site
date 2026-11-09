@@ -9,7 +9,7 @@ Glance table, and confirmations written as prose.
 
 import io
 import tempfile
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from django.core.management import call_command
@@ -94,9 +94,7 @@ def build_document(tmpdir):
 
 class CompactConfirmationTests(TestCase):
     def test_extracts_code_and_drops_confidential(self):
-        code, remainder = _compact_confirmation(
-            "Booking.com Confirmation 5305434791 · PIN 7553 (confidential)"
-        )
+        code, remainder = _compact_confirmation("Booking.com Confirmation 5305434791 · PIN 7553 (confidential)")
         self.assertEqual(code, "5305434791")
         self.assertNotIn("confidential", remainder)
 
@@ -154,9 +152,7 @@ class ParseDocumentTests(TestCase):
         self.assertEqual(len(self.parsed.days[0]["meals"]), 2)
 
     def test_confirmation_is_compacted(self):
-        self.assertEqual(
-            self.parsed.confirmations[0]["confirmation_number"], "1234567"
-        )
+        self.assertEqual(self.parsed.confirmations[0]["confirmation_number"], "1234567")
 
 
 class StayDateTests(TestCase):

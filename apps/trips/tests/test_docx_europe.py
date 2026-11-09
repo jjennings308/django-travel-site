@@ -29,7 +29,6 @@ from apps.trips.models import (
     Meal,
     Section,
     TransportLeg,
-    Traveler,
     Trip,
 )
 
@@ -108,7 +107,7 @@ def build_europe_document(tmpdir, *, year=2027):
     document.add_heading("Germany Leg", level=1)
     # The last day of the walk is a Heading 1 away; the day walk must stop
     # there rather than at the "Germany Leg" heading, or England is lost.
-    document.add_paragraph(f"Fri Sept 17  [All 3]  Overnight flight — PIT to FRA")
+    document.add_paragraph("Fri Sept 17  [All 3]  Overnight flight — PIT to FRA")
     _bold(document, "Departure")
     document.add_paragraph("Delta evening departure from Pittsburgh.")
     _table(
@@ -172,9 +171,7 @@ class EuropeParseTests(TestCase):
         self.assertIn("EUROPE 2027", self.parsed.trip["name"])
 
     def test_travelers_come_from_the_group_key(self):
-        self.assertEqual(
-            [t["name"] for t in self.parsed.travelers], ["James", "Regan", "Sara"]
-        )
+        self.assertEqual([t["name"] for t in self.parsed.travelers], ["James", "Regan", "Sara"])
 
     def test_badge_resolves_to_a_roster(self):
         day = self.parsed.days[0]
@@ -260,20 +257,14 @@ class EuropeParseTests(TestCase):
         self.assertEqual(meal["reservation_notes"], "€€")
 
     def test_one_column_callout_table_becomes_a_callout(self):
-        callout = next(
-            s for s in self.parsed.days[0]["sections"] if s["section_type"] == "callout"
-        )
+        callout = next(s for s in self.parsed.days[0]["sections"] if s["section_type"] == "callout")
         self.assertEqual(callout["title"], "💡 Tip")
         self.assertIn("Olga", callout["content"]["text"])
 
     def test_option_lines_become_a_choose_your_adventure(self):
         # The second OPTION line is not bold in the real draft, so matching on
         # formatting alone would silently drop it.
-        cya = next(
-            s
-            for s in self.parsed.days[1]["sections"]
-            if s["section_type"] == "choose_your_adventure"
-        )
+        cya = next(s for s in self.parsed.days[1]["sections"] if s["section_type"] == "choose_your_adventure")
         options = cya["content"]["options"]
         self.assertEqual([o["letter"] for o in options], ["A", "B"])
         self.assertEqual(options[0]["title"], "Hampton Court")
@@ -367,11 +358,7 @@ class EuropeImportTests(TestCase):
     def test_only_the_narrow_day_gets_a_roster(self):
         run_import(self.path, apply=True)
         self.assertEqual(
-            list(
-                Day.objects.filter(travelers__isnull=False)
-                .values_list("day_number", flat=True)
-                .distinct()
-            ),
+            list(Day.objects.filter(travelers__isnull=False).values_list("day_number", flat=True).distinct()),
             [3],
         )
         day = Day.objects.get(day_number=3)
@@ -386,6 +373,7 @@ class EuropeImportTests(TestCase):
         self.assertEqual(Section.objects.count(), 6)
         self.assertEqual(Section.objects.filter(section_type="note").count(), 5)
         from apps.trips.models import OptionGroup
+
         self.assertEqual(OptionGroup.objects.get().options.count() > 1, True)
         self.assertEqual(Meal.objects.count(), 2)
 

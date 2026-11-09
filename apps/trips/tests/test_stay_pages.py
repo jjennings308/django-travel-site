@@ -1,5 +1,6 @@
 """Stays added and edited from their day (docs/plans/edit-by-day.md, E1)."""
-from datetime import date, timedelta
+
+from datetime import date
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -18,29 +19,60 @@ class Fixture(TestCase):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=ApprovalStatus.APPROVED)
-        self.augsburg = City.objects.create(name="Augsburg", slug="augsburg", country=de, latitude=48.37,
-                                            longitude=10.9, approval_status=ApprovalStatus.APPROVED)
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 24),
-                                        created_by=self.editor)
+        de = Country.objects.create(
+            name="Germany",
+            slug="de",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.augsburg = City.objects.create(
+            name="Augsburg",
+            slug="augsburg",
+            country=de,
+            latitude=48.37,
+            longitude=10.9,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 24), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.trip.cities.add(self.augsburg)
-        self.days = [Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 19 + n),
-                                        city=self.augsburg if n == 1 else None) for n in range(1, 5)]
+        self.days = [
+            Day.objects.create(
+                trip=self.trip, day_number=n, date=date(2027, 9, 19 + n), city=self.augsburg if n == 1 else None
+            )
+            for n in range(1, 5)
+        ]
         self.new_url = reverse("trips:stay_new", args=[self.trip.pk, self.days[0].pk])
 
     def data(self, **over):
-        values = {"name": "Hotel Augusta", "address": "", "city": self.augsburg.pk, "latitude": "", "longitude": "",
-                  "check_in": "2027-09-20", "check_out": "2027-09-23", "nightly_rate": "", "currency": "EUR",
-                  "notes": ""}
+        values = {
+            "name": "Hotel Augusta",
+            "address": "",
+            "city": self.augsburg.pk,
+            "latitude": "",
+            "longitude": "",
+            "check_in": "2027-09-20",
+            "check_out": "2027-09-23",
+            "nightly_rate": "",
+            "currency": "EUR",
+            "notes": "",
+        }
         values.update(over)
         return values
 
     def stay(self, **over):
-        values = {"trip": self.trip, "name": "Hotel Augusta", "check_in": date(2027, 9, 20),
-                  "check_out": date(2027, 9, 23), "city": self.augsburg}
+        values = {
+            "trip": self.trip,
+            "name": "Hotel Augusta",
+            "check_in": date(2027, 9, 20),
+            "check_out": date(2027, 9, 23),
+            "city": self.augsburg,
+        }
         values.update(over)
         return Lodging.objects.create(**values)
 
@@ -49,8 +81,10 @@ class NewStayTests(Fixture):
     def test_starts_on_its_day_for_one_night_in_the_days_city(self):
         self.client.force_login(self.editor)
         form = self.client.get(self.new_url).context["form"]
-        self.assertEqual((form.initial["check_in"], form.initial["check_out"], form.initial["city"]),
-                         (date(2027, 9, 20), date(2027, 9, 21), self.augsburg.pk))
+        self.assertEqual(
+            (form.initial["check_in"], form.initial["check_out"], form.initial["city"]),
+            (date(2027, 9, 20), date(2027, 9, 21), self.augsburg.pk),
+        )
 
     def test_saving_lands_on_its_own_page_and_records_who_added_it(self):
         self.client.force_login(self.editor)
@@ -64,8 +98,9 @@ class NewStayTests(Fixture):
     def test_fills_the_days_it_covers_with_its_city(self):
         self.client.force_login(self.editor)
         response = self.client.post(self.new_url, self.data(), follow=True)
-        self.assertEqual(list(Day.objects.filter(trip=self.trip, city=self.augsburg).values_list("day_number", flat=True)),
-                         [1, 2, 3])  # check-in up to, not including, check-out
+        self.assertEqual(
+            list(Day.objects.filter(trip=self.trip, city=self.augsburg).values_list("day_number", flat=True)), [1, 2, 3]
+        )  # check-in up to, not including, check-out
         self.assertContains(response, "Filled in the city for 2 days from this stay")
 
     @mock.patch("apps.core.geocoding.geocode", return_value=(48.369, 10.898))
@@ -75,9 +110,10 @@ class NewStayTests(Fixture):
         stay = Lodging.objects.get()
         self.assertEqual(geocode.call_count, 1)
         self.assertEqual((float(stay.latitude), float(stay.longitude)), (48.369, 10.898))
-        self.client.post(reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]),
-                         self.data(address="Maximilianstr. 1, Augsburg", latitude="48.369", longitude="10.898",
-                                   notes="Quiet room"))
+        self.client.post(
+            reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]),
+            self.data(address="Maximilianstr. 1, Augsburg", latitude="48.369", longitude="10.898", notes="Quiet room"),
+        )
         self.assertEqual(geocode.call_count, 1)  # same address: not looked up again
 
     def test_no_address_means_no_pin_is_copied_from_the_city(self):
@@ -93,7 +129,7 @@ class StayPageTests(Fixture):
         stay = self.stay()
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:stay_edit", args=[self.trip.pk, stay.pk])).content.decode()
-        fold = html[html.index("data-adjust-pin"):html.index("</details>", html.index("data-adjust-pin"))]
+        fold = html[html.index("data-adjust-pin") : html.index("</details>", html.index("data-adjust-pin"))]
         self.assertIn('name="latitude"', fold)
         self.assertIn("Found from the address. Without an address the map uses the city", fold)
         self.assertEqual(html.count('name="latitude"'), 1)
@@ -107,8 +143,9 @@ class StayPageTests(Fixture):
         response = self.client.post(url, {**self.data(name="Augusta"), "next": "/trips/"})
         self.assertEqual(response["Location"], "/trips/")
         response = self.client.post(url, {**self.data(), "next": "https://evil.example/"})
-        self.assertEqual(response["Location"],
-                         reverse("trips:day_edit", args=[self.trip.pk, self.days[0].pk]) + "#on-this-day")
+        self.assertEqual(
+            response["Location"], reverse("trips:day_edit", args=[self.trip.pk, self.days[0].pk]) + "#on-this-day"
+        )
 
     def test_delete_keeps_the_confirmation(self):
         stay = self.stay()
@@ -120,8 +157,11 @@ class StayPageTests(Fixture):
 
     def test_viewer_403_stranger_404(self):
         stay = self.stay()
-        urls = [self.new_url, reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]),
-                reverse("trips:stay_delete", args=[self.trip.pk, stay.pk])]
+        urls = [
+            self.new_url,
+            reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]),
+            reverse("trips:stay_delete", args=[self.trip.pk, stay.pk]),
+        ]
         for user, status in ((self.viewer, 403), (self.stranger, 404)):
             self.client.force_login(user)
             for url in urls:
@@ -140,11 +180,14 @@ class DayAndTripPageTests(Fixture):
         rows = {}
         for day in self.days:
             html = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, day.pk])).content.decode()
-            on_this_day = html[html.index('id="on-this-day"'):]
-            rows[day.day_number] = (stay.name in on_this_day,
-                                    next((label for label in ("Check in", "Sleeping", "Check out") if label in on_this_day), None))
-        self.assertEqual(rows, {1: (True, "Check in"), 2: (True, "Sleeping"), 3: (True, "Sleeping"),
-                                4: (True, "Check out")})
+            on_this_day = html[html.index('id="on-this-day"') :]
+            rows[day.day_number] = (
+                stay.name in on_this_day,
+                next((label for label in ("Check in", "Sleeping", "Check out") if label in on_this_day), None),
+            )
+        self.assertEqual(
+            rows, {1: (True, "Check in"), 2: (True, "Sleeping"), 3: (True, "Sleeping"), 4: (True, "Check out")}
+        )
         html = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.days[0].pk])).content.decode()
         self.assertIn(f'href="{self.new_url}?next=', html)  # + Stay
         self.assertIn(reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]) + "?next=", html)

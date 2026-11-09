@@ -1,4 +1,5 @@
 """Per-visitor rate limits (site roadmap R15)."""
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -16,7 +17,9 @@ class RateLimitTests(TestCase):
     def test_login_attempts(self):
         url = reverse("login")
         for _ in range(10):
-            self.assertNotEqual(self.client.post(url, {"username": "ada@example.com", "password": "wrong"}).status_code, 429)
+            self.assertNotEqual(
+                self.client.post(url, {"username": "ada@example.com", "password": "wrong"}).status_code, 429
+            )
         blocked = self.client.post(url, {"username": "ada@example.com", "password": "pw-1234-abcd"})
         self.assertEqual(blocked.status_code, 429)
         self.assertContains(blocked, "Too many attempts", status_code=429)
@@ -43,10 +46,13 @@ class RateLimitTests(TestCase):
     def test_off_in_test_settings_by_default(self):
         with override_settings(RATELIMIT_ENABLED=False):
             for _ in range(15):
-                self.assertNotEqual(self.client.post(reverse("login"), {"username": "a", "password": "b"}).status_code, 429)
+                self.assertNotEqual(
+                    self.client.post(reverse("login"), {"username": "a", "password": "b"}).status_code, 429
+                )
 
     def test_a_broken_counter_lets_the_request_through(self):
         from unittest import mock
+
         with mock.patch("apps.core.ratelimit._cache") as broken, self.assertLogs("apps.core.ratelimit", "WARNING"):
             broken.return_value.add.side_effect = PermissionError("unreadable cache file")
             response = self.client.post(reverse("login"), {"username": "ada@example.com", "password": "pw-1234-abcd"})

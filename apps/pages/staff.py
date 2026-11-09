@@ -1,10 +1,10 @@
-# pages/staff.py
 """Staff dashboard: site stats and the things that need a staff member's attention.
 
 Lives in `pages` (layer 5) because it reads from every app. Each "attention"
 entry is a dict(title, count, detail, url, items, tone), built only from
 read-only queries; nothing here changes data.
 """
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -21,8 +21,8 @@ from django.utils import timezone
 from apps.accounts.models import RoleRequest
 from apps.activities.models import Activity
 from apps.approval_system.models import ApprovalLog, ApprovalSettings, ApprovalStatus
-from apps.catalogue_notes.models import CatalogueNote
 from apps.bucketlists.models import BucketListItem
+from apps.catalogue_notes.models import CatalogueNote
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
@@ -34,8 +34,13 @@ LIST_LIMIT = 5
 
 # Content that goes through approval, in the order it is shown.
 APPROVABLE = [
-    ("Activities", Activity), ("Events", Event), ("Places (POIs)", POI), ("Catalogue notes", CatalogueNote),
-    ("Cities", City), ("Regions", Region), ("Countries", Country),
+    ("Activities", Activity),
+    ("Events", Event),
+    ("Places (POIs)", POI),
+    ("Catalogue notes", CatalogueNote),
+    ("Cities", City),
+    ("Regions", Region),
+    ("Countries", Country),
 ]
 
 
@@ -66,11 +71,18 @@ def _pending_approvals(now, sla_hours):
         if not stats["n"]:
             continue
         oldest = pending.order_by("submitted_at", "pk").first()
-        rows.append({"label": label, "count": stats["n"], "overdue": stats["overdue"],
-                     "oldest": _age(oldest.submitted_at, now)})
+        rows.append(
+            {"label": label, "count": stats["n"], "overdue": stats["overdue"], "oldest": _age(oldest.submitted_at, now)}
+        )
         for obj in pending.order_by("submitted_at", "pk")[:LIST_LIMIT]:
-            items.append({"text": str(obj), "meta": f"{label} · waiting {_age(obj.submitted_at, now) or '?'}",
-                          "url": _review_url(obj), "submitted": obj.submitted_at or now})
+            items.append(
+                {
+                    "text": str(obj),
+                    "meta": f"{label} · waiting {_age(obj.submitted_at, now) or '?'}",
+                    "url": _review_url(obj),
+                    "submitted": obj.submitted_at or now,
+                }
+            )
     items.sort(key=lambda i: i["submitted"])
     return rows, items[:LIST_LIMIT]
 
@@ -82,167 +94,312 @@ def _attention(now, sla_hours):
     rows, items = _pending_approvals(now, sla_hours)
     total = sum(r["count"] for r in rows)
     overdue = sum(r["overdue"] for r in rows)
-    entries.append({
-        "key": "approvals", "title": "Submissions waiting for review", "count": total,
-        "detail": (f"{overdue} past the {sla_hours} h review target. " if overdue else "")
-                  + ", ".join(f"{r['label']} {r['count']}" for r in rows),
-        "url": reverse("approval_system:dashboard"), "items": items,
-        "tone": "danger" if overdue else "warning",
-    })
+    entries.append(
+        {
+            "key": "approvals",
+            "title": "Submissions waiting for review",
+            "count": total,
+            "detail": (f"{overdue} past the {sla_hours} h review target. " if overdue else "")
+            + ", ".join(f"{r['label']} {r['count']}" for r in rows),
+            "url": reverse("approval_system:dashboard"),
+            "items": items,
+            "tone": "danger" if overdue else "warning",
+        }
+    )
 
-    role_requests = RoleRequest.objects.filter(status=RoleRequest.Status.PENDING).select_related("user").order_by("created_at")
-    entries.append({
-        "key": "roles", "title": "Role requests", "count": role_requests.count(),
-        "detail": "People asking to become a vendor or content provider.",
-        "url": reverse("staff:admin_role_requests"),
-        "items": [{"text": f"@{r.user.username}: {r.get_requested_role_display()}",
-                   "meta": f"waiting {_age(r.created_at, now)}",
-                   "url": reverse("staff:admin_role_request_detail", args=[r.pk])} for r in role_requests[:LIST_LIMIT]],
-        "tone": "warning",
-    })
+    role_requests = (
+        RoleRequest.objects.filter(status=RoleRequest.Status.PENDING).select_related("user").order_by("created_at")
+    )
+    entries.append(
+        {
+            "key": "roles",
+            "title": "Role requests",
+            "count": role_requests.count(),
+            "detail": "People asking to become a vendor or content provider.",
+            "url": reverse("staff:admin_role_requests"),
+            "items": [
+                {
+                    "text": f"@{r.user.username}: {r.get_requested_role_display()}",
+                    "meta": f"waiting {_age(r.created_at, now)}",
+                    "url": reverse("staff:admin_role_request_detail", args=[r.pk]),
+                }
+                for r in role_requests[:LIST_LIMIT]
+            ],
+            "tone": "warning",
+        }
+    )
 
-    reported = (Review.objects.filter(reports__is_resolved=False)
-                .annotate(open_reports=Count("reports", filter=Q(reports__is_resolved=False)))
-                .select_related("user", "activity", "event", "location", "poi").order_by("-open_reports", "created_at"))
-    entries.append({
-        "key": "reported_reviews", "title": "Reported reviews", "count": reported.count(),
-        "detail": "Keep or hide each review (untick “Is approved”), then mark its reports resolved. "
-                  "A review with 3 open reports is already hidden.",
-        "url": reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0",
-        "items": [{"text": f"@{r.user.username} on {r.get_review_target_name()}",
-                   "meta": f"{r.open_reports} report{'s' if r.open_reports != 1 else ''}" + ("" if r.is_approved else " · hidden"),
-                   "url": _admin_url(r)} for r in reported[:LIST_LIMIT]],
-        "tone": "warning",
-    })
+    reported = (
+        Review.objects.filter(reports__is_resolved=False)
+        .annotate(open_reports=Count("reports", filter=Q(reports__is_resolved=False)))
+        .select_related("user", "activity", "event", "location", "poi")
+        .order_by("-open_reports", "created_at")
+    )
+    entries.append(
+        {
+            "key": "reported_reviews",
+            "title": "Reported reviews",
+            "count": reported.count(),
+            "detail": "Keep or hide each review (untick “Is approved”), then mark its reports resolved. "
+            "A review with 3 open reports is already hidden.",
+            "url": reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0",
+            "items": [
+                {
+                    "text": f"@{r.user.username} on {r.get_review_target_name()}",
+                    "meta": f"{r.open_reports} report{'s' if r.open_reports != 1 else ''}"
+                    + ("" if r.is_approved else " · hidden"),
+                    "url": _admin_url(r),
+                }
+                for r in reported[:LIST_LIMIT]
+            ],
+            "tone": "warning",
+        }
+    )
 
-    unlinked = Event.objects.filter(city__isnull=True).exclude(approval_status=ApprovalStatus.REJECTED).select_related("country")
-    entries.append({
-        "key": "event_cities", "title": "Events with a city that isn't in the catalogue", "count": unlinked.count(),
-        "detail": "Link each to a city (or create it) from the event page.",
-        "url": None,
-        "items": [{"text": e.name, "meta": e.place_name, "url": reverse("events:event_detail", args=[e.slug])}
-                  for e in unlinked.order_by("start_date")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    unlinked = (
+        Event.objects.filter(city__isnull=True)
+        .exclude(approval_status=ApprovalStatus.REJECTED)
+        .select_related("country")
+    )
+    entries.append(
+        {
+            "key": "event_cities",
+            "title": "Events with a city that isn't in the catalogue",
+            "count": unlinked.count(),
+            "detail": "Link each to a city (or create it) from the event page.",
+            "url": None,
+            "items": [
+                {"text": e.name, "meta": e.place_name, "url": reverse("events:event_detail", args=[e.slug])}
+                for e in unlinked.order_by("start_date")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     has_regions = Region.objects.filter(country=OuterRef("country"))
-    no_region = (City.objects.filter(region__isnull=True).filter(Exists(has_regions))
-                 .exclude(approval_status=ApprovalStatus.REJECTED).select_related("country"))
-    entries.append({
-        "key": "city_regions", "title": "Cities without a region", "count": no_region.count(),
-        "detail": "Their country has regions; set one in the admin.",
-        "url": reverse("admin:locations_city_changelist") + "?region__isnull=True",
-        "items": [{"text": c.name, "meta": c.country.name, "url": _admin_url(c)} for c in no_region.order_by("name")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    no_region = (
+        City.objects.filter(region__isnull=True)
+        .filter(Exists(has_regions))
+        .exclude(approval_status=ApprovalStatus.REJECTED)
+        .select_related("country")
+    )
+    entries.append(
+        {
+            "key": "city_regions",
+            "title": "Cities without a region",
+            "count": no_region.count(),
+            "detail": "Their country has regions; set one in the admin.",
+            "url": reverse("admin:locations_city_changelist") + "?region__isnull=True",
+            "items": [
+                {"text": c.name, "meta": c.country.name, "url": _admin_url(c)}
+                for c in no_region.order_by("name")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
-    mismatched = (City.objects.filter(region__isnull=False).exclude(region__country=F("country"))
-                  .select_related("country", "region__country"))
-    entries.append({
-        "key": "region_country", "title": "Cities whose region is in a different country", "count": mismatched.count(),
-        "detail": "The city's country and its region's country disagree; fix one in the admin.",
-        "url": None,
-        "items": [{"text": c.name, "meta": f"{c.country.name} · region {c.region.name} ({c.region.country.name})",
-                   "url": _admin_url(c)} for c in mismatched.order_by("name")[:LIST_LIMIT]],
-        "tone": "warning",
-    })
+    mismatched = (
+        City.objects.filter(region__isnull=False)
+        .exclude(region__country=F("country"))
+        .select_related("country", "region__country")
+    )
+    entries.append(
+        {
+            "key": "region_country",
+            "title": "Cities whose region is in a different country",
+            "count": mismatched.count(),
+            "detail": "The city's country and its region's country disagree; fix one in the admin.",
+            "url": None,
+            "items": [
+                {
+                    "text": c.name,
+                    "meta": f"{c.country.name} · region {c.region.name} ({c.region.country.name})",
+                    "url": _admin_url(c),
+                }
+                for c in mismatched.order_by("name")[:LIST_LIMIT]
+            ],
+            "tone": "warning",
+        }
+    )
 
     today = now.date()
     upcoming = Event.objects.filter(related_activity=OuterRef("pk"), start_date__gte=today)
-    yearly = (Activity.objects.filter(recurrence="yearly", approval_status=ApprovalStatus.APPROVED)
-              .exclude(Exists(upcoming)))
-    entries.append({
-        "key": "yearly", "title": "Yearly activities with no upcoming dates", "count": yearly.count(),
-        "detail": "Add the next occurrence as an event (“Add <year> dates” on the last one).",
-        "url": None,
-        "items": [{"text": a.name, "meta": a.place_name or "", "url": reverse("activities:activity_detail", args=[a.slug])}
-                  for a in yearly.order_by("name")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    yearly = Activity.objects.filter(recurrence="yearly", approval_status=ApprovalStatus.APPROVED).exclude(
+        Exists(upcoming)
+    )
+    entries.append(
+        {
+            "key": "yearly",
+            "title": "Yearly activities with no upcoming dates",
+            "count": yearly.count(),
+            "detail": "Add the next occurrence as an event (“Add <year> dates” on the last one).",
+            "url": None,
+            "items": [
+                {
+                    "text": a.name,
+                    "meta": a.place_name or "",
+                    "url": reverse("activities:activity_detail", args=[a.slug]),
+                }
+                for a in yearly.order_by("name")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     loose = Activity.objects.filter(city__isnull=True, country__isnull=True).exclude(suggested_location="")
-    entries.append({
-        "key": "activity_places", "title": "Activities whose place isn't linked", "count": loose.count(),
-        "detail": "They have a typed location but no country / city.",
-        "url": None,
-        "items": [{"text": a.name, "meta": a.suggested_location, "url": reverse("activities:activity_edit", args=[a.slug])}
-                  for a in loose.order_by("name")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "activity_places",
+            "title": "Activities whose place isn't linked",
+            "count": loose.count(),
+            "detail": "They have a typed location but no country / city.",
+            "url": None,
+            "items": [
+                {
+                    "text": a.name,
+                    "meta": a.suggested_location,
+                    "url": reverse("activities:activity_edit", args=[a.slug]),
+                }
+                for a in loose.order_by("name")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     heic = Media.objects.filter(Q(file__iendswith=".heic") | Q(file__iendswith=".heif"))
-    entries.append({
-        "key": "heic", "title": "HEIC images most browsers can't show", "count": heic.count(),
-        "detail": "Uploaded before HEIC uploads were converted to JPEG; re-upload them.",
-        "url": None,
-        "items": [{"text": m.title or m.file.name.rsplit("/", 1)[-1], "meta": f"by @{m.uploaded_by.username}",
-                   "url": _admin_url(m)} for m in heic.select_related("uploaded_by")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "heic",
+            "title": "HEIC images most browsers can't show",
+            "count": heic.count(),
+            "detail": "Uploaded before HEIC uploads were converted to JPEG; re-upload them.",
+            "url": None,
+            "items": [
+                {
+                    "text": m.title or m.file.name.rsplit("/", 1)[-1],
+                    "meta": f"by @{m.uploaded_by.username}",
+                    "url": _admin_url(m),
+                }
+                for m in heic.select_related("uploaded_by")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     User = get_user_model()
     placeholder = User.objects.filter(email__iendswith="@noemail.invalid")
-    entries.append({
-        "key": "emails", "title": "Accounts with a placeholder email", "count": placeholder.count(),
-        "detail": "They can't receive password resets until a real address is set.",
-        "url": reverse("admin:accounts_user_changelist") + "?q=noemail.invalid",
-        "items": [{"text": u.username, "meta": u.email, "url": _admin_url(u)} for u in placeholder.order_by("username")[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "emails",
+            "title": "Accounts with a placeholder email",
+            "count": placeholder.count(),
+            "detail": "They can't receive password resets until a real address is set.",
+            "url": reverse("admin:accounts_user_changelist") + "?q=noemail.invalid",
+            "items": [
+                {"text": u.username, "meta": u.email, "url": _admin_url(u)}
+                for u in placeholder.order_by("username")[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     # Reports on catalogue items (R15, admin_tools.reports) still open.
     from apps.admin_tools.models import ReportedContent
-    open_reports = list(ReportedContent.objects.filter(status__in=("pending", "investigating"))
-                        .select_related("content_type").order_by("created_at")[:LIST_LIMIT])
-    entries.append({
-        "key": "reports", "title": "Open reports on catalogue items",
-        "count": ReportedContent.objects.filter(status__in=("pending", "investigating")).count(),
-        "detail": "Three on a member's activity or event hide it until you decide; resolve or dismiss in the admin.",
-        "url": reverse("admin:admin_tools_reportedcontent_changelist"),
-        "items": [{"text": str(r.content_object or "(removed)"), "meta": f"{r.get_reason_display()} · {r.content_type.model}",
-                   "url": reverse("admin:admin_tools_reportedcontent_change", args=[r.pk])} for r in open_reports],
-        "tone": "warning",
-    })
+
+    open_reports = list(
+        ReportedContent.objects.filter(status__in=("pending", "investigating"))
+        .select_related("content_type")
+        .order_by("created_at")[:LIST_LIMIT]
+    )
+    entries.append(
+        {
+            "key": "reports",
+            "title": "Open reports on catalogue items",
+            "count": ReportedContent.objects.filter(status__in=("pending", "investigating")).count(),
+            "detail": "Three on a member's activity or event hide it until you decide; resolve or dismiss in the admin.",
+            "url": reverse("admin:admin_tools_reportedcontent_changelist"),
+            "items": [
+                {
+                    "text": str(r.content_object or "(removed)"),
+                    "meta": f"{r.get_reason_display()} · {r.content_type.model}",
+                    "url": reverse("admin:admin_tools_reportedcontent_change", args=[r.pk]),
+                }
+                for r in open_reports
+            ],
+            "tone": "warning",
+        }
+    )
 
     # Accounts at 80% or more of the storage limit (R15, media_app.quota).
-    from apps.media_app import quota
     from django.db.models import Sum as _Sum
+
+    from apps.media_app import quota
+
     cap = quota.limit_bytes()
     heavy = []
-    for row in (Media.objects.exclude(uploaded_by=None).values("uploaded_by").annotate(total=_Sum("file_size"))
-                .order_by("-total")[:50]):
+    for row in (
+        Media.objects.exclude(uploaded_by=None)
+        .values("uploaded_by")
+        .annotate(total=_Sum("file_size"))
+        .order_by("-total")[:50]
+    ):
         uploader = User.objects.filter(pk=row["uploaded_by"]).first()
         if uploader is None or uploader.is_staff:
             continue
         total = quota.used(uploader)
         if total >= cap * 0.8:
             heavy.append((uploader, total))
-    entries.append({
-        "key": "storage", "title": "Accounts near the storage limit", "count": len(heavy),
-        "detail": f"At 80% or more of {cap // (1024 * 1024)} MB for photos and tickets.",
-        "url": reverse("admin:accounts_user_changelist"),
-        "items": [{"text": u.username, "meta": f"{t / (1024 * 1024):.0f} MB", "url": _admin_url(u)}
-                  for u, t in heavy[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "storage",
+            "title": "Accounts near the storage limit",
+            "count": len(heavy),
+            "detail": f"At 80% or more of {cap // (1024 * 1024)} MB for photos and tickets.",
+            "url": reverse("admin:accounts_user_changelist"),
+            "items": [
+                {"text": u.username, "meta": f"{t / (1024 * 1024):.0f} MB", "url": _admin_url(u)}
+                for u, t in heavy[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     from .account_data import deletion_date
+
     leaving = list(User.objects.exclude(deletion_requested_at=None).order_by("deletion_requested_at"))
-    entries.append({
-        "key": "deletions", "title": "Accounts scheduled for deletion", "count": len(leaving),
-        "detail": "Deleted by the daily purge_deleted_accounts unless they sign in again; can't be undone after.",
-        "url": reverse("admin:accounts_user_changelist"),
-        "items": [{"text": u.username, "meta": f"deleted on {deletion_date(u):%b} {deletion_date(u).day}",
-                   "url": _admin_url(u)} for u in leaving[:LIST_LIMIT]],
-        "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "deletions",
+            "title": "Accounts scheduled for deletion",
+            "count": len(leaving),
+            "detail": "Deleted by the daily purge_deleted_accounts unless they sign in again; can't be undone after.",
+            "url": reverse("admin:accounts_user_changelist"),
+            "items": [
+                {
+                    "text": u.username,
+                    "meta": f"deleted on {deletion_date(u):%b} {deletion_date(u).day}",
+                    "url": _admin_url(u),
+                }
+                for u in leaving[:LIST_LIMIT]
+            ],
+            "tone": "info",
+        }
+    )
 
     draft_legal = [k for k, v in settings.LEGAL.items() if str(v).startswith("[")]
-    entries.append({
-        "key": "legal", "title": "Legal pages still have placeholders", "count": len(draft_legal),
-        "detail": "Set " + ", ".join(f"LEGAL_{k.upper()}" for k in draft_legal) + " in .env." if draft_legal else "",
-        "url": reverse("pages:terms"), "items": [], "tone": "info",
-    })
+    entries.append(
+        {
+            "key": "legal",
+            "title": "Legal pages still have placeholders",
+            "count": len(draft_legal),
+            "detail": "Set " + ", ".join(f"LEGAL_{k.upper()}" for k in draft_legal) + " in .env."
+            if draft_legal
+            else "",
+            "url": reverse("pages:terms"),
+            "items": [],
+            "tone": "info",
+        }
+    )
 
     return [e for e in entries if e["count"]]
 
@@ -266,11 +423,18 @@ def _stats(now):
     return {
         "users": users,
         "bucket": items,
-        "trips": Trip.objects.live().aggregate(total=Count("pk"), upcoming=Count("pk", filter=Q(start_date__gte=now.date())),
-                                               new_week=Count("pk", filter=Q(created_at__gte=week))),
+        "trips": Trip.objects.live().aggregate(
+            total=Count("pk"),
+            upcoming=Count("pk", filter=Q(start_date__gte=now.date())),
+            new_week=Count("pk", filter=Q(created_at__gte=week)),
+        ),
         "catalogue": [
             ("Activities", Activity.objects.filter(approved).count(), reverse("activities:activity_list")),
-            ("Upcoming events", Event.objects.filter(approved, start_date__gte=now.date()).count(), reverse("events:event_list")),
+            (
+                "Upcoming events",
+                Event.objects.filter(approved, start_date__gte=now.date()).count(),
+                reverse("events:event_list"),
+            ),
             ("Countries", Country.objects.filter(approved).count(), reverse("locations:country_list")),
             ("Cities", City.objects.filter(approved).count(), reverse("locations:city_list")),
             ("Places (POIs)", POI.objects.filter(approved).count(), reverse("locations:poi_list")),
@@ -288,11 +452,15 @@ def staff_dashboard(request):
     now = timezone.now()
     sla_hours = ApprovalSettings.get_settings().review_sla_hours
     User = get_user_model()
-    return render(request, "pages/staff_dashboard.html", {
-        "attention": _attention(now, sla_hours),
-        "stats": _stats(now),
-        "new_users": User.objects.order_by("-date_joined")[:LIST_LIMIT],
-        "recent_reviews": ApprovalLog.objects.select_related("performed_by", "content_type")[:8],
-        "recent_admin": LogEntry.objects.select_related("user", "content_type")[:8],
-        "breadcrumb_list": build_breadcrumbs([("Staff", None)]),
-    })
+    return render(
+        request,
+        "pages/staff_dashboard.html",
+        {
+            "attention": _attention(now, sla_hours),
+            "stats": _stats(now),
+            "new_users": User.objects.order_by("-date_joined")[:LIST_LIMIT],
+            "recent_reviews": ApprovalLog.objects.select_related("performed_by", "content_type")[:8],
+            "recent_admin": LogEntry.objects.select_related("user", "content_type")[:8],
+            "breadcrumb_list": build_breadcrumbs([("Staff", None)]),
+        },
+    )

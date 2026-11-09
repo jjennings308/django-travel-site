@@ -12,14 +12,23 @@ class CatalogueNoteForm(forms.ModelForm):
     how far ahead to book."""
 
     closed_weekdays = forms.TypedMultipleChoiceField(
-        choices=WEEKDAYS, coerce=int, required=False, widget=forms.CheckboxSelectMultiple,
-        label="Closed on", help_text="Tick the days it's closed every week (it warns trips that go then).")
+        choices=WEEKDAYS,
+        coerce=int,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Closed on",
+        help_text="Tick the days it's closed every week (it warns trips that go then).",
+    )
 
     class Meta:
         model = CatalogueNote
         fields = ["tone", "text", "closed_weekdays", "book_ahead", "book_ahead_unit", "booking_url", "checked_on"]
-        labels = {"book_ahead": "Book ahead", "book_ahead_unit": "", "booking_url": "Booking link",
-                  "checked_on": "Last checked"}
+        labels = {
+            "book_ahead": "Book ahead",
+            "book_ahead_unit": "",
+            "booking_url": "Booking link",
+            "checked_on": "Last checked",
+        }
         widgets = {
             "tone": forms.Select(attrs=INPUT),
             "text": forms.Textarea(attrs={**INPUT, "rows": 3}),

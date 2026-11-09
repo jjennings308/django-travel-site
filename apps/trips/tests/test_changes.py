@@ -1,8 +1,10 @@
 """Change records and the change digest (site roadmap R7)."""
+
 import io
 import shutil
 import tempfile
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time
+from datetime import timezone as dt_timezone
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -16,7 +18,17 @@ from apps.core.current import acting_as
 from apps.notifications.models import Notification
 from apps.trips import changes
 from apps.trips.models import (
-    Confirmation, Day, Lodging, Meal, Section, TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripRole,
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    Section,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
 )
 
 User = get_user_model()
@@ -28,17 +40,25 @@ class ChangeFixture(TestCase):
         self.ed = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd", first_name="Ed")
         self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd", first_name="Vi")
         self.co = User.objects.create_user("co", "co@example.com", "pw-1234-abcd", first_name="Co")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.ed)
+        self.trip = Trip.objects.create(
+            name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21), created_by=self.ed
+        )
         for user, role in ((self.ed, TripRole.EDITOR), (self.vi, TripRole.VIEWER), (self.co, TripRole.COMMENTOR)):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 19))
         self.leg = TransportLeg.objects.create(
-            trip=self.trip, mode="train", operator="DB", service_number="ICE 511", origin="Frankfurt Hbf",
-            destination="Augsburg Hbf", date=date(2027, 9, 19),
+            trip=self.trip,
+            mode="train",
+            operator="DB",
+            service_number="ICE 511",
+            origin="Frankfurt Hbf",
+            destination="Augsburg Hbf",
+            date=date(2027, 9, 19),
             departure_at=datetime(2027, 9, 19, 8, 0, tzinfo=dt_timezone.utc),
             arrival_at=datetime(2027, 9, 19, 11, 0, tzinfo=dt_timezone.utc),
-            origin_timezone="Europe/Berlin", destination_timezone="Europe/Berlin")
+            origin_timezone="Europe/Berlin",
+            destination_timezone="Europe/Berlin",
+        )
         TripChange.objects.all().delete()  # the fixture's own "Added …" lines
         mail.outbox = []
 
@@ -52,10 +72,11 @@ class CaptureTests(ChangeFixture):
             self.leg.departure_at = datetime(2027, 9, 19, 8, 30, tzinfo=dt_timezone.utc)
             self.leg.save()
         change = TripChange.objects.get()
-        self.assertEqual(change.summary,
-                         "Changed Frankfurt Hbf → Augsburg Hbf: departs 10:00 AM CEST → 10:30 AM CEST")
-        self.assertEqual((change.kind, change.actor, change.item_type, change.item_id),
-                         ("changed", self.ed, "transportleg", self.leg.pk))
+        self.assertEqual(change.summary, "Changed Frankfurt Hbf → Augsburg Hbf: departs 10:00 AM CEST → 10:30 AM CEST")
+        self.assertEqual(
+            (change.kind, change.actor, change.item_type, change.item_id),
+            ("changed", self.ed, "transportleg", self.leg.pk),
+        )
 
     def test_saving_without_a_change_records_nothing(self):
         self.leg.save()
@@ -63,8 +84,9 @@ class CaptureTests(ChangeFixture):
         self.assertEqual(self.summaries(), [])
 
     def test_added_and_removed(self):
-        stay = Lodging.objects.create(trip=self.trip, name="Hotel Drei Mohren", check_in=date(2027, 9, 19),
-                                      check_out=date(2027, 9, 21))
+        stay = Lodging.objects.create(
+            trip=self.trip, name="Hotel Drei Mohren", check_in=date(2027, 9, 19), check_out=date(2027, 9, 21)
+        )
         stay.delete()
         self.assertEqual(self.summaries(), ["Added stay Hotel Drei Mohren", "Removed stay Hotel Drei Mohren"])
 
@@ -75,26 +97,30 @@ class CaptureTests(ChangeFixture):
         meal = Meal.objects.create(day=self.day, name="Bräustüberl", meal_type="dinner")
         meal.reserved_time = time(19, 0)
         meal.save()
-        section = Section.objects.create(day=self.day, section_type="narrative", title="Morning",
-                                         content={"paragraphs": ["Walk"]})
+        section = Section.objects.create(
+            day=self.day, section_type="narrative", title="Morning", content={"paragraphs": ["Walk"]}
+        )
         section.content = {"paragraphs": ["Walk", "Coffee"]}
         section.save()
         self.day.theme = "Old town"
         self.day.save()
         confirmation = Confirmation.attach_number(self.trip, "DB-1", self.leg, provider="DB")
         confirmation.unlink(self.leg)
-        self.assertEqual(self.summaries(), [
-            "Added “Brewery tour”",
-            "Changed “Brewery tour”: starts none → 2:30 PM",
-            "Added dinner at Bräustüberl",
-            "Changed dinner at Bräustüberl: reservation none → 7:00 PM",
-            "Added “Morning” on Day 1",
-            "Changed “Morning” on Day 1: text changed",
-            "Changed Day 1: theme none → Old town",
-            "Added confirmation DB-1",
-            "Added confirmation DB-1 to Frankfurt Hbf→Augsburg Hbf",
-            "Removed confirmation DB-1 from Frankfurt Hbf→Augsburg Hbf",
-        ])
+        self.assertEqual(
+            self.summaries(),
+            [
+                "Added “Brewery tour”",
+                "Changed “Brewery tour”: starts none → 2:30 PM",
+                "Added dinner at Bräustüberl",
+                "Changed dinner at Bräustüberl: reservation none → 7:00 PM",
+                "Added “Morning” on Day 1",
+                "Changed “Morning” on Day 1: text changed",
+                "Changed Day 1: theme none → Old town",
+                "Added confirmation DB-1",
+                "Added confirmation DB-1 to Frankfurt Hbf→Augsburg Hbf",
+                "Removed confirmation DB-1 from Frankfurt Hbf→Augsburg Hbf",
+            ],
+        )
 
     def test_things_deleted_with_something_else_are_not_listed(self):
         Meal.objects.create(day=self.day, name="Lunch spot", meal_type="lunch")
@@ -121,8 +147,10 @@ class CaptureTests(ChangeFixture):
         TripChange.objects.all().delete()
         self.client.force_login(self.ed)
         with override_settings(PRIVATE_MEDIA_ROOT=private):
-            self.client.post(reverse("trips:confirmation_file_add", args=[self.trip.pk, confirmation.pk]),
-                             {"files": SimpleUploadedFile("t.pdf", b"%PDF-1.4\n%%EOF\n")})
+            self.client.post(
+                reverse("trips:confirmation_file_add", args=[self.trip.pk, confirmation.pk]),
+                {"files": SimpleUploadedFile("t.pdf", b"%PDF-1.4\n%%EOF\n")},
+            )
         change = TripChange.objects.get()
         self.assertEqual((change.summary, change.actor), ("Added t.pdf to confirmation DB-1", self.ed))
 
@@ -174,8 +202,9 @@ class DigestTests(ChangeFixture):
         self.change(self.ed)
         TripChange.objects.create(trip=other, actor=self.ed, kind="added", summary="Added X")
         call_command("send_trip_digests", stdout=io.StringIO())
-        self.assertEqual(sorted(n.title for n in self.digest_notes(self.vi)),
-                         ["1 change to “Bavaria”", "1 change to “Rome”"])
+        self.assertEqual(
+            sorted(n.title for n in self.digest_notes(self.vi)), ["1 change to “Bavaria”", "1 change to “Rome”"]
+        )
 
     def test_dry_run_sends_and_marks_nothing(self):
         self.change(self.ed)
@@ -194,8 +223,11 @@ class DigestTests(ChangeFixture):
 
 class UrgentTests(ChangeFixture):
     def move(self, today):
-        with mock.patch("apps.trips.changes.timezone.localdate", return_value=today), acting_as(self.ed), \
-                self.captureOnCommitCallbacks(execute=True):
+        with (
+            mock.patch("apps.trips.changes.timezone.localdate", return_value=today),
+            acting_as(self.ed),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
             self.leg.departure_at = datetime(2027, 9, 19, 8, 30, tzinfo=dt_timezone.utc)
             self.leg.save()
 
@@ -233,5 +265,6 @@ class MuteTests(ChangeFixture):
     def test_no_grant_is_a_404(self):
         stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
         self.client.force_login(stranger)
-        self.assertEqual(self.client.post(reverse("trips:trip_notify", args=[self.trip.pk]), {"on": "0"}).status_code,
-                         404)
+        self.assertEqual(
+            self.client.post(reverse("trips:trip_notify", args=[self.trip.pk]), {"on": "0"}).status_code, 404
+        )

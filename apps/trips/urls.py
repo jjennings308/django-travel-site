@@ -50,7 +50,9 @@ urlpatterns = [
     path("<int:pk>/confirmations/new/", views.confirmation_edit, name="confirmation_new"),
     path("<int:pk>/confirmations/<int:confirmation_pk>/", views.confirmation_edit, name="confirmation_edit"),
     path("<int:pk>/confirmations/<int:confirmation_pk>/delete/", views.confirmation_delete, name="confirmation_delete"),
-    path("<int:pk>/confirmations/<int:confirmation_pk>/files/", files.confirmation_file_add, name="confirmation_file_add"),
+    path(
+        "<int:pk>/confirmations/<int:confirmation_pk>/files/", files.confirmation_file_add, name="confirmation_file_add"
+    ),
     path("<int:pk>/files/<int:file_pk>/", files.confirmation_file, name="confirmation_file"),
     path("<int:pk>/files/<int:file_pk>/delete/", files.confirmation_file_delete, name="confirmation_file_delete"),
     path("<int:pk>/days/<int:day_pk>/legs/add/", views.leg_quick_add, name="leg_quick_add"),
@@ -66,8 +68,11 @@ urlpatterns = [
     # first and an unreachable trip is a 404 whatever the day.
     path("<int:trip_pk>/days/new/", views.day_create, name="day_create"),
     path("<int:trip_pk>/days/<int:pk>/", views.day_edit, name="day_edit"),
-    path("<int:trip_pk>/days/<int:day_pk>/catalogue/<str:kind>/<int:item_pk>/", views.catalogue_link,
-         name="catalogue_link"),
+    path(
+        "<int:trip_pk>/days/<int:day_pk>/catalogue/<str:kind>/<int:item_pk>/",
+        views.catalogue_link,
+        name="catalogue_link",
+    ),
     path(
         "<int:trip_pk>/days/<int:pk>/delete/",
         views.day_delete,
@@ -126,10 +131,14 @@ urlpatterns = [
     path("<int:pk>/days/<int:day_pk>/meals/<int:meal_pk>/delete/", views.meal_delete, name="meal_delete"),
     path("<int:pk>/days/<int:day_pk>/activities/new/", views.activity_edit, name="activity_new"),
     path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/", views.activity_edit, name="activity_edit"),
-    path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/delete/", views.activity_delete,
-         name="activity_delete"),
-    path("<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/use-fee/", views.activity_use_fee,
-         name="activity_use_fee"),
+    path(
+        "<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/delete/", views.activity_delete, name="activity_delete"
+    ),
+    path(
+        "<int:pk>/days/<int:day_pk>/activities/<int:activity_pk>/use-fee/",
+        views.activity_use_fee,
+        name="activity_use_fee",
+    ),
     path("<int:pk>/days/<int:day_pk>/stays/new/", views.stay_new, name="stay_new"),
     path("<int:pk>/stays/<int:stay_pk>/", views.stay_edit, name="stay_edit"),
     path("<int:pk>/stays/<int:stay_pk>/delete/", views.stay_delete, name="stay_delete"),

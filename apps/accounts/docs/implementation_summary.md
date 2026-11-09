@@ -281,18 +281,16 @@ if user.is_vendor and user.is_content_provider:
 ### Querying Users
 ```python
 # Get all vendors
-vendors = User.objects.filter(groups__name='Vendors')
+vendors = User.objects.filter(groups__name="Vendors")
 
 # Get all premium users
-premium_users = User.objects.exclude(subscription_tier='free')
+premium_users = User.objects.exclude(subscription_tier="free")
 
 # Get premium vendors
-premium_vendors = User.objects.filter(
-    groups__name='Vendors'
-).exclude(subscription_tier='free')
+premium_vendors = User.objects.filter(groups__name="Vendors").exclude(subscription_tier="free")
 
 # Get pending role requests
-pending = RoleRequest.objects.filter(status='pending')
+pending = RoleRequest.objects.filter(status="pending")
 ```
 
 ## Settings Required
@@ -301,8 +299,8 @@ Add to `settings.py`:
 
 ```python
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.EmailOrUsernameBackend',  # Custom - email or username
-    'django.contrib.auth.backends.ModelBackend',  # Fallback
+    "accounts.backends.EmailOrUsernameBackend",  # Custom - email or username
+    "django.contrib.auth.backends.ModelBackend",  # Fallback
 ]
 ```
 

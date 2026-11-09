@@ -1,6 +1,7 @@
 """The item panel on the trip page (docs/plans/day-first-planning.md, P2): every item's page renders
 without the site chrome with ?panel=1, readers get a read-only view, a save comes back to the panel,
 and one day can be fetched on its own to swap in."""
+
 from datetime import date, time
 from pathlib import Path
 
@@ -9,8 +10,18 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (Comment, Day, Lodging, Meal, Section, TransportLeg, Trip, TripActivity, TripGrant,
-                               TripRole)
+from apps.trips.models import (
+    Comment,
+    Day,
+    Lodging,
+    Meal,
+    Section,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripGrant,
+    TripRole,
+)
 
 User = get_user_model()
 
@@ -20,22 +31,29 @@ class Fixture(TestCase):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Alps", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Alps", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18), theme="Arrival")
         self.day2 = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19))
-        self.leg = TransportLeg.objects.create(trip=self.trip, date=self.day.date, origin="Munich",
-                                               destination="Salzburg", mode="train")
-        self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=self.day.date,
-                                           check_out=date(2027, 9, 20))
-        self.activity = TripActivity.objects.create(trip=self.trip, day=self.day, title="Salt mine tour",
-                                                    start_time=time(14, 0))
-        self.meal = Meal.objects.create(day=self.day, name="Augustiner", meal_type="dinner",
-                                        reserved_time=time(19, 30))
-        self.section = Section.objects.create(day=self.day, section_type="note", title="Heads up",
-                                              content={"tone": "warning", "paragraphs": ["Cash only."]})
+        self.leg = TransportLeg.objects.create(
+            trip=self.trip, date=self.day.date, origin="Munich", destination="Salzburg", mode="train"
+        )
+        self.stay = Lodging.objects.create(
+            trip=self.trip, name="Hotel Laimer Hof", check_in=self.day.date, check_out=date(2027, 9, 20)
+        )
+        self.activity = TripActivity.objects.create(
+            trip=self.trip, day=self.day, title="Salt mine tour", start_time=time(14, 0)
+        )
+        self.meal = Meal.objects.create(day=self.day, name="Augustiner", meal_type="dinner", reserved_time=time(19, 30))
+        self.section = Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="Heads up",
+            content={"tone": "warning", "paragraphs": ["Cash only."]},
+        )
 
     def edit_urls(self):
         t = self.trip.pk
@@ -49,8 +67,14 @@ class Fixture(TestCase):
         }
 
     def item_pk(self, kind):
-        return {"leg": self.leg, "stay": self.stay, "activity": self.activity, "meal": self.meal,
-                "section": self.section, "day": self.day}[kind].pk
+        return {
+            "leg": self.leg,
+            "stay": self.stay,
+            "activity": self.activity,
+            "meal": self.meal,
+            "section": self.section,
+            "day": self.day,
+        }[kind].pk
 
 
 class PanelPageTests(Fixture):
@@ -96,10 +120,21 @@ class PanelPageTests(Fixture):
         self.client.force_login(self.editor)
         url = self.edit_urls()["meal"]
         here = url + "?panel=1"
-        response = self.client.post(f"{url}?panel=1&next={here}", {
-            "name": "Augustiner Bräustuben", "meal_type": "dinner", "reserved_time": "20:00", "cuisine": "",
-            "price_range": "", "why_recommended": "", "reservation_notes": "", "poi": "", "order": ""},
-            follow=True)
+        response = self.client.post(
+            f"{url}?panel=1&next={here}",
+            {
+                "name": "Augustiner Bräustuben",
+                "meal_type": "dinner",
+                "reserved_time": "20:00",
+                "cuisine": "",
+                "price_range": "",
+                "why_recommended": "",
+                "reservation_notes": "",
+                "poi": "",
+                "order": "",
+            },
+            follow=True,
+        )
         self.assertEqual(response.redirect_chain[-1][0], here)
         self.assertContains(response, "Saved Augustiner Bräustuben.")
         self.assertNotContains(response, "<html")
@@ -110,9 +145,13 @@ class PanelPageTests(Fixture):
         self.client.force_login(self.editor)
         back = reverse("trips:trip_detail", args=[self.trip.pk])
         for url, model, pk in (
-                (reverse("trips:meal_delete", args=[self.trip.pk, self.day.pk, self.meal.pk]), Meal, self.meal.pk),
-                (reverse("trips:section_delete", args=[self.trip.pk, self.day.pk, self.section.pk]), Section,
-                 self.section.pk)):
+            (reverse("trips:meal_delete", args=[self.trip.pk, self.day.pk, self.meal.pk]), Meal, self.meal.pk),
+            (
+                reverse("trips:section_delete", args=[self.trip.pk, self.day.pk, self.section.pk]),
+                Section,
+                self.section.pk,
+            ),
+        ):
             with self.subTest(url=url):
                 self.assertContains(self.client.get(url, {"next": back}), f'value="{back}"')
                 self.assertRedirects(self.client.post(url, {"next": back}), back, fetch_redirect_response=False)
@@ -122,8 +161,10 @@ class PanelPageTests(Fixture):
         self.client.force_login(self.editor)
         url = self.edit_urls()["section"]
         back = reverse("trips:trip_detail", args=[self.trip.pk]) + f"#section-{self.section.pk}"
-        response = self.client.post(url + "?next=" + back.replace("#", "%23"), {
-            "title": "Heads up", "icon": "", "order": "0", "tone": "warning", "text": "Cards too."})
+        response = self.client.post(
+            url + "?next=" + back.replace("#", "%23"),
+            {"title": "Heads up", "icon": "", "order": "0", "tone": "warning", "text": "Cards too."},
+        )
         self.assertRedirects(response, back, fetch_redirect_response=False)
 
 
@@ -133,8 +174,14 @@ class ReadOnlyPanelTests(Fixture):
 
     def test_readers_see_each_item_without_edit_links(self):
         self.client.force_login(self.viewer)
-        for kind, text in (("leg", "Munich → Salzburg"), ("stay", "Hotel Laimer Hof"), ("activity", "Salt mine tour"),
-                           ("meal", "Augustiner"), ("section", "Cash only."), ("day", "Arrival")):
+        for kind, text in (
+            ("leg", "Munich → Salzburg"),
+            ("stay", "Hotel Laimer Hof"),
+            ("activity", "Salt mine tour"),
+            ("meal", "Augustiner"),
+            ("section", "Cash only."),
+            ("day", "Arrival"),
+        ):
             with self.subTest(kind=kind):
                 page = self.client.get(self.url(kind), {"panel": "1"})
                 self.assertContains(page, text)
@@ -171,8 +218,9 @@ class TripPageTests(Fixture):
                 continue
             with self.subTest(kind=kind):
                 self.assertIn(f'data-panel="{url}"', editor)
-                self.assertIn(f'data-panel="{reverse("trips:item_panel", args=[self.trip.pk, kind, self.item_pk(kind)])}"',
-                              viewer)
+                self.assertIn(
+                    f'data-panel="{reverse("trips:item_panel", args=[self.trip.pk, kind, self.item_pk(kind)])}"', viewer
+                )
                 self.assertNotIn(f'data-panel="{url}"', viewer)
         self.assertIn("data-panel-link>Edit this day</a>", editor)
         for html in (editor, viewer):
@@ -183,8 +231,10 @@ class TripPageTests(Fixture):
         self.assertTrue((Path(settings.BASE_DIR) / "apps/trips/static/trips/panel.js").exists())
 
     def test_meals_have_their_own_page_now(self):
-        self.assertIn(reverse("trips:meal_edit", args=[self.trip.pk, self.day.pk, self.meal.pk]) + "?next=",
-                      self.page(self.editor))
+        self.assertIn(
+            reverse("trips:meal_edit", args=[self.trip.pk, self.day.pk, self.meal.pk]) + "?next=",
+            self.page(self.editor),
+        )
 
 
 class DayFragmentTests(Fixture):
@@ -195,8 +245,13 @@ class DayFragmentTests(Fixture):
         self.client.force_login(self.viewer)
         html = self.client.get(self.url()).content.decode()
         self.assertIn('id="day-1" open', html)
-        for anchor in (f"leg-{self.leg.pk}", f"activity-{self.activity.pk}", f"meal-{self.meal.pk}",
-                       f"section-{self.section.pk}", f"stay-{self.stay.pk}"):
+        for anchor in (
+            f"leg-{self.leg.pk}",
+            f"activity-{self.activity.pk}",
+            f"meal-{self.meal.pk}",
+            f"section-{self.section.pk}",
+            f"stay-{self.stay.pk}",
+        ):
             self.assertIn(f'id="{anchor}"', html)
         self.assertNotIn("<html", html)
         self.assertNotIn('id="day-2"', html)

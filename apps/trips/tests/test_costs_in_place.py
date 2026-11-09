@@ -1,5 +1,6 @@
 """Costs where you plan, and payments against what they paid for (docs/plans/budget-estimates.md, B3): the note on
 each row of a day, per person and cheapest in a choice, an expense's For, paid per Plan row, Record a payment."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -8,8 +9,20 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips.forms import TripExpenseForm
-from apps.trips.models import (Confirmation, Day, Lodging, Meal, Option, OptionGroup, TransportLeg, Traveler, Trip,
-                               TripExpense, TripGrant, TripRole)
+from apps.trips.models import (
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripExpense,
+    TripGrant,
+    TripRole,
+)
 
 User = get_user_model()
 D = Decimal
@@ -19,9 +32,15 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         from apps.accounts.models import AccountSettings
+
         AccountSettings.objects.update_or_create(user=self.editor, defaults={"preferred_currency": "EUR"})
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 22),
-                                        created_by=self.editor, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 20),
+            end_date=date(2027, 9, 22),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.ada, self.bo = Traveler.objects.create(name="Ada"), Traveler.objects.create(name="Bo")
         self.trip.travelers.set([self.ada, self.bo])
@@ -30,8 +49,15 @@ class Fixture(TestCase):
 
     def leg(self, **fields):
         fields.setdefault("currency", "EUR")
-        return TransportLeg.objects.create(trip=self.trip, mode="train", operator="DB", origin="Augsburg",
-                                           destination="Munich", date=self.day.date, **fields)
+        return TransportLeg.objects.create(
+            trip=self.trip,
+            mode="train",
+            operator="DB",
+            origin="Augsburg",
+            destination="Munich",
+            date=self.day.date,
+            **fields,
+        )
 
     def page(self):
         return self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
@@ -40,11 +66,20 @@ class Fixture(TestCase):
 class DayRowTests(Fixture):
     def test_estimates_and_bookings_show_quietly_on_their_rows(self):
         self.leg(cost=D("24"))
-        Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.day.date, check_out=date(2027, 9, 22),
-                               nightly_rate=D("95"), currency="EUR", cost_basis="room_night", rooms=1)
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Hotel",
+            check_in=self.day.date,
+            check_out=date(2027, 9, 22),
+            nightly_rate=D("95"),
+            currency="EUR",
+            cost_basis="room_night",
+            rooms=1,
+        )
         Meal.objects.create(day=self.day, name="Augustiner", est_cost=D("30"), currency="EUR")  # a food idea
-        Meal.objects.create(day=self.day, name="Hofbräuhaus", est_cost=D("40"), currency="EUR",
-                            reserved_time="19:00")  # a booked table, in the timeline
+        Meal.objects.create(
+            day=self.day, name="Hofbräuhaus", est_cost=D("40"), currency="EUR", reserved_time="19:00"
+        )  # a booked table, in the timeline
         html = self.page()
         self.assertIn("data-cost-note>≈ €12 pp</span>", html)  # 24 total for 2
         self.assertIn("data-cost-note>≈ €95 pp</p>", html)  # 95 × 1 room × 2 nights for 2
@@ -53,7 +88,9 @@ class DayRowTests(Fixture):
 
     def test_a_booking_replaces_the_estimate(self):
         legs = [self.leg(cost=D("24")), self.leg(cost=D("24"))]
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR")
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR"
+        )
         booking.link(legs[0])
         html = self.page()
         self.assertIn("data-cost-note>€40 · booked</span>", html)
@@ -64,8 +101,9 @@ class DayRowTests(Fixture):
 class ChoiceTests(Fixture):
     def test_per_person_and_the_cheapest(self):
         group = OptionGroup.objects.create(trip=self.trip, day=self.day, prompt="Where to stay", kind="stay", nights=2)
-        Option.objects.create(group=group, title="Hotel", est_cost=D("95"), currency="EUR", cost_basis="room_night",
-                              rooms=2)  # 380 → 190 pp
+        Option.objects.create(
+            group=group, title="Hotel", est_cost=D("95"), currency="EUR", cost_basis="room_night", rooms=2
+        )  # 380 → 190 pp
         Option.objects.create(group=group, title="Flat", est_cost=D("150"), currency="EUR")  # 300 → 150 pp
         html = self.page()
         self.assertIn("EUR 380.00 · EUR 190.00 pp", html)
@@ -81,16 +119,27 @@ class ChoiceTests(Fixture):
 
 class ExpenseForTests(Fixture):
     def data(self, **over):
-        values = {"description": "Train", "category": "transport", "amount": "40", "currency": "EUR",
-                  "spent_on": "2027-09-01", "day": "", "paid_by": self.ada.pk, "notes": ""}
+        values = {
+            "description": "Train",
+            "category": "transport",
+            "amount": "40",
+            "currency": "EUR",
+            "spent_on": "2027-09-01",
+            "day": "",
+            "paid_by": self.ada.pk,
+            "notes": "",
+        }
         values.update(over)
         return values
 
     def test_for_a_booking_or_an_item_of_this_trip_only(self):
         leg = self.leg()
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR")
-        form = TripExpenseForm(self.data(paid_for=f"confirmation-{booking.pk}"), trip=self.trip,
-                               instance=TripExpense(trip=self.trip))
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR"
+        )
+        form = TripExpenseForm(
+            self.data(paid_for=f"confirmation-{booking.pk}"), trip=self.trip, instance=TripExpense(trip=self.trip)
+        )
         self.assertTrue(form.is_valid(), form.errors)
         expense = form.save()
         self.assertEqual((expense.paid_for, expense.for_label), (booking, "GCH7JS"))
@@ -98,8 +147,9 @@ class ExpenseForTests(Fixture):
         self.assertEqual(again.initial["paid_for"], f"confirmation-{booking.pk}")
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         theirs = TransportLeg.objects.create(trip=other, origin="X", destination="Y", date=date(2027, 1, 1))
-        refused = TripExpenseForm(self.data(paid_for=f"leg-{theirs.pk}"), trip=self.trip,
-                                  instance=TripExpense(trip=self.trip))
+        refused = TripExpenseForm(
+            self.data(paid_for=f"leg-{theirs.pk}"), trip=self.trip, instance=TripExpense(trip=self.trip)
+        )
         self.assertFalse(refused.is_valid())
         self.assertIn("paid_for", refused.errors)
         with self.assertRaises(ValueError):
@@ -109,21 +159,31 @@ class ExpenseForTests(Fixture):
 
     def test_paid_per_row_and_record_a_payment(self):
         legs = [self.leg(cost=D("24")), self.leg(cost=D("24"))]
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR")
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="GCH7JS", cost=D("40"), currency="EUR"
+        )
         for leg in legs:
             booking.link(leg)
         budget = reverse("trips:trip_budget", args=[self.trip.pk])
         html = self.client.get(budget).content.decode()
         self.assertIn(f'href="?pay=confirmation-{booking.pk}&amp;in=EUR#add-cost" data-record-payment>', html)
         form = self.client.get(budget + f"?pay=confirmation-{booking.pk}").context["form"]
-        self.assertEqual((form.initial["description"], form.initial["amount"], form.initial["category"],
-                          form.initial["paid_for"]),
-                         ("GCH7JS · 2 journeys", D("40"), "transport", f"confirmation-{booking.pk}"))
+        self.assertEqual(
+            (form.initial["description"], form.initial["amount"], form.initial["category"], form.initial["paid_for"]),
+            ("GCH7JS · 2 journeys", D("40"), "transport", f"confirmation-{booking.pk}"),
+        )
         # Paid against one of the booking's legs counts on the booking's row.
-        TripExpense.objects.create(trip=self.trip, description="Deposit", amount=D("15"), currency="EUR",
-                                   paid_by=self.ada, category="transport")  # for nothing in particular
-        expense = TripExpense(trip=self.trip, description="Train", amount=D("25"), currency="EUR", paid_by=self.bo,
-                              category="transport")
+        TripExpense.objects.create(
+            trip=self.trip,
+            description="Deposit",
+            amount=D("15"),
+            currency="EUR",
+            paid_by=self.ada,
+            category="transport",
+        )  # for nothing in particular
+        expense = TripExpense(
+            trip=self.trip, description="Train", amount=D("25"), currency="EUR", paid_by=self.bo, category="transport"
+        )
         expense.set_for(legs[1])
         expense.save()
         plan = self.client.get(budget).context["plan"]

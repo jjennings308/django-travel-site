@@ -5,6 +5,7 @@ Each widget sets the input type, the value format the browser expects and, unles
 ``.trips-ui`` component layer styles inputs by their type instead.
 ``apps/core/tests/test_date_pickers.py`` checks every form uses one of these.
 """
+
 from django import forms
 
 SITE_INPUT = "sbl-input"
@@ -21,18 +22,21 @@ class _Picker:
 
 class DateInput(_Picker, forms.DateInput):
     """``<input type="date">``, value 2027-09-18."""
+
     input_type = "date"
     value_format = "%Y-%m-%d"
 
 
 class TimeInput(_Picker, forms.TimeInput):
     """``<input type="time">``, value 20:00 (no seconds)."""
+
     input_type = "time"
     value_format = "%H:%M"
 
 
 class DateTimeLocalInput(_Picker, forms.DateTimeInput):
     """``<input type="datetime-local">``, value 2027-09-18T20:00 (wall clock, no zone)."""
+
     input_type = "datetime-local"
     value_format = "%Y-%m-%dT%H:%M"
 
@@ -58,8 +62,13 @@ class CurrencySelect(forms.Widget):
         codes = list(dict.fromkeys(code.upper() for code in self.codes if code))
         if current and current not in codes:
             codes.append(current)
-        context["widget"].update(codes=codes, current=current, allow_blank=self.allow_blank,
-                                 other_value=self.OTHER, other_name=f"{name}_other")
+        context["widget"].update(
+            codes=codes,
+            current=current,
+            allow_blank=self.allow_blank,
+            other_value=self.OTHER,
+            other_name=f"{name}_other",
+        )
         return context
 
     def value_from_datadict(self, data, files, name):

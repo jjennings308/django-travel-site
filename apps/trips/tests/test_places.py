@@ -1,4 +1,5 @@
 """Trips and days name catalogue cities."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -15,19 +16,45 @@ User = get_user_model()
 
 class TripPlacesTests(TestCase):
     def setUp(self):
-        self.germany = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU",
-                                              continent="Europe", approval_status=ApprovalStatus.APPROVED)
-        self.munich = City.objects.create(name="Munich", slug="munich", country=self.germany, latitude=48, longitude=11,
-                                          approval_status=ApprovalStatus.APPROVED)
-        self.berlin = City.objects.create(name="Berlin", slug="berlin", country=self.germany, latitude=52, longitude=13,
-                                          approval_status=ApprovalStatus.APPROVED)
+        self.germany = Country.objects.create(
+            name="Germany",
+            slug="germany",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.munich = City.objects.create(
+            name="Munich",
+            slug="munich",
+            country=self.germany,
+            latitude=48,
+            longitude=11,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.berlin = City.objects.create(
+            name="Berlin",
+            slug="berlin",
+            country=self.germany,
+            latitude=52,
+            longitude=13,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.trip = Trip.objects.create(name="Germany", start_date=date(2027, 9, 17), end_date=date(2027, 9, 24))
         self.ada = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
         TripGrant.objects.create(trip=self.trip, user=self.ada, role=TripRole.VIEWER)
 
     def test_trip_form_saves_cities_and_day_choices_follow(self):
-        form = TripForm({"name": "Germany", "start_date": "2027-09-17", "end_date": "2027-09-24",
-                         "status": "starting", "cities": [self.munich.pk]}, instance=self.trip)
+        form = TripForm(
+            {
+                "name": "Germany",
+                "start_date": "2027-09-17",
+                "end_date": "2027-09-24",
+                "status": "starting",
+                "cities": [self.munich.pk],
+            },
+            instance=self.trip,
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(list(self.trip.cities.all()), [self.munich])

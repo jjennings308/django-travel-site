@@ -1,4 +1,5 @@
 """Error emails (site roadmap R3): wired in prod, nothing private in them, one per error an hour."""
+
 import logging
 import os
 import runpy
@@ -21,8 +22,9 @@ ALERT_CACHES = {
 
 class ParseAdminsTests(SimpleTestCase):
     def test_names_and_several_addresses(self):
-        self.assertEqual(parse_admins("James <james@example.com>, ops@example.com"),
-                         ["James <james@example.com>", "ops@example.com"])
+        self.assertEqual(
+            parse_admins("James <james@example.com>, ops@example.com"), ["James <james@example.com>", "ops@example.com"]
+        )
 
     def test_empty_is_off(self):
         self.assertEqual(parse_admins(""), [])
@@ -31,8 +33,12 @@ class ParseAdminsTests(SimpleTestCase):
 
 class ProdSettingsTests(SimpleTestCase):
     def test_django_request_errors_go_to_the_alert_handler(self):
-        env = {"DJANGO_SECRET_KEY": "x" * 60, "DJANGO_ALLOWED_HOSTS": "example.com", "EMAIL_HOST": "localhost",
-               "DJANGO_ADMINS": "James <james@example.com>"}
+        env = {
+            "DJANGO_SECRET_KEY": "x" * 60,
+            "DJANGO_ALLOWED_HOSTS": "example.com",
+            "EMAIL_HOST": "localhost",
+            "DJANGO_ADMINS": "James <james@example.com>",
+        }
         with mock.patch.dict(os.environ, env):
             sys.modules.pop("config.settings.base", None)  # re-read DJANGO_ADMINS
             try:
@@ -46,8 +52,11 @@ class ProdSettingsTests(SimpleTestCase):
         self.assertIn("FileBasedCache", prod["CACHES"]["alerts"]["BACKEND"])
 
 
-@override_settings(ADMINS=["James <james@example.com>"], CACHES=ALERT_CACHES,
-                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    ADMINS=["James <james@example.com>"],
+    CACHES=ALERT_CACHES,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
 class AlertEmailTests(SimpleTestCase):
     def setUp(self):
         caches["alerts"].clear()
@@ -68,8 +77,9 @@ class AlertEmailTests(SimpleTestCase):
         try:
             raise kind("boom")
         except kind:
-            self.logger.error("Internal Server Error: /trips/7/edit/", exc_info=True,
-                              extra={"request": request or self.request()})
+            self.logger.error(
+                "Internal Server Error: /trips/7/edit/", exc_info=True, extra={"request": request or self.request()}
+            )
 
     def test_email_has_path_and_user_but_nothing_private(self):
         self.fail()
@@ -80,7 +90,7 @@ class AlertEmailTests(SimpleTestCase):
         self.assertIn("test_alerts.py", message.subject)
         self.assertIn("Path:    /trips/7/edit/", message.body)
         self.assertIn("User id: 42", message.body)
-        self.assertIn("raise kind(\"boom\")", message.body)
+        self.assertIn('raise kind("boom")', message.body)
         for secret in ("X1234567", "SECRET-QUERY", "passport_number"):
             self.assertNotIn(secret, message.body)
         self.assertEqual(message.alternatives, [])
@@ -105,7 +115,9 @@ class AlertEmailTests(SimpleTestCase):
         self.assertEqual(mail.outbox, [])
 
     def test_mail_failure_never_raises(self):
-        with mock.patch("apps.core.alerts.mail_admins", side_effect=OSError("smtp down")), \
-                mock.patch.object(self.handler, "handleError") as handled:
+        with (
+            mock.patch("apps.core.alerts.mail_admins", side_effect=OSError("smtp down")),
+            mock.patch.object(self.handler, "handleError") as handled,
+        ):
             self.fail()
         handled.assert_called_once()

@@ -1,4 +1,5 @@
 """A flag picture for every country (docs/plans/country-flags.md, C1)."""
+
 import re
 import shutil
 import tempfile
@@ -20,7 +21,6 @@ from apps.media_app.models import Media
 
 User = get_user_model()
 IMPORT_COUNTRIES = Path(__file__).resolve().parents[1] / "management" / "commands" / "import_countries.py"
-
 
 
 class PngTests(SimpleTestCase):
@@ -57,12 +57,30 @@ class Fixture(TestCase):
         shutil.rmtree(cls.media_root, ignore_errors=True)
 
     def setUp(self):
-        self.germany = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU",
-                                              continent="Europe", approval_status=ApprovalStatus.APPROVED)
-        self.france = Country.objects.create(name="France", slug="france", iso_code="FR", iso3_code="FRA",
-                                             continent="Europe", approval_status=ApprovalStatus.APPROVED)
-        self.kosovo = Country.objects.create(name="Nowhere", slug="nowhere", iso_code="QQ", iso3_code="QQQ",
-                                             continent="Europe", approval_status=ApprovalStatus.APPROVED)
+        self.germany = Country.objects.create(
+            name="Germany",
+            slug="germany",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.france = Country.objects.create(
+            name="France",
+            slug="france",
+            iso_code="FR",
+            iso3_code="FRA",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.kosovo = Country.objects.create(
+            name="Nowhere",
+            slug="nowhere",
+            iso_code="QQ",
+            iso3_code="QQQ",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def photo(self, country):
         media = Media(title="Eiffel Tower", uploaded_by=User.objects.create_user("p", "p@example.com", "x"))
@@ -123,21 +141,28 @@ class NewCountryTests(Fixture):
     def test_the_add_page(self):
         user = User.objects.create_user("m", "m@example.com", "pw-1234-abcd")
         self.client.force_login(user)
-        self.client.post(reverse("locations:country_add"), {"name": "Iceland", "iso_code": "is", "iso3_code": "isl",
-                                                            "continent": "Europe"})
+        self.client.post(
+            reverse("locations:country_add"),
+            {"name": "Iceland", "iso_code": "is", "iso3_code": "isl", "continent": "Europe"},
+        )
         iceland = Country.objects.get(iso_code="IS")
-        self.assertEqual((iceland.featured_media_id, iceland.flag_media.title),
-                         (iceland.flag_media_id, "Flag of Iceland"))
+        self.assertEqual(
+            (iceland.featured_media_id, iceland.flag_media.title), (iceland.flag_media_id, "Flag of Iceland")
+        )
 
     def test_the_csv_import(self):
         staff = User.objects.create_user("staffer", "s@example.com", "pw-1234-abcd")
-        staff.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard",
-                                                          content_type__app_label="accounts"))
+        staff.user_permissions.add(
+            Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
+        )
         self.client.force_login(staff)
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         csv = "name,iso_code,iso3_code,continent,visa_required\nIceland,IS,ISL,Europe,no\nGermany,DE,DEU,Europe,no\n"
-        self.client.post(reverse("admin_tools:import"), {
-            "kind": "country", "file": SimpleUploadedFile("c.csv", csv.encode(), content_type="text/csv")})
+        self.client.post(
+            reverse("admin_tools:import"),
+            {"kind": "country", "file": SimpleUploadedFile("c.csv", csv.encode(), content_type="text/csv")},
+        )
         self.client.post(reverse("admin_tools:import_preview"))
         iceland = Country.objects.get(iso_code="IS")
         self.assertEqual(iceland.featured_media_id, iceland.flag_media_id)
@@ -174,8 +199,9 @@ class PageTests(Fixture):
         flags.attach(self.germany)
         page = self.client.get(reverse("locations:country_detail", args=["germany"])).content.decode()
         self.germany.refresh_from_db()
-        self.assertIn(f'<meta property="og:image" content="http://127.0.0.1:8000{self.germany.flag_media.file.url}">',
-                      page)
+        self.assertIn(
+            f'<meta property="og:image" content="http://127.0.0.1:8000{self.germany.flag_media.file.url}">', page
+        )
 
 
 class UseTheFlagTests(Fixture):
@@ -188,8 +214,14 @@ class UseTheFlagTests(Fixture):
         self.client.force_login(staff)
         url = reverse("locations:country_edit", args=["france"])
         self.assertContains(self.client.get(url), "data-use-flag")
-        data = {"name": "France", "iso_code": "FR", "iso3_code": "FRA", "continent": "Europe", "latitude": "",
-                "longitude": ""}
+        data = {
+            "name": "France",
+            "iso_code": "FR",
+            "iso3_code": "FRA",
+            "continent": "Europe",
+            "latitude": "",
+            "longitude": "",
+        }
         self.client.post(url, {**data, "featured_media_id": photo.pk})
         self.france.refresh_from_db()
         self.assertEqual((self.france.featured_media, self.france.flag_media), (photo, flag))

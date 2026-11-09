@@ -1,4 +1,5 @@
 """Finding a city by typing, and adding one that isn't listed (docs/plans/day-first-planning.md, P1)."""
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -16,15 +17,32 @@ class Fixture(TestCase):
     def setUp(self):
         self.member = User.objects.create_user("mem", "mem@example.com", "pw-1234-abcd")
         self.other = User.objects.create_user("oth", "oth@example.com", "pw-1234-abcd")
-        self.at = Country.objects.create(name="Austria", slug="at", iso_code="AT", iso3_code="AUT", continent="Europe",
-                                         latitude=47.5, longitude=14.5, approval_status=APPROVED)
-        self.de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                         approval_status=APPROVED)
+        self.at = Country.objects.create(
+            name="Austria",
+            slug="at",
+            iso_code="AT",
+            iso3_code="AUT",
+            continent="Europe",
+            latitude=47.5,
+            longitude=14.5,
+            approval_status=APPROVED,
+        )
+        self.de = Country.objects.create(
+            name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe", approval_status=APPROVED
+        )
         self.upper = Region.objects.create(name="Upper Austria", code="OOE", country=self.at, approval_status=APPROVED)
 
         def city(name, country, status=APPROVED, by=None, **extra):
-            return City.objects.create(name=name, slug=name.lower().replace(" ", "-"), country=country, latitude=0,
-                                       longitude=0, approval_status=status, submitted_by=by, **extra)
+            return City.objects.create(
+                name=name,
+                slug=name.lower().replace(" ", "-"),
+                country=country,
+                latitude=0,
+                longitude=0,
+                approval_status=status,
+                submitted_by=by,
+                **extra,
+            )
 
         self.city = city
         self.munich = city("München", self.de, timezone="Europe/Berlin")
@@ -48,11 +66,20 @@ class SearchTests(Fixture):
 
     def test_the_results_carry_what_the_box_needs(self):
         row = self.client.get(reverse("locations:city_search"), {"q": "munchen"}).json()["results"][0]
-        self.assertEqual({k: row[k] for k in ("id", "name", "country", "timezone", "flag", "pending")},
-                         {"id": self.munich.pk, "name": "München", "country": "Germany", "timezone": "Europe/Berlin",
-                          "flag": "de", "pending": False})
-        self.assertEqual(set(row), {"id", "name", "label", "region", "country", "flag", "timezone", "lat", "lng",
-                                    "pending"})
+        self.assertEqual(
+            {k: row[k] for k in ("id", "name", "country", "timezone", "flag", "pending")},
+            {
+                "id": self.munich.pk,
+                "name": "München",
+                "country": "Germany",
+                "timezone": "Europe/Berlin",
+                "flag": "de",
+                "pending": False,
+            },
+        )
+        self.assertEqual(
+            set(row), {"id", "name", "label", "region", "country", "flag", "timezone", "lat", "lng", "pending"}
+        )
 
     def test_pending_cities_only_for_their_submitter(self):
         self.assertEqual(self.names("halls"), [])  # visitors: approved only
@@ -95,11 +122,13 @@ class NewCityTests(Fixture):
         self.client.force_login(self.member)
         page = self.client.get(reverse("locations:city_new"), {"name": "Gosau", "next": "/trips/"})
         self.assertContains(page, 'value="Gosau"')
-        response = self.client.post(reverse("locations:city_new"), {"name": "Gosau", "country": self.at.pk,
-                                                                     "next": "/trips/"})
+        response = self.client.post(
+            reverse("locations:city_new"), {"name": "Gosau", "country": self.at.pk, "next": "/trips/"}
+        )
         self.assertRedirects(response, "/trips/", fetch_redirect_response=False)
-        response = self.client.post(reverse("locations:city_new"), {"name": "Bad Ischl", "country": self.at.pk,
-                                                                     "next": "https://evil.example/"})
+        response = self.client.post(
+            reverse("locations:city_new"), {"name": "Bad Ischl", "country": self.at.pk, "next": "https://evil.example/"}
+        )
         self.assertEqual(response["Location"], reverse("locations:city_detail", args=["bad-ischl-at"]))
 
     def test_signed_out_visitors_cant_add(self):
@@ -110,8 +139,11 @@ class NewCityTests(Fixture):
 
 class WidgetTests(Fixture):
     def form(self, widget, value=None):
-        choices = [("", "---------"), ("This trip", [(self.munich.pk, "München, DE")]),
-                   ("Everywhere else", [(self.salzburg.pk, "Salzburg, AT")])]
+        choices = [
+            ("", "---------"),
+            ("This trip", [(self.munich.pk, "München, DE")]),
+            ("Everywhere else", [(self.salzburg.pk, "Salzburg, AT")]),
+        ]
 
         class F(forms.Form):
             city = forms.ChoiceField(choices=choices, required=False, widget=widget)
@@ -120,13 +152,14 @@ class WidgetTests(Fixture):
 
     def test_the_box_has_chips_and_a_no_javascript_select(self):
         html = str(self.form(CitySearchInput(zones={str(self.munich.pk): "Europe/Berlin"}), self.salzburg.pk)["city"])
-        self.assertIn('x-data="citySearch(\'id_city_config\')"', html)
+        self.assertIn("x-data=\"citySearch('id_city_config')\"", html)
         self.assertIn("x-cloak", html)  # hidden without JavaScript
         self.assertIn('x-bind:name="multiple ? null : name"', html)  # the hidden input is named only by Alpine
-        self.assertIn('"chips": [{"id": "%d", "label": "M\\u00fcnchen, DE", "timezone": "Europe/Berlin"}]' % self.munich.pk,
-                      html)
+        self.assertIn(
+            '"chips": [{"id": "%d", "label": "M\\u00fcnchen, DE", "timezone": "Europe/Berlin"}]' % self.munich.pk, html
+        )
         self.assertIn('"selected": [{"id": "%d"' % self.salzburg.pk, html)
-        fallback = html[html.index("<noscript>"):html.index("</noscript>")]
+        fallback = html[html.index("<noscript>") : html.index("</noscript>")]
         self.assertIn('<select name="city" id="id_city_fallback"', fallback)
         self.assertIn('<optgroup label="This trip">', fallback)
         self.assertIn(f'value="{self.munich.pk}" data-tz="Europe/Berlin"', fallback)
@@ -134,12 +167,13 @@ class WidgetTests(Fixture):
 
     def test_several_cities(self):
         class F(forms.Form):
-            cities = forms.MultipleChoiceField(choices=[(self.munich.pk, "München"), (self.salzburg.pk, "Salzburg")],
-                                               widget=CitySearchMultiple())
+            cities = forms.MultipleChoiceField(
+                choices=[(self.munich.pk, "München"), (self.salzburg.pk, "Salzburg")], widget=CitySearchMultiple()
+            )
 
         form = F({"cities": [str(self.munich.pk), str(self.salzburg.pk)]})
         self.assertTrue(form.is_valid())
         self.assertEqual(len(form.cleaned_data["cities"]), 2)
         html = str(form["cities"])
         self.assertIn('"multiple": true', html)
-        self.assertIn("multiple", html[html.index("<noscript>"):])
+        self.assertIn("multiple", html[html.index("<noscript>") :])

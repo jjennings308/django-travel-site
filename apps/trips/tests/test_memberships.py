@@ -1,6 +1,5 @@
 """One rewards-membership model (site roadmap R11): trips.RewardsMembership keyed to the traveller,
 linked to the rewards catalogue; the old per-account model's rows were copied across."""
-from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -16,12 +15,18 @@ User = get_user_model()
 
 
 class CopyMigrationTests(RestoringTransactionTestCase):
-    BEFORE = [("trips", "0041_membership_catalogue_program"),
-              ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more"),
-              ("reviews", "0003_alter_review_user"),  # reviews 0004 (R17) needs later trips
-              ("bucketlists", "0006_badge_code")]  # and bucketlists 0007 (P6)
-    AFTER = [("trips", "0042_copy_user_rewards_memberships"), ("rewards", "0003_delete_userrewardsmembership"),
-             ("reviews", "0003_alter_review_user"), ("bucketlists", "0006_badge_code")]
+    BEFORE = [
+        ("trips", "0041_membership_catalogue_program"),
+        ("rewards", "0002_remove_rewardsprogram_rewards_program_unique_name_company_and_more"),
+        ("reviews", "0003_alter_review_user"),  # reviews 0004 (R17) needs later trips
+        ("bucketlists", "0006_badge_code"),
+    ]  # and bucketlists 0007 (P6)
+    AFTER = [
+        ("trips", "0042_copy_user_rewards_memberships"),
+        ("rewards", "0003_delete_userrewardsmembership"),
+        ("reviews", "0003_alter_review_user"),
+        ("bucketlists", "0006_badge_code"),
+    ]
 
     def migrate(self, targets):
         executor = MigrationExecutor(connection)
@@ -45,14 +50,15 @@ class CopyMigrationTests(RestoringTransactionTestCase):
         james = Account.objects.create(username="j_mig", email="j_mig@example.com", password="x")
         nobody = Account.objects.create(username="n_mig", email="n_mig@example.com", password="x")
         traveler = Traveler.objects.create(name="James", user=james)
-        delta, _ = Program.objects.get_or_create(name="SkyMiles", company="Delta Air Lines",
-                                                 defaults={"program_type": "airline"})
-        db, _ = Program.objects.get_or_create(name="BahnBonus", company="Deutsche Bahn",
-                                              defaults={"program_type": "train"})
+        delta, _ = Program.objects.get_or_create(
+            name="SkyMiles", company="Delta Air Lines", defaults={"program_type": "airline"}
+        )
+        db, _ = Program.objects.get_or_create(
+            name="BahnBonus", company="Deutsche Bahn", defaults={"program_type": "train"}
+        )
         # Typed on the profile already, as people type it.
         New.objects.create(traveler=traveler, program="Delta SkyMiles", member_number="", kind="airline")
-        Old.objects.create(user=james, program=delta, member_number="9001", current_tier="Gold",
-                           points_balance=1200)
+        Old.objects.create(user=james, program=delta, member_number="9001", current_tier="Gold", points_balance=1200)
         Old.objects.create(user=james, program=db, member_number="X" * 60)
         Old.objects.create(user=nobody, program=db, member_number="7")  # no traveller: skipped
 
@@ -74,14 +80,20 @@ class ProfileTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
         self.traveler = Traveler.objects.get(user=self.user)
-        self.program, _ = RewardsProgram.objects.get_or_create(name="SkyMiles", company="Delta Air Lines",
-                                                               defaults={"program_type": "airline"})
+        self.program, _ = RewardsProgram.objects.get_or_create(
+            name="SkyMiles", company="Delta Air Lines", defaults={"program_type": "airline"}
+        )
         self.client.force_login(self.user)
         self.url = reverse("trips:traveler_profile")
 
     def post(self, row):
-        data = {"memberships-TOTAL_FORMS": "1", "memberships-INITIAL_FORMS": "0", "memberships-MIN_NUM_FORMS": "0",
-                "memberships-MAX_NUM_FORMS": "1000", **{f"memberships-0-{k}": v for k, v in row.items()}}
+        data = {
+            "memberships-TOTAL_FORMS": "1",
+            "memberships-INITIAL_FORMS": "0",
+            "memberships-MIN_NUM_FORMS": "0",
+            "memberships-MAX_NUM_FORMS": "1000",
+            **{f"memberships-0-{k}": v for k, v in row.items()},
+        }
         page = self.client.get(self.url)
         form = page.context["form"]
         for name, field in form.fields.items():
@@ -93,8 +105,10 @@ class ProfileTests(TestCase):
     def test_pick_from_the_catalogue_fills_name_and_kind(self):
         self.post({"catalogue_program": str(self.program.pk), "kind": "other", "member_number": "123"})
         membership = RewardsMembership.objects.get(traveler=self.traveler)
-        self.assertEqual((membership.program, membership.kind, membership.catalogue_program),
-                         ("Delta Air Lines SkyMiles", "airline", self.program))
+        self.assertEqual(
+            (membership.program, membership.kind, membership.catalogue_program),
+            ("Delta Air Lines SkyMiles", "airline", self.program),
+        )
 
     def test_catalogue_page_prefills_the_blank_row(self):
         response = self.client.get(self.url, {"program": self.program.pk})
@@ -102,11 +116,11 @@ class ProfileTests(TestCase):
         self.assertEqual(formset.forms[-1].initial.get("catalogue_program"), self.program.pk)
 
     def test_old_rewards_pages_redirect_to_the_profile(self):
-        for name, args in (("rewards:dashboard", []), ("rewards:memberships_list", []),
-                           ("rewards:add_membership", [])):
+        for name, args in (("rewards:dashboard", []), ("rewards:memberships_list", []), ("rewards:add_membership", [])):
             response = self.client.get(reverse(name, args=args), {"program": self.program.pk})
-            self.assertRedirects(response, f"{self.url}?program={self.program.pk}#memberships",
-                                 fetch_redirect_response=False)
+            self.assertRedirects(
+                response, f"{self.url}?program={self.program.pk}#memberships", fetch_redirect_response=False
+            )
 
     def test_catalogue_pages_still_work_and_link_to_the_profile(self):
         self.assertEqual(self.client.get(reverse("rewards:programs_browse")).status_code, 200)

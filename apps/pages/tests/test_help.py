@@ -1,5 +1,6 @@
 """The Help center (docs/plans/help-center.md, H1): every guide in apps/pages/help/ is valid and
 its links resolve; the index and guide pages; staff guides gated by can_access_staff."""
+
 import re
 import tempfile
 from pathlib import Path
@@ -14,8 +15,10 @@ from apps.pages import helpdocs
 
 User = get_user_model()
 
-HEADER = ("title: {title}\nsummary: A short summary.\naudience: {audience}\nsection: {section}\norder: 10\n"
-          "updated: 2026-10-17\n\n# {title}\n\n")
+HEADER = (
+    "title: {title}\nsummary: A short summary.\naudience: {audience}\nsection: {section}\norder: 10\n"
+    "updated: 2026-10-17\n\n# {title}\n\n"
+)
 
 
 def write(folder, slug, body="Some text.", title="A guide", audience="everyone", section="Trips", header=None):
@@ -81,7 +84,8 @@ class ParserTests(SimpleTestCase):
         cases = {
             "missing": "title: X\nsummary: S\naudience: everyone\nsection: Trips\norder: 1\n\nbody",
             "unknown": HEADER.format(title="X", audience="everyone", section="Trips").replace(
-                "order: 10\n", "order: 10\nauthor: me\n"),
+                "order: 10\n", "order: 10\nauthor: me\n"
+            ),
             "audience": HEADER.format(title="X", audience="family", section="Trips"),
             "section": HEADER.format(title="X", audience="everyone", section="Misc"),
             "date": HEADER.format(title="X", audience="everyone", section="Trips").replace("2026-10-17", "Oct 17"),
@@ -122,8 +126,9 @@ class PageTests(TestCase):
         self.addCleanup(patcher.stop)
         self.user = User.objects.create_user("u", "u@example.com", "pw-1234-abcd")
         self.staff = User.objects.create_user("s", "s@example.com", "pw-1234-abcd")
-        self.staff.user_permissions.add(Permission.objects.get(
-            codename="can_access_staff_dashboard", content_type__app_label="accounts"))
+        self.staff.user_permissions.add(
+            Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
+        )
 
     def guide_url(self, slug):
         return reverse("pages:help_guide", args=[slug])
@@ -152,8 +157,9 @@ class PageTests(TestCase):
         self.assertEqual(self.client.get(self.guide_url("no-such-guide")).status_code, 404)
 
     def test_real_guides_render_anonymously(self):
-        with mock.patch.object(helpdocs, "HELP_DIR", helpdocs.HELP_DIR.__class__(
-                Path(__file__).resolve().parents[1] / "help")):
+        with mock.patch.object(
+            helpdocs, "HELP_DIR", helpdocs.HELP_DIR.__class__(Path(__file__).resolve().parents[1] / "help")
+        ):
             for guide in helpdocs.all_guides():
                 if guide.audience != "staff":
                     with self.subTest(guide=guide.slug):
@@ -185,7 +191,8 @@ class StaffGuideTests(TestCase):
         user = User.objects.create_user("u", "u@example.com", "pw-1234-abcd")
         self.client.force_login(user)
         self.assertEqual(self.client.get(url).status_code, 404)
-        user.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard",
-                                                         content_type__app_label="accounts"))
+        user.user_permissions.add(
+            Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
+        )
         self.client.force_login(User.objects.get(pk=user.pk))
         self.assertEqual(self.client.get(url).status_code, 200)

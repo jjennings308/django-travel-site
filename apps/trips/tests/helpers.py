@@ -30,6 +30,7 @@ def give(user, *roles, trip=None, granted_by=None):
 def make_task(trip, title, *items, **fields):
     """A to-do covering ``items`` (booking-todos K1: links, not the old leg / stay / activity FKs)."""
     from apps.trips.models import BookingTask
+
     task = BookingTask.objects.create(trip=trip, title=title, **fields)
     for item in items:
         task.link(item)

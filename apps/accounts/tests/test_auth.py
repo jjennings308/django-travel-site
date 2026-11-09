@@ -17,9 +17,7 @@ User = get_user_model()
 
 class AuthFixture(TestCase):
     def setUp(self):
-        self.alice = User.objects.create_user(
-            "alice", "alice@example.com", "pw-1234-abcd"
-        )
+        self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
 
 
 class LoginTests(AuthFixture):
@@ -28,9 +26,7 @@ class LoginTests(AuthFixture):
         self.assertContains(response, "Login")
 
     def test_valid_credentials_log_in_and_land_on_the_dashboard(self):
-        response = self.client.post(
-            reverse("login"), {"username": "alice", "password": "pw-1234-abcd"}
-        )
+        response = self.client.post(reverse("login"), {"username": "alice", "password": "pw-1234-abcd"})
         self.assertRedirects(response, reverse("pages:dashboard"))
 
     def test_next_wins_over_the_default_landing_page(self):
@@ -118,9 +114,7 @@ class PasswordResetTests(AuthFixture):
         self.assertEqual(self.client.get(reverse("password_reset_complete")).status_code, 200)
 
     def test_requesting_a_reset_emails_a_working_link(self):
-        response = self.client.post(
-            reverse("password_reset"), {"email": self.alice.email}
-        )
+        response = self.client.post(reverse("password_reset"), {"email": self.alice.email})
         self.assertRedirects(response, reverse("password_reset_done"))
         self.assertEqual(len(mail.outbox), 1)
 
@@ -142,9 +136,7 @@ class PasswordResetTests(AuthFixture):
         self.assertTrue(confirm.context["validlink"])
         form_url = confirm.request["PATH_INFO"]
 
-        confirm = self.client.post(
-            form_url, {"new_password1": "brand-new-7Qs3vd", "new_password2": "brand-new-7Qs3vd"}
-        )
+        confirm = self.client.post(form_url, {"new_password1": "brand-new-7Qs3vd", "new_password2": "brand-new-7Qs3vd"})
         self.assertRedirects(confirm, reverse("password_reset_complete"))
 
         self.alice.refresh_from_db()
@@ -155,9 +147,7 @@ class PasswordResetTests(AuthFixture):
         self.client.post(reverse("password_reset"), {"email": self.alice.email})
         path = re.search(r"(/accounts/reset/\S+)", mail.outbox[0].body).group(1)
         form_url = self.client.get(path, follow=True).request["PATH_INFO"]
-        self.client.post(
-            form_url, {"new_password1": "brand-new-7Qs3vd", "new_password2": "brand-new-7Qs3vd"}
-        )
+        self.client.post(form_url, {"new_password1": "brand-new-7Qs3vd", "new_password2": "brand-new-7Qs3vd"})
         # Setting the password changes the hash the token was built from, so the
         # same emailed link is now worthless.
         replay = self.client.get(path, follow=True)

@@ -5,6 +5,7 @@ templates) writes the description, canonical link, Open Graph and Twitter-card t
 ``noindex`` and optional JSON-LD from it, falling back to the site's name, tagline and share picture.
 Each app builds its own JSON-LD (``<app>/seo.py``); this module only knows URLs and text.
 """
+
 import re
 
 from django.conf import settings
@@ -43,11 +44,17 @@ def describe(*texts, limit=DESCRIPTION_CHARS):
         if text:
             if len(text) <= limit:
                 return text
-            return text[:limit - 1].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
+            return text[: limit - 1].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
     return ""
 
 
 def meta(title="", description="", image="", kind="website", jsonld=None, noindex=False):
     """What ``_seo.html`` needs for one page."""
-    return {"title": title, "description": describe(description), "image": image, "type": kind,
-            "jsonld": jsonld, "noindex": noindex}
+    return {
+        "title": title,
+        "description": describe(description),
+        "image": image,
+        "type": kind,
+        "jsonld": jsonld,
+        "noindex": noindex,
+    }

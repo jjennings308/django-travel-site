@@ -4,6 +4,7 @@
 commands, the shell) it is ``None``. A ``ContextVar``, so concurrent requests in threads or async
 tasks never see each other's user.
 """
+
 from contextlib import contextmanager
 from contextvars import ContextVar
 

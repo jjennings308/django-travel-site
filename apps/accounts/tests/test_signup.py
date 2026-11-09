@@ -1,4 +1,5 @@
 """Invite-only sign-up and sign-up codes (site roadmap R14)."""
+
 import time
 from datetime import timedelta
 
@@ -14,8 +15,16 @@ User = get_user_model()
 
 
 def form(username="newbie", **extra):
-    return {"username": username, "email": f"{username}@example.com", "first_name": "New", "last_name": "Person",
-            "password1": "a-Long-pass-9876", "password2": "a-Long-pass-9876", "terms_accepted": "on", **extra}
+    return {
+        "username": username,
+        "email": f"{username}@example.com",
+        "first_name": "New",
+        "last_name": "Person",
+        "password1": "a-Long-pass-9876",
+        "password2": "a-Long-pass-9876",
+        "terms_accepted": "on",
+        **extra,
+    }
 
 
 @override_settings(SIGNUP_MODE="invite")

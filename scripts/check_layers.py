@@ -14,6 +14,7 @@ apps.py) sits at the repo root other than config and theme, or under apps/
 without a LAYERS entry. Keep LAYERS and SAME_LAYER_ALLOWED in step with the
 "Dependency layers" table in CLAUDE.md.
 """
+
 import ast
 import sys
 from pathlib import Path
@@ -25,10 +26,21 @@ ROOT_APPS_ALLOWED = {"config", "theme"}
 LAYERS = {
     "core": 0,
     "accounts": 1,
-    "notifications": 2, "media_app": 2, "approval_system": 2, "rewards": 2,
-    "locations": 3, "activities": 3, "vendors": 3, "events": 3, "catalogue_notes": 3,
-    "bucketlists": 4, "trips": 4, "reviews": 4, "recommendations": 4,
-    "pages": 5, "admin_tools": 5,
+    "notifications": 2,
+    "media_app": 2,
+    "approval_system": 2,
+    "rewards": 2,
+    "locations": 3,
+    "activities": 3,
+    "vendors": 3,
+    "events": 3,
+    "catalogue_notes": 3,
+    "bucketlists": 4,
+    "trips": 4,
+    "reviews": 4,
+    "recommendations": 4,
+    "pages": 5,
+    "admin_tools": 5,
 }
 
 # Same-layer imports the table allows (importer -> imported). Layer 5 may import anything.

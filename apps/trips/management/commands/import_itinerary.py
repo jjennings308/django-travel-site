@@ -21,8 +21,8 @@ from apps.trips.models import (
     Lodging,
     Meal,
     Section,
-    Traveler,
     TransportLeg,
+    Traveler,
     Trip,
 )
 
@@ -64,7 +64,7 @@ class Command(BaseCommand):
             action="store_true",
             help=(
                 "Keep logistics tables exactly as written. By default each table's "
-                "\"A → B\" rows become planned legs in a travel section (linked to the "
+                '"A → B" rows become planned legs in a travel section (linked to the '
                 "document's own leg when it is one), as the trip page's review would."
             ),
         )
@@ -87,10 +87,7 @@ class Command(BaseCommand):
         # Django does not validate field choices on save. Check it here so an
         # invalid status cannot be written by a programmatic caller.
         if options.get("status") not in (None, *Trip.Status.values):
-            raise CommandError(
-                f"--status must be one of {', '.join(Trip.Status.values)}; "
-                f"got {options['status']!r}."
-            )
+            raise CommandError(f"--status must be one of {', '.join(Trip.Status.values)}; got {options['status']!r}.")
         try:
             parsed = parse_document(path)
         except FileNotFoundError:
@@ -113,9 +110,7 @@ class Command(BaseCommand):
                 f"document, so this cannot be saved. Fix the source or the parser."
             )
 
-        clash_notice = self._check_duplicate(
-            parsed, options["allow_duplicate"], options["apply"], options["replace"]
-        )
+        clash_notice = self._check_duplicate(parsed, options["allow_duplicate"], options["apply"], options["replace"])
 
         if options["json"]:
             self.stdout.write(json.dumps(self._as_json(parsed), indent=2, default=str))
@@ -127,17 +122,11 @@ class Command(BaseCommand):
 
         if not options["apply"]:
             if clash_notice:
-                self.stderr.write(
-                    self.style.WARNING(f"\nNote: {clash_notice}.")
-                )
+                self.stderr.write(self.style.WARNING(f"\nNote: {clash_notice}."))
             # The notices go to stderr under --json so that stdout stays pure
             # JSON and the flag can actually be piped into jq.
             notice = self.stderr if options["json"] else self.stdout
-            notice.write(
-                self.style.WARNING(
-                    "\nDry run. Nothing was written. Re-run with --apply to save."
-                )
-            )
+            notice.write(self.style.WARNING("\nDry run. Nothing was written. Re-run with --apply to save."))
             return
 
         # Warnings raised *during* the write land after the report has already
@@ -145,6 +134,7 @@ class Command(BaseCommand):
         # than being silently swallowed.
         write_warnings = []
         from apps.trips.changes import batch
+
         with transaction.atomic(), batch("Imported the itinerary"):
             replaced_pk = None
             # Resolve the status *before* anything is deleted: inheriting it
@@ -152,9 +142,7 @@ class Command(BaseCommand):
             # still exists.
             status, _ = self._planned_status(parsed, options)
             if options["replace"]:
-                existing = Trip.objects.filter(
-                    name=parsed.trip["name"], start_date=parsed.trip["start_date"]
-                )
+                existing = Trip.objects.filter(name=parsed.trip["name"], start_date=parsed.trip["start_date"])
                 if existing.exists():
                     replaced = existing.first()
                     # Capture the pk before deleting: Django clears the
@@ -177,15 +165,9 @@ class Command(BaseCommand):
                 "tables became travel sections."
             )
         if replaced_pk is not None:
-            self.stdout.write(
-                self.style.WARNING(f"Replaced Trip {replaced_pk} with this import.")
-            )
+            self.stdout.write(self.style.WARNING(f"Replaced Trip {replaced_pk} with this import."))
         if write_warnings:
-            self.stdout.write(
-                self.style.WARNING(
-                    f"\n=== {len(write_warnings)} warning(s) raised while saving ==="
-                )
-            )
+            self.stdout.write(self.style.WARNING(f"\n=== {len(write_warnings)} warning(s) raised while saving ==="))
             for line in write_warnings:
                 self.stdout.write(self.style.WARNING(f"  - {line}"))
         self.stdout.write(self.style.SUCCESS(f"\nSaved Trip {trip.pk} — {trip.name}"))
@@ -201,16 +183,9 @@ class Command(BaseCommand):
         if not parsed.trip.get("start_date") or not parsed.trip.get("end_date"):
             problems.append("the trip has no start_date/end_date")
         for leg in parsed.transport:
-            missing = [
-                key
-                for key in ("departure_local", "origin", "destination")
-                if not leg.get(key)
-            ]
+            missing = [key for key in ("departure_local", "origin", "destination") if not leg.get(key)]
             if missing:
-                problems.append(
-                    f"leg {leg['service_number'] or '?'} is missing "
-                    f"{', '.join(missing)}"
-                )
+                problems.append(f"leg {leg['service_number'] or '?'} is missing {', '.join(missing)}")
         for record in parsed.lodging:
             if not record.get("check_in") or not record.get("check_out"):
                 problems.append(f"lodging {record.get('name', '?')!r} has no stay dates")
@@ -232,9 +207,7 @@ class Command(BaseCommand):
         if options.get("status"):
             return options["status"], "from --status"
         if options.get("replace"):
-            existing = Trip.objects.filter(
-                name=parsed.trip["name"], start_date=parsed.trip["start_date"]
-            ).first()
+            existing = Trip.objects.filter(name=parsed.trip["name"], start_date=parsed.trip["start_date"]).first()
             if existing:
                 return existing.status, f"inherited from Trip {existing.pk}"
         return Trip.Status.STARTING, "default"
@@ -248,15 +221,12 @@ class Command(BaseCommand):
         """
         if allow or replace:
             return None
-        existing = Trip.objects.filter(
-            name=parsed.trip["name"], start_date=parsed.trip["start_date"]
-        )
+        existing = Trip.objects.filter(name=parsed.trip["name"], start_date=parsed.trip["start_date"])
         if not existing.exists():
             return None
         clash = existing.first()
         message = (
-            f"A trip named {parsed.trip['name']!r} starting "
-            f"{parsed.trip['start_date']} already exists (pk {clash.pk})"
+            f"A trip named {parsed.trip['name']!r} starting {parsed.trip['start_date']} already exists (pk {clash.pk})"
         )
         if not applying:
             return f"{message}; this is only a preview, so it is not a problem yet"
@@ -281,6 +251,7 @@ class Command(BaseCommand):
         """Meals and section titles that name a catalogue place or activity (site roadmap R18).
         Listed only: the new trip has no cities yet, so they are linked by hand on the day page."""
         from apps.trips.catalogue_links import import_matches
+
         matches = import_matches(parsed.days)
         if matches:
             out = self.stdout.write
@@ -378,10 +349,7 @@ class Command(BaseCommand):
         if parsed.booking_tasks:
             out(self.style.MIGRATE_HEADING("\n=== Booking tasks ==="))
             for record in parsed.booking_tasks:
-                out(
-                    f"  {record['order']:>2}. [{record['priority']}] "
-                    f"{record['title'][:62]}"
-                )
+                out(f"  {record['order']:>2}. [{record['priority']}] {record['title'][:62]}")
 
         if parsed.contacts:
             out(self.style.MIGRATE_HEADING("\n=== Contacts ==="))
@@ -492,14 +460,16 @@ class Command(BaseCommand):
         phase, callout, free text and choose your adventure, which are saved as notes and "choose one"
         groups (``day_first``'s mappings); travel and logistics tables are saved as they are."""
         from apps.trips import day_first
+
         kind = section["section_type"]
         if kind == day_first.ADVENTURE:
             group = day_first.adventure_group(section["title"], section["content"])
             day_first.make_group(trip, day, group["prompt"], group["notes"], group["options"], order=section["order"])
         elif kind in day_first.OLD_NOTE_TYPES:
             title, content = day_first.note_from(kind, section["title"], section["content"])
-            Section.objects.create(day=day, **{**section, "section_type": Section.Type.NOTE, "title": title,
-                                               "content": content})
+            Section.objects.create(
+                day=day, **{**section, "section_type": Section.Type.NOTE, "title": title, "content": content}
+            )
         else:
             Section.objects.create(day=day, **section)
 
@@ -518,10 +488,7 @@ class Command(BaseCommand):
         for name in roster:
             traveler = by_name.get(name)
             if traveler is None:
-                warn(
-                    f"Roster name {name!r} on day {day.day_number} matches no "
-                    "traveler, so it is not attached"
-                )
+                warn(f"Roster name {name!r} on day {day.day_number} matches no traveler, so it is not attached")
                 continue
             chosen.append(traveler)
         if len(chosen) == len(travelers):
@@ -538,7 +505,8 @@ class Command(BaseCommand):
         by the offset but never ambiguous -- the same degradation the admin form
         and the model helpers use. The dry run warns about every blank one.
         """
-        from datetime import datetime, timezone as dt_timezone
+        from datetime import datetime
+        from datetime import timezone as dt_timezone
 
         date = record["arrival_date"] if arrival else record["departure_date"]
         naive = datetime.fromisoformat(f"{date}T{local_time}")

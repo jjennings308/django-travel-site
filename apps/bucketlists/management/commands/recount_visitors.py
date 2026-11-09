@@ -4,6 +4,7 @@ activities and events (site roadmap R18).
 Run nightly (trips count once their end date has passed, which no save marks):
     python manage.py recount_visitors
 """
+
 from django.core.management.base import BaseCommand
 
 from apps.bucketlists.visitors import recount

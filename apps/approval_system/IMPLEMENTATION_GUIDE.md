@@ -42,7 +42,7 @@ The **Approval System** is a reusable Django app that provides a complete conten
 
 INSTALLED_APPS = [
     # ...
-    'approval_system',
+    "approval_system",
     # ...
 ]
 ```
@@ -61,7 +61,7 @@ python manage.py migrate approval_system
 
 urlpatterns = [
     # ...
-    path('approval/', include('approval_system.urls')),
+    path("approval/", include("approval_system.urls")),
     # ...
 ]
 ```
@@ -83,12 +83,12 @@ settings = ApprovalSettings.get_settings()
 from apps.locations.models import City, Country, POI
 
 queue = ApprovalQueue.objects.create(
-    name='Locations Review',
-    slug='locations',
-    description='Review user-submitted locations',
-    status_filter='pending',
-    color='#007bff',
-    icon='📍'
+    name="Locations Review",
+    slug="locations",
+    description="Review user-submitted locations",
+    status_filter="pending",
+    color="#007bff",
+    icon="📍",
 )
 
 # Add content types to queue
@@ -109,11 +109,12 @@ Simply inherit from `Approvable`:
 from django.db import models
 from apps.approval_system.models import Approvable
 
+
 class YourModel(Approvable):
     # Your fields
     title = models.CharField(max_length=200)
     content = models.TextField()
-    
+
     # Approvable automatically adds:
     # - approval_status
     # - submitted_by
@@ -132,9 +133,10 @@ from django.contrib import admin
 from apps.approval_system.admin import ApprovableAdminMixin
 from .models import YourModel
 
+
 @admin.register(YourModel)
 class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_display = ['title', 'created_at']
+    list_display = ["title", "created_at"]
     # Mixin automatically adds:
     # - approval_status_badge (colored status)
     # - submitted_by
@@ -149,6 +151,7 @@ from apps.approval_system.models import ApprovalStatus
 
 # Show only approved content to users
 public_items = YourModel.objects.filter(approval_status=ApprovalStatus.APPROVED)
+
 
 # Submit new content
 def submit_item(request):
@@ -209,17 +212,17 @@ Create custom queues to organize pending content:
 ```python
 # Urgent queue - high priority items
 urgent_queue = ApprovalQueue.objects.create(
-    name='Urgent Review',
-    slug='urgent',
-    priority_filter='urgent',
-    color='#dc3545',  # Red
+    name="Urgent Review",
+    slug="urgent",
+    priority_filter="urgent",
+    color="#dc3545",  # Red
 )
 
 # New users queue - items from new contributors
 new_users_queue = ApprovalQueue.objects.create(
-    name='New Contributors',
-    slug='new-users',
-    description='Review items from users with <5 approved items',
+    name="New Contributors",
+    slug="new-users",
+    description="Review items from users with <5 approved items",
 )
 ```
 
@@ -246,13 +249,13 @@ from django.contrib.contenttypes.models import ContentType
 
 # Auto-approve if user has 10+ approved items
 rule = ApprovalRule.objects.create(
-    name='Trusted User Auto-Approve',
+    name="Trusted User Auto-Approve",
     content_type=ContentType.objects.get_for_model(YourModel),
     auto_approve=True,
     conditions={
-        'user_approved_count_gte': 10,
-        'has_image': True,
-    }
+        "user_approved_count_gte": 10,
+        "has_image": True,
+    },
 )
 ```
 
@@ -409,15 +412,16 @@ Create specialized queues for different review workflows:
 ```python
 # Photos queue
 photos_queue = ApprovalQueue.objects.create(
-    name='Photo Moderation',
-    slug='photos',
-    description='Review user-uploaded photos',
+    name="Photo Moderation",
+    slug="photos",
+    description="Review user-uploaded photos",
 )
 photos_queue.content_types.add(ContentType.objects.get_for_model(Photo))
 
 # Add specific reviewers
 from apps.accounts.models import User
-photo_moderators = User.objects.filter(groups__name='Photo Moderators')
+
+photo_moderators = User.objects.filter(groups__name="Photo Moderators")
 photos_queue.reviewers.set(photo_moderators)
 ```
 
@@ -427,10 +431,10 @@ Automatically assign items to specific reviewers based on rules:
 
 ```python
 rule = ApprovalRule.objects.create(
-    name='Assign photos to photo team',
+    name="Assign photos to photo team",
     content_type=ContentType.objects.get_for_model(Photo),
     assign_to_user=photo_team_lead,
-    conditions={'media_type': 'photo'}
+    conditions={"media_type": "photo"},
 )
 ```
 
@@ -453,8 +457,8 @@ Configure when to send notifications:
 ```python
 settings = ApprovalSettings.get_settings()
 settings.notify_on_submission = True  # Alert reviewers
-settings.notify_on_approval = True    # Alert submitter
-settings.notify_on_rejection = True   # Alert submitter
+settings.notify_on_approval = True  # Alert submitter
+settings.notify_on_rejection = True  # Alert submitter
 settings.save()
 ```
 
@@ -473,27 +477,20 @@ public = YourModel.objects.filter(approval_status=ApprovalStatus.APPROVED)
 mine = YourModel.objects.filter(submitted_by=request.user)
 
 # Get urgent items
-urgent = YourModel.objects.filter(
-    approval_status=ApprovalStatus.PENDING,
-    approval_priority=ApprovalPriority.URGENT
-)
+urgent = YourModel.objects.filter(approval_status=ApprovalStatus.PENDING, approval_priority=ApprovalPriority.URGENT)
 
 # Get items needing changes
-needs_work = YourModel.objects.filter(
-    approval_status=ApprovalStatus.CHANGES_REQUESTED
-)
+needs_work = YourModel.objects.filter(approval_status=ApprovalStatus.CHANGES_REQUESTED)
 
 # Get items reviewed by specific person
-reviewed_by_john = YourModel.objects.filter(
-    reviewed_by__username='john'
-)
+reviewed_by_john = YourModel.objects.filter(reviewed_by__username="john")
 
 # Get items pending over 24 hours
 from django.utils import timezone
 from datetime import timedelta
+
 overdue = YourModel.objects.filter(
-    approval_status=ApprovalStatus.PENDING,
-    submitted_at__lt=timezone.now() - timedelta(hours=24)
+    approval_status=ApprovalStatus.PENDING, submitted_at__lt=timezone.now() - timedelta(hours=24)
 )
 ```
 
@@ -514,14 +511,16 @@ If you already have a custom review system (like the location review system we b
    # Create migration to map old fields to new
    from django.db import migrations
 
+
    def map_old_to_new(apps, schema_editor):
-       Country = apps.get_model('locations', 'Country')
+       Country = apps.get_model("locations", "Country")
        for country in Country.objects.all():
            # Map old 'status' to new 'approval_status'
            country.approval_status = country.status
            # Map other fields...
            country.save()
-   
+
+
    class Migration(migrations.Migration):
        dependencies = [...]
        operations = [
@@ -554,7 +553,7 @@ if item.is_public():
     display_to_users(item)
 
 # Less clear
-if item.approval_status == 'approved':
+if item.approval_status == "approved":
     display_to_users(item)
 ```
 
@@ -562,10 +561,7 @@ if item.approval_status == 'approved':
 
 ```python
 # GOOD: Specific feedback
-item.request_changes(
-    reviewer=request.user,
-    notes="Please add: 1) Photos, 2) Opening hours, 3) Contact info"
-)
+item.request_changes(reviewer=request.user, notes="Please add: 1) Photos, 2) Opening hours, 3) Contact info")
 
 # BAD: Vague
 item.request_changes(reviewer=request.user, notes="Incomplete")
@@ -588,16 +584,14 @@ new_item.approval_priority = ApprovalPriority.NORMAL
 # Check for overdue items daily
 from django.core.management.base import BaseCommand
 
+
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         settings = ApprovalSettings.get_settings()
         cutoff = timezone.now() - timedelta(hours=settings.review_sla_hours)
-        
-        overdue = City.objects.filter(
-            approval_status=ApprovalStatus.PENDING,
-            submitted_at__lt=cutoff
-        ).count()
-        
+
+        overdue = City.objects.filter(approval_status=ApprovalStatus.PENDING, submitted_at__lt=cutoff).count()
+
         if overdue > 0:
             # Send alert to admin
             send_sla_breach_alert(overdue)
@@ -610,7 +604,8 @@ class Command(BaseCommand):
 ```python
 from django.contrib.auth.decorators import permission_required
 
-@permission_required('approval_system.can_review')
+
+@permission_required("approval_system.can_review")
 def review_item(request, item_id):
     # Only users with permission can review
     pass
@@ -629,13 +624,11 @@ def review_item(request, item_id):
 # Prevent abuse - limit submissions per user
 from django.core.exceptions import ValidationError
 
+
 def submit_item(request):
     # Check submission count
-    today_count = Item.objects.filter(
-        submitted_by=request.user,
-        submitted_at__date=timezone.now().date()
-    ).count()
-    
+    today_count = Item.objects.filter(submitted_by=request.user, submitted_at__date=timezone.now().date()).count()
+
     if today_count >= 10:
         raise ValidationError("Daily submission limit reached")
 ```
@@ -670,11 +663,13 @@ def submit_item(request):
 # models.py
 from apps.approval_system.models import Approvable
 
+
 class Review(Approvable):
     place = models.ForeignKey(Place, on_delete=models.CASCADE)
     rating = models.IntegerField()
     text = models.TextField()
-    
+
+
 # Use it
 review = Review(place=place, rating=5, text="Great!")
 review.submit_for_review(request.user)
@@ -705,15 +700,13 @@ else:
 class Photo(Approvable):
     image = models.ImageField()
     caption = models.TextField()
-    
+
     # Override to add custom checks
     def submit_for_review(self, user=None):
         # Auto-set priority based on user reputation
-        if user and user.photo_set.filter(
-            approval_status=ApprovalStatus.APPROVED
-        ).count() < 5:
+        if user and user.photo_set.filter(approval_status=ApprovalStatus.APPROVED).count() < 5:
             self.approval_priority = ApprovalPriority.HIGH
-        
+
         super().submit_for_review(user)
 ```
 

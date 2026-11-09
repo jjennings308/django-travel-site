@@ -47,14 +47,45 @@ Kinds (``Suggestion.kind``):
 Confidence is ``high`` only for exact name matches of kinds 1–2; ``manage.py tidy_trip --apply``
 applies those and nothing else.
 """
+
 import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass, field
 
-STOPWORDS = {"book", "booking", "booked", "reserve", "reservations", "advance", "ahead", "people", "group",
-             "with", "from", "this", "that", "together", "your", "will", "have", "need", "before", "after",
-             "into", "about", "only", "every", "when", "then", "than", "some", "more", "most", "very"}
+STOPWORDS = {
+    "book",
+    "booking",
+    "booked",
+    "reserve",
+    "reservations",
+    "advance",
+    "ahead",
+    "people",
+    "group",
+    "with",
+    "from",
+    "this",
+    "that",
+    "together",
+    "your",
+    "will",
+    "have",
+    "need",
+    "before",
+    "after",
+    "into",
+    "about",
+    "only",
+    "every",
+    "when",
+    "then",
+    "than",
+    "some",
+    "more",
+    "most",
+    "very",
+}
 BOOK_TITLE = re.compile(r"\b(book|booking|reserve|reservation|critical)\b", re.IGNORECASE)
 ARROW = re.compile(r"→|->|⟶|\bto\b", re.IGNORECASE)
 CHECK = re.compile(r"^\s*check[\s-]*(in|out)\b", re.IGNORECASE)
@@ -174,7 +205,7 @@ def _match_item(line, day):
                 start = low.index(name)
                 # The line is about it when the name is followed by a dash, bracket, comma, full
                 # stop or the end — not "Borough Market → Tate Modern" (a route past it).
-                follows = low[start + len(name):].lstrip()
+                follows = low[start + len(name) :].lstrip()
                 about = not follows or follows[0] in "—–-(,.:;"
                 return kind, item, start + len(name), _leads(low, start) and about
     return None
@@ -193,11 +224,23 @@ def _repeats_item(day, section):
             actions.append(("remove_keep", f"Remove it; add “{extra}” to the {kind}'s notes"))
         yield Suggestion(
             key=_key("repeats_item", section["id"], field_name, index, line),
-            kind="repeats_item", day=day["number"], where=section["title"] or "Plan",
-            before=line, after=f"(shown by the {kind}: {label})", confidence="high" if high else "low",
+            kind="repeats_item",
+            day=day["number"],
+            where=section["title"] or "Plan",
+            before=line,
+            after=f"(shown by the {kind}: {label})",
+            confidence="high" if high else "low",
             actions=actions,
-            change={"op": "remove_line", "section": section["id"], "field": field_name, "index": index,
-                    "line": line, "item": {"kind": kind, "id": item["id"]}, "extra": extra})
+            change={
+                "op": "remove_line",
+                "section": section["id"],
+                "field": field_name,
+                "index": index,
+                "line": line,
+                "item": {"kind": kind, "id": item["id"]},
+                "extra": extra,
+            },
+        )
 
 
 # ---- 2. a callout repeats an open task -------------------------------------------------------
@@ -222,11 +265,22 @@ def _callout_task(day, section, tasks):
         actions.append(("to_info", f"Keep it as an info note on {best['item']['label']}"))
     yield Suggestion(
         key=_key("callout_task", section["id"], best["id"], text),
-        kind="callout_task", day=day["number"], where=section.get("title") or "Callout",
-        before=_callout_text(section).strip(), after=f"(task: {best['title']})",
-        confidence="high" if titled else "low", actions=actions,
-        change={"op": "callout", "section": section["id"], "task": best["id"], "item": best.get("item"),
-                "title": section.get("title") or "", "text": _callout_text(section)})
+        kind="callout_task",
+        day=day["number"],
+        where=section.get("title") or "Callout",
+        before=_callout_text(section).strip(),
+        after=f"(task: {best['title']})",
+        confidence="high" if titled else "low",
+        actions=actions,
+        change={
+            "op": "callout",
+            "section": section["id"],
+            "task": best["id"],
+            "item": best.get("item"),
+            "title": section.get("title") or "",
+            "text": _callout_text(section),
+        },
+    )
 
 
 # ---- 3. phone numbers typed into text --------------------------------------------------------
@@ -249,8 +303,9 @@ def _without(text, number):
 
 def _name_before(line, number):
     before = line.split(number, 1)[0]
-    before = re.sub(r"(call|phone|tel|telephone|mobile|ring)(\s+ahead)?\s*:?\s*$", "", before.strip(),
-                    flags=re.IGNORECASE)
+    before = re.sub(
+        r"(call|phone|tel|telephone|mobile|ring)(\s+ahead)?\s*:?\s*$", "", before.strip(), flags=re.IGNORECASE
+    )
     words = before.strip(" :—–-·,(").split("—")[-1].strip()
     return words[-60:] or "Phone number"
 
@@ -265,20 +320,35 @@ def _table_activity(day, section):
         if len(name) >= 5 and title and (name in title or title in name):
             yield Suggestion(
                 key=_key("table_activity", section["id"], activity["id"]),
-                kind="table_activity", day=day["number"], where=section.get("title") or "Table",
-                before=f"{len(section.get('rows') or [])} rows: " + "; ".join(
-                    " | ".join(str(c) for c in row) for row in (section.get("rows") or [])[:2]),
+                kind="table_activity",
+                day=day["number"],
+                where=section.get("title") or "Table",
+                before=f"{len(section.get('rows') or [])} rows: "
+                + "; ".join(" | ".join(str(c) for c in row) for row in (section.get("rows") or [])[:2]),
                 after=f"An info note on {activity['title']}, the table removed",
                 actions=[("to_info", "Move the rows into an info note on the activity")],
-                change={"op": "table_to_info", "section": section["id"], "activity": activity["id"],
-                        "title": section.get("title") or activity["title"],
-                        "columns": section.get("columns") or [], "rows": section.get("rows") or []})
+                change={
+                    "op": "table_to_info",
+                    "section": section["id"],
+                    "activity": activity["id"],
+                    "title": section.get("title") or activity["title"],
+                    "columns": section.get("columns") or [],
+                    "rows": section.get("rows") or [],
+                },
+            )
             return
 
 
 # ---- 7. an empty phase that is only "time — Dinner" --------------------------------------------
-MEAL_WORDS = {"breakfast": "breakfast", "brunch": "breakfast", "lunch": "lunch", "dinner": "dinner",
-              "supper": "dinner", "drinks": "drinks", "snack": "snack"}
+MEAL_WORDS = {
+    "breakfast": "breakfast",
+    "brunch": "breakfast",
+    "lunch": "lunch",
+    "dinner": "dinner",
+    "supper": "dinner",
+    "drinks": "drinks",
+    "snack": "snack",
+}
 CLOCK = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.IGNORECASE)
 
 
@@ -321,19 +391,28 @@ def _meal_phase(day, section):
         return
     meal, time = meals[0], clock_time(heading, MEAL_WORDS[words[0]])
     if meal.get("time"):
-        after, actions = (f"(shown by the meal: {meal['name']} at {meal['time']})",
-                          [("remove", "Remove the phase (the meal is in the timeline)")])
+        after, actions = (
+            f"(shown by the meal: {meal['name']} at {meal['time']})",
+            [("remove", "Remove the phase (the meal is in the timeline)")],
+        )
     elif time:
-        after, actions = (f"{meal['name']} at {time}, in the day's timeline",
-                          [("time_remove", f"Set {meal['name']} to {time} and remove the phase")])
+        after, actions = (
+            f"{meal['name']} at {time}, in the day's timeline",
+            [("time_remove", f"Set {meal['name']} to {time} and remove the phase")],
+        )
     else:
         return
     yield Suggestion(
         key=_key("meal_phase", section["id"], meal["id"], heading),
-        kind="meal_phase", day=day["number"], where=heading, before=heading, after=after,
-        confidence="high", actions=actions,
-        change={"op": "meal_phase", "section": section["id"], "heading": heading, "meal": meal["id"],
-                "time": time})
+        kind="meal_phase",
+        day=day["number"],
+        where=heading,
+        before=heading,
+        after=after,
+        confidence="high",
+        actions=actions,
+        change={"op": "meal_phase", "section": section["id"], "heading": heading, "meal": meal["id"], "time": time},
+    )
 
 
 # ---- 8. a callout about a place, activity or event linked that day ----------------------------
@@ -349,25 +428,41 @@ def _catalogue_note(day, section):
     if not _callout_text(section).strip():
         return
     said = _fold(f"{section.get('title') or ''} {_callout_text(section)}")
-    named = [t for t in day.get("catalogue", []) if len(_fold(t["name"])) >= 4
-             and re.search(r"(?<!\w)" + re.escape(_fold(t["name"])) + r"(?!\w)", said)]
+    named = [
+        t
+        for t in day.get("catalogue", [])
+        if len(_fold(t["name"])) >= 4 and re.search(r"(?<!\w)" + re.escape(_fold(t["name"])) + r"(?!\w)", said)
+    ]
     if not named:
         return
     target = max(named, key=lambda t: len(t["name"]))  # "Marburg Castle Museum" over "Marburg Castle"
     title = re.sub(r"^[^\w]+", "", section.get("title") or "").strip()
     text = _callout_text(section).strip()
-    if title and _fold(title) not in _fold(text) and _fold(title) != _fold(target["name"]) \
-            and not BOOK_TITLE.fullmatch(title):  # the title adds something ("Cash only: …")
+    if (
+        title
+        and _fold(title) not in _fold(text)
+        and _fold(title) != _fold(target["name"])
+        and not BOOK_TITLE.fullmatch(title)
+    ):  # the title adds something ("Cash only: …")
         text = f"{title}: {text}"
     yield Suggestion(
         key=_key("catalogue_note", section["id"], target["kind"], target["id"], _callout_text(section)),
-        kind="catalogue_note", day=day["number"], where=section.get("title") or "Callout",
+        kind="catalogue_note",
+        day=day["number"],
+        where=section.get("title") or "Callout",
         before=_callout_text(section).strip(),
         after=f"This looks like a note about {target['name']}: a catalogue note on it, shown on every trip "
-              "that goes there (once staff approve it)",
+        "that goes there (once staff approve it)",
         actions=[("to_catalogue", f"Move it to the catalogue as a note on {target['name']}")],
-        change={"op": "to_catalogue", "section": section["id"], "target": target, "text": _callout_text(section),
-                "note": text, "tone": CALLOUT_TONES.get(section.get("tone") or "", "tip")})
+        change={
+            "op": "to_catalogue",
+            "section": section["id"],
+            "target": target,
+            "text": _callout_text(section),
+            "note": text,
+            "tone": CALLOUT_TONES.get(section.get("tone") or "", "tip"),
+        },
+    )
 
 
 # ---- 6. "Day N" written on another day -------------------------------------------------------
@@ -381,8 +476,12 @@ def _day_slips(day, section):
             if number != day["number"]:
                 yield Suggestion(
                     key=_key("day_slip", section["id"], text),
-                    kind="day_slip", day=day["number"], where=section.get("title") or "Text",
-                    before=text, after=f"Says “Day {number}” on Day {day['number']} — check it by hand.")
+                    kind="day_slip",
+                    day=day["number"],
+                    where=section.get("title") or "Text",
+                    before=text,
+                    after=f"Says “Day {number}” on Day {day['number']} — check it by hand.",
+                )
                 break
 
 
@@ -402,7 +501,8 @@ def suggest(snapshot, dismissed=()):
             out += list(_meal_phase(day, section))
             out += list(_catalogue_note(day, section))
             for field_name, index, line in list(_narrative_lines(section)) + (
-                    [("text", None, _callout_text(section))] if _is_callout(section) else []):
+                [("text", None, _callout_text(section))] if _is_callout(section) else []
+            ):
                 for number in _phones(line, known):
                     named = _match_item(line, day)
                     if named and named[0] in ("meal", "activity"):
@@ -412,23 +512,44 @@ def suggest(snapshot, dismissed=()):
                     else:
                         name = section.get("title") or _name_before(line, number)
                         link, on = {"kind": "section", "id": section["id"]}, "this section"
-                    out.append(Suggestion(
-                        key=_key("phone", section["id"], field_name, index, number),
-                        kind="phone", day=day["number"], where=section.get("title") or "Text",
-                        before=line, after=_without(line, number),
-                        actions=[("contact", f"Make “{number}” a contact on {on}")],
-                        change={"op": "phone", "place": {"type": "section", "id": section["id"],
-                                                         "field": field_name, "index": index},
-                                "number": number, "name": name, "link": link}))
+                    out.append(
+                        Suggestion(
+                            key=_key("phone", section["id"], field_name, index, number),
+                            kind="phone",
+                            day=day["number"],
+                            where=section.get("title") or "Text",
+                            before=line,
+                            after=_without(line, number),
+                            actions=[("contact", f"Make “{number}” a contact on {on}")],
+                            change={
+                                "op": "phone",
+                                "place": {"type": "section", "id": section["id"], "field": field_name, "index": index},
+                                "number": number,
+                                "name": name,
+                                "link": link,
+                            },
+                        )
+                    )
         for meal in day["meals"]:
             for number in _phones(meal.get("notes"), known):
-                out.append(Suggestion(
-                    key=_key("phone", "meal", meal["id"], number),
-                    kind="phone", day=day["number"], where=meal["name"], before=meal["notes"],
-                    after=_without(meal["notes"], number),
-                    actions=[("contact", f"Make “{number}” a contact on {meal['name']}")],
-                    change={"op": "phone", "place": {"type": "meal", "id": meal["id"]}, "number": number,
-                            "name": meal["name"], "link": {"kind": "meal", "id": meal["id"]}}))
+                out.append(
+                    Suggestion(
+                        key=_key("phone", "meal", meal["id"], number),
+                        kind="phone",
+                        day=day["number"],
+                        where=meal["name"],
+                        before=meal["notes"],
+                        after=_without(meal["notes"], number),
+                        actions=[("contact", f"Make “{number}” a contact on {meal['name']}")],
+                        change={
+                            "op": "phone",
+                            "place": {"type": "meal", "id": meal["id"]},
+                            "number": number,
+                            "name": meal["name"],
+                            "link": {"kind": "meal", "id": meal["id"]},
+                        },
+                    )
+                )
     out += list(_trip_notes(snapshot, known))
     return [s for s in out if s.key not in dismissed]
 
@@ -454,30 +575,47 @@ def _trip_notes(snapshot, known):
                 check = "" if day is None or named in numbers else " (no day named: check it)"
                 where = f"Day {day}{check}" if day is not None else "a day (add one first)"
                 yield Suggestion(
-                    key=_key("notes_options", "\n".join(block)), kind="notes_options", day=None,
-                    where="Trip notes", before="\n".join(block),
+                    key=_key("notes_options", "\n".join(block)),
+                    kind="notes_options",
+                    day=None,
+                    where="Trip notes",
+                    before="\n".join(block),
                     after=f"A choice “{title}” with {len(block)} options on {where}",
                     actions=[("choice", f"Make it a choice on {where} with these options")],
-                    change={"op": "notes_options", "lines": block, "title": title, "day": day,
-                            "options": [NUMBERED.match(b).group(1).strip()[:200] for b in block]})
+                    change={
+                        "op": "notes_options",
+                        "lines": block,
+                        "title": title,
+                        "day": day,
+                        "options": [NUMBERED.match(b).group(1).strip()[:200] for b in block],
+                    },
+                )
                 i = j
                 continue
         low = line.lower()
-        if line.strip() and (any(name in low for name in stays) or any(
-                a and b and a != b and _has_word(line, a) and _has_word(line, b) and ARROW.search(line)
-                for a, b in legs)):
+        if line.strip() and (
+            any(name in low for name in stays)
+            or any(
+                a and b and a != b and _has_word(line, a) and _has_word(line, b) and ARROW.search(line) for a, b in legs
+            )
+        ):
             yield Suggestion(
-                key=_key("notes_repeat", line), kind="notes_repeat", day=None, where="Trip notes",
-                before=line, after="(shown by the trip's legs and stays)",
+                key=_key("notes_repeat", line),
+                kind="notes_repeat",
+                day=None,
+                where="Trip notes",
+                before=line,
+                after="(shown by the trip's legs and stays)",
                 actions=[("remove", "Remove the line from the trip notes")],
-                change={"op": "notes_remove", "line": line})
+                change={"op": "notes_remove", "line": line},
+            )
         for number in _phones(line, known):
             # A contact block in the notes ("Taxi Augsburg eG" / "Local taxi dispatch…" / "Phone: …"):
             # the block's first line names it, the lines between are its notes, and the block goes.
             start = i
             while start > 0 and lines[start - 1].strip() and not any(_phones(lines[start - 1], set())):
                 start -= 1
-            block = lines[start:i + 1]
+            block = lines[start : i + 1]
             rest = _without(line, number)
             bare = re.fullmatch(r"(phone|tel|telephone|mobile|call)?\s*:?", rest.strip(), re.IGNORECASE)
             if bare and 2 <= len(block) <= 4:
@@ -486,10 +624,20 @@ def _trip_notes(snapshot, known):
                 name, note_lines = _name_before(line, number), []
                 remove = [line] if bare else []
             yield Suggestion(
-                key=_key("phone", "notes", number), kind="phone", day=None, where="Trip notes",
+                key=_key("phone", "notes", number),
+                kind="phone",
+                day=None,
+                where="Trip notes",
                 before="\n".join(block if remove == block else [line]),
                 after="(moved to a contact)" if remove else rest,
                 actions=[("contact", f"Make “{name}” a contact ({number})")],
-                change={"op": "phone", "place": {"type": "notes", "line": line, "rest": rest, "remove": remove},
-                        "number": number, "name": name, "notes": "\n".join(note_lines), "link": None})
+                change={
+                    "op": "phone",
+                    "place": {"type": "notes", "line": line, "rest": rest, "remove": remove},
+                    "number": number,
+                    "name": name,
+                    "notes": "\n".join(note_lines),
+                    "link": None,
+                },
+            )
         i += 1

@@ -13,7 +13,6 @@ import io
 import tempfile
 from contextlib import redirect_stdout
 from datetime import date, datetime
-from pathlib import Path
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
@@ -35,8 +34,8 @@ from apps.trips.models import (
     BookingTask,
     Confirmation,
     Day,
-    Traveler,
     TransportLeg,
+    Traveler,
     Trip,
 )
 from apps.trips.tests.test_docx_import import build_document, run_import
@@ -105,11 +104,7 @@ class OutstandingTaskCountTests(TestCase):
         BookingTask.objects.create(trip=self.trip, title="a", done=False)
         annotated = (
             Trip.objects.filter(pk=self.trip.pk)
-            .annotate(
-                outstanding_task_count=Count(
-                    "booking_tasks", filter=Q(booking_tasks__done=False)
-                )
-            )
+            .annotate(outstanding_task_count=Count("booking_tasks", filter=Q(booking_tasks__done=False)))
             .get()
         )
         with self.assertNumQueries(0):
@@ -120,9 +115,7 @@ class BookingTaskModelTests(TestCase):
     def setUp(self):
         self.trip = make_trip()
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
-        self.confirmation = Confirmation.objects.create(
-            trip=self.trip, label="Hotel", confirmation_number="ABC123"
-        )
+        self.confirmation = Confirmation.objects.create(trip=self.trip, label="Hotel", confirmation_number="ABC123")
 
     def test_default_priority_is_medium(self):
         task = BookingTask.objects.create(trip=self.trip, title="Book the flights")
@@ -136,21 +129,15 @@ class BookingTaskModelTests(TestCase):
 
     def test_outstanding_tasks_sort_before_done_ones(self):
         BookingTask.objects.create(trip=self.trip, title="done", done=True)
-        BookingTask.objects.create(
-            trip=self.trip, title="open", priority=BookingTask.Priority.LOW
-        )
-        titles = list(
-            BookingTask.objects.filter(trip=self.trip).values_list("title", flat=True)
-        )
+        BookingTask.objects.create(trip=self.trip, title="open", priority=BookingTask.Priority.LOW)
+        titles = list(BookingTask.objects.filter(trip=self.trip).values_list("title", flat=True))
         self.assertEqual(titles, ["open", "done"])
 
     def test_sorting_within_priority_follows_order_then_id(self):
         first = BookingTask.objects.create(trip=self.trip, title="b", order=2)
         second = BookingTask.objects.create(trip=self.trip, title="a", order=1)
         BookingTask.objects.create(trip=self.trip, title="later", order=9)
-        titles = list(
-            BookingTask.objects.filter(trip=self.trip).values_list("title", flat=True)
-        )
+        titles = list(BookingTask.objects.filter(trip=self.trip).values_list("title", flat=True))
         self.assertEqual(titles, ["a", "b", "later"])
         self.assertEqual([first.order, second.order], [2, 1])
 
@@ -162,9 +149,7 @@ class BookingTaskModelTests(TestCase):
         self.assertEqual(task.title, "x")
 
     def test_deleting_a_confirmation_keeps_the_task(self):
-        task = BookingTask.objects.create(
-            trip=self.trip, title="y", confirmation=self.confirmation
-        )
+        task = BookingTask.objects.create(trip=self.trip, title="y", confirmation=self.confirmation)
         self.confirmation.delete()
         task.refresh_from_db()
         self.assertIsNone(task.confirmation)
@@ -193,20 +178,13 @@ class StatusDataMigrationTests(TestCase):
     """
 
     def setUp(self):
-        module = importlib.import_module(
-            "apps.trips.migrations.0004_mark_booked_trip_ready_to_go"
-        )
+        module = importlib.import_module("apps.trips.migrations.0004_mark_booked_trip_ready_to_go")
         self.module = module
-        self.apps = type(
-            "_Apps", (), {"get_model": staticmethod(lambda *a, **k: Trip)}
-        )()
+        self.apps = type("_Apps", (), {"get_model": staticmethod(lambda *a, **k: Trip)})()
 
     def test_marks_the_matching_trip(self):
         make_trip(
-            name=(
-                "James & Regan \u2014 Taos / Angel Fire, "
-                "New Mexico"
-            ),
+            name=("James & Regan \u2014 Taos / Angel Fire, New Mexico"),
             start_date=date(2026, 9, 12),
             end_date=date(2026, 9, 19),
         )
@@ -298,9 +276,7 @@ class TripAdminTests(TestCase):
     """
 
     def setUp(self):
-        self.user = User.objects.create_superuser(
-            "admin", "admin@example.com", "password"
-        )
+        self.user = User.objects.create_superuser("admin", "admin@example.com", "password")
         self.client.force_login(self.user)
         self.admin = TripAdmin(Trip, AdminSite())
         self.trip = make_trip(name="Test Trip")
@@ -344,17 +320,13 @@ class TripAdminTests(TestCase):
         return self.client.post(url, data, follow=True)
 
     def test_warns_when_ready_with_outstanding_tasks(self):
-        response = self._post(
-            Trip.Status.READY_TO_GO, [("Book flights", BookingTask.Priority.MEDIUM, False)]
-        )
+        response = self._post(Trip.Status.READY_TO_GO, [("Book flights", BookingTask.Priority.MEDIUM, False)])
         self.assertContains(response, "1 outstanding booking task")
 
     def test_counts_a_task_added_in_the_same_request(self):
         # The regression this hook placement exists for: the task is created by
         # this very POST, so a count taken before save_related would see none.
-        response = self._post(
-            Trip.Status.READY_TO_GO, [("Book flights", BookingTask.Priority.MEDIUM, False)]
-        )
+        response = self._post(Trip.Status.READY_TO_GO, [("Book flights", BookingTask.Priority.MEDIUM, False)])
         self.assertEqual(BookingTask.objects.count(), 1)
         self.assertContains(response, "1 outstanding booking task")
 
@@ -369,9 +341,7 @@ class TripAdminTests(TestCase):
         self.assertContains(response, "2 outstanding booking tasks")
 
     def test_no_warning_when_the_new_task_is_ticked_off(self):
-        response = self._post(
-            Trip.Status.READY_TO_GO, [("Already done", BookingTask.Priority.MEDIUM, True)]
-        )
+        response = self._post(Trip.Status.READY_TO_GO, [("Already done", BookingTask.Priority.MEDIUM, True)])
         self.assertTrue(BookingTask.objects.get().done)
         self.assertNotContains(response, "outstanding booking task")
 
@@ -468,18 +438,14 @@ class DayRosterTests(TestCase):
         self.ada = Traveler.objects.create(name="Ada")
         self.bo = Traveler.objects.create(name="Bo")
         self.trip.travelers.set([self.ada, self.bo])
-        self.day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
         User.objects.create_superuser("roster-admin", "ro@example.com", "pw")
 
     def test_blank_roster_is_not_split(self):
         self.assertFalse(self.day.is_split)
 
     def test_blank_roster_resolves_to_the_whole_trip(self):
-        self.assertEqual(
-            sorted(t.name for t in self.day.roster), ["Ada", "Bo"]
-        )
+        self.assertEqual(sorted(t.name for t in self.day.roster), ["Ada", "Bo"])
 
     def test_blank_roster_summary_says_whole_trip(self):
         self.assertEqual(self.day.roster_summary, "Whole trip")
@@ -506,9 +472,7 @@ class DayRosterTests(TestCase):
 
     def test_roster_is_empty_when_the_trip_has_no_travelers(self):
         lonely = make_trip(name="No Crew")
-        day = Day.objects.create(
-            trip=lonely, day_number=1, date=date(2026, 9, 12)
-        )
+        day = Day.objects.create(trip=lonely, day_number=1, date=date(2026, 9, 12))
         self.assertEqual(list(day.roster), [])
 
     def _changelist_summaries(self):
@@ -522,17 +486,13 @@ class DayRosterTests(TestCase):
         with CaptureQueriesContext(connection) as one_day:
             self._changelist_summaries()
         for i in range(2, 6):
-            Day.objects.create(
-                trip=self.trip, day_number=i, date=date(2026, 9, 11 + i)
-            )
+            Day.objects.create(trip=self.trip, day_number=i, date=date(2026, 9, 11 + i))
         with CaptureQueriesContext(connection) as five_days:
             summaries = self._changelist_summaries()
         # Same number of queries for five days as for one: the prefetch covers
         # the roster for every row, so this is a fixed cost, not an N+1.
         self.assertEqual(len(one_day), len(five_days))
-        self.assertEqual(
-            summaries, ["Ada", "Whole trip", "Whole trip", "Whole trip", "Whole trip"]
-        )
+        self.assertEqual(summaries, ["Ada", "Whole trip", "Whole trip", "Whole trip", "Whole trip"])
 
 
 class DayRosterFormTests(TestCase):
@@ -544,9 +504,7 @@ class DayRosterFormTests(TestCase):
         self.on_trip = Traveler.objects.create(name="Ada")
         self.trip.travelers.set([self.on_trip])
         self.stranger = Traveler.objects.create(name="Mallory")
-        self.day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
 
     def _form(self, **overrides):
         data = {
@@ -585,13 +543,9 @@ class RosterFilterTests(TestCase):
         self.trip = make_trip()
         self.ada = Traveler.objects.create(name="Ada")
         self.trip.travelers.set([self.ada])
-        self.split = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
+        self.split = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
         self.split.travelers.set([self.ada])
-        self.whole = Day.objects.create(
-            trip=self.trip, day_number=2, date=date(2026, 9, 13)
-        )
+        self.whole = Day.objects.create(trip=self.trip, day_number=2, date=date(2026, 9, 13))
 
     def _filtered(self, value):
         # SimpleListFilter expects each param as a *list* and reads value[-1]
@@ -738,9 +692,7 @@ class TransportLegModeTests(TestCase):
         self.assertEqual(TransportLeg.objects.count(), 1)
 
     def test_str_is_still_the_route(self):
-        self.assertEqual(
-            str(self._leg(service_number="UA1234")), "ABQ to DEN UA1234"
-        )
+        self.assertEqual(str(self._leg(service_number="UA1234")), "ABQ to DEN UA1234")
 
     def test_duration_str_is_readable_not_a_timedelta(self):
         # The card shows elapsed time; a raw timedelta renders as 7:15:00,
@@ -783,9 +735,7 @@ class TransportLegAdminTests(TestCase):
         from apps.trips.admin import TripAdmin as _TripAdmin
 
         inlines = _TripAdmin(Trip, AdminSite()).inlines
-        self.assertIn(
-            TransportLeg, [inline.model for inline in inlines]
-        )
+        self.assertIn(TransportLeg, [inline.model for inline in inlines])
 
 
 class TripSoftDeleteAdminTests(TestCase):
@@ -797,9 +747,7 @@ class TripSoftDeleteAdminTests(TestCase):
     """
 
     def setUp(self):
-        self.user = User.objects.create_superuser(
-            "admin", "admin@example.com", "password"
-        )
+        self.user = User.objects.create_superuser("admin", "admin@example.com", "password")
         self.client.force_login(self.user)
         self.trip = make_trip(name="Live Trip")
         self.gone = make_trip(name="Deleted Trip", start_date=date(2026, 1, 1))
@@ -852,6 +800,4 @@ class TripSoftDeleteAdminTests(TestCase):
         )
         self.trip.refresh_from_db()
         self.assertIsNone(self.trip.deleted_at)
-        self.assertContains(
-            response, "None of the selected trips were deleted."
-        )
+        self.assertContains(response, "None of the selected trips were deleted.")

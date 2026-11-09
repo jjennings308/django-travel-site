@@ -1,5 +1,6 @@
 """A to-do covers several items (docs/plans/booking-todos.md, K1): ``TaskLink``, the cover label, partners,
 Same booking as the way out, the confirmation offer and the migration that copied the old FKs."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -11,8 +12,7 @@ from django.urls import reverse
 from apps.core.testing import RestoringTransactionTestCase
 from apps.trips import booking_tasks, changes
 from apps.trips.forms import TransportLegForm
-from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, TaskLink, TransportLeg, Trip, TripGrant,
-                               TripRole)
+from apps.trips.models import BookingTask, Confirmation, Day, Lodging, TaskLink, TransportLeg, Trip, TripGrant, TripRole
 from apps.trips.tests.helpers import make_task
 
 User = get_user_model()
@@ -21,26 +21,31 @@ User = get_user_model()
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 25),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 25), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.day1 = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
         self.day3 = Day.objects.create(trip=self.trip, day_number=3, date=date(2027, 9, 22))
         self.out = self.leg("Augsburg Hbf", "München Hbf", date(2027, 9, 20), order=1)
         self.back = self.leg("München Hbf", "Augsburg Hbf", date(2027, 9, 22), order=1)
-        self.hotel = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 20),
-                                            check_out=date(2027, 9, 22))
+        self.hotel = Lodging.objects.create(
+            trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 20), check_out=date(2027, 9, 22)
+        )
 
     def leg(self, origin, destination, when, mode="train", **fields):
-        return TransportLeg.objects.create(trip=self.trip, mode=mode, operator="DB", origin=origin,
-                                           destination=destination, date=when, **fields)
+        return TransportLeg.objects.create(
+            trip=self.trip, mode=mode, operator="DB", origin=origin, destination=destination, date=when, **fields
+        )
 
     def attached(self):
         """The trip as the page sees it: legs, stays, tasks with their links, then ``attach``."""
         from django.db.models import prefetch_related_objects
+
         trip = Trip.objects.get(pk=self.trip.pk)
         prefetch_related_objects([trip], "transport", "lodging", "days", "booking_tasks__links")
         from apps.trips.views import _attach_confirmations
+
         _attach_confirmations(trip)
         booking_tasks.attach(trip)
         return trip
@@ -77,8 +82,9 @@ class PageTests(Fixture):
         self.assertNotIn(self.out, after)
         self.assertNotIn(self.back, after)
         task = next(iter(trip.booking_tasks.all()))
-        self.assertEqual((task.item, task.cover_label, task.item_day), (self.out, "Augsburg Hbf → München Hbf and back",
-                                                                       self.day1))
+        self.assertEqual(
+            (task.item, task.cover_label, task.item_day), (self.out, "Augsburg Hbf → München Hbf and back", self.day1)
+        )
         legs = {leg.pk: leg for leg in trip.transport.all()}
         self.assertEqual([t.title for t in legs[self.back.pk].open_tasks], ["Set up train travel"])  # on every item
 
@@ -86,8 +92,8 @@ class PageTests(Fixture):
         make_task(self.trip, "Set up train travel", self.out, self.back)
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
-        row = html[html.index(f'id="to-book-leg-{self.out.pk}"'):]
-        row = row[:row.index("</li>")]
+        row = html[html.index(f'id="to-book-leg-{self.out.pk}"') :]
+        row = row[: row.index("</li>")]
         self.assertIn(">Augsburg Hbf → München Hbf and back</a>", row)  # one To book row for both (K2)
         self.assertIn("Set up train travel", row)
         self.assertNotIn(f'id="to-book-leg-{self.back.pk}"', html)
@@ -125,15 +131,27 @@ class FormTests(Fixture):
     def test_repeated_items_tick_each(self):
         self.client.force_login(self.editor)
         url = reverse("trips:task_new", args=[self.trip.pk]) + f"?stay={self.hotel.pk}&leg={self.back.pk}"
-        self.assertEqual(self.client.get(url).context["form"].initial["covers"],
-                         sorted([f"stay-{self.hotel.pk}", f"leg-{self.back.pk}"]))
+        self.assertEqual(
+            self.client.get(url).context["form"].initial["covers"],
+            sorted([f"stay-{self.hotel.pk}", f"leg-{self.back.pk}"]),
+        )
 
 
 class SameBookingTests(Fixture):
     def form(self, **over):
-        data = {"mode": "train", "origin": "Augsburg Hbf", "destination": "München Hbf", "date": "2027-09-20",
-                "operator": "DB", "origin_timezone": "Europe/Berlin", "destination_timezone": "Europe/Berlin",
-                "currency": "EUR", "add_return": "on", "return_date": "2027-09-23", "order": "1"}
+        data = {
+            "mode": "train",
+            "origin": "Augsburg Hbf",
+            "destination": "München Hbf",
+            "date": "2027-09-20",
+            "operator": "DB",
+            "origin_timezone": "Europe/Berlin",
+            "destination_timezone": "Europe/Berlin",
+            "currency": "EUR",
+            "add_return": "on",
+            "return_date": "2027-09-23",
+            "order": "1",
+        }
         data.update(over)
         return TransportLegForm(data, instance=self.out)
 
@@ -184,6 +202,7 @@ class ConfirmationOfferTests(Fixture):
         self.assertFalse(self.back.confirmation_links.exists())  # offered, not linked
         query = response["Location"].split("?", 1)[1]
         from urllib.parse import parse_qs
+
         data = {k: v[0] for k, v in parse_qs(query).items()}
         after = self.client.post(spread, {**data, "attach": f"leg-{self.back.pk}"})
         self.assertTrue(self.back.confirmation_links.exists())
@@ -193,6 +212,7 @@ class ConfirmationOfferTests(Fixture):
     def test_not_these_links_nothing_and_offers_no_task(self):
         response = self.add(self.out)
         from urllib.parse import parse_qs
+
         data = {k: v[0] for k, v in parse_qs(response["Location"].split("?", 1)[1]).items()}
         spread = response["Location"].split("?", 1)[0]
         after = self.client.post(spread, {**data, "attach": f"leg-{self.back.pk}", "skip": "1"})
@@ -240,9 +260,11 @@ class CopyMigrationTests(RestoringTransactionTestCase):
         leg = Leg.objects.create(trip=trip, origin="A", destination="B", date=date(2027, 1, 1))
         stay = Stay.objects.create(trip=trip, name="Inn", check_in=date(2027, 1, 1), check_out=date(2027, 1, 2))
         activity = Activity.objects.create(trip=trip, day=day, title="Tour")
-        tasks = {"leg": Task.objects.create(trip=trip, title="a", leg=leg).pk,
-                 "stay": Task.objects.create(trip=trip, title="b", stay=stay).pk,
-                 "activity": Task.objects.create(trip=trip, title="c", activity=activity).pk}
+        tasks = {
+            "leg": Task.objects.create(trip=trip, title="a", leg=leg).pk,
+            "stay": Task.objects.create(trip=trip, title="b", stay=stay).pk,
+            "activity": Task.objects.create(trip=trip, title="c", activity=activity).pk,
+        }
         loose = Task.objects.create(trip=trip, title="d").pk
         self.migrate(self.AFTER)
         self.assertEqual([i.pk for i in BookingTask.objects.get(pk=tasks["leg"]).covered()], [leg.pk])

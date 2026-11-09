@@ -27,15 +27,17 @@ stays and is listed. Then the days are numbered again by date (``day_fit.renumbe
 text naming a day that is now another day's number (Tidy's ``day_slip``). One history line, undone by
 ``undo_move`` like a shift.
 """
+
 from collections import Counter
-from datetime import date, datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import BookingTask, Day, Lodging, TaskLink, TransportLeg, TripChange, format_local_time, get_timezone
+from .models import BookingTask, Day, Lodging, TaskLink, TransportLeg, format_local_time, get_timezone
 
 UTC = dt_timezone.utc
 WEEKDAYS = ["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"]
@@ -50,7 +52,7 @@ def _d(value):
 
 
 def span(start, end):
-    """"Sep 17–29", "Sep 28–Oct 3", "Dec 30, 2026–Jan 2, 2027"."""
+    """ "Sep 17–29", "Sep 28–Oct 3", "Dec 30, 2026–Jan 2, 2027"."""
     if not start or not end:
         return _d(start or end)
     if start.year != end.year:
@@ -83,6 +85,7 @@ def describe(n):
 
 def _label(item):
     from .booking_tasks import label
+
     name = type(item).__name__
     if name == "Meal":
         return item.name
@@ -93,6 +96,7 @@ def _label(item):
 
 # ------------------------------------------------------------------------------------------------ preview
 
+
 def shift_plan(trip, n, move_trip=True, new_end=None):
     """What moving the trip by ``n`` days would do (nothing saved). See the module docstring. ``new_end``: the
     trip's end date would become this too (``shift``'s keep-the-length case)."""
@@ -101,17 +105,35 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
     plus = lambda value: value + timedelta(days=n) if value else value  # noqa: E731
 
     legs = []
-    for leg in sorted(trip.transport.all(), key=lambda l: (l.date or date.min, l.departure_at or datetime.min.replace(tzinfo=UTC), l.pk)):
+    for leg in sorted(
+        trip.transport.all(),
+        key=lambda item: (item.date or date.min, item.departure_at or datetime.min.replace(tzinfo=UTC), item.pk),
+    ):
         new_departure = wall_clock_plus(leg.departure_at, leg.origin_timezone, n)
         new_date = _local(new_departure, leg.origin_timezone).date() if new_departure else plus(leg.date)
-        legs.append({"leg": leg, "label": _label(leg), "old": leg.date, "new": new_date,
-                     "time": format_local_time(new_departure, leg.origin_timezone) if new_departure else "",
-                     "stray": bool(leg.date) and leg.date not in day_dates})
-    stays = [{"stay": stay, "label": stay.name, "old": (stay.check_in, stay.check_out),
-              "new": (plus(stay.check_in), plus(stay.check_out))}
-             for stay in sorted(trip.lodging.all(), key=lambda s: (s.check_in or date.min, s.pk))]
-    tasks = [{"task": task, "old": task.due, "new": plus(task.due)}
-             for task in sorted((t for t in trip.booking_tasks.all() if t.due), key=lambda t: (t.due, t.pk))]
+        legs.append(
+            {
+                "leg": leg,
+                "label": _label(leg),
+                "old": leg.date,
+                "new": new_date,
+                "time": format_local_time(new_departure, leg.origin_timezone) if new_departure else "",
+                "stray": bool(leg.date) and leg.date not in day_dates,
+            }
+        )
+    stays = [
+        {
+            "stay": stay,
+            "label": stay.name,
+            "old": (stay.check_in, stay.check_out),
+            "new": (plus(stay.check_in), plus(stay.check_out)),
+        }
+        for stay in sorted(trip.lodging.all(), key=lambda s: (s.check_in or date.min, s.pk))
+    ]
+    tasks = [
+        {"task": task, "old": task.due, "new": plus(task.due)}
+        for task in sorted((t for t in trip.booking_tasks.all() if t.due), key=lambda t: (t.due, t.pk))
+    ]
 
     # Booked items: every confirmation linked to something that moves.
     booked = []
@@ -120,9 +142,14 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
         if not items:
             continue
         dates = [d for item in items for d in _item_dates(item) if d]
-        booked.append({"confirmation": confirmation, "items": [_label(i) for i in items],
-                       "was": span(min(dates), max(dates)) if dates else "",
-                       "now": span(plus(min(dates)), plus(max(dates))) if dates else ""})
+        booked.append(
+            {
+                "confirmation": confirmation,
+                "items": [_label(i) for i in items],
+                "was": span(min(dates), max(dates)) if dates else "",
+                "now": span(plus(min(dates)), plus(max(dates))) if dates else "",
+            }
+        )
 
     events, closed = [], []
     for day in days:
@@ -136,30 +163,49 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
                 last = event.end_date or event.start_date
                 if not event.start_date <= new <= last:
                     what = _label(item)
-                    lead = (f"{event.name} runs {span(event.start_date, last)}" if what == event.name
-                            else f"{what} is linked to {event.name}, {span(event.start_date, last)}")
+                    lead = (
+                        f"{event.name} runs {span(event.start_date, last)}"
+                        if what == event.name
+                        else f"{what} is linked to {event.name}, {span(event.start_date, last)}"
+                    )
                     events.append(f"{lead}; Day {number} will be {_d(new)}")
-        for item in [*getattr(day, "ordered_meals", []), *getattr(day, "ordered_activities", []),
-                     *getattr(day, "ordered_sections", [])]:
+        for item in [
+            *getattr(day, "ordered_meals", []),
+            *getattr(day, "ordered_activities", []),
+            *getattr(day, "ordered_sections", []),
+        ]:
             for note in getattr(item, "trip_notes", []):
                 shut = note.closed_weekdays or []
                 if new.weekday() in shut and day.date.weekday() not in shut:
                     who, what = note.from_name or _label(item), _label(item)
-                    closed.append(f"{who} is closed on {WEEKDAYS[new.weekday()]}"
-                                  + (f" ({what})" if what != who else "") + f"; Day {number} will be a {new:%A}")
+                    closed.append(
+                        f"{who} is closed on {WEEKDAYS[new.weekday()]}"
+                        + (f" ({what})" if what != who else "")
+                        + f"; Day {number} will be a {new:%A}"
+                    )
                     break
 
     soon = timezone.localdate() + timedelta(days=_urgent_days())
     return {
-        "n": n, "describe": describe(n), "move_trip": move_trip,
+        "n": n,
+        "describe": describe(n),
+        "move_trip": move_trip,
         "old_range": (trip.start_date, trip.end_date),
-        "new_range": (plus(trip.start_date), plus(trip.end_date)) if move_trip else (trip.start_date, new_end or trip.end_date),
+        "new_range": (plus(trip.start_date), plus(trip.end_date))
+        if move_trip
+        else (trip.start_date, new_end or trip.end_date),
         "old_span": span(trip.start_date, trip.end_date),
-        "new_span": span(plus(trip.start_date), plus(trip.end_date)) if move_trip
+        "new_span": span(plus(trip.start_date), plus(trip.end_date))
+        if move_trip
         else span(trip.start_date, new_end or trip.end_date),
         "new_end": new_end,
         "days": [{"day": day, "old": day.date, "new": plus(day.date)} for day in days],
-        "legs": legs, "stays": stays, "tasks": tasks, "booked": booked, "events": events, "closed": closed,
+        "legs": legs,
+        "stays": stays,
+        "tasks": tasks,
+        "booked": booked,
+        "events": events,
+        "closed": closed,
         "strays": [row for row in legs if row["stray"]],
         "urgent": any(row["new"] and timezone.localdate() <= row["new"] <= soon for row in legs),
     }
@@ -177,16 +223,19 @@ def _item_dates(item):
 
 def _urgent_days():
     from .changes import URGENT_DAYS
+
     return URGENT_DAYS
 
 
 # ------------------------------------------------------------------------------------------------- apply
+
 
 def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True, new_end=None):
     """Move the trip by ``n`` days (see the module docstring). ``new_end`` (with ``move_trip=False``): also set the
     trip's end date — the fit page's "keep the length" after Settings moved only the start (DR3); undo puts it back.
     Returns {"change", "made", "urgent"}."""
     from . import changes
+
     if not n:
         raise CannotMove("The new dates are the same as the old ones.")
     days = list(Day.objects.filter(trip=trip))
@@ -195,7 +244,9 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
     tasks = list(BookingTask.objects.filter(trip=trip, due__isnull=False)) if move_due else []
     booked_for = _booked_print(trip)
     before = {
-        "shift": n, "move_trip": move_trip, "restore_trip": bool(new_end),
+        "shift": n,
+        "move_trip": move_trip,
+        "restore_trip": bool(new_end),
         "trip": [_iso(trip.start_date), _iso(trip.end_date)],
         "days": {str(day.pk): _iso(day.date) for day in days},
         "legs": {str(leg.pk): [_iso(leg.date), _iso(leg.departure_at), _iso(leg.arrival_at)] for leg in legs},
@@ -242,8 +293,15 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
         for task in tasks:
             task.due = plus(task.due)
             task.save(update_fields=["due"])
-        made = _booking_todos(trip, f"The trip moved to {new_span} on this site; the booking itself hasn't changed.",
-                              booked_for=booked_for) if booking_todos else []
+        made = (
+            _booking_todos(
+                trip,
+                f"The trip moved to {new_span} on this site; the booking itself hasn't changed.",
+                booked_for=booked_for,
+            )
+            if booking_todos
+            else []
+        )
         before["made_tasks"] = {str(task.pk): _task_print(task) for task in made}
         state["before"] = before
     if urgent:
@@ -255,11 +313,22 @@ def _booked_print(trip):
     """{"leg-12": "2027-09-18", "stay-15": "2027-09-18/2027-09-20", "activity-3": …}: every journey's, stay's and
     activity's dates now, taken before a move so the booking to-dos can remember the booked dates (DR3)."""
     from .models import TripActivity
-    found = {f"leg-{pk}": _iso(when) or "" for pk, when in TransportLeg.objects.filter(trip=trip).values_list("pk", "date")}
-    found.update({f"stay-{pk}": f"{_iso(a) or ''}/{_iso(b) or ''}"
-                  for pk, a, b in Lodging.objects.filter(trip=trip).values_list("pk", "check_in", "check_out")})
-    found.update({f"activity-{pk}": _iso(when) or ""
-                  for pk, when in TripActivity.objects.filter(day__trip=trip).values_list("pk", "day__date")})
+
+    found = {
+        f"leg-{pk}": _iso(when) or "" for pk, when in TransportLeg.objects.filter(trip=trip).values_list("pk", "date")
+    }
+    found.update(
+        {
+            f"stay-{pk}": f"{_iso(a) or ''}/{_iso(b) or ''}"
+            for pk, a, b in Lodging.objects.filter(trip=trip).values_list("pk", "check_in", "check_out")
+        }
+    )
+    found.update(
+        {
+            f"activity-{pk}": _iso(when) or ""
+            for pk, when in TripActivity.objects.filter(day__trip=trip).values_list("pk", "day__date")
+        }
+    )
     return found
 
 
@@ -269,7 +338,8 @@ def _booking_todos(trip, notes, only=None, booked_for=None):
     ``booked_for`` (``_booked_print`` before the move): each covered item's booked dates go into the to-do's hidden
     ``BookingTask.BOOKED_FOR`` line, so it can say when everything is back on them."""
     from .booking_tasks import kind_of
-    from .models import Confirmation, TASKABLE
+    from .models import TASKABLE, Confirmation
+
     taskable = tuple(TASKABLE.values())
     made = []
     for confirmation in Confirmation.objects.filter(trip=trip).prefetch_related("links__content_type"):
@@ -282,8 +352,11 @@ def _booking_todos(trip, notes, only=None, booked_for=None):
         keys = [f"{kind_of(item)}-{item.pk}" for item in covered]
         line = "; ".join(f"{key} {booked_for[key]}" for key in keys if booked_for and key in booked_for)
         task = BookingTask.objects.create(
-            trip=trip, title=f"Change booking {confirmation.confirmation_number} to the new dates",
-            priority=BookingTask.Priority.HIGH, notes=notes + (f"\n{BookingTask.BOOKED_FOR}{line}" if line else ""))
+            trip=trip,
+            title=f"Change booking {confirmation.confirmation_number} to the new dates",
+            priority=BookingTask.Priority.HIGH,
+            notes=notes + (f"\n{BookingTask.BOOKED_FOR}{line}" if line else ""),
+        )
         for item in covered:
             TaskLink.link(task, item)
         made.append(task)
@@ -292,8 +365,13 @@ def _booking_todos(trip, notes, only=None, booked_for=None):
 
 def _task_print(task):
     """What a made to-do looked like, so Undo can tell whether anyone has touched it since."""
-    return {"title": task.title, "notes": task.notes, "done": task.done, "priority": task.priority,
-            "due": _iso(task.due)}
+    return {
+        "title": task.title,
+        "notes": task.notes,
+        "done": task.done,
+        "priority": task.priority,
+        "due": _iso(task.due),
+    }
 
 
 def _notice_moved(trip, user, new_span):
@@ -302,10 +380,17 @@ def _notice_moved(trip, user, new_span):
 
     def send():
         from apps.notifications.services import notify
+
         url = reverse("trips:trip_detail", args=[trip.pk])
         for person in changes.recipients(trip, exclude_user_id=getattr(user, "pk", None)):
-            notify(person, "trip_changed", f"“{trip.name}” has moved",
-                   f"“{trip.name}” now runs {new_span}. Check the times of the journeys this week.", url, obj=trip)
+            notify(
+                person,
+                "trip_changed",
+                f"“{trip.name}” has moved",
+                f"“{trip.name}” now runs {new_span}. Check the times of the journeys this week.",
+                url,
+                obj=trip,
+            )
 
     transaction.on_commit(send)
 
@@ -324,6 +409,7 @@ def _datetime_of(value):
 
 # ------------------------------------------------------------------------------------------------- undo
 
+
 def is_move(change):
     """A whole-trip move (DR1) or a new order of days (DR2): undone by ``undo_move``."""
     return bool(change.before) and ("shift" in change.before or "reorder" in change.before)
@@ -333,6 +419,7 @@ def undo_move(change, user=None):
     """Put back what ``shift`` or ``reorder`` moved. Returns the to-dos kept (edited or done since)."""
     from . import changes, day_fit
     from .models import Trip
+
     before = change.before or {}
     if not is_move(change):
         raise CannotMove("That isn't a move of the trip.")
@@ -355,7 +442,11 @@ def undo_move(change, user=None):
             day_fit.renumber(trip)  # by date, which puts the old numbers back
         for leg in TransportLeg.objects.filter(trip=trip, pk__in=[int(pk) for pk in before["legs"]]):
             old_date, departure, arrival = before["legs"][str(leg.pk)]
-            leg.date, leg.departure_at, leg.arrival_at = _date_of(old_date), _datetime_of(departure), _datetime_of(arrival)
+            leg.date, leg.departure_at, leg.arrival_at = (
+                _date_of(old_date),
+                _datetime_of(departure),
+                _datetime_of(arrival),
+            )
             leg.save()
         for stay in Lodging.objects.filter(trip=trip, pk__in=[int(pk) for pk in before["stays"]]):
             stay.check_in, stay.check_out = (_date_of(v) for v in before["stays"][str(stay.pk)])
@@ -379,6 +470,7 @@ undo_shift = undo_move  # DR1's name
 
 # ------------------------------------------------------------------------------------------------ reorder (DR2)
 
+
 def _check_order(trip, days, order):
     """The days in ``order`` (each once, all of them), or CannotMove."""
     by_pk = {day.pk: day for day in days}
@@ -387,14 +479,19 @@ def _check_order(trip, days, order):
     dated = [day.date for day in days if day.date]
     if len(dated) != len(days) or len(set(dated)) != len(dated):
         raise CannotMove("Every day needs its own date first: fit the days to the trip's dates.")
-    if trip.start_date and trip.end_date and (len(days) != (trip.end_date - trip.start_date).days + 1
-                                              or min(dated) != trip.start_date):
+    if (
+        trip.start_date
+        and trip.end_date
+        and (len(days) != (trip.end_date - trip.start_date).days + 1 or min(dated) != trip.start_date)
+    ):
         raise CannotMove("The days don't match the trip's dates: fit the days first.")
     return [by_pk[pk] for pk in order]
 
 
 def _day_name(number, day):
-    return f"Day {number}" + (f" {day.city.name}" if day.city_id and day.city else (f" — {day.theme}" if day.theme else ""))
+    return f"Day {number}" + (
+        f" {day.city.name}" if day.city_id and day.city else (f" — {day.theme}" if day.theme else "")
+    )
 
 
 def _consecutive(dates):
@@ -424,8 +521,11 @@ def _stay_suggestion(stay, night_days, new):
     if found is None or (found[0], found[1]) == (stay.check_in, stay.check_out):
         return None
     check_in, check_out, why = found
-    return {"new": (check_in, check_out), "why": why,
-            "text": f"Move {stay.name} to {span(check_in, check_out)} ({why})"}
+    return {
+        "new": (check_in, check_out),
+        "why": why,
+        "text": f"Move {stay.name} to {span(check_in, check_out)} ({why})",
+    }
 
 
 def _moves(trip, all_days, new):
@@ -433,6 +533,7 @@ def _moves(trip, all_days, new):
     the stays whose nights' days all moved together, still next to each other and in order, the stays left behind
     (``kept``, each with what it now covers and a suggestion) and the bookings linked to anything that moved."""
     from .models import Confirmation
+
     by_date = {day.date: day for day in all_days if day.date}
     moved = {day.pk for day in all_days if day.date and new[day.pk] != day.date}
 
@@ -443,8 +544,16 @@ def _moves(trip, all_days, new):
             continue
         n = (new[day.pk] - day.date).days
         departure = wall_clock_plus(leg.departure_at, leg.origin_timezone, n)
-        legs.append({"leg": leg, "label": _label(leg), "n": n, "old": leg.date, "new": new[day.pk],
-                     "time": format_local_time(departure, leg.origin_timezone) if departure else ""})
+        legs.append(
+            {
+                "leg": leg,
+                "label": _label(leg),
+                "n": n,
+                "old": leg.date,
+                "new": new[day.pk],
+                "time": format_local_time(departure, leg.origin_timezone) if departure else "",
+            }
+        )
 
     stays, kept = [], []
     for stay in Lodging.objects.filter(trip=trip):
@@ -455,16 +564,31 @@ def _moves(trip, all_days, new):
         if not any(day is not None and day.pk in moved for day in night_days):
             continue
         together = all(day is not None for day in night_days) and all(
-            (new[b.pk] - new[a.pk]).days == 1 for a, b in zip(night_days, night_days[1:]))
+            (new[b.pk] - new[a.pk]).days == 1 for a, b in zip(night_days, night_days[1:])
+        )
         if together:
             check_in = new[night_days[0].pk]
-            stays.append({"stay": stay, "label": stay.name, "old": (stay.check_in, stay.check_out),
-                          "new": (check_in, check_in + timedelta(days=nights))})
+            stays.append(
+                {
+                    "stay": stay,
+                    "label": stay.name,
+                    "old": (stay.check_in, stay.check_out),
+                    "new": (check_in, check_in + timedelta(days=nights)),
+                }
+            )
         else:
-            covers = sorted((d for d in all_days if d.date and stay.check_in <= new[d.pk] < stay.check_out),
-                            key=lambda d: new[d.pk])
-            kept.append({"stay": stay, "label": stay.name, "old": (stay.check_in, stay.check_out), "covers": covers,
-                         "suggestion": _stay_suggestion(stay, night_days, new)})
+            covers = sorted(
+                (d for d in all_days if d.date and stay.check_in <= new[d.pk] < stay.check_out), key=lambda d: new[d.pk]
+            )
+            kept.append(
+                {
+                    "stay": stay,
+                    "label": stay.name,
+                    "old": (stay.check_in, stay.check_out),
+                    "covers": covers,
+                    "suggestion": _stay_suggestion(stay, night_days, new),
+                }
+            )
 
     moved_legs = {row["leg"].pk for row in legs}
     moved_stays = {row["stay"].pk for row in stays}
@@ -495,6 +619,7 @@ def reorder_plan(trip, order, days=None):
     database, so undecided choices' journeys move too."""
     from .tidy import _day_slips
     from .tidying import snapshot
+
     all_days = list(Day.objects.filter(trip=trip).select_related("city"))
     ordered = _check_order(trip, all_days, [int(pk) for pk in order])
     slots = sorted(day.date for day in all_days)
@@ -519,17 +644,26 @@ def reorder_plan(trip, order, days=None):
                 last = event.end_date or event.start_date
                 if not event.start_date <= when <= last:
                     what = _label(item)
-                    lead = (f"{event.name} runs {span(event.start_date, last)}" if what == event.name
-                            else f"{what} is linked to {event.name}, {span(event.start_date, last)}")
+                    lead = (
+                        f"{event.name} runs {span(event.start_date, last)}"
+                        if what == event.name
+                        else f"{what} is linked to {event.name}, {span(event.start_date, last)}"
+                    )
                     events.append(f"{lead}; it would be on Day {num}, {_d(when)}")
-        for item in [*getattr(day, "ordered_meals", []), *getattr(day, "ordered_activities", []),
-                     *getattr(day, "ordered_sections", [])]:
+        for item in [
+            *getattr(day, "ordered_meals", []),
+            *getattr(day, "ordered_activities", []),
+            *getattr(day, "ordered_sections", []),
+        ]:
             for note in getattr(item, "trip_notes", []):
                 shut = note.closed_weekdays or []
                 if when.weekday() in shut and day.date.weekday() not in shut:
                     who, what = note.from_name or _label(item), _label(item)
-                    closed.append(f"{who} is closed on {WEEKDAYS[when.weekday()]}"
-                                  + (f" ({what})" if what != who else "") + f"; Day {num} would be a {when:%A}")
+                    closed.append(
+                        f"{who} is closed on {WEEKDAYS[when.weekday()]}"
+                        + (f" ({what})" if what != who else "")
+                        + f"; Day {num} would be a {when:%A}"
+                    )
                     break
 
     # Text that names a day ("see Day 3") now on a day with another number: Tidy's day_slip rule, new ones only.
@@ -543,20 +677,38 @@ def reorder_plan(trip, order, days=None):
         for section in plain["sections"]:
             for slip in _day_slips(renumbered, section):
                 if slip.key not in old_keys:
-                    slips.append(f"{slip.where} on Day {renumbered['number']} says “{_slip_ref(slip.before)}”: "
-                                 f"“{slip.before[:80]}”")
+                    slips.append(
+                        f"{slip.where} on Day {renumbered['number']} says “{_slip_ref(slip.before)}”: "
+                        f"“{slip.before[:80]}”"
+                    )
 
-    rows = [{"pk": day.pk, "old": day.date, "new": new[day.pk], "number": number[day.pk],
-             "moved": day.pk in moved} for day in ordered]
-    return {"rows": rows, "slots": slots, "moved": moved, "legs": legs, "stays": stays, "kept_stays": kept_stays,
-            "booked": booked, "events": events, "closed": closed, "slips": slips,
-            "summary": "Reordered days: " + ", ".join(
-                f"{_d(new[d.pk])} {d.city.name if d.city_id and d.city else (d.theme or f'Day {d.day_number}')}"
-                for d in ordered if d.pk in moved)}
+    rows = [
+        {"pk": day.pk, "old": day.date, "new": new[day.pk], "number": number[day.pk], "moved": day.pk in moved}
+        for day in ordered
+    ]
+    return {
+        "rows": rows,
+        "slots": slots,
+        "moved": moved,
+        "legs": legs,
+        "stays": stays,
+        "kept_stays": kept_stays,
+        "booked": booked,
+        "events": events,
+        "closed": closed,
+        "slips": slips,
+        "summary": "Reordered days: "
+        + ", ".join(
+            f"{_d(new[d.pk])} {d.city.name if d.city_id and d.city else (d.theme or f'Day {d.day_number}')}"
+            for d in ordered
+            if d.pk in moved
+        ),
+    }
 
 
 def _slip_ref(text):
     from .tidy import DAY_REF
+
     found = DAY_REF.search(text)
     return found.group(0) if found else "Day …"
 
@@ -577,13 +729,16 @@ def _apply_moves(trip, days, new, found, stays, user, summary, notes, booking_to
     (pk → row), renumber, then the booking to-dos for bookings linked to anything that moved. One history line whose
     ``before`` ``undo_move`` reads. Returns (change, made to-dos)."""
     from . import changes, day_fit
+
     legs = {row["leg"].pk: row for row in found["legs"]}
     booked_for = _booked_print(trip)
     before = {
         "reorder": True,
         "days": {str(day.pk): [_iso(day.date), day.day_number] for day in days},
-        "legs": {str(row["leg"].pk): [_iso(row["leg"].date), _iso(row["leg"].departure_at), _iso(row["leg"].arrival_at)]
-                 for row in found["legs"]},
+        "legs": {
+            str(row["leg"].pk): [_iso(row["leg"].date), _iso(row["leg"].departure_at), _iso(row["leg"].arrival_at)]
+            for row in found["legs"]
+        },
         "stays": {str(pk): [_iso(row["stay"].check_in), _iso(row["stay"].check_out)] for pk, row in stays.items()},
         "made_tasks": {},
     }
@@ -591,9 +746,12 @@ def _apply_moves(trip, days, new, found, stays, user, summary, notes, booking_to
     extra = set(stays) - {row["stay"].pk for row in found["stays"]}
     if extra:  # left-behind stays moved on request: their bookings change too
         from .models import ConfirmationLink
-        only |= set(ConfirmationLink.objects.filter(
-            content_type=ContentType.objects.get_for_model(Lodging), object_id__in=extra)
-            .values_list("confirmation_id", flat=True))
+
+        only |= set(
+            ConfirmationLink.objects.filter(
+                content_type=ContentType.objects.get_for_model(Lodging), object_id__in=extra
+            ).values_list("confirmation_id", flat=True)
+        )
     summary = summary if len(summary) <= 400 else summary[:397] + "…"
     with transaction.atomic(), changes.batch(summary, trip=trip, actor=user, item=trip, no_urgent=True) as state:
         for day in days:
@@ -628,8 +786,16 @@ def reorder(trip, order, user=None, booking_todos=True, move_stays=()):
     new = {row["pk"]: row["new"] for row in plan["rows"]}
     found = {"legs": plan["legs"], "stays": plan["stays"], "kept": plan["kept_stays"], "booked": plan["booked"]}
     change, made = _apply_moves(
-        trip, days, new, found, _stays_to_move(found, move_stays), user, plan["summary"],
-        "The days were put in a new order on this site; the booking itself hasn't changed.", booking_todos)
+        trip,
+        days,
+        new,
+        found,
+        _stays_to_move(found, move_stays),
+        user,
+        plan["summary"],
+        "The days were put in a new order on this site; the booking itself hasn't changed.",
+        booking_todos,
+    )
     return {"change": change, "made": made, "plan": plan}
 
 
@@ -641,8 +807,11 @@ def move_day_check(trip, new_date, exclude_pk=None):
     if clash is not None:
         return ("clash", f"{_d(new_date)} is {_day_name(clash.day_number, clash)}. To swap days, use Reorder days.")
     if trip.start_date and trip.end_date and not trip.start_date <= new_date <= trip.end_date:
-        return ("outside", f"{_d(new_date)} is outside the trip ({span(trip.start_date, trip.end_date)}). To move the "
-                           "whole trip or change its dates, use Settings.")
+        return (
+            "outside",
+            f"{_d(new_date)} is outside the trip ({span(trip.start_date, trip.end_date)}). To move the "
+            "whole trip or change its dates, use Settings.",
+        )
     return None
 
 
@@ -666,6 +835,14 @@ def move_day(day, new_date, user=None):
     name = this.city.name if this.city_id and this.city else (this.theme or "")
     summary = f"Moved Day {this.day_number}{f' {name}' if name else ''} from {_d(old)} to {_d(new_date)}"
     change, made = _apply_moves(
-        trip, days, new, found, _stays_to_move(found, ()), user, summary,
-        f"Day {this.day_number} moved to {_d(new_date)} on this site; the booking itself hasn't changed.", True)
+        trip,
+        days,
+        new,
+        found,
+        _stays_to_move(found, ()),
+        user,
+        summary,
+        f"Day {this.day_number} moved to {_d(new_date)} on this site; the booking itself hasn't changed.",
+        True,
+    )
     return {"change": change, "made": made, "kept": found["kept"], "legs": found["legs"], "stays": found["stays"]}

@@ -1,4 +1,3 @@
-# core/geocoding.py
 """Turn a street address into coordinates, for placing private things (trip stays) on maps.
 
 Uses OpenStreetMap's Nominatim by default (``settings.GEOCODER_URL``). Its usage policy:
@@ -8,6 +7,7 @@ is called once when a stay's address is saved (``trips.Lodging.locate``) and by 
 sent, never who is staying. Off when ``settings.GEOCODING_ENABLED`` is false (the test
 run turns it off, so the suite never calls the network). Failures are logged, never raised.
 """
+
 import json
 import logging
 import urllib.parse

@@ -1,4 +1,3 @@
-# bucketlists/photos.py
 """Photos on a goal at any stage, and personal albums ("My albums").
 
 A goal's photos are Media attached to the BucketListItem (``item.photos()``), added
@@ -8,6 +7,7 @@ photos from goals and trips, or photos uploaded straight into it (Media attached
 the album, deleted with it). Albums are private, or public on the owner's public
 bucket list when their profile is public.
 """
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
@@ -37,10 +37,18 @@ def item_photos(request, pk):
         item.add_photos(files, request.user)
         messages.success(request, f"Added {_plural(len(files))}.")
         return redirect("bucketlists:item_photos", pk=item.pk)
-    return render(request, "bucketlists/item_photos.html", {
-        "item": item, "photos": item.photos(), "form": form,
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), (item.title, None), ("Photos", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/item_photos.html",
+        {
+            "item": item,
+            "photos": item.photos(),
+            "form": form,
+            "breadcrumb_list": build_breadcrumbs(
+                [("Bucket list", "bucketlists:dashboard"), (item.title, None), ("Photos", None)]
+            ),
+        },
+    )
 
 
 @login_required
@@ -68,18 +76,20 @@ def _own_album(request, pk):
 def _my_photos(user):
     """Photos the user added to their goals or trips, newest first (what an album can borrow)."""
     types = [ContentType.objects.get_for_model(BucketListItem), ContentType.objects.get_for_model(Trip)]
-    return (Media.objects.filter(uploaded_by=user, media_type="image", content_type__in=types)
-            .order_by("-created_at"))
+    return Media.objects.filter(uploaded_by=user, media_type="image", content_type__in=types).order_by("-created_at")
 
 
 @login_required
 def albums(request):
-    mine = (_personal().filter(user=request.user).select_related("cover_image")
-            .order_by("-updated_at"))
-    return render(request, "bucketlists/albums.html", {
-        "albums": mine,
-        "breadcrumb_list": build_breadcrumbs([("My adventures", "bucketlists:adventures"), ("Albums", None)]),
-    })
+    mine = _personal().filter(user=request.user).select_related("cover_image").order_by("-updated_at")
+    return render(
+        request,
+        "bucketlists/albums.html",
+        {
+            "albums": mine,
+            "breadcrumb_list": build_breadcrumbs([("My adventures", "bucketlists:adventures"), ("Albums", None)]),
+        },
+    )
 
 
 @login_required
@@ -91,10 +101,17 @@ def album_new(request):
         album.save()
         messages.success(request, f"Album “{album.title}” made. Add some photos.")
         return redirect("bucketlists:album_pick", pk=album.pk)
-    return render(request, "bucketlists/album_form.html", {
-        "form": form, "album": None,
-        "breadcrumb_list": build_breadcrumbs([("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"), ("New", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/album_form.html",
+        {
+            "form": form,
+            "album": None,
+            "breadcrumb_list": build_breadcrumbs(
+                [("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"), ("New", None)]
+            ),
+        },
+    )
 
 
 @login_required
@@ -105,11 +122,22 @@ def album_edit(request, pk):
         form.save()
         messages.success(request, "Album saved.")
         return redirect("bucketlists:album_detail", pk=album.pk)
-    return render(request, "bucketlists/album_form.html", {
-        "form": form, "album": album,
-        "breadcrumb_list": build_breadcrumbs([("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"),
-                                              (album.title, ("bucketlists:album_detail", {"pk": album.pk})), ("Edit", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/album_form.html",
+        {
+            "form": form,
+            "album": album,
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("My adventures", "bucketlists:adventures"),
+                    ("Albums", "bucketlists:albums"),
+                    (album.title, ("bucketlists:album_detail", {"pk": album.pk})),
+                    ("Edit", None),
+                ]
+            ),
+        },
+    )
 
 
 def album_detail(request, pk):
@@ -126,23 +154,43 @@ def album_detail(request, pk):
             from apps.core.utils.images import shrink_image
             from apps.media_app.forms import MAX_PICTURE_SIDE
             from apps.media_app.quota import check, size_of
+
             check(request.user, size_of(form.cleaned_data["photos"]))  # the storage limit (R15)
             media = []
             for f in form.cleaned_data["photos"]:
-                m = Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=request.user, media_type="image",
-                          title=album.title[:200], alt_text=album.title[:200], content_object=album,
-                          privacy=album.privacy)
+                m = Media(
+                    file=shrink_image(f, MAX_PICTURE_SIDE) or f,
+                    uploaded_by=request.user,
+                    media_type="image",
+                    title=album.title[:200],
+                    alt_text=album.title[:200],
+                    content_object=album,
+                    privacy=album.privacy,
+                )
                 m.save()
                 media.append(m)
             album.add(media)
             messages.success(request, f"Added {_plural(len(media))}.")
             return redirect("bucketlists:album_detail", pk=album.pk)
-    crumbs = ([("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"), (album.title, None)] if is_owner
-              else [(f"@{album.user.username}", ("bucketlists:public_list", {"username": album.user.username})), (album.title, None)])
-    return render(request, "bucketlists/album_detail.html", {
-        "album": album, "items": album.items(), "is_owner": is_owner, "form": form,
-        "breadcrumb_list": build_breadcrumbs(crumbs),
-    })
+    crumbs = (
+        [("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"), (album.title, None)]
+        if is_owner
+        else [
+            (f"@{album.user.username}", ("bucketlists:public_list", {"username": album.user.username})),
+            (album.title, None),
+        ]
+    )
+    return render(
+        request,
+        "bucketlists/album_detail.html",
+        {
+            "album": album,
+            "items": album.items(),
+            "is_owner": is_owner,
+            "form": form,
+            "breadcrumb_list": build_breadcrumbs(crumbs),
+        },
+    )
 
 
 @login_required
@@ -156,11 +204,22 @@ def album_pick(request, pk):
         added = album.add([m for m in reversed(available) if m.pk in wanted])
         messages.success(request, f"Added {_plural(len(added))}.")
         return redirect("bucketlists:album_detail", pk=album.pk)
-    return render(request, "bucketlists/album_pick.html", {
-        "album": album, "available": available,
-        "breadcrumb_list": build_breadcrumbs([("My adventures", "bucketlists:adventures"), ("Albums", "bucketlists:albums"),
-                                              (album.title, ("bucketlists:album_detail", {"pk": album.pk})), ("Add photos", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/album_pick.html",
+        {
+            "album": album,
+            "available": available,
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("My adventures", "bucketlists:adventures"),
+                    ("Albums", "bucketlists:albums"),
+                    (album.title, ("bucketlists:album_detail", {"pk": album.pk})),
+                    ("Add photos", None),
+                ]
+            ),
+        },
+    )
 
 
 @login_required

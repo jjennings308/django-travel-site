@@ -1,6 +1,7 @@
 """HEIC/HEIF uploads (iPhone photos) are converted to JPEG before they are stored:
 most browsers can't display HEIC. Conversion applies the EXIF orientation and drops
 the metadata, which also removes GPS location."""
+
 import io
 import os
 

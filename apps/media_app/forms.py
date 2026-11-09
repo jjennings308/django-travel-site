@@ -1,4 +1,3 @@
-# media_app/forms.py
 from django import forms
 
 from apps.core.utils.images import shrink_image
@@ -17,7 +16,8 @@ class PictureFormMixin:
 
     def setup_picture(self):
         self.fields["picture"] = forms.ImageField(
-            required=False, label="Picture",
+            required=False,
+            label="Picture",
             help_text=f"Optional. JPEG, PNG, WebP or iPhone HEIC, up to {MAX_PICTURE_MB} MB.",
             widget=forms.ClearableFileInput(attrs={"class": "sbl-input", "accept": "image/*,.heic,.heif"}),
         )
@@ -35,10 +35,15 @@ class PictureFormMixin:
         picture = self.cleaned_data.get("picture")
         if picture:
             from .quota import check
+
             check(user, picture.size)  # the storage limit (R15); the item itself is already saved
             media = Media(
-                file=shrink_image(picture, MAX_PICTURE_SIDE) or picture, uploaded_by=user, media_type="image",
-                title=str(instance)[:200], alt_text=str(instance)[:200], content_object=instance,
+                file=shrink_image(picture, MAX_PICTURE_SIDE) or picture,
+                uploaded_by=user,
+                media_type="image",
+                title=str(instance)[:200],
+                alt_text=str(instance)[:200],
+                content_object=instance,
             )
             media.save()
             instance.featured_media = media

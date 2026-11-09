@@ -51,11 +51,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from django.db.models import Prefetch
+
         from apps.trips.models import Meal, Section, counts_q
+
         trips = Trip.objects.live().prefetch_related(  # as the public view does: only what counts (P4)
             Prefetch("days__meals", queryset=Meal.objects.filter(counts_q())),
-            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())), "travelers", "confirmations",
-            "lodging", "transport",
+            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())),
+            "travelers",
+            "confirmations",
+            "lodging",
+            "transport",
         )
         if options["trip_ids"]:
             trips = trips.filter(pk__in=options["trip_ids"])
@@ -87,9 +92,7 @@ class Command(BaseCommand):
         # place name — this data has a "St. James Hotel" on a trip with a
         # traveller called James — and a check that can never pass is a check
         # nobody runs. Possible findings are printed for review, not enforced.
-        certain = sum(
-            1 for row in report for f in row["findings"] if f["severity"] == "certain"
-        )
+        certain = sum(1 for row in report for f in row["findings"] if f["severity"] == "certain")
         raise SystemExit(1 if certain else 0)
 
     def print_report(self, report):
@@ -112,9 +115,6 @@ class Command(BaseCommand):
             for finding in possible:
                 # Worth a look, not necessarily wrong: "St. James Hotel" is a
                 # restaurant on a trip with a traveller called James.
-                self.stdout.write(
-                    f"    review    {finding['detail']} "
-                    f"(a name word may also be a place)"
-                )
+                self.stdout.write(f"    review    {finding['detail']} (a name word may also be a place)")
             if not certain and not possible:
                 self.stdout.write("    clean")

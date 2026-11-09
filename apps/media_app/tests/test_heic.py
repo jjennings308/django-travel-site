@@ -1,5 +1,6 @@
 """HEIC uploads are stored as JPEG (browsers other than Safari can't show HEIC),
 upright and without metadata; Media records the stored JPEG's type and size."""
+
 import io
 import shutil
 import tempfile
@@ -50,6 +51,7 @@ class HeicUploadTests(TestCase):
 
     def test_avatar_is_stored_as_jpeg(self):
         from apps.accounts.models import Profile
+
         profile, _ = Profile.objects.get_or_create(user=self.user)
         profile.avatar = heic_upload("me.heic")
         profile.save()

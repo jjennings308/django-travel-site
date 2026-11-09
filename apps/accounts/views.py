@@ -1,36 +1,38 @@
-# accounts/views.py
-import logging
 import json
+import logging
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib import messages
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
-from django.urls import reverse
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode, urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
-from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
-from .models import (
-    User, Profile, TravelPreferences, AccountSettings, 
-    RoleRequest, VendorProfile, ContentProviderProfile, SignupCode
-)
 from .forms import (
-    UserRegistrationForm, 
-    ProfileForm, 
-    TravelPreferencesForm,
     AccountSettingsForm,
+    ProfileForm,
     RoleRequestForm,
-    RoleRequestReviewForm
+    RoleRequestReviewForm,
+    TravelPreferencesForm,
+    UserRegistrationForm,
 )
-
+from .models import (
+    AccountSettings,
+    ContentProviderProfile,
+    Profile,
+    RoleRequest,
+    SignupCode,
+    TravelPreferences,
+    User,
+    VendorProfile,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +41,19 @@ logger = logging.getLogger(__name__)
 # REGISTRATION & EMAIL VERIFICATION
 # ============================================
 
+
 def _safe_next(request):
     """The ``next`` to come back to after registering (an invite link, say), if it is on this site."""
-    candidate = request.POST.get('next') or request.GET.get('next') or ''
-    if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()},
-                                                     require_https=request.is_secure()):
+    candidate = request.POST.get("next") or request.GET.get("next") or ""
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return candidate
-    return ''
+    return ""
 
 
 def _login_url(next_url):
-    return f"{reverse('login')}?{urlencode({'next': next_url})}" if next_url else reverse('login')
+    return f"{reverse('login')}?{urlencode({'next': next_url})}" if next_url else reverse("login")
 
 
 # Set by the trips app's invite page for a signed-out visitor holding an open invite (a unix
@@ -67,6 +71,7 @@ def _signup_allowed(request):
     if code:
         return True, code
     import time
+
     return bool(request.session.get(SIGNUP_SESSION_KEY, 0) > time.time()), None
 
 
@@ -75,96 +80,96 @@ def register(request):
     that sent the person here, e.g. a trip invite); ``?email=`` pre-fills the address.
     While ``SIGNUP_MODE`` is "invite" only a trip invite or a sign-up code lets someone in."""
     if request.user.is_authenticated and not request.user.can_access_staff:
-        return redirect(_safe_next(request) or 'pages:home')
+        return redirect(_safe_next(request) or "pages:home")
     next_url = _safe_next(request)
     allowed, code = _signup_allowed(request)
     if not allowed:
         typed = request.POST.get("signup_code") or request.GET.get("code") or ""
         if typed:  # guessing codes: 10 wrong ones an hour per visitor (R15)
             from apps.core.ratelimit import hit, too_many
+
             ok, wait = hit(request, "signup_code", 10, 3600)
             if not ok:
                 return too_many(request, wait)
-        return render(request, 'accounts/register_closed.html', {
-            'next': next_url, 'bad_code': bool(typed), 'typed': typed[:20]})
-    
-    if request.method == 'POST' and request.POST.get('website'):
+        return render(
+            request, "accounts/register_closed.html", {"next": next_url, "bad_code": bool(typed), "typed": typed[:20]}
+        )
+
+    if request.method == "POST" and request.POST.get("website"):
         # The honeypot (R15): a hidden field people never see; bots fill it. Act as if it worked.
-        return redirect('registration_complete')
-    if request.method == 'POST':
+        return redirect("registration_complete")
+    if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             try:
                 with transaction.atomic():
                     user = form.save(commit=False)
                     user.accept_legal(save=False)  # they ticked "I agree" (site roadmap R16)
-                    
+
                     # If staff is creating the user, activate immediately
                     if request.user.is_authenticated and request.user.can_access_staff:
                         user.is_active = True
                         user.is_verified = True
                     else:
                         user.is_active = False
-                    
+
                     user.save()
-                    
+
                     # Create related models
                     Profile.objects.create(user=user)
                     TravelPreferences.objects.create(user=user)
                     AccountSettings.objects.create(user=user)
                     if code is not None:  # one use of the sign-up code (R14)
                         from django.db.models import F
+
                         SignupCode.objects.filter(pk=code.pk, uses_left__gt=0).update(uses_left=F("uses_left") - 1)
-                    
+
                     # Send verification email only if self-registering
                     if not (request.user.is_authenticated and request.user.can_access_staff):
                         send_verification_email(request, user, next_url=next_url)
                         messages.success(
-                            request,
-                            'Registration successful! Please check your email to verify your account.'
+                            request, "Registration successful! Please check your email to verify your account."
                         )
-                        return redirect('registration_complete')
+                        return redirect("registration_complete")
                     else:
                         messages.success(
-                            request,
-                            f'User @{user.username} has been created successfully and is immediately active.'
+                            request, f"User @{user.username} has been created successfully and is immediately active."
                         )
-                        return redirect('staff:admin_account_list')
-                    
+                        return redirect("staff:admin_account_list")
+
             except Exception as e:
                 import traceback
+
                 logger.error(f"Registration error for {form.cleaned_data.get('username')}: {str(e)}")
                 logger.error(traceback.format_exc())
-                messages.error(
-                    request,
-                    f'An error occurred during registration: {str(e)}'
-                )
+                messages.error(request, f"An error occurred during registration: {str(e)}")
         else:
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
     else:
-        form = UserRegistrationForm(initial={'email': request.GET.get('email', '')[:254]})
-    
-    return render(request, 'accounts/register.html', {'form': form, 'next': next_url,
-                                                      'signup_code': code.code if code else ''})
+        form = UserRegistrationForm(initial={"email": request.GET.get("email", "")[:254]})
+
+    return render(
+        request, "accounts/register.html", {"form": form, "next": next_url, "signup_code": code.code if code else ""}
+    )
 
 
-def send_verification_email(request, user, next_url=''):
+def send_verification_email(request, user, next_url=""):
     """Send email verification link to user (carrying ``next_url`` to the login after it)"""
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    
-    path = reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+
+    path = reverse("verify_email", kwargs={"uidb64": uid, "token": token})
     if next_url:
-        path += '?' + urlencode({'next': next_url})
+        path += "?" + urlencode({"next": next_url})
     verification_link = request.build_absolute_uri(path)
-    
+
     logger.warning("VERIFICATION_LINK=%s", verification_link)
     print("VERIFICATION_LINK=", verification_link)
 
-    subject = 'Verify Your Email Address'
-    
+    subject = "Verify Your Email Address"
+
     text_message = f"""
 Hi {user.first_name},
 
@@ -179,23 +184,21 @@ If you didn't create this account, you can safely ignore this email.
 Thanks,
 The ShareBucketList Team
 """
-    
+
     try:
-        html_message = render_to_string('accounts/emails/verify_email.html', {
-            'user': user,
-            'verification_link': verification_link,
-        })
+        html_message = render_to_string(
+            "accounts/emails/verify_email.html",
+            {
+                "user": user,
+                "verification_link": verification_link,
+            },
+        )
     except Exception as e:
         logger.warning(f"Could not load email template: {e}. Using plain text.")
         html_message = None
-    
+
     send_mail(
-        subject,
-        text_message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-        html_message=html_message
+        subject, text_message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False, html_message=html_message
     )
 
 
@@ -207,51 +210,52 @@ def verify_email(request, uidb64, token):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
         logger.error(f"Email verification error - could not decode user: {e}")
         user = None
-    
+
     next_url = _safe_next(request)
     if user is not None:
         if user.is_verified and user.is_active:
-            messages.info(request, 'Your email is already verified! You can log in.')
+            messages.info(request, "Your email is already verified! You can log in.")
             return redirect(_login_url(next_url))
-        
+
         if default_token_generator.check_token(user, token):
             user.is_active = True
             user.is_verified = True
             user.save()
-            
-            messages.success(request, 'Your email has been verified! You can now log in.')
+
+            messages.success(request, "Your email has been verified! You can now log in.")
             return redirect(_login_url(next_url))
         else:
             logger.warning(f"Invalid token for user {user.username}")
-            messages.error(request, 'The verification link is invalid or has expired.')
-            return redirect('resend_verification')
+            messages.error(request, "The verification link is invalid or has expired.")
+            return redirect("resend_verification")
     else:
-        messages.error(request, 'The verification link is invalid or has expired.')
-        return redirect('resend_verification')
+        messages.error(request, "The verification link is invalid or has expired.")
+        return redirect("resend_verification")
 
 
 def registration_complete(request):
     """Show registration complete page"""
-    return render(request, 'accounts/registration_complete.html')
+    return render(request, "accounts/registration_complete.html")
 
 
 def resend_verification(request):
     """Resend verification email"""
-    if request.method == 'POST':
-        email = request.POST.get('email')
+    if request.method == "POST":
+        email = request.POST.get("email")
         try:
             user = User.objects.get(email=email, is_verified=False)
             send_verification_email(request, user)
-            messages.success(request, 'Verification email has been resent. Please check your inbox.')
+            messages.success(request, "Verification email has been resent. Please check your inbox.")
         except User.DoesNotExist:
-            messages.error(request, 'No unverified account found with that email address.')
-    
-    return render(request, 'accounts/resend_verification.html')
+            messages.error(request, "No unverified account found with that email address.")
+
+    return render(request, "accounts/resend_verification.html")
 
 
 # ============================================
 # PROFILE & PREFERENCES MANAGEMENT
 # ============================================
+
 
 @login_required
 def profile_view(request, username=None):
@@ -260,50 +264,50 @@ def profile_view(request, username=None):
         profile_user = get_object_or_404(User, username=username)
     else:
         profile_user = request.user
-    
+
     # Check privacy settings
     if profile_user != request.user:
-        if profile_user.profile_visibility == 'private' or profile_user.deletion_requested_at:
-            messages.error(request, 'This profile is private.')
-            return redirect('pages:home')
-    
+        if profile_user.profile_visibility == "private" or profile_user.deletion_requested_at:
+            messages.error(request, "This profile is private.")
+            return redirect("pages:home")
+
     try:
         profile = profile_user.profile
     except Profile.DoesNotExist:
         profile = Profile.objects.create(user=profile_user)
-    
+
     # Get travel preferences for display
     try:
         travel_prefs = profile_user.travel_preferences
     except TravelPreferences.DoesNotExist:
         travel_prefs = None
-    
+
     # Get role-specific profiles if applicable
     vendor_profile = None
     content_provider_profile = None
-    
+
     if profile_user.is_vendor:
         try:
             vendor_profile = profile_user.vendor_profile
         except VendorProfile.DoesNotExist:
             pass
-    
+
     if profile_user.is_content_provider:
         try:
             content_provider_profile = profile_user.content_provider_profile
         except ContentProviderProfile.DoesNotExist:
             pass
-    
+
     context = {
-        'profile_user': profile_user,
-        'profile': profile,
-        'travel_preferences': travel_prefs,
-        'vendor_profile': vendor_profile,
-        'content_provider_profile': content_provider_profile,
-        'is_own_profile': profile_user == request.user,
+        "profile_user": profile_user,
+        "profile": profile,
+        "travel_preferences": travel_prefs,
+        "vendor_profile": vendor_profile,
+        "content_provider_profile": content_provider_profile,
+        "is_own_profile": profile_user == request.user,
     }
-    
-    return render(request, 'accounts/profile.html', context)
+
+    return render(request, "accounts/profile.html", context)
 
 
 @login_required
@@ -313,19 +317,19 @@ def edit_profile(request):
         profile = request.user.profile
     except Profile.DoesNotExist:
         profile = Profile.objects.create(user=request.user)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your profile has been updated.')
-            return redirect('profile')
+            messages.success(request, "Your profile has been updated.")
+            return redirect("profile")
         else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.error(request, "Please correct the errors below.")
     else:
         form = ProfileForm(instance=profile)
-    
-    return render(request, 'accounts/edit_profile.html', {'form': form})
+
+    return render(request, "accounts/edit_profile.html", {"form": form})
 
 
 @login_required
@@ -335,19 +339,19 @@ def edit_travel_preferences(request):
         travel_prefs = request.user.travel_preferences
     except TravelPreferences.DoesNotExist:
         travel_prefs = TravelPreferences.objects.create(user=request.user)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         form = TravelPreferencesForm(request.POST, instance=travel_prefs)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your travel preferences have been updated.')
-            return redirect('profile')
+            messages.success(request, "Your travel preferences have been updated.")
+            return redirect("profile")
         else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.error(request, "Please correct the errors below.")
     else:
         form = TravelPreferencesForm(instance=travel_prefs)
-    
-    return render(request, 'accounts/edit_travel_preferences.html', {'form': form})
+
+    return render(request, "accounts/edit_travel_preferences.html", {"form": form})
 
 
 @login_required
@@ -358,13 +362,13 @@ def settings_view(request):
     except AccountSettings.DoesNotExist:
         account_settings = AccountSettings.objects.create(user=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AccountSettingsForm(request.POST, instance=account_settings)
         if form.is_valid():
             settings_obj = form.save()
 
             # Keep cookie in sync with DB
-            response = redirect('settings')
+            response = redirect("settings")
             response.set_cookie(
                 "ui_theme",
                 settings_obj.theme,
@@ -372,74 +376,74 @@ def settings_view(request):
                 samesite="Lax",
             )
 
-            messages.success(request, 'Your settings have been updated.')
+            messages.success(request, "Your settings have been updated.")
             return response
         else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.error(request, "Please correct the errors below.")
     else:
         form = AccountSettingsForm(instance=account_settings)
 
-    return render(request, 'accounts/settings.html', {'form': form})
+    return render(request, "accounts/settings.html", {"form": form})
 
 
 # ============================================
 # ROLE REQUEST MANAGEMENT
 # ============================================
 
+
 @login_required
 def request_role(request):
     """Request vendor or content provider role"""
-    
+
     # Check if user already has pending requests
-    pending_requests = request.user.role_requests.filter(
-        status=RoleRequest.Status.PENDING
-    )
-    
-    if request.method == 'POST':
+    pending_requests = request.user.role_requests.filter(status=RoleRequest.Status.PENDING)
+
+    if request.method == "POST":
         form = RoleRequestForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             role_request = form.save(commit=False)
             role_request.user = request.user
             role_request.save()
-            
+
             messages.success(
                 request,
-                f'Your {role_request.get_requested_role_display()} application '
-                f'has been submitted and is pending review.'
+                f"Your {role_request.get_requested_role_display()} application "
+                f"has been submitted and is pending review.",
             )
-            
+
             # TODO: Notify admins of new role request
-            
-            return redirect('profile')
+
+            return redirect("profile")
         else:
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{error}")
     else:
         form = RoleRequestForm(user=request.user)
-    
+
     context = {
-        'form': form,
-        'pending_requests': pending_requests,
+        "form": form,
+        "pending_requests": pending_requests,
     }
-    return render(request, 'accounts/request_role.html', context)
+    return render(request, "accounts/request_role.html", context)
 
 
 @login_required
 def role_request_status(request):
     """View status of user's role requests"""
-    
-    requests = request.user.role_requests.all().order_by('-created_at')
-    
+
+    requests = request.user.role_requests.all().order_by("-created_at")
+
     context = {
-        'role_requests': requests,
+        "role_requests": requests,
     }
-    return render(request, 'accounts/role_request_status.html', context)
+    return render(request, "accounts/role_request_status.html", context)
 
 
 # ============================================
 # ADMIN ACCOUNT MANAGEMENT
 # ============================================
+
 
 def can_access_staff_dashboard(user):
     return user.is_authenticated and getattr(user, "can_access_staff", False)
@@ -450,96 +454,93 @@ def can_access_staff_dashboard(user):
 def admin_account_detail(request, user_id):
     """Admin view to see detailed account information"""
     user = get_object_or_404(User, id=user_id)
-    
+
     try:
         profile = user.profile
     except Profile.DoesNotExist:
         profile = None
-        
+
     try:
         travel_prefs = user.travel_preferences
     except TravelPreferences.DoesNotExist:
         travel_prefs = None
-    
+
     try:
         settings_obj = user.settings
     except AccountSettings.DoesNotExist:
         settings_obj = None
-    
+
     # Get role requests
-    role_requests = user.role_requests.all().order_by('-created_at')
-    
+    role_requests = user.role_requests.all().order_by("-created_at")
+
     context = {
-        'account_user': user,
-        'profile': profile,
-        'travel_preferences': travel_prefs,
-        'account_settings': settings_obj,
-        'role_requests': role_requests,
-        'stats': {
-            'date_joined': user.created_at,
-            'last_login': user.last_login,
-            'is_verified': user.is_verified,
-            'subscription_tier': user.get_subscription_tier_display(),
-            'is_premium': user.is_premium,
-            'is_vendor': user.is_vendor,
-            'is_content_provider': user.is_content_provider,
-            'is_active': user.is_active,
-            'is_staff': user.is_staff,
-        }
+        "account_user": user,
+        "profile": profile,
+        "travel_preferences": travel_prefs,
+        "account_settings": settings_obj,
+        "role_requests": role_requests,
+        "stats": {
+            "date_joined": user.created_at,
+            "last_login": user.last_login,
+            "is_verified": user.is_verified,
+            "subscription_tier": user.get_subscription_tier_display(),
+            "is_premium": user.is_premium,
+            "is_vendor": user.is_vendor,
+            "is_content_provider": user.is_content_provider,
+            "is_active": user.is_active,
+            "is_staff": user.is_staff,
+        },
     }
-    
-    return render(request, 'accounts/admin_account_detail.html', context)
+
+    return render(request, "accounts/admin_account_detail.html", context)
 
 
 @login_required
 @user_passes_test(can_access_staff_dashboard)
 def admin_account_list(request):
     """Admin view to list all user accounts with search and filters"""
-    users = User.objects.all().select_related('profile')
-    
-    search_query = request.GET.get('search', '')
+    users = User.objects.all().select_related("profile")
+
+    search_query = request.GET.get("search", "")
     if search_query:
-        users = users.filter(
-            email__icontains=search_query
-        ) | users.filter(
-            username__icontains=search_query
-        ) | users.filter(
-            first_name__icontains=search_query
-        ) | users.filter(
-            last_name__icontains=search_query
+        users = (
+            users.filter(email__icontains=search_query)
+            | users.filter(username__icontains=search_query)
+            | users.filter(first_name__icontains=search_query)
+            | users.filter(last_name__icontains=search_query)
         )
-    
-    verified_filter = request.GET.get('verified', '')
-    if verified_filter == 'yes':
+
+    verified_filter = request.GET.get("verified", "")
+    if verified_filter == "yes":
         users = users.filter(is_verified=True)
-    elif verified_filter == 'no':
+    elif verified_filter == "no":
         users = users.filter(is_verified=False)
-    
-    tier_filter = request.GET.get('tier', '')
+
+    tier_filter = request.GET.get("tier", "")
     if tier_filter:
         users = users.filter(subscription_tier=tier_filter)
-    
-    active_filter = request.GET.get('active', '')
-    if active_filter == 'yes':
+
+    active_filter = request.GET.get("active", "")
+    if active_filter == "yes":
         users = users.filter(is_active=True)
-    elif active_filter == 'no':
+    elif active_filter == "no":
         users = users.filter(is_active=False)
-    
-    
-    order_by = request.GET.get('order_by', '-created_at')
+
+    order_by = request.GET.get("order_by", "-created_at")
     users = users.order_by(order_by)
-    
+
     context = {
-        'users': users,
-        'search_query': search_query,
-        'verified_filter': verified_filter,
-        'tier_filter': tier_filter,
-        'active_filter': active_filter,
-        'order_by': order_by,
-        'subscription_tiers': User.SubscriptionTier.choices,
+        "users": users,
+        "search_query": search_query,
+        "verified_filter": verified_filter,
+        "tier_filter": tier_filter,
+        "active_filter": active_filter,
+        "order_by": order_by,
+        "subscription_tiers": User.SubscriptionTier.choices,
     }
-    
-    return render(request, 'accounts/admin_account_list.html', context)
+
+    return render(request, "accounts/admin_account_list.html", context)
+
 
 @require_POST
 def set_timezone(request):
@@ -550,10 +551,11 @@ def set_timezone(request):
         return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
 
     timezone = data.get("timezone")
-    
+
     # Validate timezone
     try:
         from zoneinfo import ZoneInfo
+
         ZoneInfo(timezone)
     except Exception:
         return JsonResponse({"ok": False, "error": "invalid_timezone"}, status=400)
@@ -564,108 +566,102 @@ def set_timezone(request):
         settings.timezone = timezone
         settings.save(update_fields=["timezone"])
         return JsonResponse({"ok": True, "timezone": timezone})
-    
+
     return JsonResponse({"ok": False, "error": "not_authenticated"}, status=401)
+
 
 @login_required
 @user_passes_test(can_access_staff_dashboard)
 def admin_toggle_user_status(request, user_id):
     """Admin action to toggle user active status"""
-    if request.method != 'POST':
-        return HttpResponse('Method not allowed', status=405)
-    
+    if request.method != "POST":
+        return HttpResponse("Method not allowed", status=405)
+
     user = get_object_or_404(User, id=user_id)
-    action = request.POST.get('action')
-    
-    if action == 'activate':
+    action = request.POST.get("action")
+
+    if action == "activate":
         user.is_active = True
-        messages.success(request, f'User @{user.username} has been activated.')
-    elif action == 'deactivate':
+        messages.success(request, f"User @{user.username} has been activated.")
+    elif action == "deactivate":
         user.is_active = False
-        messages.success(request, f'User @{user.username} has been deactivated.')
-    elif action == 'verify':
+        messages.success(request, f"User @{user.username} has been deactivated.")
+    elif action == "verify":
         user.is_verified = True
-        messages.success(request, f'User @{user.username} has been verified.')
-    elif action == 'unverify':
+        messages.success(request, f"User @{user.username} has been verified.")
+    elif action == "unverify":
         user.is_verified = False
-        messages.success(request, f'User @{user.username} verification has been removed.')
-    
+        messages.success(request, f"User @{user.username} verification has been removed.")
+
     user.save()
-    
-    return redirect('staff:admin_account_detail', user_id=user_id)
+
+    return redirect("staff:admin_account_detail", user_id=user_id)
 
 
 # ============================================
 # ADMIN ROLE REQUEST MANAGEMENT
 # ============================================
 
+
 @login_required
 @user_passes_test(can_access_staff_dashboard)
 def admin_role_requests(request):
     """Admin view to review pending role requests"""
-    
-    pending = RoleRequest.objects.filter(
-        status=RoleRequest.Status.PENDING
-    ).select_related('user').order_by('-created_at')
-    
-    reviewed = RoleRequest.objects.filter(
-        status__in=[RoleRequest.Status.APPROVED, RoleRequest.Status.REJECTED]
-    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')[:50]
-    
+
+    pending = (
+        RoleRequest.objects.filter(status=RoleRequest.Status.PENDING).select_related("user").order_by("-created_at")
+    )
+
+    reviewed = (
+        RoleRequest.objects.filter(status__in=[RoleRequest.Status.APPROVED, RoleRequest.Status.REJECTED])
+        .select_related("user", "reviewed_by")
+        .order_by("-reviewed_at")[:50]
+    )
+
     context = {
-        'pending_requests': pending,
-        'reviewed_requests': reviewed,
+        "pending_requests": pending,
+        "reviewed_requests": reviewed,
     }
-    return render(request, 'accounts/admin_role_requests.html', context)
+    return render(request, "accounts/admin_role_requests.html", context)
 
 
 @login_required
 @user_passes_test(can_access_staff_dashboard)
 def admin_role_request_detail(request, request_id):
     """Admin view to review a specific role request"""
-    role_request = get_object_or_404(
-        RoleRequest.objects.select_related('user', 'reviewed_by'),
-        id=request_id
-    )
-    
-    if request.method == 'POST':
+    role_request = get_object_or_404(RoleRequest.objects.select_related("user", "reviewed_by"), id=request_id)
+
+    if request.method == "POST":
         form = RoleRequestReviewForm(request.POST)
         if form.is_valid():
-            action = form.cleaned_data['action']
-            
-            if action == 'approve':
-                role_request.review_notes = form.cleaned_data.get('review_notes', '')
+            action = form.cleaned_data["action"]
+
+            if action == "approve":
+                role_request.review_notes = form.cleaned_data.get("review_notes", "")
                 role_request.approve(reviewed_by=request.user)
                 messages.success(
-                    request,
-                    f'Approved @{role_request.user.username} as '
-                    f'{role_request.get_requested_role_display()}'
+                    request, f"Approved @{role_request.user.username} as {role_request.get_requested_role_display()}"
                 )
-            elif action == 'reject':
-                role_request.review_notes = form.cleaned_data.get('review_notes', '')
-                role_request.reject(
-                    reviewed_by=request.user,
-                    reason=form.cleaned_data['rejection_reason']
-                )
-                messages.success(
-                    request,
-                    f'Rejected role request from @{role_request.user.username}'
-                )
-            
-            return redirect('staff:admin_role_requests')
+            elif action == "reject":
+                role_request.review_notes = form.cleaned_data.get("review_notes", "")
+                role_request.reject(reviewed_by=request.user, reason=form.cleaned_data["rejection_reason"])
+                messages.success(request, f"Rejected role request from @{role_request.user.username}")
+
+            return redirect("staff:admin_role_requests")
     else:
         form = RoleRequestReviewForm()
-    
+
     context = {
-        'role_request': role_request,
-        'form': form,
+        "role_request": role_request,
+        "form": form,
     }
-    return render(request, 'accounts/admin_role_request_detail.html', context)
+    return render(request, "accounts/admin_role_request_detail.html", context)
 
 
 # ============================================
 # THEME MANAGEMENT
 # ============================================
+
 
 @require_POST
 def set_theme(request):
@@ -696,9 +692,14 @@ def role_request_document(request, pk):
     """Download a role request's supporting document: the requester and staff only
     (404 for anyone else). The file lives in private storage, never under /media/."""
     import os
+
     from django.http import FileResponse, Http404
+
     role_request = get_object_or_404(RoleRequest, pk=pk)
-    if not (request.user == role_request.user or request.user.can_access_staff) or not role_request.supporting_documents:
+    if (
+        not (request.user == role_request.user or request.user.can_access_staff)
+        or not role_request.supporting_documents
+    ):
         raise Http404
     document = role_request.supporting_documents
     response = FileResponse(document.open("rb"), as_attachment=True, filename=os.path.basename(document.name))

@@ -7,6 +7,7 @@ a meal or a section, and the place of an idea on the shelf (P6). It never remove
 it (``used_by`` says what does: "Day 3, Hotel Laimer Hof"). Called after the trip's forms save, and by
 the leg quick add, the table conversion, the stays' day fill and the route builder.
 """
+
 from .models import Day, Lodging, Meal, Section, TransportLeg, TripActivity
 
 
@@ -16,9 +17,11 @@ def _uses(trip):
         yield city_id, f"Day {number}"
     for name, city_id in Lodging.objects.filter(trip=trip, city__isnull=False).values_list("name", "city_id"):
         yield city_id, name or "A stay"
-    for origin, destination, a, b in (TransportLeg.objects.filter(trip=trip)
-                                      .exclude(origin_city__isnull=True, destination_city__isnull=True)
-                                      .values_list("origin", "destination", "origin_city_id", "destination_city_id")):
+    for origin, destination, a, b in (
+        TransportLeg.objects.filter(trip=trip)
+        .exclude(origin_city__isnull=True, destination_city__isnull=True)
+        .values_list("origin", "destination", "origin_city_id", "destination_city_id")
+    ):
         for city_id in (a, b):
             if city_id:
                 yield city_id, f"{origin} → {destination}"
@@ -28,14 +31,18 @@ def _uses(trip):
         (Section.objects.filter(day__trip=trip), "title"),
     )
     for queryset, label in linked:
-        rows = (queryset.exclude(poi__isnull=True, event__isnull=True) if hasattr(queryset.model, "event")
-                else queryset.exclude(poi__isnull=True))
+        rows = (
+            queryset.exclude(poi__isnull=True, event__isnull=True)
+            if hasattr(queryset.model, "event")
+            else queryset.exclude(poi__isnull=True)
+        )
         fields = [label, "poi__city_id"] + (["event__city_id"] if hasattr(queryset.model, "event") else [])
         for name, *city_ids in rows.values_list(*fields):
             for city_id in city_ids:
                 if city_id:
                     yield city_id, name or "An item"
     from .ideas import city_ids
+
     for city_id, title in city_ids(trip):
         yield city_id, f"the idea “{title}”"
 

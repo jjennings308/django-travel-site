@@ -20,32 +20,66 @@ class ReviewFixture(TestCase):
     def setUp(self):
         self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
         self.bob = User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd")
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
-        self.city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2,
-                                        approval_status=ApprovalStatus.APPROVED)
-        self.poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=self.city, latitude=1, longitude=2,
-                                      approval_status=ApprovalStatus.APPROVED)
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
+        )
+        self.city = City.objects.create(
+            name="Testville",
+            slug="testville",
+            country=country,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.poi = POI.objects.create(
+            name="Old Bridge",
+            slug="old-bridge",
+            city=self.city,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         cat = ActivityCategory.objects.create(name="Hiking", slug="hiking")
-        self.activity = Activity.objects.create(category=cat, name="Ridge Walk", description="d", created_by=self.bob,
-                                                visibility="public", approval_status=ApprovalStatus.APPROVED)
-        self.event = Event.objects.create(name="Jazz Night", category=cat, description="d", city=self.city,
-                                          start_date=date.today() + timedelta(days=9), approval_status=ApprovalStatus.APPROVED)
+        self.activity = Activity.objects.create(
+            category=cat,
+            name="Ridge Walk",
+            description="d",
+            created_by=self.bob,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.event = Event.objects.create(
+            name="Jazz Night",
+            category=cat,
+            description="d",
+            city=self.city,
+            start_date=date.today() + timedelta(days=9),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.targets = {"activity": self.activity, "event": self.event, "city": self.city, "poi": self.poi}
 
     def write(self, kind, obj, rating=4, comment="Lovely.", user=None):
         self.client.force_login(user or self.alice)
-        return self.client.post(reverse("reviews:write", args=[kind, obj.slug]),
-                                {"rating": rating, "title": "", "comment": comment, "visit_date": ""})
+        return self.client.post(
+            reverse("reviews:write", args=[kind, obj.slug]),
+            {"rating": rating, "title": "", "comment": comment, "visit_date": ""},
+        )
 
 
 class WriteTests(ReviewFixture):
     def test_review_each_kind_once_and_edit(self):
-        pages = {"activity": "activities:activity_detail", "event": "events:event_detail",
-                 "city": "locations:city_detail", "poi": "locations:poi_detail"}
+        pages = {
+            "activity": "activities:activity_detail",
+            "event": "events:event_detail",
+            "city": "locations:city_detail",
+            "poi": "locations:poi_detail",
+        }
         for kind, obj in self.targets.items():
             with self.subTest(kind=kind):
                 response = self.write(kind, obj, rating=5)
-                self.assertRedirects(response, reverse(pages[kind], args=[obj.slug]) + "#reviews", fetch_redirect_response=False)
+                self.assertRedirects(
+                    response, reverse(pages[kind], args=[obj.slug]) + "#reviews", fetch_redirect_response=False
+                )
                 self.write(kind, obj, rating=3, comment="On reflection, fine.")  # edits, no duplicate
                 reviews = [r for r in Review.objects.filter(user=self.alice) if r.target == obj]
                 self.assertEqual(len(reviews), 1)
@@ -68,7 +102,9 @@ class WriteTests(ReviewFixture):
         self.event.approval_status = ApprovalStatus.PENDING
         self.event.save()
         self.assertEqual(self.client.get(reverse("reviews:write", args=["event", self.event.slug])).status_code, 404)
-        self.assertEqual(self.client.get(reverse("reviews:for_target", args=["event", self.event.slug])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("reviews:for_target", args=["event", self.event.slug])).status_code, 404
+        )
         self.assertEqual(self.client.get(reverse("reviews:write", args=["trip", "x"])).status_code, 404)
 
     def test_rating_is_required(self):
@@ -137,7 +173,9 @@ class ReportTests(ReviewFixture):
         self.report(self.alice)
         self.report(self.alice)
         self.assertEqual(ReviewReport.objects.count(), 1)
-        self.assertEqual(Notification.objects.filter(user=self.staff, notification_type__name="review_reported").count(), 1)
+        self.assertEqual(
+            Notification.objects.filter(user=self.staff, notification_type__name="review_reported").count(), 1
+        )
         self.review.refresh_from_db()
         self.assertTrue(self.review.is_approved)
         self.assertEqual(self.review.report_count, 1)

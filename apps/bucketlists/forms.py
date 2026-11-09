@@ -1,12 +1,11 @@
-# bucketlists/forms.py
 from django import forms
 
-from apps.core.widgets import DateInput
 from apps.approval_system.models import ApprovalStatus
+from apps.core.widgets import DateInput
 from apps.events.models import Event
 from apps.locations.models import POI
-from apps.media_app.models import MediaAlbum
 from apps.media_app.forms import MAX_PHOTOS, MultipleImageField  # noqa: F401  (MAX_PHOTOS used by views/tests)
+from apps.media_app.models import MediaAlbum
 
 from .models import BucketListCategory, BucketListItem
 
@@ -26,16 +25,32 @@ class BucketListItemForm(forms.ModelForm):
     class Meta:
         model = BucketListItem
         fields = [
-            "custom_title", "custom_description", "event", "pois", "status", "priority",
-            "target_date", "target_end_date", "target_season",
-            "estimated_budget", "budget_currency", "with_who", "inspiration_source",
-            "personal_notes", "categories", "is_public",
+            "custom_title",
+            "custom_description",
+            "event",
+            "pois",
+            "status",
+            "priority",
+            "target_date",
+            "target_end_date",
+            "target_season",
+            "estimated_budget",
+            "budget_currency",
+            "with_who",
+            "inspiration_source",
+            "personal_notes",
+            "categories",
+            "is_public",
         ]
         labels = {
-            "custom_title": "What do you want to do?", "custom_description": "Details",
-            "event": "Which date?", "pois": "Places to visit",
-            "target_date": "Target date (or first day)", "target_end_date": "Last day",
-            "with_who": "With who", "inspiration_source": "Inspired by",
+            "custom_title": "What do you want to do?",
+            "custom_description": "Details",
+            "event": "Which date?",
+            "pois": "Places to visit",
+            "target_date": "Target date (or first day)",
+            "target_end_date": "Last day",
+            "with_who": "With who",
+            "inspiration_source": "Inspired by",
             "is_public": "Show on my public bucket list",
         }
         widgets = {
@@ -84,10 +99,13 @@ class BucketListItemForm(forms.ModelForm):
         if kind == "poi":
             chosen = list(item.pois.all()) if item.pk else list(pois)
             cities = {p.city_id for p in chosen}
-            choices = POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED) | \
-                POI.objects.filter(pk__in=[p.pk for p in chosen])
+            choices = POI.objects.filter(
+                city_id__in=cities, approval_status=ApprovalStatus.APPROVED
+            ) | POI.objects.filter(pk__in=[p.pk for p in chosen])
             self.fields["pois"].queryset = choices.select_related("city").order_by("city__name", "name").distinct()
-            self.fields["pois"].label_from_instance = lambda p: f"{p.name} ({p.city.name})" if len(cities) > 1 else p.name
+            self.fields["pois"].label_from_instance = lambda p: (
+                f"{p.name} ({p.city.name})" if len(cities) > 1 else p.name
+            )
             self.fields["pois"].required = True
             if not item.pk:
                 self.initial["pois"] = [p.pk for p in chosen]
@@ -111,6 +129,7 @@ class BucketListItemForm(forms.ModelForm):
         item = super().save(commit=False)
         if item.status == "completed" and not item.completed_date:
             from django.utils import timezone
+
             item.completed_date = timezone.now().date()
         if commit:
             item.save()
@@ -122,18 +141,23 @@ class CompleteItemForm(forms.Form):
     completed_date = forms.DateField(widget=DateInput())
     user_rating = forms.TypedChoiceField(
         choices=[("", "No rating")] + [(i, "★" * i) for i in range(5, 0, -1)],
-        coerce=int, empty_value=None, required=False, label="Your rating",
+        coerce=int,
+        empty_value=None,
+        required=False,
+        label="Your rating",
         widget=forms.Select(attrs=INPUT),
     )
     completion_notes = forms.CharField(
         required=False, label="How was it?", widget=forms.Textarea(attrs={**INPUT, "rows": 4})
     )
     photos = MultipleImageField(
-        required=False, label="Photos (optional)",
+        required=False,
+        label="Photos (optional)",
         help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
     )
     share_review = forms.BooleanField(
-        required=False, label="Share as a public review",
+        required=False,
+        label="Share as a public review",
         widget=forms.CheckboxInput(attrs={"class": "sbl-check"}),
     )
 
@@ -145,7 +169,8 @@ class CompleteItemForm(forms.Form):
         else:
             self.fields["share_review"].help_text = (
                 f"Your rating and “How was it?” go on {review_target.name}'s page with your username, "
-                "marked “Been there”.")
+                "marked “Been there”."
+            )
 
     def clean(self):
         data = super().clean()
@@ -163,7 +188,9 @@ class CategoryForm(forms.ModelForm):
         fields = ["name", "color", "icon", "description"]
         widgets = {
             "name": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. Adventure goals"}),
-            "color": forms.TextInput(attrs={"type": "color", "class": "h-10 w-16 cursor-pointer rounded-lg border border-warm-300"}),
+            "color": forms.TextInput(
+                attrs={"type": "color", "class": "h-10 w-16 cursor-pointer rounded-lg border border-warm-300"}
+            ),
             "icon": forms.TextInput(attrs={**INPUT, "placeholder": "🏔️ or bi-tree"}),
             "description": forms.TextInput(attrs=INPUT),
         }
@@ -201,6 +228,7 @@ class PlanTripForm(forms.Form):
 
 class PhotosForm(forms.Form):
     """Upload several photos (a goal's photos page, an album)."""
+
     photos = MultipleImageField(
         label="Add photos",
         help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
@@ -209,12 +237,17 @@ class PhotosForm(forms.Form):
 
 class AlbumForm(forms.ModelForm):
     """A personal album (media_app.MediaAlbum with no trip): title, note and who sees it."""
+
     PRIVACY = [("private", "Only me"), ("public", "Public (on your public bucket list, when your profile is public)")]
-    privacy = forms.ChoiceField(choices=PRIVACY, label="Who can see it", widget=forms.RadioSelect(attrs={"class": "sbl-check"}))
+    privacy = forms.ChoiceField(
+        choices=PRIVACY, label="Who can see it", widget=forms.RadioSelect(attrs={"class": "sbl-check"})
+    )
 
     class Meta:
         model = MediaAlbum
         fields = ["title", "description", "privacy"]
         labels = {"title": "Album name", "description": "About this album (optional)"}
-        widgets = {"title": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. National parks 2026"}),
-                   "description": forms.Textarea(attrs={**INPUT, "rows": 3})}
+        widgets = {
+            "title": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. National parks 2026"}),
+            "description": forms.Textarea(attrs={**INPUT, "rows": 3}),
+        }

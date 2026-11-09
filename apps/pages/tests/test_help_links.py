@@ -1,6 +1,7 @@
 """Help links where people need them (help-center plan H4): every /help/ link on the trip page,
 the edit pages and the account menu points at an existing guide and heading. Renaming a heading
 or removing a guide fails here."""
+
 import re
 from datetime import date
 from unittest import mock
@@ -20,17 +21,24 @@ HELP_HREF = re.compile(r'href="(/help/[^"]*)"')
 class HelpLinkTests(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 21),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 21), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
-        self.leg = TransportLeg.objects.create(trip=self.trip, origin="Frankfurt", destination="Augsburg",
-                                               date=self.day.date)
+        self.leg = TransportLeg.objects.create(
+            trip=self.trip, origin="Frankfurt", destination="Augsburg", date=self.day.date
+        )
         self.activity = TripActivity.objects.create(trip=self.trip, day=self.day, title="Fuggerei")
-        self.section = Section.objects.create(day=self.day, section_type="logistics_table", title="Trains",
-                                              content={"columns": ["Leg"], "rows": [["A → B"]]})
-        self.stay = Lodging.objects.create(trip=self.trip, name="Hotel Augusta", check_in=self.day.date,
-                               check_out=date(2027, 9, 21))
+        self.section = Section.objects.create(
+            day=self.day,
+            section_type="logistics_table",
+            title="Trains",
+            content={"columns": ["Leg"], "rows": [["A → B"]]},
+        )
+        self.stay = Lodging.objects.create(
+            trip=self.trip, name="Hotel Augusta", check_in=self.day.date, check_out=date(2027, 9, 21)
+        )
         self.client.force_login(self.editor)
 
     def help_links(self, url):
@@ -45,17 +53,27 @@ class HelpLinkTests(TestCase):
         expected = {
             reverse("trips:trip_detail", args=[trip]): {
                 "/help/reading-your-trip/#days-at-a-glance",
-                "/help/reading-your-trip/#reference", "/help/reading-your-trip/#booklet"},
+                "/help/reading-your-trip/#reference",
+                "/help/reading-your-trip/#booklet",
+            },
             reverse("trips:trip_settings", args=[trip]): {"/help/starting-a-trip/"},
             reverse("trips:day_edit", args=[trip, self.day.pk]): {"/help/adding-a-day/"},
             reverse("trips:trip_todo", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},
             reverse("trips:task_new", args=[trip]): {"/help/bookings-and-confirmations/#the-to-do-page"},
             reverse("trips:stay_edit", args=[trip, self.stay.pk]): {
-                "/help/adding-a-day/#stays", "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
+                "/help/adding-a-day/#stays",
+                "/help/bookings-and-confirmations/",
+                "/help/contacts-and-info/",
+            },
             reverse("trips:leg_edit", args=[trip, self.leg.pk]): {
-                "/help/travel-legs/", "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
+                "/help/travel-legs/",
+                "/help/bookings-and-confirmations/",
+                "/help/contacts-and-info/",
+            },
             reverse("trips:activity_edit", args=[trip, self.day.pk, self.activity.pk]): {
-                "/help/bookings-and-confirmations/", "/help/contacts-and-info/"},
+                "/help/bookings-and-confirmations/",
+                "/help/contacts-and-info/",
+            },
             reverse("trips:trip_tidy", args=[trip]): {"/help/tidying-an-itinerary/"},
             reverse("trips:trip_people", args=[trip]): {"/help/sharing-and-access/#who-can-do-what"},
             reverse("trips:trip_calendar", args=[trip]): {"/help/calendar-feed/"},

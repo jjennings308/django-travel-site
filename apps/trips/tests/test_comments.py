@@ -25,16 +25,13 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import TripRole
-from apps.trips.models import Comment, Day, Section, Trip, TripGrant
+from apps.trips.models import Comment, Day, Section, Trip, TripGrant, TripRole
 
 User = get_user_model()
 
 
 def make_user(username, **kwargs):
-    return User.objects.create_user(
-        username, f"{username}@example.com", "pw-1234-abcd", **kwargs
-    )
+    return User.objects.create_user(username, f"{username}@example.com", "pw-1234-abcd", **kwargs)
 
 
 class CommentFixture(TestCase):
@@ -51,9 +48,7 @@ class CommentFixture(TestCase):
             start_date=date(2027, 9, 25),
             end_date=date(2027, 10, 5),
         )
-        self.day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2027, 9, 25), theme="Fly out"
-        )
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 25), theme="Fly out")
         self.section = Section.objects.create(
             day=self.day,
             section_type=Section.Type.NOTE,
@@ -62,12 +57,8 @@ class CommentFixture(TestCase):
         )
 
         # cara holds no grant, so she cannot reach the trip at all.
-        TripGrant.objects.create(
-            trip=self.trip, user=self.ada, role=TripRole.COMMENTOR, granted_by=self.staff
-        )
-        TripGrant.objects.create(
-            trip=self.trip, user=self.bob, role=TripRole.COMMENTOR, granted_by=self.staff
-        )
+        TripGrant.objects.create(trip=self.trip, user=self.ada, role=TripRole.COMMENTOR, granted_by=self.staff)
+        TripGrant.objects.create(trip=self.trip, user=self.bob, role=TripRole.COMMENTOR, granted_by=self.staff)
 
     def login(self, user):
         self.client.force_login(user)
@@ -99,15 +90,11 @@ class CommentAccessTests(CommentFixture):
 
     def test_an_unreadable_trip_404s_on_the_comment_page_too(self):
         self.login(self.cara)
-        response = self.client.get(
-            reverse("trips:comment_create", args=["trip", self.trip.pk])
-        )
+        response = self.client.get(reverse("trips:comment_create", args=["trip", self.trip.pk]))
         self.assertEqual(response.status_code, 404)
 
     def test_a_logged_out_user_is_redirected(self):
-        response = self.client.get(
-            reverse("trips:comment_create", args=["trip", self.trip.pk])
-        )
+        response = self.client.get(reverse("trips:comment_create", args=["trip", self.trip.pk]))
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response["Location"])
 
@@ -175,9 +162,7 @@ class CommentTargetTests(CommentFixture):
             start_date=date(2027, 3, 1),
             end_date=date(2027, 3, 8),
         )
-        other_day = Day.objects.create(
-            trip=other, day_number=1, date=date(2027, 3, 1)
-        )
+        other_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 3, 1))
         self.login(self.ada)
         response = self.client.post(
             reverse("trips:comment_create", args=["day", other_day.pk]),
@@ -241,9 +226,7 @@ class CommentEditTests(CommentFixture):
 
     def setUp(self):
         super().setUp()
-        self.comment = Comment.objects.create(
-            author=self.ada, content_object=self.trip, body="Original"
-        )
+        self.comment = Comment.objects.create(author=self.ada, content_object=self.trip, body="Original")
 
     def test_the_author_can_edit_their_own(self):
         self.login(self.ada)
@@ -260,9 +243,7 @@ class CommentEditTests(CommentFixture):
         # A working POST does not prove the page renders — the lesson from the
         # auth pages, where every URL was mounted and only `login.html` existed.
         self.login(self.ada)
-        response = self.client.get(
-            reverse("trips:comment_edit", args=[self.comment.pk])
-        )
+        response = self.client.get(reverse("trips:comment_edit", args=[self.comment.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Original")
 
@@ -301,19 +282,13 @@ class CommentEditTests(CommentFixture):
         # Cara has a role but no grant. Guessing the comment id must not help:
         # the trip is resolved from the comment, then checked.
         self.login(self.cara)
-        response = self.client.get(
-            reverse("trips:comment_edit", args=[self.comment.pk])
-        )
+        response = self.client.get(reverse("trips:comment_edit", args=[self.comment.pk]))
         self.assertEqual(response.status_code, 404)
 
     def test_an_untouched_edit_does_not_stamp_edited_at(self):
-        fresh = Comment.objects.create(
-            author=self.ada, content_object=self.trip, body="Same"
-        )
+        fresh = Comment.objects.create(author=self.ada, content_object=self.trip, body="Same")
         self.login(self.ada)
-        self.client.post(
-            reverse("trips:comment_edit", args=[fresh.pk]), {"body": "Same"}
-        )
+        self.client.post(reverse("trips:comment_edit", args=[fresh.pk]), {"body": "Same"})
         fresh.refresh_from_db()
         self.assertIsNone(fresh.edited_at)
 
@@ -347,9 +322,7 @@ class OrphanCommentTests(CommentFixture):
         for user in (self.ada, self.staff):
             with self.subTest(user=user.username):
                 self.login(user)
-                response = self.client.get(
-                    reverse("trips:comment_edit", args=[orphan.pk])
-                )
+                response = self.client.get(reverse("trips:comment_edit", args=[orphan.pk]))
                 self.assertEqual(response.status_code, 404)
 
 
@@ -387,9 +360,7 @@ class CommentRenderingTests(CommentFixture):
             reverse("trips:comment_create", args=["day", self.day.pk]),
             {"body": "posted by a non-editor"},
         )
-        forbidden = self.client.get(
-            reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])
-        )
+        forbidden = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk]))
         self.assertEqual(forbidden.status_code, 403)
         readable = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertContains(readable, "posted by a non-editor")
@@ -404,9 +375,7 @@ class CommentRenderingTests(CommentFixture):
             {"body": "where does this land?"},
         )
         self.assertEqual(response.status_code, 302)
-        self.assertIn(
-            reverse("trips:trip_detail", args=[self.trip.pk]), response["Location"]
-        )
+        self.assertIn(reverse("trips:trip_detail", args=[self.trip.pk]), response["Location"])
         # One anchor: the new comment itself (inside its day's thread, so the page opens that day).
         comment = Comment.objects.latest("pk")
         self.assertTrue(response["Location"].endswith("#comment-%s" % comment.pk))
@@ -464,34 +433,26 @@ class CommentRenderingTests(CommentFixture):
         self.assertContains(response, "still looking at the spa place")
 
     def test_a_comment_on_another_day_does_not_leak_into_this_one(self):
-        other_day = Day.objects.create(
-            trip=self.trip, day_number=2, date=date(2027, 9, 26), theme="Day two"
-        )
+        other_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 26), theme="Day two")
         self.login(self.ada)
         self.client.post(
             reverse("trips:comment_create", args=["day", other_day.pk]),
             {"body": "belongs to day two"},
         )
-        response = self.client.get(
-            reverse("trips:day_edit", args=[self.trip.pk, other_day.pk])
-        )
+        self.client.get(reverse("trips:day_edit", args=[self.trip.pk, other_day.pk]))
         # other_day is rendered by the detail page, so compare against day one,
         # which is a different object with the same shape.
         detail = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertContains(detail, "belongs to day two")
         # And the day-one thread block is absent entirely rather than empty.
-        self.assertNotContains(
-            detail, 'id="comments-day-%s"' % self.day.pk
-        )
+        self.assertNotContains(detail, 'id="comments-day-%s"' % self.day.pk)
 
     def test_a_trip_with_no_comments_still_offers_the_add_link(self):
         # A commentor has to be able to *start* a thread, so an empty trip
         # renders the link rather than hiding itself.
         self.login(self.ada)
         response = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
-        self.assertContains(
-            response, reverse("trips:comment_create", args=["trip", self.trip.pk])
-        )
+        self.assertContains(response, reverse("trips:comment_create", args=["trip", self.trip.pk]))
 
     def test_a_reader_who_cannot_comment_sees_no_thread_at_all(self):
         # Not "an empty heading and an empty list" — the block should not render,
@@ -520,31 +481,20 @@ class CommentRenderingTests(CommentFixture):
         TripGrant.objects.filter(trip=self.trip, user=self.ada).update(role=TripRole.VIEWER)
         self.login(self.ada)
         response = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
-        self.assertNotContains(
-            response, reverse("trips:comment_create", args=["trip", self.trip.pk])
-        )
+        self.assertNotContains(response, reverse("trips:comment_create", args=["trip", self.trip.pk]))
 
 
 class AnnotatedEditableTests(CommentFixture):
     """``annotate_editable`` must agree with ``Comment.can_edit``."""
 
     def test_the_annotation_matches_the_model_rule_for_every_user(self):
-        ada_comment = Comment.objects.create(
-            author=self.ada, content_object=self.trip, body="ada's"
-        )
-        bob_comment = Comment.objects.create(
-            author=self.bob, content_object=self.trip, body="bob's"
-        )
+        ada_comment = Comment.objects.create(author=self.ada, content_object=self.trip, body="ada's")
+        bob_comment = Comment.objects.create(author=self.bob, content_object=self.trip, body="bob's")
 
         for user in (self.ada, self.bob, self.staff):
             with self.subTest(user=user.username):
                 for comment in (ada_comment, bob_comment):
-                    annotated = (
-                        Comment.objects.filter(pk=comment.pk)
-                        .annotate_editable(user)
-                        .get()
-                        .can_edit
-                    )
+                    annotated = Comment.objects.filter(pk=comment.pk).annotate_editable(user).get().can_edit
                     self.assertEqual(
                         annotated,
                         comment.can_edit(user),
@@ -552,9 +502,7 @@ class AnnotatedEditableTests(CommentFixture):
                     )
 
     def test_an_inactive_account_is_told_it_can_edit_nothing(self):
-        comment = Comment.objects.create(
-            author=self.ada, content_object=self.trip, body="ada's"
-        )
+        comment = Comment.objects.create(author=self.ada, content_object=self.trip, body="ada's")
         self.ada.is_active = False
         self.ada.save()
         annotated = Comment.objects.filter(pk=comment.pk).annotate_editable(self.ada).get()

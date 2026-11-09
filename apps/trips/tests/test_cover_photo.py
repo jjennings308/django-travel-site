@@ -1,6 +1,7 @@
 """The booklet's cover photo (``Trip.cover_photo``): uploaded or chosen from the trip's photos in Settings (saved
 with the trip's own form, through the site's usual picture field), or picked on Photos, by editors only; printed on
 the PDF's cover as an embedded picture; never on the shared link."""
+
 import base64
 import io
 import shutil
@@ -37,17 +38,27 @@ class CoverPhotoTests(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.commentor = User.objects.create_user("co", "co@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 4, 1), end_date=date(2027, 4, 8),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 4, 1), end_date=date(2027, 4, 8), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.commentor, role=TripRole.COMMENTOR)
         self.settings_url = reverse("trips:trip_settings", args=[self.trip.pk])
 
     def save_settings(self, user=None, **cover):
         self.client.force_login(user or self.editor)
-        data = {"name": self.trip.name, "start_date": "2027-04-01", "end_date": "2027-04-08", "status": "starting",
-                "home_currency": "EUR", "home_currency_other": "", "destination": "", "notes": "",
-                "new_traveler_name": "", **cover}
+        data = {
+            "name": self.trip.name,
+            "start_date": "2027-04-01",
+            "end_date": "2027-04-08",
+            "status": "starting",
+            "home_currency": "EUR",
+            "home_currency_other": "",
+            "destination": "",
+            "notes": "",
+            "new_traveler_name": "",
+            **cover,
+        }
         response = self.client.post(self.settings_url, data)
         self.trip.refresh_from_db()
         return response
@@ -85,7 +96,9 @@ class CoverPhotoTests(TestCase):
 
     def test_choose_one_of_the_trips_photos(self):
         self.client.force_login(self.commentor)
-        self.client.post(reverse("trips:trip_photos", args=[self.trip.pk]), {"photos": [picture("a.jpg"), picture("b.jpg")]})
+        self.client.post(
+            reverse("trips:trip_photos", args=[self.trip.pk]), {"photos": [picture("a.jpg"), picture("b.jpg")]}
+        )
         self.trip.refresh_from_db()
         first, second = [item.media for item in self.trip.photos()]
         self.client.force_login(self.editor)
@@ -103,17 +116,30 @@ class CoverPhotoTests(TestCase):
 
     def test_new_trip_with_a_cover(self):
         self.client.force_login(self.editor)
-        response = self.client.post(reverse("trips:trip_create"), {
-            "name": "Lisbon", "start_date": "2027-05-01", "end_date": "2027-05-04", "status": "starting",
-            "home_currency": "EUR", "home_currency_other": "", "destination": "", "notes": "", "new_traveler_name": "",
-            "picture": picture()})
+        response = self.client.post(
+            reverse("trips:trip_create"),
+            {
+                "name": "Lisbon",
+                "start_date": "2027-05-01",
+                "end_date": "2027-05-04",
+                "status": "starting",
+                "home_currency": "EUR",
+                "home_currency_other": "",
+                "destination": "",
+                "notes": "",
+                "new_traveler_name": "",
+                "picture": picture(),
+            },
+        )
         trip = Trip.objects.get(name="Lisbon")
         self.assertRedirects(response, reverse("trips:trip_detail", args=[trip.pk]), fetch_redirect_response=False)
         self.assertEqual([item.media for item in trip.photos()], [trip.cover_photo])
 
     def test_pick_on_photos_and_removing_the_photo_clears_it(self):
         self.client.force_login(self.commentor)
-        self.client.post(reverse("trips:trip_photos", args=[self.trip.pk]), {"photos": [picture("a.jpg"), picture("b.jpg")]})
+        self.client.post(
+            reverse("trips:trip_photos", args=[self.trip.pk]), {"photos": [picture("a.jpg"), picture("b.jpg")]}
+        )
         self.trip.refresh_from_db()
         second = list(self.trip.photos())[1].media
         pick = reverse("trips:trip_photo_booklet", args=[self.trip.pk, second.pk])
@@ -124,7 +150,9 @@ class CoverPhotoTests(TestCase):
         self.client.post(pick)
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.cover_photo, second)
-        self.assertIn("data-booklet-cover", self.client.get(reverse("trips:trip_photos", args=[self.trip.pk])).content.decode())
+        self.assertIn(
+            "data-booklet-cover", self.client.get(reverse("trips:trip_photos", args=[self.trip.pk])).content.decode()
+        )
         self.client.post(reverse("trips:trip_photo_delete", args=[self.trip.pk, second.pk]))
         self.trip.refresh_from_db()
         self.assertIsNone(self.trip.cover_photo)

@@ -7,6 +7,7 @@
 suggestions, with their first action. Phone numbers, trip notes, tables and "Day N" slips are left
 for the review page (trips:trip_tidy). Dismissed suggestions are never applied.
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.trips import tidying
@@ -36,8 +37,12 @@ class Command(BaseCommand):
             self.stdout.write("Nothing to tidy.")
             return
         if not apply:
-            self.stdout.write(self.style.WARNING(f"Dry run: {len(found)} suggestions, {len(auto)} would apply with "
-                                                 "--apply (the rest are for the review page)."))
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Dry run: {len(found)} suggestions, {len(auto)} would apply with "
+                    "--apply (the rest are for the review page)."
+                )
+            )
             return
         applied, skipped = tidying.apply(trip, found, {s.key: s.actions[0][0] for s in auto})
         for s, why in skipped:

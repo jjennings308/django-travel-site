@@ -1,0 +1,29 @@
+# Shared lint/format settings for the whole repository (ruff 0.17).
+# Run `ruff check` and `ruff format --check` before finishing a task; CI does the same.
+line-length = 120
+target-version = "py313"
+
+extend-exclude = [
+    "**/migrations",
+    ".venv",
+    "node_modules",
+    "staticfiles",
+    "uploads",
+    "private_uploads",
+]
+
+[lint]
+# E/W: pycodestyle, F: pyflakes, I: import sorting.
+select = ["E", "F", "I", "W"]
+# Long prose, URLs and template strings that cannot be split; the formatter owns code width.
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["apps", "config"]
+
+[lint.per-file-ignores]
+# Imported for their side effects (signal/receiver registration), not for their names.
+"**/apps.py" = ["F401"]
+"**/__init__.py" = ["F401"]
+# Split settings deliberately re-export everything from base with `import *`.
+"config/settings/*.py" = ["F403", "F405"]

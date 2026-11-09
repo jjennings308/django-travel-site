@@ -1,4 +1,5 @@
 """The notify service and the user's notification pages."""
+
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -20,13 +21,16 @@ class ServiceTests(TestCase):
 
     def test_creates_a_row_and_emails_with_a_full_link(self):
         note = notify(self.ada, "submission_reviewed", "Approved", "Your event is live.", "/events/x/")
-        self.assertEqual((note.user, note.notification_type.name, note.channels, note.email_sent),
-                         (self.ada, "submission_reviewed", ["in_app", "email"], True))
+        self.assertEqual(
+            (note.user, note.notification_type.name, note.channels, note.email_sent),
+            (self.ada, "submission_reviewed", ["in_app", "email"], True),
+        )
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("https://example.com/events/x/", mail.outbox[0].body)
 
     def test_no_email_when_turned_off_or_placeholder_address(self):
         from apps.accounts.models import AccountSettings
+
         settings_, _ = AccountSettings.objects.get_or_create(user=self.ada)
         settings_.email_notifications = False
         settings_.save()
@@ -39,8 +43,10 @@ class ServiceTests(TestCase):
         """In-app and email are the only channels (NC1); the per-kind switch is ``email_enabled``."""
         from apps.notifications.models import UserNotificationPreference
         from apps.notifications.services import notification_type
-        UserNotificationPreference.objects.create(user=self.ada, notification_type=notification_type("trip_changed"),
-                                                  email_enabled=False)
+
+        UserNotificationPreference.objects.create(
+            user=self.ada, notification_type=notification_type("trip_changed"), email_enabled=False
+        )
         quiet = notify(self.ada, "trip_changed", "Trip changed", "m")
         loud = notify(self.ada, "trip_access_granted", "Access", "m")
         self.assertEqual((quiet.channels, quiet.email_sent), (["in_app"], False))
@@ -102,9 +108,12 @@ class AdminTests(TestCase):
         admin = User.objects.create_superuser("root", "root@example.com", "pw-1234-abcd")
         note = notify(admin, "trip_changed", "Trip changed", "m")
         self.client.force_login(admin)
-        for name, pk in (("notificationcategory", note.notification_type.category_id),
-                         ("notificationtype", note.notification_type_id), ("notification", note.pk),
-                         ("usernotificationpreference", None)):
+        for name, pk in (
+            ("notificationcategory", note.notification_type.category_id),
+            ("notificationtype", note.notification_type_id),
+            ("notification", note.pk),
+            ("usernotificationpreference", None),
+        ):
             self.assertEqual(self.client.get(reverse(f"admin:notifications_{name}_changelist")).status_code, 200, name)
             if pk:
                 url = reverse(f"admin:notifications_{name}_change", args=[pk])

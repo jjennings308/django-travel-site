@@ -16,14 +16,25 @@ class ApprovalPageTests(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user("staff", "staff@example.com", "pw-1234-abcd", is_staff=True)
         self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
-        self.city = City.objects.create(
-            name="Testville", slug="testville", country=country, latitude=1, longitude=2,
-            approval_status=ApprovalStatus.PENDING, submitted_by=self.alice,
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
         )
-        self.queue = ApprovalQueue.objects.create(name="Locations", slug="locations", status_filter=ApprovalStatus.PENDING, icon="📍")
+        self.city = City.objects.create(
+            name="Testville",
+            slug="testville",
+            country=country,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.PENDING,
+            submitted_by=self.alice,
+        )
+        self.queue = ApprovalQueue.objects.create(
+            name="Locations", slug="locations", status_filter=ApprovalStatus.PENDING, icon="📍"
+        )
         self.queue.content_types.add(ContentType.objects.get_for_model(City))
-        self.review_url = reverse("approval_system:review_item", args=[ContentType.objects.get_for_model(City).id, self.city.id])
+        self.review_url = reverse(
+            "approval_system:review_item", args=[ContentType.objects.get_for_model(City).id, self.city.id]
+        )
 
     def test_staff_pages_render(self):
         self.client.force_login(self.staff)
@@ -39,7 +50,9 @@ class ApprovalPageTests(TestCase):
     def test_approving_from_the_review_page(self):
         self.client.force_login(self.staff)
         queue_url = reverse("approval_system:queue_detail", args=["locations"])
-        response = self.client.post(self.review_url, {"action": "approve", "notes": "Looks right", "priority": "normal", "next": queue_url})
+        response = self.client.post(
+            self.review_url, {"action": "approve", "notes": "Looks right", "priority": "normal", "next": queue_url}
+        )
         self.assertRedirects(response, queue_url)
         self.city.refresh_from_db()
         self.assertEqual(self.city.approval_status, ApprovalStatus.APPROVED)

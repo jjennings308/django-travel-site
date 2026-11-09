@@ -8,6 +8,7 @@ deleted trips never. Stored on ``POI.trip_count`` / ``Activity.trip_count`` / ``
 pages pay no query; ``recount()`` runs nightly from ``recount_visitors``.
 Pages show the number only from ``TRIP_COUNT_MIN`` and never say which trips.
 """
+
 from collections import defaultdict
 
 from django.db import transaction
@@ -33,22 +34,29 @@ LIVE_TRIP = {"trip__deleted_at__isnull": True}
 
 def _event_rows(field):
     """(``field`` of the linked event, trip id) for every section and day activity linked to an event."""
-    return [*Section.objects.filter(event__isnull=False, **LIVE_DAY).values_list(f"event__{field}", "day__trip_id"),
-            *TripActivity.objects.filter(event__isnull=False, **LIVE_TRIP).values_list(f"event__{field}", "trip_id")]
+    return [
+        *Section.objects.filter(event__isnull=False, **LIVE_DAY).values_list(f"event__{field}", "day__trip_id"),
+        *TripActivity.objects.filter(event__isnull=False, **LIVE_TRIP).values_list(f"event__{field}", "trip_id"),
+    ]
 
 
 def place_counts():
-    rows = [*Meal.objects.filter(poi__isnull=False, **LIVE_DAY).values_list("poi_id", "day__trip_id"),
-            *Section.objects.filter(poi__isnull=False, **LIVE_DAY).values_list("poi_id", "day__trip_id"),
-            *TripActivity.objects.filter(poi__isnull=False, **LIVE_TRIP).values_list("poi_id", "trip_id"),
-            *_event_rows("poi_id")]
+    rows = [
+        *Meal.objects.filter(poi__isnull=False, **LIVE_DAY).values_list("poi_id", "day__trip_id"),
+        *Section.objects.filter(poi__isnull=False, **LIVE_DAY).values_list("poi_id", "day__trip_id"),
+        *TripActivity.objects.filter(poi__isnull=False, **LIVE_TRIP).values_list("poi_id", "trip_id"),
+        *_event_rows("poi_id"),
+    ]
     return _trips_per(rows)
 
 
 def activity_counts():
-    return _trips_per([*Section.objects.filter(activity__isnull=False, **LIVE_DAY)
-                       .values_list("activity_id", "day__trip_id"),
-                       *_event_rows("related_activity_id")])
+    return _trips_per(
+        [
+            *Section.objects.filter(activity__isnull=False, **LIVE_DAY).values_list("activity_id", "day__trip_id"),
+            *_event_rows("related_activity_id"),
+        ]
+    )
 
 
 def event_counts():
@@ -68,5 +76,4 @@ def _store(model, counts):
 @transaction.atomic
 def recount():
     """Recompute every stored count; returns how many changed."""
-    return (_store(POI, place_counts()) + _store(Activity, activity_counts())
-            + _store(Event, event_counts()))
+    return _store(POI, place_counts()) + _store(Activity, activity_counts()) + _store(Event, event_counts())

@@ -39,9 +39,7 @@ def ensure_traveler_for_user(sender, instance, **kwargs):
     if Traveler.objects.filter(user_id=instance.pk).exists():
         return
     matches = list(
-        Traveler.objects.filter(name=display_name(instance), user=None)
-        .order_by("pk")
-        .values_list("pk", flat=True)
+        Traveler.objects.filter(name=display_name(instance), user=None).order_by("pk").values_list("pk", flat=True)
     )
     if len(matches) == 1:
         Traveler.objects.filter(pk=matches[0], user=None).update(user=instance)
@@ -56,18 +54,10 @@ def link_traveler_to_account(sender, instance, **kwargs):
     """A traveler whose name matches an unclaimed account is linked to it."""
     if instance.user_id:
         return
-    claimed = set(
-        Traveler.objects.exclude(user=None).values_list("user_id", flat=True)
-    )
-    candidates = [
-        user
-        for user in User.objects.all()
-        if user.pk not in claimed and display_name(user) == instance.name
-    ]
+    claimed = set(Traveler.objects.exclude(user=None).values_list("user_id", flat=True))
+    candidates = [user for user in User.objects.all() if user.pk not in claimed and display_name(user) == instance.name]
     if len(candidates) == 1:
-        linked = Traveler.objects.filter(pk=instance.pk, user=None).update(
-            user=candidates[0]
-        )
+        linked = Traveler.objects.filter(pk=instance.pk, user=None).update(user=candidates[0])
         if linked:
             # Keep the saved instance truthful: the queryset update above
             # never touches it, and the creator's object must not read back
@@ -84,14 +74,21 @@ def tell_new_grantee(sender, instance, created, raw=False, **kwargs):
     if not created or raw or instance.granted_by_id == instance.user_id or getattr(instance, "_quiet", False):
         return
     from django.urls import reverse
+
     from apps.notifications.services import notify
+
     trip, giver = instance.trip, instance.granted_by
     who = (giver.get_full_name() or giver.username) if giver else "Our team"
     role = instance.get_role_display().lower()
-    notify(instance.user, "trip_access_granted", f"You were added to “{trip.name}”",
-           f"{who} gave you access to the trip “{trip.name}” ({trip.start_date:%b} {trip.start_date.day} – "
-           f"{trip.end_date:%b} {trip.end_date.day}, {trip.end_date.year}) as {role}.",
-           reverse("trips:trip_detail", args=[trip.pk]), obj=trip)
+    notify(
+        instance.user,
+        "trip_access_granted",
+        f"You were added to “{trip.name}”",
+        f"{who} gave you access to the trip “{trip.name}” ({trip.start_date:%b} {trip.start_date.day} – "
+        f"{trip.end_date:%b} {trip.end_date.day}, {trip.end_date.year}) as {role}.",
+        reverse("trips:trip_detail", args=[trip.pk]),
+        obj=trip,
+    )
 
 
 @receiver(post_delete, sender=ConfirmationFile, dispatch_uid="delete_confirmation_file")
@@ -105,6 +102,7 @@ def delete_confirmation_file(sender, instance, **kwargs):
 def _connect_idea_return():
     """An idea goes back on the Ideas shelf when what it became is deleted (day-first plan P6)."""
     from .ideas import PLACEABLE, return_to_shelf
+
     for model in PLACEABLE:
         post_delete.connect(return_to_shelf, sender=model, dispatch_uid=f"idea_return_{model.__name__}")
 

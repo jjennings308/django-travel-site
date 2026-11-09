@@ -107,9 +107,7 @@ class PublicFixture(TestCase):
             departure_at="2026-09-12T14:00:00Z",
             arrival_at="2026-09-12T16:00:00Z",
         )
-        Confirmation.objects.create(
-            trip=cls.trip, label="Flights (Delta, all 4 legs)", confirmation_number="GCH7JS"
-        )
+        Confirmation.objects.create(trip=cls.trip, label="Flights (Delta, all 4 legs)", confirmation_number="GCH7JS")
         # Phase B: numbers are Confirmations linked to what they cover (the leg links to the
         # existing GCH7JS; the stay's number becomes its own confirmation).
         Confirmation.attach_number(cls.trip, "GCH7JS", leg, "Delta")
@@ -121,11 +119,7 @@ class PublicFixture(TestCase):
         """The trip as the view resolves it from the token."""
         from django.shortcuts import get_object_or_404
 
-        return get_object_or_404(
-            Trip.objects.public(self.token).prefetch_related(
-                "days__meals", "days__sections"
-            )
-        )
+        return get_object_or_404(Trip.objects.public(self.token).prefetch_related("days__meals", "days__sections"))
 
 
 class TokenTests(PublicFixture):
@@ -141,9 +135,7 @@ class TokenTests(PublicFixture):
         self.assertEqual(response.status_code, 200)
 
     def test_a_trip_with_no_token_has_no_public_page(self):
-        other = Trip.objects.create(
-            name="Private", start_date=date(2027, 1, 1), end_date=date(2027, 1,2)
-        )
+        other = Trip.objects.create(name="Private", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         # Not even the pk resolves it: the URL carries a UUID, and an unissued
         # one is simply a 404.
         self.assertEqual(Trip.objects.public(other.pk).count(), 0)
@@ -163,9 +155,7 @@ class TokenTests(PublicFixture):
 
     def test_revoking_removes_the_page_and_leaves_the_trip(self):
         self.trip.revoke_public()
-        self.assertEqual(
-            self.client.get(reverse("public_trip", args=[self.token])).status_code, 404
-        )
+        self.assertEqual(self.client.get(reverse("public_trip", args=[self.token])).status_code, 404)
         self.assertTrue(Trip.objects.filter(pk=self.trip.pk).exists())
         self.assertEqual(self.trip.days.count(), 1)
 
@@ -177,9 +167,7 @@ class TokenTests(PublicFixture):
     def test_rotating_invalidates_the_old_link(self):
         old = self.trip.public_token
         self.trip.rotate_public_token()
-        self.assertEqual(
-            self.client.get(reverse("public_trip", args=[old])).status_code, 404
-        )
+        self.assertEqual(self.client.get(reverse("public_trip", args=[old])).status_code, 404)
         self.assertEqual(
             self.client.get(reverse("public_trip", args=[self.trip.public_token])).status_code,
             200,
@@ -197,9 +185,7 @@ class TokenTests(PublicFixture):
         stranger = User.objects.create_user("nosey", "nosey@example.com", "pw-1234-abcd")
         self.assertFalse(TripGrant.objects.filter(trip=self.trip, user=stranger).exists())
         self.client.force_login(stranger)
-        self.assertEqual(
-            self.client.get(reverse("public_trip", args=[self.token])).status_code, 200
-        )
+        self.assertEqual(self.client.get(reverse("public_trip", args=[self.token])).status_code, 200)
 
 
 class DerivedTitleTests(PublicFixture):
@@ -211,15 +197,11 @@ class DerivedTitleTests(PublicFixture):
         self.assertIn("September 12", self.trip.public_title)
 
     def test_a_trip_with_no_destination_still_gets_a_heading(self):
-        bare = Trip.objects.create(
-            name="Secret", start_date=date(2027, 3, 1), end_date=date(2027, 3, 8)
-        )
+        bare = Trip.objects.create(name="Secret", start_date=date(2027, 3, 1), end_date=date(2027, 3, 8))
         self.assertEqual(bare.public_title, "March 1 – 8, 2027")
 
     def test_a_single_day_trip_reads_as_one_date(self):
-        same = Trip.objects.create(
-            name="Same", start_date=date(2027, 3, 1), end_date=date(2027, 3, 1)
-        )
+        same = Trip.objects.create(name="Same", start_date=date(2027, 3, 1), end_date=date(2027, 3, 1))
         self.assertEqual(same.public_dates, "March 1, 2027")
 
     def test_ranges_across_months_and_years_name_both(self):
@@ -242,8 +224,7 @@ class ShapeTests(PublicFixture):
         # and these are checked by name here.
         for key in ("title", "nights", "budget", "structure", "days"):
             self.assertIn(key, shape)
-        self.assertLessEqual(set(shape) - {"title", "nights", "budget", "structure", "days"},
-                             set(TRIP_FIELDS))
+        self.assertLessEqual(set(shape) - {"title", "nights", "budget", "structure", "days"}, set(TRIP_FIELDS))
 
     def test_a_day_is_a_subset_of_the_day_allowlist(self):
         day = self.get_shape()["days"][0]
@@ -276,9 +257,7 @@ class ShapeTests(PublicFixture):
                 for index, inner in enumerate(value):
                     walk(inner, f"{path}[{index}]")
             elif isinstance(value, str):
-                self.assertLess(
-                    len(value), 120, f"{path} looks like prose: {value[:80]!r}"
-                )
+                self.assertLess(len(value), 120, f"{path} looks like prose: {value[:80]!r}")
 
         walk(self.get_shape())
 
@@ -298,16 +277,16 @@ class PublicPageTests(PublicFixture):
     def test_the_page_publishes_no_private_detail(self):
         html = self.html()
         for secret in (
-            "James",          # Trip.name, Meal.why, Lodging.notes, Section.content
-            "Regan",          # same
-            "5305434791",     # Lodging.confirmation_number
-            "GCH7JS",         # TransportLeg + Confirmation
-            "DL 447",         # TransportLeg.service_number
-            "555-0100",       # Contact.phone
+            "James",  # Trip.name, Meal.why, Lodging.notes, Section.content
+            "Regan",  # same
+            "5305434791",  # Lodging.confirmation_number
+            "GCH7JS",  # TransportLeg + Confirmation
+            "DL 447",  # TransportLeg.service_number
+            "555-0100",  # Contact.phone
             "fix Regan status",  # BookingTask.title
             "Arrival & Santa Fe Evening",  # Day.theme
-            "Booked under",   # Trip.notes
-            "Passport",       # Trip.notes
+            "Booked under",  # Trip.notes
+            "Passport",  # Trip.notes
         ):
             with self.subTest(secret=secret):
                 self.assertNotIn(secret, html)
@@ -384,17 +363,22 @@ class RealDataSweepTests(TestCase):
     """
 
     def test_every_live_trip_is_clean(self):
-        trips = list(Trip.objects.live().prefetch_related(
-            "days__meals", "days__sections", "travelers", "confirmations",
-            "lodging", "transport",
-        ))
+        trips = list(
+            Trip.objects.live().prefetch_related(
+                "days__meals",
+                "days__sections",
+                "travelers",
+                "confirmations",
+                "lodging",
+                "transport",
+            )
+        )
         if not trips:
             self.skipTest("no imported trips in this database")
         for trip in trips:
             names, numbers = trip_leak_finders(trip)
             with self.subTest(trip=trip.pk):
-                certain = [f for f in find_leaks(public_trip(trip), names, numbers)
-                           if f[0] == "certain"]
+                certain = [f for f in find_leaks(public_trip(trip), names, numbers) if f[0] == "certain"]
                 self.assertEqual(certain, [], f"trip {trip.pk} leaks {certain}")
 
 
@@ -411,7 +395,9 @@ class PublicQueryCountTests(PublicFixture):
             Meal.objects.create(day=day, name=f"Dinner {offset}", meal_type=Meal.MealType.DINNER)
             for index in range(2):
                 Section.objects.create(
-                    day=day, section_type=Section.Type.NOTE, order=index,
+                    day=day,
+                    section_type=Section.Type.NOTE,
+                    order=index,
                     content={"tone": "tip", "paragraphs": ["x"]},
                 )
         # Four: the trip, then one query per prefetch level. Fixed regardless of
@@ -428,9 +414,7 @@ class PublicModelTests(TestCase):
     def test_public_is_excluded_from_visible_to(self):
         # A token is not a grant. Holding one must not quietly grant app access.
         user = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
-        trip = Trip.objects.create(
-            name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
-        )
+        trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5))
         trip.enable_public()
         self.assertEqual(Trip.objects.visible_to(user).count(), 0)
 
@@ -438,18 +422,14 @@ class PublicModelTests(TestCase):
         # Comments carry traveller names by definition; the public shape has no
         # key for them at all.
         user = User.objects.create_user("bo", "bo@example.com", "pw-1234-abcd")
-        trip = Trip.objects.create(
-            name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
-        )
+        trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5))
         Comment.objects.create(author=user, content_object=trip, body="Secret")
         blob = json.dumps(public_trip(trip), cls=DjangoJSONEncoder)
         self.assertNotIn("Secret", blob)
         self.assertNotIn("comment", blob.lower())
 
     def test_soft_deleted_trips_are_not_found_by_token(self):
-        trip = Trip.objects.create(
-            name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
-        )
+        trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5))
         token = trip.enable_public()
         self.assertEqual(Trip.objects.public(token).count(), 1)
         trip.soft_delete()
@@ -457,17 +437,14 @@ class PublicModelTests(TestCase):
         trip.restore()
         self.assertEqual(Trip.objects.public(token).count(), 1)
 
+
 class PublicAdminTests(TestCase):
     """Minting and revoking from the admin, which is the only place it happens."""
 
     def setUp(self):
-        self.admin = User.objects.create_superuser(
-            "boss", "boss@example.com", "pw-1234-abcd"
-        )
+        self.admin = User.objects.create_superuser("boss", "boss@example.com", "pw-1234-abcd")
         self.client.force_login(self.admin)
-        self.trip = Trip.objects.create(
-            name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5)
-        )
+        self.trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 5))
 
     def changelist(self):
         return reverse("admin:trips_trip_changelist")
@@ -481,15 +458,11 @@ class PublicAdminTests(TestCase):
 
     def test_the_change_page_shows_the_link_once_created(self):
         self.trip.enable_public()
-        response = self.client.get(
-            reverse("admin:trips_trip_change", args=[self.trip.pk])
-        )
+        response = self.client.get(reverse("admin:trips_trip_change", args=[self.trip.pk]))
         self.assertContains(response, str(self.trip.public_token))
 
     def test_the_change_page_says_when_a_trip_is_not_shared(self):
-        response = self.client.get(
-            reverse("admin:trips_trip_change", args=[self.trip.pk])
-        )
+        response = self.client.get(reverse("admin:trips_trip_change", args=[self.trip.pk]))
         self.assertContains(response, "Not shared")
 
     def test_the_create_action_mints_a_token(self):
@@ -513,9 +486,7 @@ class PublicAdminTests(TestCase):
         self.act("revoke_public_links")
         self.trip.refresh_from_db()
         self.assertIsNone(self.trip.public_token)
-        self.assertEqual(
-            self.client.get(reverse("public_trip", args=[token])).status_code, 404
-        )
+        self.assertEqual(self.client.get(reverse("public_trip", args=[token])).status_code, 404)
         self.assertTrue(Trip.objects.filter(pk=self.trip.pk).exists())
 
     def test_revoke_says_so_when_there_was_nothing_to_revoke(self):

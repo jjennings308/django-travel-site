@@ -1,12 +1,10 @@
-# ============================================
-# rewards/views.py
-# ============================================
 """The rewards-program catalogue (browse and detail).
 
 Memberships themselves live on the travel profile (``trips.RewardsMembership``, keyed to the
 traveller; site roadmap R11). The old membership pages redirect there, by URL name, so this app
 never imports trips.
 """
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -44,8 +42,11 @@ def programs_browse(request):
         if type_programs:
             programs_by_type[prog_type.label] = type_programs
 
-    return render(request, "rewards/programs_browse.html",
-                  {"programs": programs, "programs_by_type": programs_by_type, "form": form})
+    return render(
+        request,
+        "rewards/programs_browse.html",
+        {"programs": programs, "programs_by_type": programs_by_type, "form": form},
+    )
 
 
 def program_detail(request, program_id):

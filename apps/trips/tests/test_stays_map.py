@@ -1,4 +1,5 @@
 """Stays (Lodging) on the trip map: located from the address once, city fallback, private details never sent."""
+
 from datetime import date
 from decimal import Decimal
 from unittest import mock
@@ -19,24 +20,46 @@ FOUND = (Decimal("53.408400"), Decimal("-2.991600"))
 class StayFixture(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        uk = Country.objects.create(name="United Kingdom", slug="uk", iso_code="GB", iso3_code="GBR", continent="Europe",
-                                    approval_status=ApprovalStatus.APPROVED)
-        self.liverpool = City.objects.create(name="Liverpool", slug="liverpool", country=uk, latitude=53.41,
-                                             longitude=-2.98, approval_status=ApprovalStatus.APPROVED)
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 10), end_date=date(2027, 9, 14),
-                                        created_by=self.user)
+        uk = Country.objects.create(
+            name="United Kingdom",
+            slug="uk",
+            iso_code="GB",
+            iso3_code="GBR",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.liverpool = City.objects.create(
+            name="Liverpool",
+            slug="liverpool",
+            country=uk,
+            latitude=53.41,
+            longitude=-2.98,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 10), end_date=date(2027, 9, 14), created_by=self.user
+        )
         TripGrant.objects.create(trip=self.trip, user=self.user, role=TripRole.EDITOR)
         self.trip.cities.add(self.liverpool)
         self.client.force_login(self.user)
 
     def save(self, instance=None, **data):
-        values = {"name": "Hard Days Night Hotel", "address": "Central Buildings, North John St, Liverpool",
-                  "city": self.liverpool.pk, "latitude": "", "longitude": "", "check_in": "2027-09-11",
-                  "check_out": "2027-09-13", "nightly_rate": "189",
-                  "currency": "GBP", "notes": "Room with a view"}
+        values = {
+            "name": "Hard Days Night Hotel",
+            "address": "Central Buildings, North John St, Liverpool",
+            "city": self.liverpool.pk,
+            "latitude": "",
+            "longitude": "",
+            "check_in": "2027-09-11",
+            "check_out": "2027-09-13",
+            "nightly_rate": "189",
+            "currency": "GBP",
+            "notes": "Room with a view",
+        }
         if instance is not None:
-            values.update({k: ("" if getattr(instance, k) is None else getattr(instance, k))
-                           for k in ("latitude", "longitude")})
+            values.update(
+                {k: ("" if getattr(instance, k) is None else getattr(instance, k)) for k in ("latitude", "longitude")}
+            )
         values.update(data)
         form = LodgingForm(values, instance=instance or Lodging(trip=self.trip))
         self.assertTrue(form.is_valid(), form.errors)
@@ -70,7 +93,9 @@ class LocateTests(StayFixture):
     def test_failed_lookup_not_retried_until_address_changes(self, geocode, _sleep):
         stay = self.save()
         self.assertIsNone(stay.latitude)
-        self.assertEqual(geocode.call_args_list[-1].args[0], "Hard Days Night Hotel, Central Buildings, North John St, Liverpool")
+        self.assertEqual(
+            geocode.call_args_list[-1].args[0], "Hard Days Night Hotel, Central Buildings, North John St, Liverpool"
+        )
         self.save(instance=stay, notes="again")
         self.assertEqual(geocode.call_count, 2)  # address, then "name, address"; not again
         self.save(instance=stay, address="Somewhere else, Liverpool")
@@ -85,20 +110,35 @@ class LocateTests(StayFixture):
 
     @mock.patch("apps.core.geocoding.geocode")
     def test_plain_save_never_looks_up(self, geocode):
-        Lodging.objects.create(trip=self.trip, name="Imported", address="1 Road", check_in=date(2027, 9, 10),
-                               check_out=date(2027, 9, 11))
+        Lodging.objects.create(
+            trip=self.trip, name="Imported", address="1 Road", check_in=date(2027, 9, 10), check_out=date(2027, 9, 11)
+        )
         geocode.assert_not_called()
 
 
 class StaysLayerTests(StayFixture):
     def test_layer_has_name_dates_and_city_fallback_but_no_private_details(self):
-        pinned = Lodging.objects.create(trip=self.trip, name="Pinned", address="x", latitude=FOUND[0],
-                                        longitude=FOUND[1], nightly_rate=189, notes="Room with a view",
-                                        check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        pinned = Lodging.objects.create(
+            trip=self.trip,
+            name="Pinned",
+            address="x",
+            latitude=FOUND[0],
+            longitude=FOUND[1],
+            nightly_rate=189,
+            notes="Room with a view",
+            check_in=date(2027, 9, 11),
+            check_out=date(2027, 9, 13),
+        )
         from apps.trips.models import Confirmation
+
         Confirmation.attach_number(self.trip, "SECRET123", pinned)
-        Lodging.objects.create(trip=self.trip, name="City only", city=self.liverpool,
-                               check_in=date(2027, 9, 13), check_out=date(2027, 9, 14))
+        Lodging.objects.create(
+            trip=self.trip,
+            name="City only",
+            city=self.liverpool,
+            check_in=date(2027, 9, 13),
+            check_out=date(2027, 9, 14),
+        )
         Lodging.objects.create(trip=self.trip, name="Nowhere", check_in=date(2027, 9, 10), check_out=date(2027, 9, 11))
         response = self.client.get(reverse("trips:trip_map_data", args=[self.trip.pk]))
         stays = [f for f in response.json()["features"] if f["properties"].get("layer") == "stays"]
@@ -115,8 +155,14 @@ class StaysLayerTests(StayFixture):
         self.assertContains(page, "City only")
 
     def test_public_view_has_no_stays(self):
-        Lodging.objects.create(trip=self.trip, name="Pinned Hotel", latitude=FOUND[0], longitude=FOUND[1],
-                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Pinned Hotel",
+            latitude=FOUND[0],
+            longitude=FOUND[1],
+            check_in=date(2027, 9, 11),
+            check_out=date(2027, 9, 13),
+        )
         self.trip.enable_public()
         self.client.logout()
         self.assertNotContains(self.client.get(reverse("public_trip", args=[self.trip.public_token])), "Pinned Hotel")
@@ -132,11 +178,19 @@ class FillDayCitiesTests(StayFixture):
     def setUp(self):
         super().setUp()
         from apps.trips.models import Day
+
         uk = self.liverpool.country
-        self.manchester = City.objects.create(name="Manchester", slug="manchester", country=uk, latitude=53.48,
-                                              longitude=-2.24, approval_status=ApprovalStatus.APPROVED)
-        self.days = {d: Day.objects.create(trip=self.trip, date=date(2027, 9, d), day_number=d - 9)
-                     for d in (10, 11, 12, 13)}
+        self.manchester = City.objects.create(
+            name="Manchester",
+            slug="manchester",
+            country=uk,
+            latitude=53.48,
+            longitude=-2.24,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.days = {
+            d: Day.objects.create(trip=self.trip, date=date(2027, 9, d), day_number=d - 9) for d in (10, 11, 12, 13)
+        }
         self.days[12].city = self.manchester  # set by hand: must stay
         self.days[12].save()
         self.trip.cities.clear()
@@ -158,15 +212,27 @@ class FillDayCitiesTests(StayFixture):
         self.assertIsNone(self.city_of(11))
 
     def test_plain_create_does_not_fill(self):
-        Lodging.objects.create(trip=self.trip, name="Imported", city=self.liverpool,
-                               check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Imported",
+            city=self.liverpool,
+            check_in=date(2027, 9, 11),
+            check_out=date(2027, 9, 13),
+        )
         self.assertIsNone(self.city_of(11))
 
     def test_backfill_command(self):
         from io import StringIO
+
         from django.core.management import call_command
-        Lodging.objects.create(trip=self.trip, name="Imported", city=self.liverpool,
-                               check_in=date(2027, 9, 10), check_out=date(2027, 9, 12))
+
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Imported",
+            city=self.liverpool,
+            check_in=date(2027, 9, 10),
+            check_out=date(2027, 9, 12),
+        )
         out = StringIO()
         call_command("geocode_stays", "--fill-days", stdout=out)
         self.assertEqual([self.city_of(d) for d in (10, 11)], [self.liverpool, self.liverpool])
@@ -174,8 +240,13 @@ class FillDayCitiesTests(StayFixture):
 
     @mock.patch("apps.core.geocoding.geocode", return_value=None)
     def test_the_stay_page_says_how_many(self, _geocode):
-        stay = Lodging.objects.create(trip=self.trip, name="Hard Days Night Hotel", city=self.liverpool,
-                                      check_in=date(2027, 9, 11), check_out=date(2027, 9, 13))
+        stay = Lodging.objects.create(
+            trip=self.trip,
+            name="Hard Days Night Hotel",
+            city=self.liverpool,
+            check_in=date(2027, 9, 11),
+            check_out=date(2027, 9, 13),
+        )
         url = reverse("trips:stay_edit", args=[self.trip.pk, stay.pk])
         form = self.client.get(url).context["form"]
         data = {name: ("" if form[name].value() is None else str(form[name].value())) for name in form.fields}

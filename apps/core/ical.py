@@ -1,7 +1,9 @@
 """iCalendar building blocks shared by the trip feed (trips, site roadmap R4) and a single event's
 "Add to my calendar" file (events, R21). Stable UIDs (``<uid>@sharebucketlist.com``) let a calendar app
 replace an item it already has instead of adding a second copy."""
-from datetime import datetime, timezone as dt_timezone
+
+from datetime import datetime
+from datetime import timezone as dt_timezone
 
 from icalendar import Calendar, Event
 

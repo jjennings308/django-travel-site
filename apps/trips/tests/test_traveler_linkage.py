@@ -14,7 +14,6 @@ grant, and the tests below say so explicitly (see also
 
 import io
 import tempfile
-from contextlib import redirect_stdout
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -23,7 +22,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import UserRole
-from apps.trips.models import Day, Trip, TripGrant, Traveler
+from apps.trips.models import Day, Traveler, Trip, TripGrant
 from apps.trips.tests.test_docx_import import build_document, run_import
 
 User = get_user_model()
@@ -194,17 +193,13 @@ class DedupeTravelersTests(TestCase):
 
     def setUp(self):
         self.trip = make_trip()
-        self.day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
+        self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
         self.keeper = Traveler.objects.create(name="Debbie Fowler")
         self.donor = Traveler.objects.create(name="Debbie")
         self.donor.dietary_notes = "no shellfish"
         self.donor.home_airport = "BWI"
         self.donor.passport_country = "US"
-        self.donor.save(
-            update_fields=["dietary_notes", "home_airport", "passport_country"]
-        )
+        self.donor.save(update_fields=["dietary_notes", "home_airport", "passport_country"])
         self.keeper.passport_country = "CA"
         self.keeper.save(update_fields=["passport_country"])
         self.trip.travelers.add(self.donor)

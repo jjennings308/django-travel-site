@@ -1,8 +1,10 @@
 import sys
+
 from .base import *
 
 try:
     import django_extensions  # noqa: F401
+
     INSTALLED_APPS += ["django_extensions"]
 except ImportError:
     pass
@@ -14,11 +16,11 @@ DEBUG = True
 # theme/static/css/dist/styles.css via collectstatic.
 INSTALLED_APPS += ["tailwind"]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "web-dev", "192.168.10.150","travel.popsicletoes.us"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "web-dev", "192.168.10.150", "travel.popsicletoes.us"]
 
 SITE_URL = "http://127.0.0.1:8000"
 
-#EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
@@ -28,8 +30,8 @@ INTERNAL_IPS = [
 ]
 
 if DEBUG:
-    INSTALLED_APPS += ['django_browser_reload']
-    MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
+    INSTALLED_APPS += ["django_browser_reload"]
+    MIDDLEWARE += ["django_browser_reload.middleware.BrowserReloadMiddleware"]
 
 # The test suite never calls the address lookup (apps/core/geocoding.py); tests mock it.
 if len(sys.argv) > 1 and sys.argv[1] == "test":

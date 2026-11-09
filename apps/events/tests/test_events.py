@@ -5,8 +5,8 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.approval_system.models import ApprovalStatus
 from apps.activities.models import Activity, ActivityCategory, ActivityTag
+from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import City, Country, Region
 
@@ -19,20 +19,40 @@ class EventFixture(TestCase):
         self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
         self.bob = User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd")
         self.staff = User.objects.create_user("staff", "staff@example.com", "pw-1234-abcd", is_staff=True)
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
-        self.city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2,
-                                        approval_status=ApprovalStatus.APPROVED)
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
+        )
+        self.city = City.objects.create(
+            name="Testville",
+            slug="testville",
+            country=country,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.music = ActivityCategory.objects.get(name="Music")  # shared list, seeded by activities 0008
 
     def make(self, name, status=ApprovalStatus.APPROVED, start=None, **kw):
-        return Event.objects.create(name=name, category=self.music, description="d", city=self.city,
-                                    start_date=start or TODAY + timedelta(days=10),
-                                    approval_status=status, **kw)
+        return Event.objects.create(
+            name=name,
+            category=self.music,
+            description="d",
+            city=self.city,
+            start_date=start or TODAY + timedelta(days=10),
+            approval_status=status,
+            **kw,
+        )
 
     def payload(self, **over):
-        data = {"name": "Jazz Night", "category": self.music.pk, "description": "Live jazz.",
-                "city": self.city.pk, "start_date": (TODAY + timedelta(days=5)).isoformat(),
-                "event_type": "public", "is_free": "on"}
+        data = {
+            "name": "Jazz Night",
+            "category": self.music.pk,
+            "description": "Live jazz.",
+            "city": self.city.pk,
+            "start_date": (TODAY + timedelta(days=5)).isoformat(),
+            "event_type": "public",
+            "is_free": "on",
+        }
         data.update(over)
         return data
 
@@ -73,7 +93,10 @@ class SubmitAndEditTests(EventFixture):
         response = self.client.post(reverse("events:event_add"), self.payload())
         event = Event.objects.get(name="Jazz Night")
         self.assertRedirects(response, reverse("events:event_detail", args=[event.slug]))
-        self.assertEqual((event.approval_status, event.created_by, event.submitted_by), (ApprovalStatus.PENDING, self.alice, self.alice))
+        self.assertEqual(
+            (event.approval_status, event.created_by, event.submitted_by),
+            (ApprovalStatus.PENDING, self.alice, self.alice),
+        )
         self.assertContains(self.client.get(reverse("events:my_events")), "Jazz Night")
         self.assertNotContains(self.client.get(reverse("events:event_list")), "Jazz Night")
 
@@ -111,13 +134,16 @@ class SubmitAndEditTests(EventFixture):
     def test_creator_can_delete_pending(self):
         event = self.make("Oops", status=ApprovalStatus.PENDING, created_by=self.alice)
         self.client.force_login(self.alice)
-        self.assertRedirects(self.client.post(reverse("events:event_delete", args=[event.slug])), reverse("events:my_events"))
+        self.assertRedirects(
+            self.client.post(reverse("events:event_delete", args=[event.slug])), reverse("events:my_events")
+        )
         self.assertFalse(Event.objects.filter(pk=event.pk).exists())
 
     def test_end_before_start_is_rejected(self):
         self.client.force_login(self.alice)
-        response = self.client.post(reverse("events:event_add"), self.payload(
-            end_date=(TODAY + timedelta(days=1)).isoformat()))
+        response = self.client.post(
+            reverse("events:event_add"), self.payload(end_date=(TODAY + timedelta(days=1)).isoformat())
+        )
         self.assertContains(response, "can&#x27;t be before the start date")
         self.assertFalse(Event.objects.exists())
 
@@ -128,8 +154,14 @@ class SubmitAndEditTests(EventFixture):
 class UnlistedCityTests(EventFixture):
     def setUp(self):
         super().setUp()
-        self.austria = Country.objects.create(name="Austria", slug="austria", iso_code="AT", iso3_code="AUT",
-                                              continent="Europe", approval_status=ApprovalStatus.APPROVED)
+        self.austria = Country.objects.create(
+            name="Austria",
+            slug="austria",
+            iso_code="AT",
+            iso3_code="AUT",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def submit_unlisted(self, **over):
         self.client.force_login(self.alice)
@@ -164,10 +196,18 @@ class UnlistedCityTests(EventFixture):
     def test_staff_link_to_existing_city(self):
         self.submit_unlisted()
         event = Event.objects.get(name="Jazz Night")
-        graz = City.objects.create(name="Graz", slug="graz-at", country=self.austria, latitude=47, longitude=15,
-                                   approval_status=ApprovalStatus.APPROVED)
+        graz = City.objects.create(
+            name="Graz",
+            slug="graz-at",
+            country=self.austria,
+            latitude=47,
+            longitude=15,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.client.force_login(self.staff)
-        self.assertContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "City not in the catalogue")
+        self.assertContains(
+            self.client.get(reverse("events:event_detail", args=[event.slug])), "City not in the catalogue"
+        )
         self.client.post(reverse("events:event_link_city", args=[event.slug]), {"city": graz.pk})
         event.refresh_from_db()
         self.assertEqual((event.city, event.country, event.location_text), (graz, None, ""))
@@ -176,11 +216,15 @@ class UnlistedCityTests(EventFixture):
         self.submit_unlisted()
         event = Event.objects.get(name="Jazz Night")
         self.client.force_login(self.staff)
-        self.client.post(reverse("events:event_link_city", args=[event.slug]),
-                         {"name": "Hallstatt", "latitude": "47.562", "longitude": "13.649"})
+        self.client.post(
+            reverse("events:event_link_city", args=[event.slug]),
+            {"name": "Hallstatt", "latitude": "47.562", "longitude": "13.649"},
+        )
         event.refresh_from_db()
-        self.assertEqual((event.city.name, event.city.country, event.city.approval_status),
-                         ("Hallstatt", self.austria, ApprovalStatus.APPROVED))
+        self.assertEqual(
+            (event.city.name, event.city.country, event.city.approval_status),
+            ("Hallstatt", self.austria, ApprovalStatus.APPROVED),
+        )
 
     def test_new_city_gets_a_region_when_the_country_has_them(self):
         upper = Region.objects.create(country=self.austria, name="Upper Austria", slug="upper-austria")
@@ -197,13 +241,21 @@ class UnlistedCityTests(EventFixture):
 
     def test_existing_city_without_a_region_gets_one(self):
         upper = Region.objects.create(country=self.austria, name="Upper Austria", slug="upper-austria")
-        bare = City.objects.create(name="Hallstatt", slug="hallstatt-at", country=self.austria, latitude=47, longitude=13,
-                                   approval_status=ApprovalStatus.APPROVED)
+        bare = City.objects.create(
+            name="Hallstatt",
+            slug="hallstatt-at",
+            country=self.austria,
+            latitude=47,
+            longitude=13,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.submit_unlisted()
         event = Event.objects.get(name="Jazz Night")
         self.client.force_login(self.staff)
-        self.client.post(reverse("events:event_link_city", args=[event.slug]),
-                         {"name": "hallstatt", "latitude": "47.562", "longitude": "13.649", "region": upper.pk})
+        self.client.post(
+            reverse("events:event_link_city", args=[event.slug]),
+            {"name": "hallstatt", "latitude": "47.562", "longitude": "13.649", "region": upper.pk},
+        )
         bare.refresh_from_db()
         event.refresh_from_db()
         self.assertEqual((event.city, bare.region), (bare, upper))
@@ -212,14 +264,19 @@ class UnlistedCityTests(EventFixture):
         self.submit_unlisted()
         event = Event.objects.get(name="Jazz Night")
         self.client.force_login(self.staff)
-        self.client.post(reverse("events:event_link_city", args=[event.slug]), {"name": "Hallstatt", "latitude": "999", "longitude": "x"})
+        self.client.post(
+            reverse("events:event_link_city", args=[event.slug]),
+            {"name": "Hallstatt", "latitude": "999", "longitude": "x"},
+        )
         self.assertFalse(City.objects.filter(name="Hallstatt").exists())
 
     def test_only_staff_can_link(self):
         self.submit_unlisted()
         event = Event.objects.get(name="Jazz Night")
         self.client.force_login(self.alice)
-        self.client.post(reverse("events:event_link_city", args=[event.slug]), {"name": "X", "latitude": "1", "longitude": "1"})
+        self.client.post(
+            reverse("events:event_link_city", args=[event.slug]), {"name": "X", "latitude": "1", "longitude": "1"}
+        )
         event.refresh_from_db()
         self.assertIsNone(event.city)
 
@@ -234,9 +291,16 @@ class ActivityLinkTests(EventFixture):
     def setUp(self):
         super().setUp()
         from apps.activities.models import Activity
+
         self.festival = ActivityCategory.objects.get(name="Festival")
-        self.okto = Activity.objects.create(category=self.festival, name="Oktoberfest", description="Beer and brass bands.",
-                                            created_by=self.bob, visibility="public", approval_status=ApprovalStatus.APPROVED)
+        self.okto = Activity.objects.create(
+            category=self.festival,
+            name="Oktoberfest",
+            description="Beer and brass bands.",
+            created_by=self.bob,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def test_add_a_date_prefills_from_the_activity(self):
         self.client.force_login(self.alice)
@@ -255,30 +319,57 @@ class ActivityLinkTests(EventFixture):
         self.okto.recurrence = "yearly"
         self.okto.save()
         this_year = Event.objects.create(
-            name="Oktoberfest 2027", category=self.festival, related_activity=self.okto, description="Beer.",
-            city=self.city, start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
-            approval_status=ApprovalStatus.APPROVED)
+            name="Oktoberfest 2027",
+            category=self.festival,
+            related_activity=self.okto,
+            description="Beer.",
+            city=self.city,
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 10, 3),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.client.force_login(self.alice)
         detail = reverse("events:event_detail", args=[this_year.slug])
         copy_url = reverse("events:event_add") + f"?copy={this_year.pk}"
         self.assertContains(self.client.get(detail), "Add 2028 dates")
         form = self.client.get(copy_url)
-        for text in ('value="Oktoberfest 2028"', 'value="2028-09-18"', 'value="2028-10-03"', f'<option value="{self.okto.pk}" selected>'):
+        for text in (
+            'value="Oktoberfest 2028"',
+            'value="2028-09-18"',
+            'value="2028-10-03"',
+            f'<option value="{self.okto.pk}" selected>',
+        ):
             self.assertContains(form, text)
         # once next year's exists, the button links to it instead
-        Event.objects.create(name="Oktoberfest 2028", category=self.festival, related_activity=self.okto,
-                             description="Beer.", city=self.city, start_date=date(2028, 9, 16),
-                             approval_status=ApprovalStatus.APPROVED)
+        Event.objects.create(
+            name="Oktoberfest 2028",
+            category=self.festival,
+            related_activity=self.okto,
+            description="Beer.",
+            city=self.city,
+            start_date=date(2028, 9, 16),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         page = self.client.get(detail)
         self.assertContains(page, "2028 dates")
         self.assertNotContains(page, "Add 2028 dates")
 
     def test_activity_page_lists_each_years_event(self):
-        for year, status, by in ((2026, ApprovalStatus.APPROVED, self.bob), (2027, ApprovalStatus.APPROVED, self.bob),
-                                 (2028, ApprovalStatus.PENDING, self.bob)):
-            Event.objects.create(name=f"Oktoberfest {year}", category=self.festival, related_activity=self.okto,
-                                 description="d", city=self.city, start_date=date(year, 9, 18),
-                                 approval_status=status, created_by=by)
+        for year, status, by in (
+            (2026, ApprovalStatus.APPROVED, self.bob),
+            (2027, ApprovalStatus.APPROVED, self.bob),
+            (2028, ApprovalStatus.PENDING, self.bob),
+        ):
+            Event.objects.create(
+                name=f"Oktoberfest {year}",
+                category=self.festival,
+                related_activity=self.okto,
+                description="d",
+                city=self.city,
+                start_date=date(year, 9, 18),
+                approval_status=status,
+                created_by=by,
+            )
         self.client.force_login(self.alice)
         page = self.client.get(reverse("activities:activity_detail", args=[self.okto.slug]))
         self.assertContains(page, "Oktoberfest 2026")
@@ -286,14 +377,24 @@ class ActivityLinkTests(EventFixture):
         self.assertNotContains(page, "Oktoberfest 2028")  # pending, someone else's
 
     def test_one_off_activity_has_no_next_year(self):
-        event = Event.objects.create(name="Gig", category=self.festival, related_activity=self.okto, description="d",
-                                     city=self.city, start_date=date(2027, 1, 1), approval_status=ApprovalStatus.APPROVED)
+        event = Event.objects.create(
+            name="Gig",
+            category=self.festival,
+            related_activity=self.okto,
+            description="d",
+            city=self.city,
+            start_date=date(2027, 1, 1),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.client.force_login(self.alice)
         self.assertNotContains(self.client.get(reverse("events:event_detail", args=[event.slug])), "2028 dates")
 
     def test_event_inherits_category_from_activity(self):
         self.client.force_login(self.alice)
-        self.client.post(reverse("events:event_add"), self.payload(name="Oktoberfest 2027", category="", related_activity=self.okto.pk))
+        self.client.post(
+            reverse("events:event_add"),
+            self.payload(name="Oktoberfest 2027", category="", related_activity=self.okto.pk),
+        )
         event = Event.objects.get(name="Oktoberfest 2027")
         self.assertEqual((event.related_activity, event.category), (self.okto, self.festival))
 
@@ -328,14 +429,38 @@ class SeasonalActivityTests(EventFixture):
         super().setUp()
         from apps.activities.models import Activity
         from apps.locations.models import POI
-        self.stadium = POI.objects.create(name="Testville Stadium", slug="testville-stadium", city=self.city, poi_type_id="sports",
-                                          latitude=1, longitude=2, approval_status=ApprovalStatus.APPROVED)
-        self.team = Activity.objects.create(category=self.music, name="See the Testers play", description="Home games.",
-                                            venue=self.stadium, recurrence="seasonal", usual_months=[9, 10, 11, 12, 1],
-                                            created_by=self.bob, visibility="public", approval_status=ApprovalStatus.APPROVED)
-        self.game = Event.objects.create(name="Testers vs Rivals", category=self.music, description="d", city=self.city,
-                                         poi=self.stadium, venue_name="Testville Stadium", related_activity=self.team,
-                                         start_date=TODAY + timedelta(days=20), approval_status=ApprovalStatus.APPROVED)
+
+        self.stadium = POI.objects.create(
+            name="Testville Stadium",
+            slug="testville-stadium",
+            city=self.city,
+            poi_type_id="sports",
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.team = Activity.objects.create(
+            category=self.music,
+            name="See the Testers play",
+            description="Home games.",
+            venue=self.stadium,
+            recurrence="seasonal",
+            usual_months=[9, 10, 11, 12, 1],
+            created_by=self.bob,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.game = Event.objects.create(
+            name="Testers vs Rivals",
+            category=self.music,
+            description="d",
+            city=self.city,
+            poi=self.stadium,
+            venue_name="Testville Stadium",
+            related_activity=self.team,
+            start_date=TODAY + timedelta(days=20),
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def test_add_a_date_prefills_the_venue(self):
         self.client.force_login(self.alice)
@@ -348,8 +473,10 @@ class SeasonalActivityTests(EventFixture):
         self.client.post(reverse("events:event_add"), self.payload(name="Cup final", city="", poi=self.stadium.pk))
         final = Event.objects.get(name="Cup final")
         self.assertEqual((final.city, final.poi, final.venue_name), (self.city, self.stadium, "Testville Stadium"))
-        self.assertContains(self.client.get(reverse("events:event_detail", args=[final.slug])),
-                            reverse("locations:poi_detail", args=["testville-stadium"]))
+        self.assertContains(
+            self.client.get(reverse("events:event_detail", args=[final.slug])),
+            reverse("locations:poi_detail", args=["testville-stadium"]),
+        )
 
     def test_add_another_date(self):
         self.client.force_login(self.alice)
@@ -363,10 +490,25 @@ class SeasonalActivityTests(EventFixture):
 
     def test_activity_page_groups_by_season_and_folds_past(self):
         from datetime import date
-        Event.objects.create(name="Old game", category=self.music, description="d", city=self.city, related_activity=self.team,
-                             start_date=date(2025, 10, 5), approval_status=ApprovalStatus.APPROVED)
-        Event.objects.create(name="January game", category=self.music, description="d", city=self.city, related_activity=self.team,
-                             start_date=date(TODAY.year + 2, 1, 4), approval_status=ApprovalStatus.APPROVED)
+
+        Event.objects.create(
+            name="Old game",
+            category=self.music,
+            description="d",
+            city=self.city,
+            related_activity=self.team,
+            start_date=date(2025, 10, 5),
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        Event.objects.create(
+            name="January game",
+            category=self.music,
+            description="d",
+            city=self.city,
+            related_activity=self.team,
+            start_date=date(TODAY.year + 2, 1, 4),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.client.force_login(self.alice)
         page = self.client.get(reverse("activities:activity_detail", args=[self.team.slug]))
         seasons = [label for label, _ in page.context["upcoming_seasons"]]
@@ -381,10 +523,20 @@ class TagTests(EventFixture):
 
     def setUp(self):
         super().setUp()
-        self.fest = Activity.objects.create(category=self.music, name="Fest", description="d", visibility="public",
-                                            approval_status=ApprovalStatus.APPROVED)
-        self.other = Activity.objects.create(category=self.music, name="Other", description="d", visibility="public",
-                                             approval_status=ApprovalStatus.APPROVED)
+        self.fest = Activity.objects.create(
+            category=self.music,
+            name="Fest",
+            description="d",
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.other = Activity.objects.create(
+            category=self.music,
+            name="Other",
+            description="d",
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.tag = ActivityTag.objects.create(name="Outdoor")
         self.tag.activities.add(self.fest)
         self.free = ActivityTag.objects.create(name="Free")
@@ -415,4 +567,6 @@ class TagTests(EventFixture):
         page = self.client.get(reverse("events:event_detail", args=[self.one.slug]))
         self.assertContains(page, f"{self.url}?tag=outdoor")
         self.assertContains(page, "data-event-tags")
-        self.assertNotContains(self.client.get(reverse("events:event_detail", args=[self.loose.slug])), "data-event-tags")
+        self.assertNotContains(
+            self.client.get(reverse("events:event_detail", args=[self.loose.slug])), "data-event-tags"
+        )

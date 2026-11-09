@@ -23,6 +23,7 @@ row. A new row starts on the item's local currency when there is exactly one, el
 its place's local currency — never the reader's or the page's — and the day's notes, the Budget page, choices and
 the booklet all ask it; an edit form starts such an item on it, and ``manage.py fill_currencies`` stores it.
 """
+
 from django import forms
 
 from apps.core.widgets import CurrencySelect
@@ -62,6 +63,7 @@ def _cache(trip):
     cache = getattr(trip, "_currency_cache", None)
     if cache is None:
         from apps.locations.models import City
+
         all_days = list(trip.days.all())
         days = sorted((day for day in all_days if day.city_id), key=lambda day: (day.day_number, day.pk))
         cities = list(trip.cities.all()) + [_cached(day, "city") or day.city_id for day in days]
@@ -75,11 +77,18 @@ def _cache(trip):
                 missing.add(pk)
         missing -= set(codes)
         if missing:
-            codes.update({pk: (code or "").upper() or None for pk, code in
-                          City.objects.filter(pk__in=missing).values_list("pk", "country__currency_code")})
+            codes.update(
+                {
+                    pk: (code or "").upper() or None
+                    for pk, code in City.objects.filter(pk__in=missing).values_list("pk", "country__currency_code")
+                }
+            )
         order = [city if isinstance(city, int) else city.pk for city in cities]
-        cache = {"codes": codes, "days": all_days,
-                 "trip": list(dict.fromkeys(codes[pk] for pk in order if codes.get(pk)))}
+        cache = {
+            "codes": codes,
+            "days": all_days,
+            "trip": list(dict.fromkeys(codes[pk] for pk in order if codes.get(pk))),
+        }
         trip._currency_cache = cache
     return cache
 
@@ -91,6 +100,7 @@ def _city_code(trip, city_id, city=None):
             codes[city_id] = _code_from(city)
         else:  # a city outside the trip's (a leg's far end): one lookup, kept
             from apps.locations.models import City
+
             code = City.objects.filter(pk=city_id).values_list("country__currency_code", flat=True).first()
             codes[city_id] = (code or "").upper() or None
     return codes[city_id]
@@ -123,6 +133,7 @@ def used_codes(trip):
 def activity_city_ids(activity):
     if activity.poi_id:
         from apps.locations.models import POI
+
         return [POI.objects.filter(pk=activity.poi_id).values_list("city_id", flat=True).first()]
     return [activity.day.city_id] if activity.day_id else []
 
@@ -149,6 +160,7 @@ def confirmation_city_ids(confirmation):
 
 # ---- a cost with no currency takes its place's (blank-currencies plan, CU1) -------------------------------------
 
+
 def place_cities(item):
     """[(city or None, city id)] of an item's own place: a leg's origin, a stay's city, the catalogue place (else
     event venue, else activity) of an activity, meal, section or choice option, an option's city. The city object
@@ -158,6 +170,7 @@ def place_cities(item):
     def of(owner, field):
         pk = getattr(owner, f"{field}_id", None)
         return [(_cached(owner, field), pk)] if pk else []
+
     if name == "TransportLeg":
         return of(item, "origin_city")
     if name == "Lodging":
@@ -216,7 +229,10 @@ def place_source(item, trip, day=None):
         return item.poi.entry_fee_currency.upper(), ("fee", item.poi)
     if day is None:
         day = _day_of(item, trip)
-    for cities in (place_cities(item), [(_cached(day, "city"), day.city_id)] if day is not None and day.city_id else []):
+    for cities in (
+        place_cities(item),
+        [(_cached(day, "city"), day.city_id)] if day is not None and day.city_id else [],
+    ):
         for city, pk in cities:
             code = _city_code(trip, pk, city)
             if code:
@@ -237,10 +253,16 @@ def setup(form, name, trip, city_ids=(), given_initial=False, codes=None):
     required = not model_field.blank
     old = form.fields[name]
     form.fields[name] = CurrencyField(
-        required=required, label=old.label, help_text=old.help_text,
+        required=required,
+        label=old.label,
+        help_text=old.help_text,
         # Exchange-rate rows start blank so a formset's untouched extra row isn't "changed".
-        widget=CurrencySelect(codes if codes is not None else choices_for(trip, city_ids),
-                              allow_blank=not required or codes is not None, styled=False))
+        widget=CurrencySelect(
+            codes if codes is not None else choices_for(trip, city_ids),
+            allow_blank=not required or codes is not None,
+            styled=False,
+        ),
+    )
     if given_initial or codes is not None:
         return
     if form.instance.pk is None:
@@ -256,12 +278,19 @@ def setup(form, name, trip, city_ids=(), given_initial=False, codes=None):
 # ---- filling the stored blanks once (CU1: ``manage.py fill_currencies``) -------------------------------------
 
 #: The models with a cost and a currency, and their amount field.
-COSTED = (("TransportLeg", "cost"), ("Lodging", "nightly_rate"), ("TripActivity", "est_cost"), ("Meal", "est_cost"),
-          ("Option", "est_cost"), ("Confirmation", "cost"))
+COSTED = (
+    ("TransportLeg", "cost"),
+    ("Lodging", "nightly_rate"),
+    ("TripActivity", "est_cost"),
+    ("Meal", "est_cost"),
+    ("Option", "est_cost"),
+    ("Confirmation", "cost"),
+)
 
 
 def _blank_items(trip):
     from . import models
+
     found = []
     for name, amount in COSTED:
         model = getattr(models, name)
@@ -275,6 +304,7 @@ def _blank_items(trip):
 
 def _item_label(item):
     from .booking_tasks import label
+
     name = type(item).__name__
     if name == "Meal":
         return item.name
@@ -291,6 +321,7 @@ def blanks(trip):
     Schwangau", "Hohenschwangau Castle's entry fee", "from what it covers" or "the trip's currency". Items with
     no amount are left alone."""
     from apps.locations.models import City
+
     rows = []
     for item in _blank_items(trip):
         code, (kind, what) = place_source(item, trip)
@@ -311,8 +342,10 @@ def fill(trip, rows, actor=None):
     """Store each row's code (one transaction, no other field touched) under one history line: "Filled in 6
     missing currencies". Returns how many were filled."""
     from django.db import transaction
+
     from . import changes
     from .models import TripChange
+
     rows = [row for row in rows if row["code"]]
     if not rows:
         return 0
@@ -321,8 +354,9 @@ def fill(trip, rows, actor=None):
             item = row["item"]
             type(item).objects.filter(pk=item.pk, currency="").update(currency=row["code"])
         noun = "currency" if len(rows) == 1 else "currencies"
-        changes.record(trip.pk, TripChange.Kind.CHANGED, f"Filled in {len(rows)} missing {noun}", item=trip,
-                       actor=actor)
+        changes.record(
+            trip.pk, TripChange.Kind.CHANGED, f"Filled in {len(rows)} missing {noun}", item=trip, actor=actor
+        )
     return len(rows)
 
 
@@ -331,9 +365,13 @@ def fee_offer(activity, trip):
     (CU1), never given it silently: {"amount", "currency", "text": "Use Hohenschwangau Castle's entry fee: €21 per
     person"}, else None. The currency is the place's own fee currency, else its city's."""
     from .costs import money
+
     poi = activity.poi if activity is not None and activity.poi_id else None
     if poi is None or poi.entry_fee is None or activity.est_cost is not None:
         return None
     code = (poi.entry_fee_currency or "").upper() or _city_code(trip, poi.city_id) or default_for(trip)
-    return {"amount": poi.entry_fee, "currency": code,
-            "text": f"Use {poi.name}'s entry fee: {money(poi.entry_fee, code)} per person"}
+    return {
+        "amount": poi.entry_fee,
+        "currency": code,
+        "text": f"Use {poi.name}'s entry fee: {money(poi.entry_fee, code)} per person",
+    }

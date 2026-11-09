@@ -67,11 +67,15 @@ SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 # per process, so each worker would email on its own).
 CACHES = {
     **CACHES,  # noqa: F405
-    "alerts": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-               "LOCATION": os.environ.get("ALERT_CACHE_DIR", "/tmp/sharebucketlist-alerts")},
+    "alerts": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.environ.get("ALERT_CACHE_DIR", "/tmp/sharebucketlist-alerts"),
+    },
     # Rate-limit counts (apps/core/ratelimit.py, R15), shared by the workers like the alerts.
-    "ratelimit": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-                  "LOCATION": os.environ.get("RATELIMIT_CACHE_DIR", "/tmp/sharebucketlist-ratelimit")},
+    "ratelimit": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.environ.get("RATELIMIT_CACHE_DIR", "/tmp/sharebucketlist-ratelimit"),
+    },
 }
 
 EMAIL_SUBJECT_PREFIX = "[ShareBucketList error] "  # error emails to ADMINS

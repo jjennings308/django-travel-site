@@ -1,11 +1,12 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.locations.models import Country, Region
 from apps.approval_system.models import ApprovalStatus
+from apps.locations.models import Country, Region
 
 User = get_user_model()
+
 
 class Command(BaseCommand):
     """
@@ -72,15 +73,13 @@ class Command(BaseCommand):
             try:
                 return User.objects.get(username=username)
             except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"User '{username}' not found. Trying first superuser..."
-                ))
-        
+                self.stdout.write(self.style.WARNING(f"User '{username}' not found. Trying first superuser..."))
+
         # Fallback to first superuser
         superuser = User.objects.filter(is_superuser=True).first()
         if superuser:
             return superuser
-        
+
         return None
 
     def handle(self, *args, **options):
@@ -92,14 +91,14 @@ class Command(BaseCommand):
         # Get approver user for marking imports as approved
         approver = self._get_approver(options.get("approved_by"))
         if not approver:
-            self.stdout.write(self.style.ERROR(
-                "No approver found. Please create a superuser first or specify --approved-by <username>."
-            ))
+            self.stdout.write(
+                self.style.ERROR(
+                    "No approver found. Please create a superuser first or specify --approved-by <username>."
+                )
+            )
             return
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Using approver: {approver.username} (ID: {approver.id})"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"Using approver: {approver.username} (ID: {approver.id})"))
 
         # Default behavior: only create National when a country has zero regions
         if not ensure_national:
@@ -112,16 +111,18 @@ class Command(BaseCommand):
             # Validate supplied continents to prevent silent no-ops
             invalid = sorted(set(continents) - allowed_continents)
             if invalid:
-                self.stdout.write(self.style.ERROR(
-                    f"Invalid continent(s): {', '.join(invalid)}. Allowed: {', '.join(sorted(allowed_continents))}"
-                ))
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Invalid continent(s): {', '.join(invalid)}. Allowed: {', '.join(sorted(allowed_continents))}"
+                    )
+                )
                 return
             qs = qs.filter(continent__in=continents)
 
         created = 0
         updated = 0
         skipped = 0
-        approved_count = 0 
+        approved_count = 0
         errors = 0
 
         # -------------------------
@@ -156,7 +157,7 @@ class Command(BaseCommand):
                     region.reviewed_by = approver
                     region.reviewed_at = timezone.now()
                     needs_save = True
-                    
+
                 if needs_save:
                     region.save()
                     approved_count += 1
@@ -179,54 +180,134 @@ class Command(BaseCommand):
             detailed = {
                 # United States: 50 states + DC
                 "US": [
-                    ("Alabama", "AL"), ("Alaska", "AK"), ("Arizona", "AZ"), ("Arkansas", "AR"),
-                    ("California", "CA"), ("Colorado", "CO"), ("Connecticut", "CT"), ("Delaware", "DE"),
-                    ("Florida", "FL"), ("Georgia", "GA"), ("Hawaii", "HI"), ("Idaho", "ID"),
-                    ("Illinois", "IL"), ("Indiana", "IN"), ("Iowa", "IA"), ("Kansas", "KS"),
-                    ("Kentucky", "KY"), ("Louisiana", "LA"), ("Maine", "ME"), ("Maryland", "MD"),
-                    ("Massachusetts", "MA"), ("Michigan", "MI"), ("Minnesota", "MN"), ("Mississippi", "MS"),
-                    ("Missouri", "MO"), ("Montana", "MT"), ("Nebraska", "NE"), ("Nevada", "NV"),
-                    ("New Hampshire", "NH"), ("New Jersey", "NJ"), ("New Mexico", "NM"), ("New York", "NY"),
-                    ("North Carolina", "NC"), ("North Dakota", "ND"), ("Ohio", "OH"), ("Oklahoma", "OK"),
-                    ("Oregon", "OR"), ("Pennsylvania", "PA"), ("Rhode Island", "RI"), ("South Carolina", "SC"),
-                    ("South Dakota", "SD"), ("Tennessee", "TN"), ("Texas", "TX"), ("Utah", "UT"),
-                    ("Vermont", "VT"), ("Virginia", "VA"), ("Washington", "WA"), ("West Virginia", "WV"),
-                    ("Wisconsin", "WI"), ("Wyoming", "WY"),
-                    ("District of Columbia", "DC"), ("US Virgin Islands", "VI"),
+                    ("Alabama", "AL"),
+                    ("Alaska", "AK"),
+                    ("Arizona", "AZ"),
+                    ("Arkansas", "AR"),
+                    ("California", "CA"),
+                    ("Colorado", "CO"),
+                    ("Connecticut", "CT"),
+                    ("Delaware", "DE"),
+                    ("Florida", "FL"),
+                    ("Georgia", "GA"),
+                    ("Hawaii", "HI"),
+                    ("Idaho", "ID"),
+                    ("Illinois", "IL"),
+                    ("Indiana", "IN"),
+                    ("Iowa", "IA"),
+                    ("Kansas", "KS"),
+                    ("Kentucky", "KY"),
+                    ("Louisiana", "LA"),
+                    ("Maine", "ME"),
+                    ("Maryland", "MD"),
+                    ("Massachusetts", "MA"),
+                    ("Michigan", "MI"),
+                    ("Minnesota", "MN"),
+                    ("Mississippi", "MS"),
+                    ("Missouri", "MO"),
+                    ("Montana", "MT"),
+                    ("Nebraska", "NE"),
+                    ("Nevada", "NV"),
+                    ("New Hampshire", "NH"),
+                    ("New Jersey", "NJ"),
+                    ("New Mexico", "NM"),
+                    ("New York", "NY"),
+                    ("North Carolina", "NC"),
+                    ("North Dakota", "ND"),
+                    ("Ohio", "OH"),
+                    ("Oklahoma", "OK"),
+                    ("Oregon", "OR"),
+                    ("Pennsylvania", "PA"),
+                    ("Rhode Island", "RI"),
+                    ("South Carolina", "SC"),
+                    ("South Dakota", "SD"),
+                    ("Tennessee", "TN"),
+                    ("Texas", "TX"),
+                    ("Utah", "UT"),
+                    ("Vermont", "VT"),
+                    ("Virginia", "VA"),
+                    ("Washington", "WA"),
+                    ("West Virginia", "WV"),
+                    ("Wisconsin", "WI"),
+                    ("Wyoming", "WY"),
+                    ("District of Columbia", "DC"),
+                    ("US Virgin Islands", "VI"),
                 ],
-
                 # Mexico: 31 states + Mexico City (CDMX)
                 "MX": [
-                    ("Aguascalientes", "AGU"), ("Baja California", "BCN"), ("Baja California Sur", "BCS"),
-                    ("Campeche", "CAM"), ("Chiapas", "CHP"), ("Chihuahua", "CHH"), ("Coahuila", "COA"),
-                    ("Colima", "COL"), ("Durango", "DUR"), ("Guanajuato", "GUA"), ("Guerrero", "GRO"),
-                    ("Hidalgo", "HID"), ("Jalisco", "JAL"), ("México", "MEX"), ("Michoacán", "MIC"),
-                    ("Morelos", "MOR"), ("Nayarit", "NAY"), ("Nuevo León", "NLE"), ("Oaxaca", "OAX"),
-                    ("Puebla", "PUE"), ("Querétaro", "QUE"), ("Quintana Roo", "ROO"), ("San Luis Potosí", "SLP"),
-                    ("Sinaloa", "SIN"), ("Sonora", "SON"), ("Tabasco", "TAB"), ("Tamaulipas", "TAM"),
-                    ("Tlaxcala", "TLA"), ("Veracruz", "VER"), ("Yucatán", "YUC"), ("Zacatecas", "ZAC"),
+                    ("Aguascalientes", "AGU"),
+                    ("Baja California", "BCN"),
+                    ("Baja California Sur", "BCS"),
+                    ("Campeche", "CAM"),
+                    ("Chiapas", "CHP"),
+                    ("Chihuahua", "CHH"),
+                    ("Coahuila", "COA"),
+                    ("Colima", "COL"),
+                    ("Durango", "DUR"),
+                    ("Guanajuato", "GUA"),
+                    ("Guerrero", "GRO"),
+                    ("Hidalgo", "HID"),
+                    ("Jalisco", "JAL"),
+                    ("México", "MEX"),
+                    ("Michoacán", "MIC"),
+                    ("Morelos", "MOR"),
+                    ("Nayarit", "NAY"),
+                    ("Nuevo León", "NLE"),
+                    ("Oaxaca", "OAX"),
+                    ("Puebla", "PUE"),
+                    ("Querétaro", "QUE"),
+                    ("Quintana Roo", "ROO"),
+                    ("San Luis Potosí", "SLP"),
+                    ("Sinaloa", "SIN"),
+                    ("Sonora", "SON"),
+                    ("Tabasco", "TAB"),
+                    ("Tamaulipas", "TAM"),
+                    ("Tlaxcala", "TLA"),
+                    ("Veracruz", "VER"),
+                    ("Yucatán", "YUC"),
+                    ("Zacatecas", "ZAC"),
                     ("Mexico City", "CMX"),
                 ],
-
                 # Costa Rica: 7 provinces
                 "CR": [
-                    ("San José", "SJ"), ("Alajuela", "A"), ("Cartago", "C"), ("Heredia", "H"),
-                    ("Guanacaste", "G"), ("Puntarenas", "P"), ("Limón", "L"),
+                    ("San José", "SJ"),
+                    ("Alajuela", "A"),
+                    ("Cartago", "C"),
+                    ("Heredia", "H"),
+                    ("Guanacaste", "G"),
+                    ("Puntarenas", "P"),
+                    ("Limón", "L"),
                 ],
-
                 # Germany: 16 Bundesländer
                 "DE": [
-                    ("Baden-Württemberg", "BW"), ("Bavaria", "BY"), ("Berlin", "BE"), ("Brandenburg", "BB"),
-                    ("Bremen", "HB"), ("Hamburg", "HH"), ("Hesse", "HE"), ("Lower Saxony", "NI"),
-                    ("Mecklenburg-Vorpommern", "MV"), ("North Rhine-Westphalia", "NW"), ("Rhineland-Palatinate", "RP"),
-                    ("Saarland", "SL"), ("Saxony", "SN"), ("Saxony-Anhalt", "ST"), ("Schleswig-Holstein", "SH"),
+                    ("Baden-Württemberg", "BW"),
+                    ("Bavaria", "BY"),
+                    ("Berlin", "BE"),
+                    ("Brandenburg", "BB"),
+                    ("Bremen", "HB"),
+                    ("Hamburg", "HH"),
+                    ("Hesse", "HE"),
+                    ("Lower Saxony", "NI"),
+                    ("Mecklenburg-Vorpommern", "MV"),
+                    ("North Rhine-Westphalia", "NW"),
+                    ("Rhineland-Palatinate", "RP"),
+                    ("Saarland", "SL"),
+                    ("Saxony", "SN"),
+                    ("Saxony-Anhalt", "ST"),
+                    ("Schleswig-Holstein", "SH"),
                     ("Thuringia", "TH"),
                 ],
-
                 # Austria: 9 Bundesländer
                 "AT": [
-                    ("Burgenland", "B"), ("Carinthia", "K"), ("Lower Austria", "N"), ("Upper Austria", "O"),
-                    ("Salzburg", "S"), ("Styria", "ST"), ("Tyrol", "T"), ("Vorarlberg", "V"), ("Vienna", "W"),
+                    ("Burgenland", "B"),
+                    ("Carinthia", "K"),
+                    ("Lower Austria", "N"),
+                    ("Upper Austria", "O"),
+                    ("Salzburg", "S"),
+                    ("Styria", "ST"),
+                    ("Tyrol", "T"),
+                    ("Vorarlberg", "V"),
+                    ("Vienna", "W"),
                 ],
             }
 
@@ -263,7 +344,7 @@ class Command(BaseCommand):
                                 "reviewed_at": timezone.now(),
                             },
                         )
-                        
+
                         if was_created:
                             det_created += 1
                             det_approved += 1
@@ -276,12 +357,10 @@ class Command(BaseCommand):
                                 region.reviewed_at = timezone.now()
                                 region.save()
                                 det_approved += 1
-                                
+
                     except Exception as e:
                         det_errors += 1
-                        self.stdout.write(self.style.ERROR(
-                            f"✗ Error seeding region '{name}' for {iso}: {e}"
-                        ))
+                        self.stdout.write(self.style.ERROR(f"✗ Error seeding region '{name}' for {iso}: {e}"))
 
                 self.stdout.write(self.style.SUCCESS(f"✓ Done: {country.name} ({iso})"))
 

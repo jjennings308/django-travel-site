@@ -1,6 +1,7 @@
 """Starting a comment on a day, a plan section or a task from the trip page (before, only the trip
 itself had an "Add a comment" until something already had one). Called "notes" until the help refresh
 renamed them, so they don't clash with + Add's Note items."""
+
 from datetime import date
 from unittest import mock
 
@@ -22,11 +23,14 @@ class AddANoteTests(TestCase):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
             self.users[role] = user
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
-        self.section = Section.objects.create(day=self.day, section_type="note", title="Afternoon",
-                                              content={"paragraphs": ["Stroll."]})
+        self.section = Section.objects.create(
+            day=self.day, section_type="note", title="Afternoon", content={"paragraphs": ["Stroll."]}
+        )
         self.task = BookingTask.objects.create(trip=self.trip, title="ICE seats")
-        self.links = [reverse("trips:comment_create", args=[kind, pk])
-                      for kind, pk in (("day", self.day.pk), ("section", self.section.pk), ("task", self.task.pk))]
+        self.links = [
+            reverse("trips:comment_create", args=[kind, pk])
+            for kind, pk in (("day", self.day.pk), ("section", self.section.pk), ("task", self.task.pk))
+        ]
 
     def page(self, role):
         self.client.force_login(self.users[role])
@@ -53,5 +57,5 @@ class AddANoteTests(TestCase):
         self.assertIn(f'id="comment-{comment.pk}"', html)
         self.assertIn("Comments on this day", html)
         self.assertNotIn("Add a comment to this day", html)  # its thread's Add a comment takes over
-        day_html = html[html.index('id="day-1"'):html.index('id="reference"')]
+        day_html = html[html.index('id="day-1"') : html.index('id="reference"')]
         self.assertIn(f'id="comment-{comment.pk}"', day_html)  # inside the day, so the page opens it

@@ -10,6 +10,7 @@ in memory on staging, which has one worker), else the default cache.
 
 The IP is nginx's ``X-Real-IP`` (it always sets it from the real connection), else ``REMOTE_ADDR``.
 """
+
 import logging
 import math
 import time
@@ -37,6 +38,7 @@ def hit(request, scope, max_hits, window):
     """Count one request; True while within the limit, else (False, seconds to wait).
     ``RATELIMIT_ENABLED = False`` (the test settings) turns every limit off."""
     from django.conf import settings
+
     if not getattr(settings, "RATELIMIT_ENABLED", True):
         return True, 0
     bucket = int(time.time() // window)
@@ -73,5 +75,7 @@ def limit(scope, max_hits, window, methods=("POST",)):
                 if not allowed:
                     return too_many(request, wait)
             return view(request, *args, **kwargs)
+
         return wrapped
+
     return decorator

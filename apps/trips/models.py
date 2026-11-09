@@ -89,23 +89,26 @@ being discussed.
 
 import os
 import uuid
-from datetime import date, datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from apps.core.storage import private_storage
-from apps.locations.models import POI, City
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-
-from .costs import Basis
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.db.models import BooleanField, Case, Exists, OuterRef, Q, Value, When
 from django.utils import timezone as django_timezone
+
+from apps.core.storage import private_storage
+from apps.locations.models import POI, City
+
+from .costs import Basis
+
 
 def validate_timezone_name(value):
     """Reject timezone names the stdlib can't resolve."""
@@ -308,12 +311,8 @@ class Traveler(models.Model):
         DIABETIC = "diabetic", "Diabetic"
         CHILD = "child", "Child"
 
-    seat_preference = models.CharField(
-        max_length=10, choices=Seat.choices, blank=True
-    )
-    cabin_preference = models.CharField(
-        max_length=20, choices=Cabin.choices, blank=True
-    )
+    seat_preference = models.CharField(max_length=10, choices=Seat.choices, blank=True)
+    cabin_preference = models.CharField(max_length=20, choices=Cabin.choices, blank=True)
     bed_preference = models.CharField(max_length=10, choices=Bed.choices, blank=True)
     meal_preference = models.CharField(
         max_length=20,
@@ -387,15 +386,18 @@ class RewardsMembership(models.Model):
         CREDIT_CARD = "credit_card", "Credit card"
         OTHER = "other", "Other"
 
-    traveler = models.ForeignKey(
-        Traveler, on_delete=models.CASCADE, related_name="memberships"
-    )
+    traveler = models.ForeignKey(Traveler, on_delete=models.CASCADE, related_name="memberships")
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.AIRLINE)
     # The program in the site's catalogue, when it's there (site roadmap R11: the one membership
     # model). ``program`` keeps the name either way, so a typed-in program still works.
-    catalogue_program = models.ForeignKey("rewards.RewardsProgram", on_delete=models.SET_NULL, null=True,
-                                          blank=True, related_name="trip_memberships",
-                                          verbose_name="from the catalogue")
+    catalogue_program = models.ForeignKey(
+        "rewards.RewardsProgram",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trip_memberships",
+        verbose_name="from the catalogue",
+    )
     program = models.CharField(max_length=120, help_text="e.g. Delta SkyMiles")
     member_number = models.CharField(max_length=40)
     tier = models.CharField(max_length=60, blank=True, help_text="e.g. Gold")
@@ -446,17 +448,20 @@ class Trip(models.Model):
     destination = models.CharField(max_length=200, blank=True)
     # The catalogue cities the trip visits (several for a multi-city trip). The free-text
     # destination above stays for display and the public title; cities are never public.
-    cities = models.ManyToManyField(City, related_name="trips", blank=True,
-                                    help_text="Cities from our catalogue that this trip visits")
+    cities = models.ManyToManyField(
+        City, related_name="trips", blank=True, help_text="Cities from our catalogue that this trip visits"
+    )
     # Shared photo album (media_app.MediaAlbum), made on the first upload. Everyone who can
     # see the trip sees it; never in the public view.
-    album = models.OneToOneField("media_app.MediaAlbum", on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name="trip", editable=False)
+    album = models.OneToOneField(
+        "media_app.MediaAlbum", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip", editable=False
+    )
     # The booklet's cover picture, chosen by an editor (uploaded in Settings, or picked on Photos);
     # always one of the album's photos. Separate from the album's own cover, which is simply the
     # first photo and shows in My adventures.
-    cover_photo = models.ForeignKey("media_app.Media", on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name="+", editable=False)
+    cover_photo = models.ForeignKey(
+        "media_app.Media", on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     travelers = models.ManyToManyField(
@@ -486,9 +491,15 @@ class Trip(models.Model):
     home_currency = models.CharField(max_length=3, help_text="The currency you think in for this trip, e.g. USD.")
     # Daily food per person (budget-estimates B2): the plan's Food line for meals nobody priced; days marked
     # meals_included are skipped.
-    food_allowance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                         validators=[MinValueValidator(Decimal("0"))], verbose_name="daily food",
-                                         help_text="Per person per day, for meals you haven't priced.")
+    food_allowance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="daily food",
+        help_text="Per person per day, for meals you haven't priced.",
+    )
     food_allowance_currency = models.CharField(max_length=3, blank=True, verbose_name="daily food currency")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -528,9 +539,14 @@ class Trip(models.Model):
             preferred = ""
             if self.created_by_id:
                 from django.apps import apps
+
                 AccountSettings = apps.get_model("accounts", "AccountSettings")
-                preferred = (AccountSettings.objects.filter(user_id=self.created_by_id)
-                             .values_list("preferred_currency", flat=True).first() or "")
+                preferred = (
+                    AccountSettings.objects.filter(user_id=self.created_by_id)
+                    .values_list("preferred_currency", flat=True)
+                    .first()
+                    or ""
+                )
             self.home_currency = (preferred or "USD").upper()
         else:
             self.home_currency = self.home_currency.upper()
@@ -613,6 +629,7 @@ class Trip(models.Model):
         """The album's photos in order (AlbumMedia rows with their Media), or none."""
         if not self.album_id:
             from apps.media_app.models import AlbumMedia
+
             return AlbumMedia.objects.none()
         return self.album.items()
 
@@ -623,17 +640,26 @@ class Trip(models.Model):
         from apps.media_app.forms import MAX_PICTURE_SIDE
         from apps.media_app.models import Media, MediaAlbum
         from apps.media_app.quota import check, size_of
+
         if not files:
             return []
         check(user, size_of(files))  # the storage limit, before anything is saved (R15)
         if self.album_id is None:
-            self.album = MediaAlbum.objects.create(user=self.created_by or user, title=f"{self.name} photos"[:200],
-                                                   privacy="private")
+            self.album = MediaAlbum.objects.create(
+                user=self.created_by or user, title=f"{self.name} photos"[:200], privacy="private"
+            )
             self.save(update_fields=["album"])
         media = []
         for f in files:
-            m = Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
-                      title=self.name[:200], alt_text=self.name[:200], content_object=self, privacy="private")
+            m = Media(
+                file=shrink_image(f, MAX_PICTURE_SIDE) or f,
+                uploaded_by=user,
+                media_type="image",
+                title=self.name[:200],
+                alt_text=self.name[:200],
+                content_object=self,
+                privacy="private",
+            )
             m.save()
             media.append(m)
         return self.album.add(media)
@@ -689,7 +715,7 @@ class Trip(models.Model):
 
     @property
     def countdown(self):
-        """"In 12 days" / "Tomorrow" / "Starts today" / "Underway" for the trip list, from the
+        """ "In 12 days" / "Tomorrow" / "Starts today" / "Underway" for the trip list, from the
         dates in the active time zone; empty once the trip is over or without a start date."""
         if not self.start_date or self.is_completed:
             return ""
@@ -827,21 +853,27 @@ class TransportLeg(models.Model):
     # inline confirmation_number was moved there by trips 0023 and dropped in 0024.
     # IATA codes for a plane, but a train leg has stations and a drive has
     # towns, so this is sized for whatever the mode needs rather than 3 chars.
-    origin = models.CharField(
-        max_length=120, blank=True, help_text="Airport code, station, or town"
-    )
-    destination = models.CharField(
-        max_length=120, blank=True, help_text="Airport code, station, or town"
-    )
+    origin = models.CharField(max_length=120, blank=True, help_text="Airport code, station, or town")
+    destination = models.CharField(max_length=120, blank=True, help_text="Airport code, station, or town")
     # Optional catalogue cities for the two ends, so the trip map can draw the leg (the
     # free-text origin/destination above stay for airport codes and station names).
     origin_city = models.ForeignKey(
-        City, on_delete=models.SET_NULL, null=True, blank=True, related_name="departing_legs",
-        verbose_name="from city", help_text="Catalogue city it leaves from (draws the leg on the trip map)",
+        City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="departing_legs",
+        verbose_name="from city",
+        help_text="Catalogue city it leaves from (draws the leg on the trip map)",
     )
     destination_city = models.ForeignKey(
-        City, on_delete=models.SET_NULL, null=True, blank=True, related_name="arriving_legs",
-        verbose_name="to city", help_text="Catalogue city it arrives in",
+        City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="arriving_legs",
+        verbose_name="to city",
+        help_text="Catalogue city it arrives in",
     )
     origin_timezone = models.CharField(
         max_length=64,
@@ -864,14 +896,18 @@ class TransportLeg(models.Model):
     # Confirmations attached to this leg (``ConfirmationLink``, like comments); the relation
     # also deletes the links with the leg.
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="leg_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="leg_target"
+    )
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="leg")
     # To-dos covering this leg (``TaskLink``, booking-todos K1); deleted with it, the to-do stays.
     task_links = GenericRelation("TaskLink", related_query_name="leg")
     # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
-    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
-                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
+    no_booking = models.BooleanField(
+        default=False,
+        verbose_name="No booking needed",
+        help_text="e.g. a walk-up train or a free entry: it then never shows as to book.",
+    )
     # Where on its day the leg is shown: a ``travel`` section of the day whose date is
     # ``date`` (checked in clean(), cleared by save() if the date moves). No section = the
     # day's automatic "Getting around" block. There is no day FK: the date decides.
@@ -890,9 +926,13 @@ class TransportLeg(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
     cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
-    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                                   verbose_name="people",
-                                                   help_text="How many it's for, when not everyone on the day.")
+    cost_people = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="people",
+        help_text="How many it's for, when not everyone on the day.",
+    )
     notes = models.TextField(blank=True)
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
@@ -939,8 +979,12 @@ class TransportLeg(models.Model):
         return days_by_date.get(self.date)
 
     def _section_fits(self, section):
-        return (section is not None and section.section_type == Section.Type.TRAVEL
-                and section.day.trip_id == self.trip_id and section.day.date == self.date)
+        return (
+            section is not None
+            and section.section_type == Section.Type.TRAVEL
+            and section.day.trip_id == self.trip_id
+            and section.day.date == self.date
+        )
 
     def clean(self):
         super().clean()
@@ -1052,13 +1096,17 @@ class Lodging(models.Model):
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="lodging")
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="stay_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="stay_target"
+    )
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="stay")
     task_links = GenericRelation("TaskLink", related_query_name="stay")  # to-dos covering it (K1)
     # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
-    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
-                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
+    no_booking = models.BooleanField(
+        default=False,
+        verbose_name="No booking needed",
+        help_text="e.g. a walk-up train or a free entry: it then never shows as to book.",
+    )
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
     # Booking references: ``confirmation_links`` (moved from an inline field by trips 0023/0024).
@@ -1074,22 +1122,39 @@ class Lodging(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
     cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
-    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                                   verbose_name="people",
-                                                   help_text="How many it's for, when not everyone on the day.")
-    rooms = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                             help_text="For a price per room per night.")
+    cost_people = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="people",
+        help_text="How many it's for, when not everyone on the day.",
+    )
+    rooms = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)], help_text="For a price per room per night."
+    )
     notes = models.TextField(blank=True)
     # Where it is, for the trip map (a stay is a private booking, never a catalogue POI).
     # The coordinates come from the address (``locate``) or are typed in; the city is the
     # fallback pin.
-    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="stays",
-                             help_text="Catalogue city it's in (the map pin if the address can't be found)")
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True,
-                                   help_text="Filled in from the address; correct it if the pin is off")
+    city = models.ForeignKey(
+        City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stays",
+        help_text="Catalogue city it's in (the map pin if the address can't be found)",
+    )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Filled in from the address; correct it if the pin is off",
+    )
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    geocoded_address = models.TextField(blank=True, editable=False,
-                                        help_text="The address last looked up (found or not), so it isn't looked up again")
+    geocoded_address = models.TextField(
+        blank=True, editable=False, help_text="The address last looked up (found or not), so it isn't looked up again"
+    )
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="stays")
@@ -1118,11 +1183,13 @@ class Lodging(models.Model):
         address = (self.address or "").strip()
         if address and self.latitude is None and address != self.geocoded_address:
             from apps.core.geocoding import geocode
+
             found = geocode(address)
             if not found and self.name.strip():
                 # A vague address ("Butzbach Old Town") often finds the hotel by name; wait a
                 # second first, as the lookup service asks.
                 import time
+
                 time.sleep(1)
                 found = geocode(f"{self.name.strip()}, {address}")
             self.geocoded_address = address
@@ -1137,10 +1204,12 @@ class Lodging(models.Model):
         many days changed. Called by the stay forms and ``geocode_stays --fill-days``."""
         if not self.city_id or not self.trip_id:
             return 0
-        changed = Day.objects.filter(trip_id=self.trip_id, city__isnull=True,
-                                     date__gte=self.check_in, date__lt=self.check_out).update(city_id=self.city_id)
+        changed = Day.objects.filter(
+            trip_id=self.trip_id, city__isnull=True, date__gte=self.check_in, date__lt=self.check_out
+        ).update(city_id=self.city_id)
         if changed:
             from .trip_cities import sync
+
             sync(self.trip)
         return changed
 
@@ -1179,11 +1248,15 @@ class TripExpense(models.Model):
     spent_on = models.DateField(null=True, blank=True)
     paid_by = models.ForeignKey(Traveler, on_delete=models.PROTECT, related_name="expenses_paid")
     shared_with = models.ManyToManyField(
-        Traveler, related_name="expenses_shared", blank=True,
-        help_text="Who shares this cost. Leave empty to split it among everyone on the trip.")
+        Traveler,
+        related_name="expenses_shared",
+        blank=True,
+        help_text="Who shares this cost. Leave empty to split it among everyone on the trip.",
+    )
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                   related_name="+", editable=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1213,6 +1286,7 @@ class TripExpense(models.Model):
         if type(item).__name__ == "Confirmation":
             return item.confirmation_number
         from .booking_tasks import label
+
         return item.name if type(item).__name__ == "Meal" else label(item)
 
     def set_for(self, item):
@@ -1239,12 +1313,19 @@ class Day(models.Model):
     """
 
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="day_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="day_target"
+    )
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="days")
     day_number = models.PositiveSmallIntegerField()
-    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_days",
-                             help_text="Where the day is spent (one of the trip's cities)")
+    city = models.ForeignKey(
+        City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trip_days",
+        help_text="Where the day is spent (one of the trip's cities)",
+    )
     date = models.DateField()
     theme = models.CharField(
         max_length=200,
@@ -1259,10 +1340,7 @@ class Day(models.Model):
         Traveler,
         related_name="days",
         blank=True,
-        help_text=(
-            "Leave blank if the whole group is together. Set it only when this "
-            "day splits the trip up."
-        ),
+        help_text=("Leave blank if the whole group is together. Set it only when this day splits the trip up."),
     )
 
     class Meta:
@@ -1329,8 +1407,9 @@ class Section(models.Model):
     NOTE_TONE_STYLES = {"tip": "info", "warning": "warning", "critical": "critical"}
 
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="section_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="section_target"
+    )
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="section")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="sections")
     section_type = models.CharField(max_length=32, choices=Type.choices)
@@ -1340,13 +1419,16 @@ class Section(models.Model):
     content = models.JSONField(default=dict)
     # What this block is about in the catalogue (site roadmap R18), optional; limited to the
     # trip's cities by SectionForm. Shown as a link on the trip page, plain text in the booklet.
-    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_sections",
-                            verbose_name="place")
-    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name="trip_sections")
+    poi = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_sections", verbose_name="place"
+    )
+    activity = models.ForeignKey(
+        "activities.Activity", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_sections"
+    )
     # A dated catalogue event (Oktoberfest 2027; catalogue-notes N4): its notes, its activity's and its venue's.
-    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
-                              related_name="trip_sections")
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_sections"
+    )
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="sections")
@@ -1413,8 +1495,9 @@ class Meal(models.Model):
         FINE_DINING = "$$$$", "$$$$"
 
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="meal_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="meal_target"
+    )
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="meal")
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name="meals")
     name = models.CharField(max_length=200)
@@ -1435,17 +1518,28 @@ class Meal(models.Model):
     reserved_time = models.TimeField(null=True, blank=True, verbose_name="reservation time")
     order = models.PositiveSmallIntegerField(default=0)
     # Its estimate (budget-estimates B1): a meal needn't be booked to have a cost; per person by default.
-    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    est_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="estimated cost",
+    )
     currency = models.CharField(max_length=3, blank=True)
     # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
     cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
-    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                                   verbose_name="people",
-                                                   help_text="How many it's for, when not everyone on the day.")
+    cost_people = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="people",
+        help_text="How many it's for, when not everyone on the day.",
+    )
     # The restaurant in the catalogue, when it's a notable one (site roadmap R18); optional.
-    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_meals",
-                            verbose_name="place")
+    poi = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_meals", verbose_name="place"
+    )
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="meals")
@@ -1482,33 +1576,50 @@ class TripActivity(models.Model):
     # Wall-clock times on the day, where it happens (no zone to convert: the day is local).
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
-    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_activities",
-                            verbose_name="place")
+    poi = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_activities", verbose_name="place"
+    )
     # A dated catalogue event this is a booking for (catalogue-notes N4).
-    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
-                              related_name="trip_activities")
-    place_text = models.CharField(max_length=200, blank=True, verbose_name="place (typed)",
-                                  help_text="When the place isn't in the catalogue.")
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_activities"
+    )
+    place_text = models.CharField(
+        max_length=200, blank=True, verbose_name="place (typed)", help_text="When the place isn't in the catalogue."
+    )
     # Who's going; blank = everyone on the day.
     travelers = models.ManyToManyField(Traveler, blank=True, related_name="trip_activities")
-    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    est_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="estimated cost",
+    )
     currency = models.CharField(max_length=3, blank=True)
     # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
     cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
-    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                                   verbose_name="people",
-                                                   help_text="How many it's for, when not everyone on the day.")
+    cost_people = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="people",
+        help_text="How many it's for, when not everyone on the day.",
+    )
     notes = models.TextField(blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
-    linked_refs = GenericRelation("ItemLink", content_type_field="target_type", object_id_field="target_id",
-                                  related_query_name="activity_target")
+    linked_refs = GenericRelation(
+        "ItemLink", content_type_field="target_type", object_id_field="target_id", related_query_name="activity_target"
+    )
     confirmation_links = GenericRelation("ConfirmationLink", related_query_name="activity")
     task_links = GenericRelation("TaskLink", related_query_name="activity")  # to-dos covering it (K1)
     # Booking-todos K2: nothing to book (a walk-up train, a free museum): never in To book / Not booked yet.
-    no_booking = models.BooleanField(default=False, verbose_name="No booking needed",
-                                     help_text="e.g. a walk-up train or a free entry: it then never shows as to book.")
+    no_booking = models.BooleanField(
+        default=False,
+        verbose_name="No booking needed",
+        help_text="e.g. a walk-up train or a free entry: it then never shows as to book.",
+    )
 
     # In an option of a "choose one" group (day-first plan P4): counts only once it's chosen.
     option = models.ForeignKey("Option", null=True, blank=True, on_delete=models.SET_NULL, related_name="activities")
@@ -1528,8 +1639,10 @@ class TripActivity(models.Model):
     @property
     def time_range(self):
         """ "2:00 PM – 3:15 PM", "2:00 PM", or "" (local to the day)."""
+
         def fmt(t):
             return t.strftime("%I:%M %p").lstrip("0") if t else ""
+
         if self.start_time and self.end_time:
             return f"{fmt(self.start_time)} – {fmt(self.end_time)}"
         return fmt(self.start_time)
@@ -1570,8 +1683,9 @@ class Confirmation(models.Model):
     url = models.URLField(blank=True, verbose_name="manage-booking link")
     booked_on = models.DateField(null=True, blank=True)
     # The booking's total (a PNR's price isn't split across its legs).
-    cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                               validators=[MinValueValidator(Decimal("0"))])
+    cost = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0"))]
+    )
     currency = models.CharField(max_length=3, blank=True)
 
     class Meta:
@@ -1588,12 +1702,20 @@ class Confirmation(models.Model):
         items = getattr(self, "_items", None)
         if items is None:
             items = [link.item for link in self.links.all() if link.item is not None]
+
         def key(item):
             when = item_date(item)
             departs = getattr(item, "departure_at", None)
-            return (when is None, when or date.min, CONFIRMABLE_ORDER.get(type(item).__name__, 9),
-                    departs is None, departs or datetime.min.replace(tzinfo=dt_timezone.utc),
-                    getattr(item, "order", 0), item.pk)
+            return (
+                when is None,
+                when or date.min,
+                CONFIRMABLE_ORDER.get(type(item).__name__, 9),
+                departs is None,
+                departs or datetime.min.replace(tzinfo=dt_timezone.utc),
+                getattr(item, "order", 0),
+                item.pk,
+            )
+
         return sorted(items, key=key)
 
     @property
@@ -1634,18 +1756,21 @@ class Confirmation(models.Model):
         if item_trip_id(item) != self.trip_id:
             raise ValueError("A confirmation can only be linked to items of its own trip.")
         link, _created = ConfirmationLink.objects.get_or_create(
-            confirmation=self, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk)
+            confirmation=self, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk
+        )
         return link
 
     def unlink(self, item):
-        ConfirmationLink.objects.filter(confirmation=self, content_type=ContentType.objects.get_for_model(type(item)),
-                                        object_id=item.pk).delete()
+        ConfirmationLink.objects.filter(
+            confirmation=self, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk
+        ).delete()
 
     @classmethod
     def for_item(cls, item):
         """The confirmations linked to ``item``."""
-        return cls.objects.filter(links__content_type=ContentType.objects.get_for_model(type(item)),
-                                  links__object_id=item.pk).distinct()
+        return cls.objects.filter(
+            links__content_type=ContentType.objects.get_for_model(type(item)), links__object_id=item.pk
+        ).distinct()
 
     @classmethod
     def find_number(cls, trip, number):
@@ -1653,8 +1778,14 @@ class Confirmation(models.Model):
         key = " ".join((number or "").split()).casefold()
         if not key:
             return None
-        return next((c for c in cls.objects.filter(trip=trip).order_by("pk")
-                     if " ".join(c.confirmation_number.split()).casefold() == key), None)
+        return next(
+            (
+                c
+                for c in cls.objects.filter(trip=trip).order_by("pk")
+                if " ".join(c.confirmation_number.split()).casefold() == key
+            ),
+            None,
+        )
 
     @classmethod
     def attach_number(cls, trip, number, item, provider="", label=""):
@@ -1666,8 +1797,12 @@ class Confirmation(models.Model):
             return None
         confirmation = cls.find_number(trip, number)
         if confirmation is None:
-            confirmation = cls.objects.create(trip=trip, confirmation_number=number, provider=(provider or "")[:120],
-                                              label=(label or default_label(item))[:200])
+            confirmation = cls.objects.create(
+                trip=trip,
+                confirmation_number=number,
+                provider=(provider or "")[:120],
+                label=(label or default_label(item))[:200],
+            )
         confirmation.link(item)
         return confirmation
 
@@ -1684,8 +1819,9 @@ class ConfirmationLink(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["confirmation", "content_type", "object_id"],
-                                    name="confirmationlink_once_per_item"),
+            models.UniqueConstraint(
+                fields=["confirmation", "content_type", "object_id"], name="confirmationlink_once_per_item"
+            ),
         ]
         indexes = [models.Index(fields=["content_type", "object_id"])]
 
@@ -1722,8 +1858,9 @@ class ConfirmationFile(models.Model):
     original_name = models.CharField(max_length=200)
     content_type = models.CharField(max_length=60)
     size = models.PositiveIntegerField()
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1807,8 +1944,9 @@ class Contact(models.Model):
     url = models.URLField(blank=True, verbose_name="website")
     notes = models.TextField(blank=True)
     # The items it matters for (ItemLink, U4): it shows on them and their days.
-    item_links = GenericRelation("ItemLink", content_type_field="source_type", object_id_field="source_id",
-                                 related_query_name="contact_source")
+    item_links = GenericRelation(
+        "ItemLink", content_type_field="source_type", object_id_field="source_id", related_query_name="contact_source"
+    )
 
     class Meta:
         ordering = ["name"]
@@ -1831,8 +1969,9 @@ class TripInfo(models.Model):
     body = models.TextField(blank=True, help_text="Paragraphs separated by a blank line.")
     url = models.URLField(blank=True, verbose_name="link")
     order = models.PositiveSmallIntegerField(default=0)
-    item_links = GenericRelation("ItemLink", content_type_field="source_type", object_id_field="source_id",
-                                 related_query_name="info_source")
+    item_links = GenericRelation(
+        "ItemLink", content_type_field="source_type", object_id_field="source_id", related_query_name="info_source"
+    )
 
     class Meta:
         db_table = "trips_tripinfo"
@@ -1863,8 +2002,9 @@ class ItemLink(models.Model):
     class Meta:
         db_table = "trips_itemlink"
         constraints = [
-            models.UniqueConstraint(fields=["source_type", "source_id", "target_type", "target_id"],
-                                    name="itemlink_once"),
+            models.UniqueConstraint(
+                fields=["source_type", "source_id", "target_type", "target_id"], name="itemlink_once"
+            ),
         ]
         indexes = [
             models.Index(fields=["source_type", "source_id"]),
@@ -1884,15 +2024,22 @@ class ItemLink(models.Model):
         if item_trip_id(target) != trip_id:
             raise ValueError("Both ends of a link must belong to the same trip.")
         link, _ = cls.objects.get_or_create(
-            source_type=ContentType.objects.get_for_model(type(source)), source_id=source.pk,
-            target_type=ContentType.objects.get_for_model(type(target)), target_id=target.pk,
-            defaults={"trip_id": trip_id})
+            source_type=ContentType.objects.get_for_model(type(source)),
+            source_id=source.pk,
+            target_type=ContentType.objects.get_for_model(type(target)),
+            target_id=target.pk,
+            defaults={"trip_id": trip_id},
+        )
         return link
 
     @classmethod
     def unlink(cls, source, target):
-        cls.objects.filter(source_type=ContentType.objects.get_for_model(type(source)), source_id=source.pk,
-                           target_type=ContentType.objects.get_for_model(type(target)), target_id=target.pk).delete()
+        cls.objects.filter(
+            source_type=ContentType.objects.get_for_model(type(source)),
+            source_id=source.pk,
+            target_type=ContentType.objects.get_for_model(type(target)),
+            target_id=target.pk,
+        ).delete()
 
 
 # kind (URL part) -> model, for both ends of an ItemLink.
@@ -1988,45 +2135,58 @@ class BookingTask(models.Model):
     @property
     def visible_notes(self):
         """The notes without the "Not about: …" lines (those are for the suggestion only)."""
-        return "\n".join(line for line in self.notes.splitlines()
-                         if not line.startswith((self.NOT_ABOUT, self.FROM_NOTE, self.BOOKED_FOR))).strip()
+        return "\n".join(
+            line
+            for line in self.notes.splitlines()
+            if not line.startswith((self.NOT_ABOUT, self.FROM_NOTE, self.BOOKED_FOR))
+        ).strip()
 
     def booked_for(self):
         """{"leg-12": "2027-09-18", "stay-15": "2027-09-18/2027-09-20"} from the ``BOOKED_FOR`` line, else {}."""
         for line in self.notes.splitlines():
             if line.startswith(self.BOOKED_FOR):
-                pairs = (part.strip().split(" ", 1) for part in line[len(self.BOOKED_FOR):].split(";"))
+                pairs = (part.strip().split(" ", 1) for part in line[len(self.BOOKED_FOR) :].split(";"))
                 return {pair[0]: pair[1].strip() for pair in pairs if len(pair) == 2}
         return {}
 
     def note_ids(self):
         """The catalogue notes this to-do was made from (``FROM_NOTE`` lines)."""
-        return {int(line[len(self.FROM_NOTE):].strip()) for line in self.notes.splitlines()
-                if line.startswith(self.FROM_NOTE) and line[len(self.FROM_NOTE):].strip().isdigit()}
+        return {
+            int(line[len(self.FROM_NOTE) :].strip())
+            for line in self.notes.splitlines()
+            if line.startswith(self.FROM_NOTE) and line[len(self.FROM_NOTE) :].strip().isdigit()
+        }
 
     def dismissed(self):
         """Names of items this task was marked as not being about (lower case)."""
-        return {line[len(self.NOT_ABOUT):].strip().lower() for line in self.notes.splitlines()
-                if line.startswith(self.NOT_ABOUT)}
+        return {
+            line[len(self.NOT_ABOUT) :].strip().lower()
+            for line in self.notes.splitlines()
+            if line.startswith(self.NOT_ABOUT)
+        }
 
     def link(self, item):
         """Cover ``item`` too (once); see ``TaskLink.link``."""
         return TaskLink.link(self, item)
 
     def unlink(self, item):
-        TaskLink.objects.filter(task=self, content_type=ContentType.objects.get_for_model(type(item)),
-                                object_id=item.pk).delete()
+        TaskLink.objects.filter(
+            task=self, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk
+        ).delete()
 
     def covered(self):
         """The items this to-do covers, in date order (queries; the trip page uses ``booking_tasks.attach``)."""
         items = [link.item for link in self.links.select_related("content_type") if link.item is not None]
-        return sorted(items, key=lambda item: (item_date(item) or date.max, TASKABLE_ORDER[type(item).__name__], item.pk))
+        return sorted(
+            items, key=lambda item: (item_date(item) or date.max, TASKABLE_ORDER[type(item).__name__], item.pk)
+        )
 
     @classmethod
     def for_item(cls, item):
         """The to-dos covering ``item``."""
-        return cls.objects.filter(links__content_type=ContentType.objects.get_for_model(type(item)),
-                                  links__object_id=item.pk).distinct()
+        return cls.objects.filter(
+            links__content_type=ContentType.objects.get_for_model(type(item)), links__object_id=item.pk
+        ).distinct()
 
 
 class TaskLink(models.Model):
@@ -2066,12 +2226,13 @@ class TaskLink(models.Model):
         if item_trip_id(item) != task.trip_id:
             raise ValueError("A to-do can only cover items of its own trip.")
         link, _created = cls.objects.get_or_create(
-            task=task, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk)
+            task=task, content_type=ContentType.objects.get_for_model(type(item)), object_id=item.pk
+        )
         return link
 
 
 class OptionGroup(models.Model):
-    """"Choose one" on a day (day-first plan, P4): a dinner, an afternoon, a whole day or where to
+    """ "Choose one" on a day (day-first plan, P4): a dinner, an afternoon, a whole day or where to
     stay, with its ``Option``s. Travellers vote; an editor **picks** one (its items count as the day's,
     the others fold into Considered and can be reopened) or **splits** the group between travellers
     (P5: each option's ``travelers`` take it, and every option someone takes counts, as a track of the
@@ -2085,6 +2246,7 @@ class OptionGroup(models.Model):
 
     class Kind(models.TextChoices):
         """What the choice is about (typed-choices T1): its options ask only for what's needed to compare."""
+
         ANY = "any", "Anything"
         STAY = "stay", "Stay"
         EAT = "eat", "Eat"
@@ -2099,16 +2261,20 @@ class OptionGroup(models.Model):
     order = models.PositiveSmallIntegerField(default=0)
     state = models.CharField(max_length=8, choices=State.choices, default=State.OPEN)
     # What it's about and the fields its options share (typed-choices T1); all optional.
-    kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.ANY,
-                            verbose_name="what is this choice about?")
-    nights = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                              help_text="A stay: how many nights, from this day.")
-    meal_type = models.CharField(max_length=16, blank=True, choices=[("", "---------")] + list(Meal.MealType.choices),
-                                 verbose_name="meal")
+    kind = models.CharField(
+        max_length=8, choices=Kind.choices, default=Kind.ANY, verbose_name="what is this choice about?"
+    )
+    nights = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)], help_text="A stay: how many nights, from this day."
+    )
+    meal_type = models.CharField(
+        max_length=16, blank=True, choices=[("", "---------")] + list(Meal.MealType.choices), verbose_name="meal"
+    )
     end_time = models.TimeField(null=True, blank=True)
     mode = models.CharField(max_length=10, blank=True, choices=[("", "---------")] + list(TransportLeg.Mode.choices))
-    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-                                   related_name="+")
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     decided_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -2132,19 +2298,23 @@ class OptionGroup(models.Model):
         return next((o for o in self.options.all() if o.chosen), None)
 
     def summary(self):
-        """"Undecided", the pick or the split, for the history and the calendar."""
+        """ "Undecided", the pick or the split, for the history and the calendar."""
         if self.state == self.State.PICKED:
             chosen = self.options.filter(chosen=True).first()
             return f"picked {chosen.title}" if chosen else "picked"
         if self.state == self.State.SPLIT:
-            tracks = [f"{', '.join(t.name for t in option.travelers.all())} → {option.title}"
-                      for option in self.options.prefetch_related("travelers") if option.travelers.all()]
+            tracks = [
+                f"{', '.join(t.name for t in option.travelers.all())} → {option.title}"
+                for option in self.options.prefetch_related("travelers")
+                if option.travelers.all()
+            ]
             return f"split: {'; '.join(tracks)}" if tracks else "split"
         return self.get_state_display().lower()
 
     def pick(self, option, user=None):
         """Choose ``option`` (one of this group's): its items count as the day's."""
         from django.utils import timezone as tz
+
         with transaction.atomic():
             self.options.exclude(pk=option.pk).filter(chosen=True).update(chosen=False)
             Option.objects.filter(pk=option.pk).update(chosen=True)
@@ -2156,6 +2326,7 @@ class OptionGroup(models.Model):
         traveller on one option; ``forms.SplitForm`` checks that everyone is placed). Options nobody
         takes are kept as Considered."""
         from django.utils import timezone as tz
+
         with transaction.atomic():
             self.options.filter(chosen=True).update(chosen=False)
             for option in self.options.all():
@@ -2183,29 +2354,47 @@ class Option(models.Model):
     title = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
     url = models.URLField(blank=True, verbose_name="link")
-    est_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                   validators=[MinValueValidator(Decimal("0"))], verbose_name="estimated cost")
+    est_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="estimated cost",
+    )
     currency = models.CharField(max_length=3, blank=True)
     # What the cost means (budget-estimates B1; apps/trips/costs.py): blank = the kind's default (costs.DEFAULT).
     cost_basis = models.CharField(max_length=12, blank=True, choices=Basis.choices, verbose_name="cost is")
-    cost_people = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                                   verbose_name="people",
-                                                   help_text="How many it's for, when not everyone on the day.")
-    rooms = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                             help_text="For a price per room per night.")
+    cost_people = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="people",
+        help_text="How many it's for, when not everyone on the day.",
+    )
+    rooms = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)], help_text="For a price per room per night."
+    )
     order = models.PositiveSmallIntegerField(default=0)
     chosen = models.BooleanField(default=False)
     travelers = models.ManyToManyField(Traveler, blank=True, related_name="options")
-    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options",
-                            verbose_name="place")
-    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name="trip_options")
-    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
-                              related_name="trip_options")
+    poi = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options", verbose_name="place"
+    )
+    activity = models.ForeignKey(
+        "activities.Activity", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options"
+    )
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options"
+    )
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_options")
     place_text = models.CharField(max_length=200, blank=True, verbose_name="place or address (typed)")
-    nights = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)],
-                                              help_text="Only if it differs from the choice's (a 3-night minimum).")
+    nights = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Only if it differs from the choice's (a 3-night minimum).",
+    )
     from_text = models.CharField(max_length=120, blank=True, verbose_name="from")
     to_text = models.CharField(max_length=120, blank=True, verbose_name="to")
     made_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -2218,11 +2407,14 @@ class Option(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["group"], condition=Q(chosen=True), name="option_one_chosen"),
             models.CheckConstraint(
-                condition=(Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
-                           | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
-                           | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
-                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)),
-                name="option_one_target"),
+                condition=(
+                    Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
+                    | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
+                    | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
+                    | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)
+                ),
+                name="option_one_target",
+            ),
         ]
 
     def __str__(self):
@@ -2247,6 +2439,7 @@ class Option(models.Model):
     def cost_estimate(self):
         """Its ``costs.Cost`` (budget-estimates B1): people from ``options.attach`` when it ran, else its own."""
         from .costs import estimate, people_for
+
         people = getattr(self, "_people", None)
         return estimate(self, trip=self.trip_for_cost(), people=people if people is not None else people_for(self))
 
@@ -2259,6 +2452,7 @@ class Option(models.Model):
     def cost_currency(self):
         """Its currency: the stored one, else its place's (``currencies.currency_of``, CU1)."""
         from .currencies import currency_of
+
         return currency_of(self, self.trip_for_cost())
 
     @property
@@ -2276,7 +2470,8 @@ class Option(models.Model):
         """True when the cost is on its kind's default basis with nothing set that B1 added: its line keeps the
         wording it had, so the booklet (and its snapshot) reads the same for existing options."""
         from .costs import DEFAULT, kind_of
-        return (self.cost_basis in ("", DEFAULT[kind_of(self)]) and not self.cost_people and not self.rooms)
+
+        return self.cost_basis in ("", DEFAULT[kind_of(self)]) and not self.cost_people and not self.rooms
 
     def kind_line(self):
         """The one-line summary the choice's box and the booklet show for its kind (typed-choices T1):
@@ -2287,13 +2482,18 @@ class Option(models.Model):
         group, parts = self.group, []
         priced = self.est_cost is not None
         currency = self.cost_currency if priced else ""
-        money = (lambda amount: f"{currency} {amount:.2f}".strip())
+
+        def money(amount):
+            return f"{currency} {amount:.2f}".strip()
+
         plain = self._plain_cost()
         cost_text = (money(self.est_cost) if plain else self.cost_estimate().line) if priced else ""
         if group.kind == OptionGroup.Kind.STAY:
             if priced and plain:
                 nights = self.stay_nights
-                parts.append(f"{money(self.est_cost)}/night" + (f" × {nights} = {money(self.own_cost)}" if nights else ""))
+                parts.append(
+                    f"{money(self.est_cost)}/night" + (f" × {nights} = {money(self.own_cost)}" if nights else "")
+                )
             elif priced:
                 parts.append(cost_text)
             elif self.stay_nights:
@@ -2329,15 +2529,19 @@ class TripIdea(models.Model):
     title = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas")
-    poi = models.ForeignKey(POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas",
-                            verbose_name="place")
-    activity = models.ForeignKey("activities.Activity", on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name="trip_ideas")
-    event = models.ForeignKey("events.Event", on_delete=models.SET_NULL, null=True, blank=True,
-                              related_name="trip_ideas")
+    poi = models.ForeignKey(
+        POI, on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas", verbose_name="place"
+    )
+    activity = models.ForeignKey(
+        "activities.Activity", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas"
+    )
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.SET_NULL, null=True, blank=True, related_name="trip_ideas"
+    )
     kind_hint = models.CharField(max_length=8, choices=Kind.choices, blank=True, verbose_name="kind")
-    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-                                 related_name="+")
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     placed_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     placed_id = models.PositiveBigIntegerField(null=True, blank=True)
     placed = GenericForeignKey("placed_type", "placed_id")
@@ -2348,11 +2552,14 @@ class TripIdea(models.Model):
         ordering = ["created_at", "id"]
         constraints = [
             models.CheckConstraint(
-                condition=(Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
-                           | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
-                           | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
-                           | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)),
-                name="tripidea_one_target"),
+                condition=(
+                    Q(city__isnull=True, poi__isnull=True, activity__isnull=True)
+                    | Q(city__isnull=True, poi__isnull=True, event__isnull=True)
+                    | Q(city__isnull=True, activity__isnull=True, event__isnull=True)
+                    | Q(poi__isnull=True, activity__isnull=True, event__isnull=True)
+                ),
+                name="tripidea_one_target",
+            ),
         ]
 
     def __str__(self):
@@ -2373,8 +2580,13 @@ class TripIdea(models.Model):
     def target_url(self):
         """The catalogue page of what it's about ("" when it's only typed)."""
         from django.urls import reverse
-        names = {"event": "events:event_detail", "activity": "activities:activity_detail",
-                 "poi": "locations:poi_detail", "city": "locations:city_detail"}
+
+        names = {
+            "event": "events:event_detail",
+            "activity": "activities:activity_detail",
+            "poi": "locations:poi_detail",
+            "city": "locations:city_detail",
+        }
         target = self.target
         return reverse(names[self.target_kind], args=[target.slug]) if target is not None else ""
 
@@ -2425,8 +2637,11 @@ def counts_q():
     """The "what counts" rule as a filter: an item outside any option, in a chosen one (P4), or in an
     option someone takes in a split group (P5) — ``options.counts`` is the same rule in Python."""
     taken = Option.travelers.through.objects.filter(option_id=OuterRef("option_id"))
-    return (Q(option__isnull=True) | Q(option__chosen=True)
-            | (Q(option__group__state=OptionGroup.State.SPLIT) & Q(Exists(taken))))
+    return (
+        Q(option__isnull=True)
+        | Q(option__chosen=True)
+        | (Q(option__group__state=OptionGroup.State.SPLIT) & Q(Exists(taken)))
+    )
 
 
 class TidyDismissal(models.Model):
@@ -2768,6 +2983,7 @@ INVITE_DAYS = 14  # how long an invite link works; Resend starts a fresh period 
 
 def new_invite_token():
     import secrets
+
     return secrets.token_urlsafe(32)
 
 
@@ -2791,22 +3007,27 @@ class TripInvite(models.Model):
     email = models.EmailField()
     role = models.CharField(max_length=16, choices=TripRole.choices, default=TripRole.VIEWER)
     token = models.CharField(max_length=64, unique=True, default=new_invite_token, editable=False)
-    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                   related_name="+")
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(default=django_timezone.now)
     expires_at = models.DateTimeField()
     accepted_at = models.DateTimeField(null=True, blank=True)
-    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name="+")
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     revoked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "trips_tripinvite"
         ordering = ["-sent_at"]
         constraints = [
-            models.UniqueConstraint(fields=["trip", "email"], name="tripinvite_one_open",
-                                    condition=Q(accepted_at__isnull=True, revoked_at__isnull=True)),
+            models.UniqueConstraint(
+                fields=["trip", "email"],
+                name="tripinvite_one_open",
+                condition=Q(accepted_at__isnull=True, revoked_at__isnull=True),
+            ),
         ]
 
     def __str__(self):
@@ -2856,8 +3077,9 @@ class TripCalendarToken(models.Model):
     class Meta:
         db_table = "trips_tripcalendartoken"
         constraints = [
-            models.UniqueConstraint(fields=["trip", "user"], name="tripcalendartoken_one_live",
-                                    condition=Q(revoked_at__isnull=True)),
+            models.UniqueConstraint(
+                fields=["trip", "user"], name="tripcalendartoken_one_live", condition=Q(revoked_at__isnull=True)
+            ),
         ]
 
     def __str__(self):
@@ -2876,7 +3098,6 @@ class TripCalendarToken(models.Model):
         return TripCalendarToken.objects.create(trip=self.trip, user=self.user)
 
 
-
 class TripChange(models.Model):
     """One change to a trip's plan, for the change digest (site roadmap R7) and history (R8).
 
@@ -2892,8 +3113,9 @@ class TripChange(models.Model):
         REMOVED = "removed", "Removed"
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="changes")
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                              related_name="+")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     when = models.DateTimeField(default=django_timezone.now, db_index=True)
     kind = models.CharField(max_length=8, choices=Kind.choices)
     item_type = models.CharField(max_length=32, blank=True)
@@ -2952,8 +3174,9 @@ class ChecklistItem(models.Model):
     per_person = models.BooleanField(default=False, verbose_name="each person")
     order = models.PositiveSmallIntegerField(default=0)
     done_at = models.DateTimeField(null=True, blank=True)
-    done_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                related_name="+")
+    done_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         db_table = "trips_checklistitem"
@@ -2969,8 +3192,9 @@ class ChecklistTick(models.Model):
     item = models.ForeignKey(ChecklistItem, on_delete=models.CASCADE, related_name="ticks")
     traveler = models.ForeignKey(Traveler, on_delete=models.CASCADE, related_name="checklist_ticks")
     ticked_at = models.DateTimeField(default=django_timezone.now)
-    ticked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                  related_name="+")
+    ticked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         db_table = "trips_checklisttick"
@@ -2989,8 +3213,9 @@ class TripRate(models.Model):
 
     class Meta:
         db_table = "trips_triprate"
-        constraints = [models.UniqueConstraint(fields=["trip", "from_currency", "to_currency"],
-                                               name="triprate_once_per_pair")]
+        constraints = [
+            models.UniqueConstraint(fields=["trip", "from_currency", "to_currency"], name="triprate_once_per_pair")
+        ]
 
     def __str__(self):
         return f"1 {self.from_currency} = {self.rate} {self.to_currency}"

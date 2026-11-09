@@ -42,11 +42,30 @@ AIRPORT_TIMEZONES = {
 CALLOUT_TONES = {"tip": "info", "warning": "warning", "book ahead": "info"}
 
 MONTHS = {
-    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
-    "july": 7, "august": 8, "september": 9, "october": 10, "november": 11,
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
     "december": 12,
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7, "aug": 8,
-    "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "sept": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 DAY_HEADING_RE = re.compile(r"^Day\s+(\d+)\s*[—–-]\s*(.+?)\s*[—–-]\s*(.*)$")
@@ -370,8 +389,11 @@ def _parse_stay_dates(fields, day_date, warn):
 
     m = CHECKOUT_RE.search(stay)
     if m:
-        mon = m.group("mon") or (DAY_DATE_RE.search(fields.get("check-in", "")).group("mon")
-                                 if DAY_DATE_RE.search(fields.get("check-in", "")) else None)
+        mon = m.group("mon") or (
+            DAY_DATE_RE.search(fields.get("check-in", "")).group("mon")
+            if DAY_DATE_RE.search(fields.get("check-in", ""))
+            else None
+        )
         year = m.group("year") or year_of(fields.get("check-in", "")) or (check_in or "")[:4]
         if mon and year:
             check_out = _to_date(mon, m.group("day"), int(year))
@@ -419,7 +441,7 @@ def _compact_confirmation(text, warn=None):
             if CODE_TOKEN_RE.match(token) and any(ch.isdigit() for ch in token):
                 if not code:
                     code = token
-                    rest = chunks[:position] + [c for c in chunks[position + 1:]]
+                    rest = chunks[:position] + [c for c in chunks[position + 1 :]]
                 break
         if code:
             break
@@ -449,16 +471,12 @@ def _build_lodging(body_rows, heading, day_date, warn):
         "notes": "",
     }
 
-    stay = fields.get("stay", "")
     check_in, check_out = _parse_stay_dates(fields, day_date, warn)
     record["check_in"] = check_in
     record["check_out"] = check_out
 
     if not record["check_in"]:
-        warn(
-            f"Lodging under {heading!r}: no check-in date could be read, so this "
-            f"row will be skipped"
-        )
+        warn(f"Lodging under {heading!r}: no check-in date could be read, so this row will be skipped")
         return None
     if not record["check_out"]:
         warn(
@@ -484,9 +502,7 @@ def _build_lodging(body_rows, heading, day_date, warn):
         )
 
     bits = [
-        f"{key.title()}: {fields[key]}"
-        for key in ("room", "unit", "guest name", "vibe", "phone")
-        if fields.get(key)
+        f"{key.title()}: {fields[key]}" for key in ("room", "unit", "guest name", "vibe", "phone") if fields.get(key)
     ]
     _, confirmation_remainder = _compact_confirmation(fields.get("confirmation", ""), warn)
     if confirmation_remainder:
@@ -511,10 +527,7 @@ def _lodging_name(heading, address, warn):
     if name and len(name) < 80:
         return name
     if address:
-        warn(
-            f"Could not work out a lodging name from the heading {heading!r}; "
-            f"falling back to the address"
-        )
+        warn(f"Could not work out a lodging name from the heading {heading!r}; falling back to the address")
         return address.split(",")[0].strip()
     return "Lodging"
 
@@ -1047,7 +1060,6 @@ def _finalize(parsed, preamble, overview, packing_notes, warn):
     trip["end_date"] = end or ""
     if not start:
         warn("Could not read the trip date range; set start_date and end_date by hand")
-    year_hint = start[:4] if start else None
 
     # Travelers
     raw = overview.get("travelers", "")

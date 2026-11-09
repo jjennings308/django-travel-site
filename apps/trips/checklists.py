@@ -9,6 +9,7 @@ Ticking (``trips:checklist_tick``) needs ``comment``: a plain form POST that red
 trip page, or a 204 when Alpine sends it in the background. Creating and editing lists is on Edit
 trip (``checklist_new`` / ``_edit`` / ``_delete`` / ``_from_template``, editors).
 """
+
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -79,14 +80,18 @@ def start_from(trip, slug):
     template = next((t for t in templates() if t["slug"] == slug), None)
     if template is None:
         raise Http404
-    checklist = Checklist.objects.create(trip=trip, title=template["title"], kind=template["kind"],
-                                         order=trip.checklists.count())
-    ChecklistItem.objects.bulk_create(ChecklistItem(checklist=checklist, text=text, per_person=each, order=n)
-                                      for n, (text, each) in enumerate(template["items"]))
+    checklist = Checklist.objects.create(
+        trip=trip, title=template["title"], kind=template["kind"], order=trip.checklists.count()
+    )
+    ChecklistItem.objects.bulk_create(
+        ChecklistItem(checklist=checklist, text=text, per_person=each, order=n)
+        for n, (text, each) in enumerate(template["items"])
+    )
     return checklist
 
 
 # ---------------------------------------------------------------- reading (no queries)
+
 
 def attach(trip):
     """From the trip page's prefetch (``checklists__items__ticks`` and ``travelers``): each item's
@@ -112,17 +117,24 @@ def attention(trip, lists, today=None):
     """How many document ticks are still missing, from ``ATTENTION_DAYS`` before the trip until
     its end (Overview → Needs attention); 0 outside that window."""
     today = today or timezone.localdate()
-    if not trip.start_date or not (trip.start_date - timedelta(days=ATTENTION_DAYS) <= today
-                                   <= (trip.end_date or trip.start_date)):
+    if not trip.start_date or not (
+        trip.start_date - timedelta(days=ATTENTION_DAYS) <= today <= (trip.end_date or trip.start_date)
+    ):
         return 0
-    return sum(item.missing for checklist in lists if checklist.kind == Checklist.Kind.DOCUMENTS
-               for item in checklist.items.all())
+    return sum(
+        item.missing
+        for checklist in lists
+        if checklist.kind == Checklist.Kind.DOCUMENTS
+        for item in checklist.items.all()
+    )
 
 
 # -------------------------------------------------------------------------- views
 
+
 def _trip(request, pk, action):
     from .views import _readable_trip
+
     return _readable_trip(request, pk, action)
 
 
@@ -152,8 +164,9 @@ class ChecklistForm(forms.ModelForm):
         fields = ["title", "kind"]
 
 
-ItemFormSet = forms.inlineformset_factory(Checklist, ChecklistItem, fields=["text", "per_person", "order"],
-                                          extra=5, can_delete=True)
+ItemFormSet = forms.inlineformset_factory(
+    Checklist, ChecklistItem, fields=["text", "per_person", "order"], extra=5, can_delete=True
+)
 
 
 def _edit_back(trip):
@@ -174,8 +187,11 @@ def checklist_edit(request, pk, checklist_pk=None):
         formset.save()
         messages.success(request, f"Saved “{saved.title}”.")
         return redirect(_edit_back(trip))
-    return render(request, "trips/checklist_form.html",
-                  {"trip": trip, "checklist": checklist if checklist.pk else None, "form": form, "formset": formset})
+    return render(
+        request,
+        "trips/checklist_form.html",
+        {"trip": trip, "checklist": checklist if checklist.pk else None, "form": form, "formset": formset},
+    )
 
 
 @login_required

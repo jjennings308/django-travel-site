@@ -1,4 +1,5 @@
 """The Places map: a page with the list's filters, fed by a GeoJSON view of published places."""
+
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase, override_settings
@@ -14,20 +15,54 @@ APPROVED = ApprovalStatus.APPROVED
 class PlacesMapTests(TestCase):
     def setUp(self):
         self.client.force_login(get_user_model().objects.create_user("u", "u@example.com", "pw-1234-abcd"))
-        self.us = Country.objects.create(name="United States", slug="us", iso_code="US", iso3_code="USA",
-                                         continent="North America", approval_status=APPROVED)
-        self.ca = Country.objects.create(name="Canada", slug="ca", iso_code="CA", iso3_code="CAN",
-                                         continent="North America", approval_status=APPROVED)
-        self.moab = City.objects.create(name="Moab", slug="moab", country=self.us, latitude=38.57, longitude=-109.55,
-                                        approval_status=APPROVED)
-        self.mtl = City.objects.create(name="Montreal", slug="mtl", country=self.ca, latitude=45.5, longitude=-73.57,
-                                       approval_status=APPROVED)
-        self.arches = POI.objects.create(name="Arches <b>NP</b>", slug="arches", city=self.moab, latitude=38.73,
-                                         longitude=-109.59, poi_type_id="nature", approval_status=APPROVED)
-        POI.objects.create(name="Bell Centre", slug="bell", city=self.mtl, latitude=45.5, longitude=-73.57,
-                           poi_type_id="sports", approval_status=APPROVED)
-        POI.objects.create(name="Secret spot", slug="secret", city=self.moab, latitude=1, longitude=2,
-                           approval_status=ApprovalStatus.PENDING)
+        self.us = Country.objects.create(
+            name="United States",
+            slug="us",
+            iso_code="US",
+            iso3_code="USA",
+            continent="North America",
+            approval_status=APPROVED,
+        )
+        self.ca = Country.objects.create(
+            name="Canada",
+            slug="ca",
+            iso_code="CA",
+            iso3_code="CAN",
+            continent="North America",
+            approval_status=APPROVED,
+        )
+        self.moab = City.objects.create(
+            name="Moab", slug="moab", country=self.us, latitude=38.57, longitude=-109.55, approval_status=APPROVED
+        )
+        self.mtl = City.objects.create(
+            name="Montreal", slug="mtl", country=self.ca, latitude=45.5, longitude=-73.57, approval_status=APPROVED
+        )
+        self.arches = POI.objects.create(
+            name="Arches <b>NP</b>",
+            slug="arches",
+            city=self.moab,
+            latitude=38.73,
+            longitude=-109.59,
+            poi_type_id="nature",
+            approval_status=APPROVED,
+        )
+        POI.objects.create(
+            name="Bell Centre",
+            slug="bell",
+            city=self.mtl,
+            latitude=45.5,
+            longitude=-73.57,
+            poi_type_id="sports",
+            approval_status=APPROVED,
+        )
+        POI.objects.create(
+            name="Secret spot",
+            slug="secret",
+            city=self.moab,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.PENDING,
+        )
 
     def data(self, query=""):
         return self.client.get(reverse("locations:poi_map_data") + query).json()
@@ -43,7 +78,9 @@ class PlacesMapTests(TestCase):
         self.assertEqual(arches["properties"]["url"], reverse("locations:poi_detail", args=["arches"]))
 
     def test_filters_match_the_list(self):
-        self.assertEqual([f["properties"]["name"] for f in self.data(f"?country={self.ca.pk}")["features"]], ["Bell Centre"])
+        self.assertEqual(
+            [f["properties"]["name"] for f in self.data(f"?country={self.ca.pk}")["features"]], ["Bell Centre"]
+        )
         self.assertEqual([f["properties"]["name"] for f in self.data("?type=nature")["features"]], ["Arches <b>NP</b>"])
         self.assertEqual([f["properties"]["name"] for f in self.data("?q=bell")["features"]], ["Bell Centre"])
 
@@ -51,7 +88,9 @@ class PlacesMapTests(TestCase):
         with CaptureQueriesContext(connection) as before:
             self.data()
         for i in range(5):
-            POI.objects.create(name=f"P{i}", slug=f"p{i}", city=self.moab, latitude=1, longitude=2, approval_status=APPROVED)
+            POI.objects.create(
+                name=f"P{i}", slug=f"p{i}", city=self.moab, latitude=1, longitude=2, approval_status=APPROVED
+            )
         with CaptureQueriesContext(connection) as after:
             self.data()
         self.assertEqual(len(before), len(after))
@@ -83,5 +122,6 @@ class TileRefererTests(TestCase):
         """OpenStreetMap blocks tile requests without a Referer; the site's own policy is
         "same-origin", so the tile layer must ask for the origin to be sent."""
         from django.contrib.staticfiles import finders
+
         with open(finders.find("core/map.js"), encoding="utf-8") as f:
             self.assertIn('referrerPolicy: "strict-origin-when-cross-origin"', f.read())

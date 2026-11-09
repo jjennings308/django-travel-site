@@ -1,5 +1,6 @@
 """The Ideas shelf (docs/plans/day-first-planning.md, P6): adding, voting, putting ideas on a day or into a
 "choose one", coming back to the shelf, "Add to a trip" from the catalogue and the map's Ideas layer."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -9,10 +10,24 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
-from apps.locations.models import City, Country, POI
+from apps.locations.models import POI, City, Country
 from apps.trips import ideas
-from apps.trips.models import (Day, Lodging, Meal, Option, OptionGroup, Section, TransportLeg, Trip, TripActivity,
-                               TripChange, TripGrant, TripIdea, TripRole, Vote)
+from apps.trips.models import (
+    Day,
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    Section,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripIdea,
+    TripRole,
+    Vote,
+)
 
 User = get_user_model()
 APPROVED = ApprovalStatus.APPROVED
@@ -24,28 +39,84 @@ class Fixture(TestCase):
         self.commentor = User.objects.create_user("co", "co@example.com", "pw-1234-abcd", first_name="Cora")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.editor, home_currency="EUR")
-        for user, role in ((self.editor, TripRole.EDITOR), (self.commentor, TripRole.COMMENTOR),
-                           (self.viewer, TripRole.VIEWER)):
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 9, 21),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
+        for user, role in (
+            (self.editor, TripRole.EDITOR),
+            (self.commentor, TripRole.COMMENTOR),
+            (self.viewer, TripRole.VIEWER),
+        ):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=APPROVED, currency_code="EUR")
-        self.munich = City.objects.create(name="Munich", slug="munich", country=de, latitude=48.1, longitude=11.6,
-                                          approval_status=APPROVED, timezone="Europe/Berlin")
-        self.fussen = City.objects.create(name="Füssen", slug="fussen", country=de, latitude=47.6, longitude=10.7,
-                                          approval_status=APPROVED, timezone="Europe/Berlin")
-        self.castle = POI.objects.create(name="Neuschwanstein Castle", slug="neuschwanstein", city=self.fussen,
-                                         latitude=47.56, longitude=10.75, approval_status=APPROVED)
-        self.augustiner = POI.objects.create(name="Augustiner Keller", slug="augustiner", city=self.munich,
-                                             latitude=48.14, longitude=11.55, approval_status=APPROVED,
-                                             poi_type_id="food")
+        de = Country.objects.create(
+            name="Germany",
+            slug="de",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=APPROVED,
+            currency_code="EUR",
+        )
+        self.munich = City.objects.create(
+            name="Munich",
+            slug="munich",
+            country=de,
+            latitude=48.1,
+            longitude=11.6,
+            approval_status=APPROVED,
+            timezone="Europe/Berlin",
+        )
+        self.fussen = City.objects.create(
+            name="Füssen",
+            slug="fussen",
+            country=de,
+            latitude=47.6,
+            longitude=10.7,
+            approval_status=APPROVED,
+            timezone="Europe/Berlin",
+        )
+        self.castle = POI.objects.create(
+            name="Neuschwanstein Castle",
+            slug="neuschwanstein",
+            city=self.fussen,
+            latitude=47.56,
+            longitude=10.75,
+            approval_status=APPROVED,
+        )
+        self.augustiner = POI.objects.create(
+            name="Augustiner Keller",
+            slug="augustiner",
+            city=self.munich,
+            latitude=48.14,
+            longitude=11.55,
+            approval_status=APPROVED,
+            poi_type_id="food",
+        )
         category, _ = ActivityCategory.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
-        self.okto = Activity.objects.create(name="Oktoberfest", slug="oktoberfest", category=category, description="d",
-                                            city=self.munich, visibility="public", approval_status=APPROVED)
-        self.okto27 = Event.objects.create(name="Oktoberfest 2027", slug="oktoberfest-2027", description="d",
-                                           category=category, start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
-                                           city=self.munich, related_activity=self.okto, approval_status=APPROVED)
+        self.okto = Activity.objects.create(
+            name="Oktoberfest",
+            slug="oktoberfest",
+            category=category,
+            description="d",
+            city=self.munich,
+            visibility="public",
+            approval_status=APPROVED,
+        )
+        self.okto27 = Event.objects.create(
+            name="Oktoberfest 2027",
+            slug="oktoberfest-2027",
+            description="d",
+            category=category,
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 10, 3),
+            city=self.munich,
+            related_activity=self.okto,
+            approval_status=APPROVED,
+        )
         self.day1 = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18), city=self.munich)
         self.day2 = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19), city=self.munich)
 
@@ -58,7 +129,7 @@ class Fixture(TestCase):
 
     def shelf(self, html):
         start = html.index('id="ideas"')
-        return html[start:html.index("</details>", start)]
+        return html[start : html.index("</details>", start)]
 
     def url(self, name, idea):
         return reverse(f"trips:{name}", args=[self.trip.pk, idea.pk])
@@ -70,8 +141,11 @@ class ShelfTests(Fixture):
         self.client.force_login(self.commentor)
         response = self.client.post(add, {"title": "Beer garden", "kind_hint": "eat"})
         idea = TripIdea.objects.get()
-        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]) + f"#idea-{idea.pk}",
-                             fetch_redirect_response=False)
+        self.assertRedirects(
+            response,
+            reverse("trips:trip_detail", args=[self.trip.pk]) + f"#idea-{idea.pk}",
+            fetch_redirect_response=False,
+        )
         self.assertEqual((idea.added_by, idea.kind), (self.commentor, "eat"))
         self.client.force_login(self.viewer)
         self.assertEqual(self.client.post(add, {"title": "Nope"}).status_code, 403)
@@ -85,7 +159,7 @@ class ShelfTests(Fixture):
         placed = self.idea("Already on a day")
         placed.place_on(TripActivity.objects.create(trip=self.trip, day=self.day1, title="Already on a day"))
         shelf = self.shelf(self.page())
-        self.assertIn("Ideas</span> <span class=\"text-zinc-500\">· 1</span>", shelf)
+        self.assertIn('Ideas</span> <span class="text-zinc-500">· 1</span>', shelf)
         self.assertIn(f'id="idea-{idea.pk}"', shelf)
         self.assertIn("Neuschwanstein Castle", shelf)
         self.assertIn(reverse("locations:poi_detail", args=["neuschwanstein"]), shelf)
@@ -99,7 +173,7 @@ class ShelfTests(Fixture):
         self.idea()
         shelf = self.shelf(self.page(self.viewer))
         self.assertIn("Day trip to Salzburg", shelf)
-        for marker in ("data-idea-place", "data-idea-option", "data-idea-add", 'data-vote'):
+        for marker in ("data-idea-place", "data-idea-option", "data-idea-add", "data-vote"):
             self.assertNotIn(marker, shelf)
 
     def test_the_adder_or_an_editor_changes_it(self):
@@ -110,7 +184,9 @@ class ShelfTests(Fixture):
         self.assertEqual(self.client.get(self.url("idea_edit", idea)).status_code, 403)
         self.assertEqual(self.client.post(self.url("idea_delete", idea)).status_code, 403)
         self.client.force_login(self.commentor)
-        self.client.post(self.url("idea_edit", idea), {"title": "Salzburg by train", "notes": "", "kind_hint": "travel"})
+        self.client.post(
+            self.url("idea_edit", idea), {"title": "Salzburg by train", "notes": "", "kind_hint": "travel"}
+        )
         idea.refresh_from_db()
         self.assertEqual((idea.title, idea.kind), ("Salzburg by train", "travel"))
         self.client.force_login(self.editor)
@@ -151,8 +227,10 @@ class PlaceTests(Fixture):
         response = self.place(idea, fetch=True)
         activity = TripActivity.objects.get()
         self.assertEqual(response.json()["anchor"], f"activity-{activity.pk}")
-        self.assertEqual((activity.day, activity.title, activity.poi, activity.notes),
-                         (self.day2, "Neuschwanstein", self.castle, "Book the tour"))
+        self.assertEqual(
+            (activity.day, activity.title, activity.poi, activity.notes),
+            (self.day2, "Neuschwanstein", self.castle, "Book the tour"),
+        )
         idea.refresh_from_db()
         self.assertEqual(idea.placed, activity)
         self.assertIn(self.fussen, self.trip.cities.all())  # the place's city joins the trip
@@ -249,16 +327,20 @@ class CatalogueTests(Fixture):
 
     def test_each_catalogue_page_has_the_button(self):
         self.client.force_login(self.editor)
-        for kind, obj, page in (("activity", self.okto, reverse("activities:activity_detail", args=["oktoberfest"])),
-                                ("event", self.okto27, reverse("events:event_detail", args=["oktoberfest-2027"])),
-                                ("city", self.munich, reverse("locations:city_detail", args=["munich"]))):
+        for kind, obj, page in (
+            ("activity", self.okto, reverse("activities:activity_detail", args=["oktoberfest"])),
+            ("event", self.okto27, reverse("events:event_detail", args=["oktoberfest-2027"])),
+            ("city", self.munich, reverse("locations:city_detail", args=["munich"])),
+        ):
             self.assertContains(self.client.get(page), reverse("trips:idea_from_catalogue", args=[kind, obj.pk]))
 
     def test_unpublished_items_are_refused(self):
         self.castle.approval_status = ApprovalStatus.PENDING
         self.castle.save()
         self.client.force_login(self.commentor)
-        self.assertEqual(self.client.get(reverse("trips:idea_from_catalogue", args=["poi", self.castle.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("trips:idea_from_catalogue", args=["poi", self.castle.pk])).status_code, 404
+        )
 
 
 class MapTests(Fixture):
@@ -266,7 +348,9 @@ class MapTests(Fixture):
         self.idea("Neuschwanstein", poi=self.castle)
         self.idea("Oktoberfest", activity=self.okto)
         self.idea("Somewhere unknown")
-        self.idea("On a day", city=self.fussen).place_on(TripActivity.objects.create(trip=self.trip, day=self.day1, title="x"))
+        self.idea("On a day", city=self.fussen).place_on(
+            TripActivity.objects.create(trip=self.trip, day=self.day1, title="x")
+        )
         self.client.force_login(self.viewer)
         data = self.client.get(reverse("trips:trip_map_data", args=[self.trip.pk])).json()
         pins = {f["properties"]["name"]: f for f in data["features"] if f["properties"].get("layer") == "ideas"}
@@ -279,5 +363,6 @@ class MapTests(Fixture):
 
     def test_an_ideas_city_is_used(self):
         from apps.trips import trip_cities
+
         self.idea("Neuschwanstein", poi=self.castle)
         self.assertIn("the idea “Neuschwanstein”", trip_cities.used_by(self.trip)[self.fussen.pk])

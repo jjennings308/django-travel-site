@@ -4,6 +4,7 @@ a "to pay" line under the items; the plain booklet is unchanged (its own snapsho
     UPDATE_SNAPSHOTS=1 python manage.py test apps.trips.tests.test_booklet_budget
 
 rewrites ``snapshots/booklet_budget.html``; review the diff before committing it."""
+
 import difflib
 import os
 from datetime import date
@@ -19,8 +20,19 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.trips import budget_plan
-from apps.trips.models import (Confirmation, Day, Lodging, Meal, TransportLeg, Traveler, Trip, TripActivity,
-                               TripExpense, TripGrant, TripRole)
+from apps.trips.models import (
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripExpense,
+    TripGrant,
+    TripRole,
+)
 from apps.trips.tests.test_booklet_snapshot import build_trip, normalise
 
 User = get_user_model()
@@ -47,9 +59,12 @@ class Fixture(TestCase):
         def fake(html, base_url):
             captured["html"] = html
             return b"%PDF"
+
         url = reverse("trips:trip_pdf", args=[trip.pk]) + ("?budget=1" if budget else "")
-        with mock.patch("apps.trips.pdf.render_pdf", side_effect=fake), \
-                mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 8, 15)):
+        with (
+            mock.patch("apps.trips.pdf.render_pdf", side_effect=fake),
+            mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 8, 15)),
+        ):
             response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         return response, captured["html"]
@@ -65,16 +80,30 @@ class SnapshotTests(Fixture):
         pnr = trip.confirmations.get(confirmation_number="GCH7JS")
         pnr.cost, pnr.currency = D("900"), "EUR"
         pnr.save()
-        paid = TripExpense(trip=trip, description="Flight deposit", amount=D("400"), currency="EUR", paid_by=ada,
-                           category="flights", spent_on=date(2027, 6, 1))
+        paid = TripExpense(
+            trip=trip,
+            description="Flight deposit",
+            amount=D("400"),
+            currency="EUR",
+            paid_by=ada,
+            category="flights",
+            spent_on=date(2027, 6, 1),
+        )
         paid.set_for(pnr)
         paid.save()
         # The hotel's booking paid in full.
         hof = trip.confirmations.get(confirmation_number="5305434791")
         hof.cost, hof.currency = D("240"), "EUR"
         hof.save()
-        full = TripExpense(trip=trip, description="Hotel", amount=D("240"), currency="EUR", paid_by=bo,
-                           category="lodging", spent_on=date(2027, 6, 2))
+        full = TripExpense(
+            trip=trip,
+            description="Hotel",
+            amount=D("240"),
+            currency="EUR",
+            paid_by=bo,
+            category="lodging",
+            spent_on=date(2027, 6, 2),
+        )
         full.set_for(hof)
         full.save()
         # No booking needed, with an estimate: paid on the day.
@@ -85,8 +114,15 @@ class SnapshotTests(Fixture):
         d4 = trip.days.get(day_number=4)
         TripActivity.objects.create(trip=trip, day=d4, title="Swiss pass", est_cost=D("60"), currency="CHF")
         # An expense for nothing in particular (counts in its category's paid).
-        TripExpense.objects.create(trip=trip, description="Snacks", amount=D("20"), currency="EUR", paid_by=ada,
-                                   category="food", spent_on=date(2027, 9, 18))
+        TripExpense.objects.create(
+            trip=trip,
+            description="Snacks",
+            amount=D("20"),
+            currency="EUR",
+            paid_by=ada,
+            category="food",
+            spent_on=date(2027, 9, 18),
+        )
         return trip
 
     def test_the_budget_version_matches_its_snapshot(self):
@@ -96,7 +132,7 @@ class SnapshotTests(Fixture):
         self.assertTrue(response["Content-Disposition"].endswith('-booklet-budget.pdf"'))
         html = normalise(html)
         # No per-person table: the travellers are named on the cover and in the days, never next to money.
-        page = html[html.index('<section class="budget-page">'):]
+        page = html[html.index('<section class="budget-page">') :]
         for name in ("Ada", "Bo"):
             self.assertNotIn(name, page)
         if os.environ.get("UPDATE_SNAPSHOTS"):
@@ -104,10 +140,15 @@ class SnapshotTests(Fixture):
             return
         expected = SNAPSHOT.read_text(encoding="utf-8")
         if html != expected:
-            diff = "\n".join(list(difflib.unified_diff(expected.splitlines(), html.splitlines(), "snapshot", "now",
-                                                       lineterm=""))[:60])
-            self.fail("The budget booklet's HTML changed. If that's intended, rerun with UPDATE_SNAPSHOTS=1 and "
-                      f"review the diff.\n{diff}")
+            diff = "\n".join(
+                list(difflib.unified_diff(expected.splitlines(), html.splitlines(), "snapshot", "now", lineterm=""))[
+                    :60
+                ]
+            )
+            self.fail(
+                "The budget booklet's HTML changed. If that's intended, rerun with UPDATE_SNAPSHOTS=1 and "
+                f"review the diff.\n{diff}"
+            )
 
     def test_what_the_budget_version_says(self):
         trip = self.build()
@@ -135,8 +176,13 @@ class ToPayTests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 22),
-                                        created_by=self.user, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 20),
+            end_date=date(2027, 9, 22),
+            created_by=self.user,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.user, role=TripRole.EDITOR)
         self.ada, self.bo = Traveler.objects.create(name="Ada"), Traveler.objects.create(name="Bo")
         self.trip.travelers.set([self.ada, self.bo])
@@ -144,34 +190,49 @@ class ToPayTests(TestCase):
         self.client.force_login(self.user)
 
     def leg(self, **fields):
-        fields = {"currency": "EUR", "mode": "train", "operator": "DB", "origin": "Augsburg",
-                  "destination": "Munich", "date": self.day.date, **fields}
+        fields = {
+            "currency": "EUR",
+            "mode": "train",
+            "operator": "DB",
+            "origin": "Augsburg",
+            "destination": "Munich",
+            "date": self.day.date,
+            **fields,
+        }
         return TransportLeg.objects.create(trip=self.trip, **fields)
 
     def pay(self, amount, what, currency="EUR"):
-        expense = TripExpense(trip=self.trip, description="x", amount=D(amount), currency=currency, paid_by=self.ada,
-                              category="transport", spent_on=self.day.date)
+        expense = TripExpense(
+            trip=self.trip,
+            description="x",
+            amount=D(amount),
+            currency=currency,
+            paid_by=self.ada,
+            category="transport",
+            spent_on=self.day.date,
+        )
         expense.set_for(what)
         expense.save()
 
     def lines(self):
         """{item label: to_pay} as the budget booklet sets them."""
-        from apps.trips import views
         from apps.trips import options as option_groups
+        from apps.trips import views
+
         trip = views._trip_page_queryset(self.user).get(pk=self.trip.pk)
         option_groups.attach(trip, list(trip.days.all()), self.user)
         views.itinerary.place_legs(trip)
         views._attach_confirmations(trip)
         budget_plan.attach_to_pay(trip, list(trip.expenses.all()))
-        return {budget_plan._label(item): getattr(item, "to_pay", None)
-                for item in budget_plan.planned_items(trip)}
+        return {budget_plan._label(item): getattr(item, "to_pay", None) for item in budget_plan.planned_items(trip)}
 
     def test_part_paid_fully_paid_and_nothing_recorded(self):
         first, second = self.leg(origin="A", destination="B"), self.leg(origin="C", destination="D")
         third = self.leg(origin="E", destination="F")
         for leg, number, cost in ((first, "ONE", "96"), (second, "TWO", "50"), (third, "THREE", "30")):
-            booking = Confirmation.objects.create(trip=self.trip, confirmation_number=number, cost=D(cost),
-                                                  currency="EUR")
+            booking = Confirmation.objects.create(
+                trip=self.trip, confirmation_number=number, cost=D(cost), currency="EUR"
+            )
             booking.link(leg)
         self.pay("48", first)  # against the item: counts for its booking
         self.pay("50", Confirmation.objects.get(confirmation_number="TWO"))
@@ -182,8 +243,9 @@ class ToPayTests(TestCase):
 
     def test_one_booking_over_several_items_printed_once(self):
         legs = [self.leg(origin=f"X{n}", destination=f"Y{n}", order=n) for n in range(4)]
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", cost=D("120"),
-                                              currency="EUR")
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="GCH7JS", cost=D("120"), currency="EUR"
+        )
         for leg in legs:
             booking.link(leg)
         lines = self.lines()
@@ -197,8 +259,9 @@ class ToPayTests(TestCase):
         self.pay("15", unbooked)
         Meal.objects.create(day=self.day, name="Augustiner", est_cost=D("30"), currency="EUR")
         self.leg(origin="G", destination="H")  # no estimate: the site doesn't know
-        Confirmation.objects.create(trip=self.trip, confirmation_number="NOCOST").link(self.leg(origin="I",
-                                                                                                destination="J"))
+        Confirmation.objects.create(trip=self.trip, confirmation_number="NOCOST").link(
+            self.leg(origin="I", destination="J")
+        )
         lines = self.lines()
         self.assertEqual(lines["A → B"], "To pay there: ≈ €24")
         self.assertEqual(lines["C → D"], "To pay there: ≈ CHF 90")
@@ -208,16 +271,20 @@ class ToPayTests(TestCase):
         self.assertIsNone(lines["I → J"])  # booked, cost not on file
 
     def test_a_payment_in_another_currency_is_named_not_converted(self):
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="ONE", cost=D("100"),
-                                              currency="EUR")
+        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="ONE", cost=D("100"), currency="EUR")
         booking.link(self.leg(origin="A", destination="B"))
         self.pay("20", booking, currency="USD")
-        self.assertEqual(self.lines()["A → B"],
-                         "To pay: €100 (booked €100, nothing recorded as paid) · also paid $20")
+        self.assertEqual(self.lines()["A → B"], "To pay: €100 (booked €100, nothing recorded as paid) · also paid $20")
 
     def test_a_stay_on_its_check_in_day(self):
-        Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.day.date, check_out=date(2027, 9, 22),
-                               nightly_rate=D("95"), currency="EUR")
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Hotel",
+            check_in=self.day.date,
+            check_out=date(2027, 9, 22),
+            nightly_rate=D("95"),
+            currency="EUR",
+        )
         _, html = Fixture.booklet(self, self.trip)
         self.assertIn('<p class="to-pay">To pay there: ≈ €190</p>', html)
 
@@ -226,19 +293,24 @@ class QueryAndAccessTests(ToPayTests):
     def one_of_each(self, tag):
         leg = self.leg(origin=f"A{tag}", destination=f"B{tag}", cost=D("10"))
         Meal.objects.create(day=self.day, name=f"Meal {tag}", est_cost=D("12"), currency="EUR")
-        TripActivity.objects.create(trip=self.trip, day=self.day, title=f"Tour {tag}", est_cost=D("9"),
-                                    currency="EUR")
-        Lodging.objects.create(trip=self.trip, name=f"Inn {tag}", check_in=self.day.date,
-                               check_out=date(2027, 9, 21), nightly_rate=D("50"), currency="EUR")
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number=f"B{tag}", cost=D("10"),
-                                              currency="EUR")
+        TripActivity.objects.create(trip=self.trip, day=self.day, title=f"Tour {tag}", est_cost=D("9"), currency="EUR")
+        Lodging.objects.create(
+            trip=self.trip,
+            name=f"Inn {tag}",
+            check_in=self.day.date,
+            check_out=date(2027, 9, 21),
+            nightly_rate=D("50"),
+            currency="EUR",
+        )
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number=f"B{tag}", cost=D("10"), currency="EUR"
+        )
         booking.link(leg)
         self.pay("5", booking)
 
     def count(self, budget):
         url = reverse("trips:trip_pdf", args=[self.trip.pk]) + ("?budget=1" if budget else "")
-        with mock.patch("apps.trips.pdf.render_pdf", return_value=b"%PDF"), \
-                CaptureQueriesContext(connection) as ctx:
+        with mock.patch("apps.trips.pdf.render_pdf", return_value=b"%PDF"), CaptureQueriesContext(connection) as ctx:
             self.client.get(url)
         return len(ctx.captured_queries)
 
@@ -266,5 +338,6 @@ class QueryAndAccessTests(ToPayTests):
         TripGrant.objects.create(trip=self.trip, user=viewer, role=TripRole.VIEWER)
         self.client.force_login(viewer)
         with mock.patch("apps.trips.pdf.render_pdf", return_value=b"%PDF"):
-            self.assertEqual(self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk]) + "?budget=1")
-                             .status_code, 200)
+            self.assertEqual(
+                self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk]) + "?budget=1").status_code, 200
+            )

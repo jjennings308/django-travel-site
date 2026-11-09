@@ -9,6 +9,7 @@ whose name matches exactly one of those (ignoring capitals, spacing, punctuation
 German ö/ä/ü written either way: "Zur Höll" = "Zur Hoell" = "Zur Holl") gets a
 suggestion — offered, never linked automatically; "Not this one" stores a ``TidyDismissal``.
 """
+
 import re
 import unicodedata
 
@@ -72,8 +73,13 @@ class Candidates:
 
     def event_on(self, activity, day_date):
         """The one event of ``activity`` running on ``day_date``, else None."""
-        found = [e for e in self.event_list if e.related_activity_id == activity.pk and day_date
-                 and e.start_date <= day_date <= (e.end_date or e.start_date)]
+        found = [
+            e
+            for e in self.event_list
+            if e.related_activity_id == activity.pk
+            and day_date
+            and e.start_date <= day_date <= (e.end_date or e.start_date)
+        ]
         return found[0] if len(found) == 1 else None
 
     def match(self, name, activities=True, day_date=None):
@@ -133,6 +139,7 @@ def import_matches(parsed_days):
     from apps.activities.models import Activity
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import POI
+
     wanted = {}
     for day in parsed_days:
         number = day.get("day_number")
@@ -154,5 +161,4 @@ def import_matches(parsed_days):
         found.setdefault(normalise(poi.name), []).append(f"place {poi.name}, {poi.city.name}")
     for activity in Activity.get_public_activities().filter(exact):
         found.setdefault(normalise(activity.name), []).append(f"activity {activity.name}")
-    return [(number, what, name, " / ".join(found[key]))
-            for key in found for number, what, name in wanted.get(key, [])]
+    return [(number, what, name, " / ".join(found[key])) for key in found for number, what, name in wanted.get(key, [])]

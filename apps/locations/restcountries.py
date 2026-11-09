@@ -14,6 +14,7 @@ has ``names.common`` / ``official`` / ``alternates``, ``codes.alpha_2`` / ``alph
 read either keyed by code ``{"EUR": {"name": …}}`` or as a list of ``{"code", "name"}``), ``calling_codes`` (strings)
 and ``continents`` (strings).
 """
+
 import json
 import time
 import urllib.error
@@ -23,8 +24,7 @@ import urllib.request
 from django.conf import settings
 
 BASE = "https://api.restcountries.com/countries/v5"
-FIELDS = ("names.common,names.official,names.alternates,codes.alpha_2,codes.alpha_3,currencies,calling_codes,"
-          "continents")
+FIELDS = "names.common,names.official,names.alternates,codes.alpha_2,codes.alpha_3,currencies,calling_codes,continents"
 PAGE = 100  # the free plan's largest page
 TIMEOUT = 20  # seconds
 RETRIES = 3  # after a 429
@@ -39,8 +39,9 @@ def _get(path, params, key, sleep=None):
     sleep = sleep or time.sleep
     url = f"{BASE}{path}?{urllib.parse.urlencode(params)}"
     agent = f"{getattr(settings, 'SITE_NAME', 'ShareBucketList')}/1.0 (+{getattr(settings, 'SITE_URL', '')})"
-    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}", "User-Agent": agent,
-                                                   "Accept": "application/json"})
+    request = urllib.request.Request(
+        url, headers={"Authorization": f"Bearer {key}", "User-Agent": agent, "Accept": "application/json"}
+    )
     for attempt in range(RETRIES + 1):
         try:
             with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
@@ -51,8 +52,9 @@ def _get(path, params, key, sleep=None):
                 sleep(int(retry) if retry and retry.isdigit() else WAIT)
                 continue
             if error.code == 403:
-                raise ApiError("REST Countries refused the request (403): the monthly quota is used up, or the "
-                               "account is frozen.") from None
+                raise ApiError(
+                    "REST Countries refused the request (403): the monthly quota is used up, or the account is frozen."
+                ) from None
             if error.code == 401:
                 raise ApiError("REST Countries didn't accept the API key (401): check RESTCOUNTRIES_API_KEY.") from None
             if error.code == 404:
@@ -94,8 +96,10 @@ def currencies(value):
 def _plain(country):
     names, codes = country.get("names") or {}, country.get("codes") or {}
     return {
-        "alpha_2": (codes.get("alpha_2") or "").upper(), "alpha_3": (codes.get("alpha_3") or "").upper(),
-        "common": names.get("common") or "", "official": names.get("official") or "",
+        "alpha_2": (codes.get("alpha_2") or "").upper(),
+        "alpha_3": (codes.get("alpha_3") or "").upper(),
+        "common": names.get("common") or "",
+        "official": names.get("official") or "",
         "alternates": list(names.get("alternates") or []),
         "currencies": currencies(country.get("currencies")),
         "calling_codes": [str(c) for c in country.get("calling_codes") or []],
@@ -108,8 +112,9 @@ def fetch(key, alpha_2=None, sleep=None):
     if not key:
         raise ApiError("RESTCOUNTRIES_API_KEY isn't set.")
     if alpha_2:
-        objects, _ = _objects(_get(f"/codes.alpha_2/{urllib.parse.quote(alpha_2.upper())}",
-                                   {"response_fields": FIELDS}, key, sleep))
+        objects, _ = _objects(
+            _get(f"/codes.alpha_2/{urllib.parse.quote(alpha_2.upper())}", {"response_fields": FIELDS}, key, sleep)
+        )
         return [_plain(c) for c in objects]
     found, offset = [], 0
     while True:

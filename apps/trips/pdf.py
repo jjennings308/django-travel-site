@@ -14,7 +14,6 @@ The cover shows ``Trip.cover_photo`` when an editor chose one: ``cover_image`` e
 (scaled to ``COVER_SIDE`` px, JPEG), so WeasyPrint never fetches a private photo over HTTP.
 """
 
-
 import base64
 import io
 import logging
@@ -26,7 +25,7 @@ COVER_SIDE = 1800  # px, the longer side: sharp across a Letter page at print si
 
 # Pictographic emoji (💡, 🍺) and their variation selector: no emoji font is installed on the
 # servers, so they'd print as empty boxes. Symbols the text font has (✈, →) are kept.
-EMOJI = re.compile("[\U0001F000-\U0001FAFF\uFE0F]")
+EMOJI = re.compile("[\U0001f000-\U0001faff\ufe0f]")
 
 
 class PdfUnavailable(Exception):
@@ -35,6 +34,7 @@ class PdfUnavailable(Exception):
 
 def booklet_context(trip):
     from .itinerary import _shared, attach_stays, tracks
+
     stays = list(trip.lodging.all())
     days = list(trip.days.all())
     attach_stays(days, stays)
@@ -54,6 +54,7 @@ def cover_image(trip):
     if media is None or not media.file:
         return ""
     from PIL import Image, ImageOps
+
     try:
         with media.file.open("rb") as f, Image.open(f) as picture:
             picture = ImageOps.exif_transpose(picture).convert("RGB")

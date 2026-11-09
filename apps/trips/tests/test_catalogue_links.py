@@ -1,4 +1,5 @@
 """Meals and sections linked to the catalogue, and "On trips · N" (site roadmap R18)."""
+
 from datetime import date, time
 from io import StringIO
 
@@ -22,33 +23,67 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="London", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="London", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 5, 1))
-        uk = Country.objects.create(name="United Kingdom", slug="uk", iso_code="GB", iso3_code="GBR",
-                                    continent="Europe", **APPROVED)
-        fr = Country.objects.create(name="France", slug="fr", iso_code="FR", iso3_code="FRA", continent="Europe",
-                                    **APPROVED)
-        self.london = City.objects.create(name="London", slug="london", country=uk, latitude=51.5, longitude=0,
-                                          **APPROVED)
-        self.paris = City.objects.create(name="Paris", slug="paris", country=fr, latitude=48.8, longitude=2.3,
-                                         **APPROVED)
-        self.market = POI.objects.create(name="Borough Market", slug="borough-market", city=self.london,
-                                         latitude=51.5, longitude=0, poi_type_id="food", **APPROVED)
-        self.tate = POI.objects.create(name="Tate Modern", slug="tate-modern", city=self.london, latitude=51.5,
-                                       longitude=0, poi_type_id="museum", **APPROVED)
-        self.louvre = POI.objects.create(name="Louvre", slug="louvre", city=self.paris, latitude=48.8,
-                                         longitude=2.3, **APPROVED)
-        self.pending = POI.objects.create(name="New Cafe", slug="new-cafe", city=self.london, latitude=51.5,
-                                          longitude=0)
+        uk = Country.objects.create(
+            name="United Kingdom", slug="uk", iso_code="GB", iso3_code="GBR", continent="Europe", **APPROVED
+        )
+        fr = Country.objects.create(
+            name="France", slug="fr", iso_code="FR", iso3_code="FRA", continent="Europe", **APPROVED
+        )
+        self.london = City.objects.create(
+            name="London", slug="london", country=uk, latitude=51.5, longitude=0, **APPROVED
+        )
+        self.paris = City.objects.create(
+            name="Paris", slug="paris", country=fr, latitude=48.8, longitude=2.3, **APPROVED
+        )
+        self.market = POI.objects.create(
+            name="Borough Market",
+            slug="borough-market",
+            city=self.london,
+            latitude=51.5,
+            longitude=0,
+            poi_type_id="food",
+            **APPROVED,
+        )
+        self.tate = POI.objects.create(
+            name="Tate Modern",
+            slug="tate-modern",
+            city=self.london,
+            latitude=51.5,
+            longitude=0,
+            poi_type_id="museum",
+            **APPROVED,
+        )
+        self.louvre = POI.objects.create(
+            name="Louvre", slug="louvre", city=self.paris, latitude=48.8, longitude=2.3, **APPROVED
+        )
+        self.pending = POI.objects.create(
+            name="New Cafe", slug="new-cafe", city=self.london, latitude=51.5, longitude=0
+        )
         category = ActivityCategory.objects.create(name="Walks", slug="walks")
-        self.walk = Activity.objects.create(name="Thames walk", slug="thames-walk", category=category,
-                                            description="x", city=self.london, visibility="public", **APPROVED)
-        self.paris_walk = Activity.objects.create(name="Seine walk", slug="seine-walk", category=category,
-                                                  description="x", city=self.paris, visibility="public",
-                                                  **APPROVED)
+        self.walk = Activity.objects.create(
+            name="Thames walk",
+            slug="thames-walk",
+            category=category,
+            description="x",
+            city=self.london,
+            visibility="public",
+            **APPROVED,
+        )
+        self.paris_walk = Activity.objects.create(
+            name="Seine walk",
+            slug="seine-walk",
+            category=category,
+            description="x",
+            city=self.paris,
+            visibility="public",
+            **APPROVED,
+        )
         self.trip.cities.add(self.london)
 
 
@@ -83,12 +118,24 @@ class SuggestionTests(Fixture):
 
     def test_umlauts_and_accents_either_way(self):
         from apps.trips.catalogue_links import match_keys
-        for typed, catalogue in (("Zur Höll", "Zur Hoell"), ("zur hoell", "Zur Höll"), ("Hofbraeuhaus", "Hofbräuhaus"),
-                                 ("Strasse Cafe", "Straße Café")):
+
+        for typed, catalogue in (
+            ("Zur Höll", "Zur Hoell"),
+            ("zur hoell", "Zur Höll"),
+            ("Hofbraeuhaus", "Hofbräuhaus"),
+            ("Strasse Cafe", "Straße Café"),
+        ):
             self.assertTrue(match_keys(typed) & match_keys(catalogue), (typed, catalogue))
         self.assertFalse(match_keys("Zur Hell") & match_keys("Zur Hoell"))
-        POI.objects.create(name="Zur Hoell", slug="zur-hoell", city=self.london, latitude=51.5, longitude=0,
-                           poi_type_id="food", **APPROVED)
+        POI.objects.create(
+            name="Zur Hoell",
+            slug="zur-hoell",
+            city=self.london,
+            latitude=51.5,
+            longitude=0,
+            poi_type_id="food",
+            **APPROVED,
+        )
         Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
         self.assertContains(self.page(), "Looks like the catalogue place")
 
@@ -110,8 +157,9 @@ class SuggestionTests(Fixture):
     def test_partial_names_other_cities_and_ambiguous_names_suggest_nothing(self):
         Meal.objects.create(day=self.day, name="Lunch at Borough Market", meal_type="lunch")
         Meal.objects.create(day=self.day, name="Louvre", meal_type="lunch")
-        POI.objects.create(name="Tate Modern", slug="tate-modern-2", city=self.london, latitude=1, longitude=1,
-                           **APPROVED)
+        POI.objects.create(
+            name="Tate Modern", slug="tate-modern-2", city=self.london, latitude=1, longitude=1, **APPROVED
+        )
         Meal.objects.create(day=self.day, name="Tate Modern", meal_type="lunch")
         self.assertNotContains(self.page(), "Looks like")
 
@@ -140,11 +188,11 @@ class SuggestionTests(Fixture):
 
 class DisplayTests(Fixture):
     def test_trip_page_links_the_catalogue_items(self):
-        Meal.objects.create(day=self.day, name="Lunch", meal_type="lunch", poi=self.market,
-                            reserved_time=time(12, 0))
+        Meal.objects.create(day=self.day, name="Lunch", meal_type="lunch", poi=self.market, reserved_time=time(12, 0))
         Meal.objects.create(day=self.day, name="Snack", meal_type="snack", poi=self.tate)  # a food idea
-        Section.objects.create(day=self.day, section_type="note", title="Afternoon", activity=self.walk,
-                               content={"paragraphs": ["x"]})
+        Section.objects.create(
+            day=self.day, section_type="note", title="Afternoon", activity=self.walk, content={"paragraphs": ["x"]}
+        )
         self.client.force_login(self.viewer)
         page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         self.assertContains(page, reverse("locations:poi_detail", args=[self.market.slug]))
@@ -208,16 +256,23 @@ class CountTests(Fixture):
 class FoodTypeTests(TestCase):
     def test_food_and_drink_type_is_seeded(self):
         from apps.locations.models import PlaceType
+
         self.assertEqual(PlaceType.objects.get(code="food").name, "Food & drink")
 
 
 class ImportMatchTests(Fixture):
     def test_dry_run_lists_exact_matches_and_links_nothing(self):
-        parsed_days = [{"day_number": 2, "meals": [{"name": "Borough Market"}, {"name": "Pret"}],
-                        "sections": [{"title": "Thames walk", "content": {}},
-                                     {"title": "x", "content": {"heading": "Louvre"}}]}]
+        parsed_days = [
+            {
+                "day_number": 2,
+                "meals": [{"name": "Borough Market"}, {"name": "Pret"}],
+                "sections": [{"title": "Thames walk", "content": {}}, {"title": "x", "content": {"heading": "Louvre"}}],
+            }
+        ]
         matches = catalogue_links.import_matches(parsed_days)
-        self.assertEqual(sorted((m[1], m[2]) for m in matches),
-                         [("meal", "Borough Market"), ("section", "Louvre"), ("section", "Thames walk")])
+        self.assertEqual(
+            sorted((m[1], m[2]) for m in matches),
+            [("meal", "Borough Market"), ("section", "Louvre"), ("section", "Thames walk")],
+        )
         self.assertIn("place Borough Market, London", [m[3] for m in matches])
         self.assertFalse(Meal.objects.exists())

@@ -6,10 +6,12 @@ change; the booklet changes only when a phase says so and the snapshot is update
 rewrites ``snapshots/booklet.html``; review the diff before committing it. The HTML is what the
 ``trip_pdf`` view hands WeasyPrint (``render_pdf`` is mocked), with whitespace collapsed. It
 prints no database ids, so it is stable between runs."""
+
 import difflib
 import os
 import re
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from pathlib import Path
 from unittest import mock
@@ -20,9 +22,30 @@ from django.urls import reverse
 
 from apps.activities.models import Activity, ActivityCategory
 from apps.locations.models import POI, City, Country
+from apps.trips.models import (
+    BookingTask,
+    Checklist,
+    ChecklistItem,
+    ChecklistTick,
+    Confirmation,
+    ConfirmationFile,
+    Contact,
+    Day,
+    ItemLink,
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    Section,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripGrant,
+    TripInfo,
+    TripRole,
+)
 from apps.trips.tests.helpers import make_task
-from apps.trips.models import (BookingTask, Checklist, ChecklistItem, ChecklistTick, Confirmation, ConfirmationFile, Contact, Day, ItemLink, Lodging, Meal, Option, OptionGroup, Section,
-                               TransportLeg, Traveler, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -37,39 +60,84 @@ def normalise(html):
 
 def build_trip():
     """A small trip with every item kind the booklet prints."""
-    trip = Trip.objects.create(name="Snapshot Trip — Europe", destination="Bavaria · Windsor",
-                               start_date=date(2027, 9, 17), end_date=date(2027, 9, 20),
-                               notes="Overview note.")
+    trip = Trip.objects.create(
+        name="Snapshot Trip — Europe",
+        destination="Bavaria · Windsor",
+        start_date=date(2027, 9, 17),
+        end_date=date(2027, 9, 20),
+        notes="Overview note.",
+    )
     ada = Traveler.objects.create(name="Ada Lovelace")
     bo = Traveler.objects.create(name="Bo Lovelace")
     trip.travelers.set([ada, bo])
     d1 = Day.objects.create(trip=trip, day_number=1, date=date(2027, 9, 17), theme="Overnight flight — PIT → FRA")
-    d2 = Day.objects.create(trip=trip, day_number=2, date=date(2027, 9, 18), theme="Arrive — Butzbach",
-                            meals_included=True)
+    d2 = Day.objects.create(
+        trip=trip, day_number=2, date=date(2027, 9, 18), theme="Arrive — Butzbach", meals_included=True
+    )
     d3 = Day.objects.create(trip=trip, day_number=3, date=date(2027, 9, 19), theme="Marburg day trip")
     d4 = Day.objects.create(trip=trip, day_number=4, date=date(2027, 9, 20), theme="Train south")
     d3.travelers.set([ada])  # a split day
 
     overnight = TransportLeg.objects.create(
-        trip=trip, mode="plane", operator="DL", service_number="0144", origin="PIT", destination="FRA",
-        origin_timezone="America/New_York", destination_timezone="Europe/Berlin",
-        departure_at=datetime(2027, 9, 17, 22, 30, tzinfo=UTC), arrival_at=datetime(2027, 9, 18, 6, 15, tzinfo=UTC),
-        notes="Seats 31A, 31B")
+        trip=trip,
+        mode="plane",
+        operator="DL",
+        service_number="0144",
+        origin="PIT",
+        destination="FRA",
+        origin_timezone="America/New_York",
+        destination_timezone="Europe/Berlin",
+        departure_at=datetime(2027, 9, 17, 22, 30, tzinfo=UTC),
+        arrival_at=datetime(2027, 9, 18, 6, 15, tzinfo=UTC),
+        notes="Seats 31A, 31B",
+    )
     timed = TransportLeg.objects.create(
-        trip=trip, mode="train", operator="DB", service_number="ICE 599", origin="Frankfurt Hbf",
-        destination="Augsburg Hbf", origin_timezone="Europe/Berlin", destination_timezone="Europe/Berlin",
-        departure_at=datetime(2027, 9, 20, 8, 0, tzinfo=UTC), arrival_at=datetime(2027, 9, 20, 10, 40, tzinfo=UTC))
-    travel = Section.objects.create(day=d4, section_type="travel", title="Getting around", order=1,
-                                    content={"intro": "Book seats together.", "columns": ["What", "Info"],
-                                             "rows": [["Ticket", "Flexpreis"]]})
-    planned = TransportLeg.objects.create(trip=trip, mode="train", operator="RE30", origin="Butzbach",
-                                          destination="Frankfurt Hbf", date=d4.date, section=travel,
-                                          est_duration=timedelta(minutes=45), notes="Frequent service")
+        trip=trip,
+        mode="train",
+        operator="DB",
+        service_number="ICE 599",
+        origin="Frankfurt Hbf",
+        destination="Augsburg Hbf",
+        origin_timezone="Europe/Berlin",
+        destination_timezone="Europe/Berlin",
+        departure_at=datetime(2027, 9, 20, 8, 0, tzinfo=UTC),
+        arrival_at=datetime(2027, 9, 20, 10, 40, tzinfo=UTC),
+    )
+    travel = Section.objects.create(
+        day=d4,
+        section_type="travel",
+        title="Getting around",
+        order=1,
+        content={"intro": "Book seats together.", "columns": ["What", "Info"], "rows": [["Ticket", "Flexpreis"]]},
+    )
+    planned = TransportLeg.objects.create(
+        trip=trip,
+        mode="train",
+        operator="RE30",
+        origin="Butzbach",
+        destination="Frankfurt Hbf",
+        date=d4.date,
+        section=travel,
+        est_duration=timedelta(minutes=45),
+        notes="Frequent service",
+    )
 
-    hof = Lodging.objects.create(trip=trip, name="Hotel Hessischer Hof", address="Farbgasse 1, Butzbach",
-                                 check_in=d2.date, check_out=d4.date, nightly_rate=Decimal("120.00"), currency="EUR")
-    augusta = Lodging.objects.create(trip=trip, name="Hotel Augusta", address="Ludwigstraße 2, Augsburg",
-                                     check_in=d4.date, check_out=date(2027, 9, 22))
+    hof = Lodging.objects.create(
+        trip=trip,
+        name="Hotel Hessischer Hof",
+        address="Farbgasse 1, Butzbach",
+        check_in=d2.date,
+        check_out=d4.date,
+        nightly_rate=Decimal("120.00"),
+        currency="EUR",
+    )
+    augusta = Lodging.objects.create(
+        trip=trip,
+        name="Hotel Augusta",
+        address="Ludwigstraße 2, Augsburg",
+        check_in=d4.date,
+        check_out=date(2027, 9, 22),
+    )
 
     # The old phase, callout, free text and choose your adventure as the notes they became (P3, S1; the types
     # were retired in retire-old-section-types S2), so the booklet is unchanged.
@@ -78,43 +146,103 @@ def build_trip():
     def note(day, kind, title, order, content, **extra):
         title, content = day_first.as_note(kind, title, content)
         return Section.objects.create(day=day, section_type="note", title=title, order=order, content=content, **extra)
-    note(d2, "phase", "Arrive", 1, {"heading": "Morning — Arrive", "summary": "Land FRA, clear customs.",
-                                    "highlights": ["Coffee", "Nap"]})
-    Section.objects.create(day=d2, section_type="logistics_table", title="Trains", order=2,
-                           content={"columns": ["Leg", "Time"], "rows": [["FRA → Butzbach", "~45 min"]]})
+
+    note(
+        d2,
+        "phase",
+        "Arrive",
+        1,
+        {"heading": "Morning — Arrive", "summary": "Land FRA, clear customs.", "highlights": ["Coffee", "Nap"]},
+    )
+    Section.objects.create(
+        day=d2,
+        section_type="logistics_table",
+        title="Trains",
+        order=2,
+        content={"columns": ["Leg", "Time"], "rows": [["FRA → Butzbach", "~45 min"]]},
+    )
     note(d2, "callout", "Tip", 3, {"tone": "warning", "text": "💡 Pickup is in the terminal"})
-    tour = note(d3, "choose_your_adventure", "Afternoon", 1, {
-        "prompt": "Pick one", "summary": "Both are short.", "options": [
-            {"letter": "A", "title": "Castle", "description": "Up the hill", "duration": "2 h", "cost": "€8"},
-            {"letter": "B", "title": "Old town", "description": "Stroll"}]})
+    tour = note(
+        d3,
+        "choose_your_adventure",
+        "Afternoon",
+        1,
+        {
+            "prompt": "Pick one",
+            "summary": "Both are short.",
+            "options": [
+                {"letter": "A", "title": "Castle", "description": "Up the hill", "duration": "2 h", "cost": "€8"},
+                {"letter": "B", "title": "Old town", "description": "Stroll"},
+            ],
+        },
+    )
     # Catalogue links (site roadmap R18): a section about a place and an activity, a meal at a place.
     de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe")
     marburg = City.objects.create(name="Marburg", slug="marburg", country=de, latitude=50.8, longitude=8.77)
-    castle = POI.objects.create(name="Marburg Castle", slug="marburg-castle", city=marburg, latitude=50.81,
-                                longitude=8.77)
+    castle = POI.objects.create(
+        name="Marburg Castle", slug="marburg-castle", city=marburg, latitude=50.81, longitude=8.77
+    )
     franco = POI.objects.create(name="Da Franco", slug="da-franco", city=marburg, latitude=50.8, longitude=8.77)
     category = ActivityCategory.objects.create(name="Sightseeing", slug="sightseeing")
     walk = Activity.objects.create(name="Castle walk", slug="castle-walk", category=category, description="x")
-    note(d3, "free_text", "Notes", 2, {"paragraphs": ["First paragraph.", "Second paragraph."]}, poi=castle,
-         activity=walk)
-    dinner = Meal.objects.create(day=d2, name="Ristorante Da Franco", meal_type="dinner", cuisine="Italian",
-                                 price_range="$$", why_recommended="Wood-fired pizza", poi=franco,
-                                 reservation_notes="Call ahead", reserved_time=time(19, 30))
+    note(
+        d3,
+        "free_text",
+        "Notes",
+        2,
+        {"paragraphs": ["First paragraph.", "Second paragraph."]},
+        poi=castle,
+        activity=walk,
+    )
+    dinner = Meal.objects.create(
+        day=d2,
+        name="Ristorante Da Franco",
+        meal_type="dinner",
+        cuisine="Italian",
+        price_range="$$",
+        why_recommended="Wood-fired pizza",
+        poi=franco,
+        reservation_notes="Call ahead",
+        reserved_time=time(19, 30),
+    )
     Meal.objects.create(day=d3, name="Café Vetter", meal_type="lunch", order=1)
 
     # Catalogue notes (catalogue-notes N2): printed under the linked section and meal; a hidden one isn't.
     from apps.catalogue_notes.models import CatalogueNote
     from apps.trips.models import TripHiddenNote
-    CatalogueNote.objects.create(poi=castle, tone="warning", text="Museum: cash only; no ATM near the castle.",
-                                 checked_on=date(2026, 10, 1), approval_status="approved")
-    CatalogueNote.objects.create(poi=franco, tone="tip", text="Book a table for six.", closed_weekdays=[0, 1],
-                                 checked_on=date(2026, 10, 1), approval_status="approved")
-    hidden = CatalogueNote.objects.create(poi=franco, text="Hidden on this trip.", checked_on=date(2026, 10, 1),
-                                          approval_status="approved")
+
+    CatalogueNote.objects.create(
+        poi=castle,
+        tone="warning",
+        text="Museum: cash only; no ATM near the castle.",
+        checked_on=date(2026, 10, 1),
+        approval_status="approved",
+    )
+    CatalogueNote.objects.create(
+        poi=franco,
+        tone="tip",
+        text="Book a table for six.",
+        closed_weekdays=[0, 1],
+        checked_on=date(2026, 10, 1),
+        approval_status="approved",
+    )
+    hidden = CatalogueNote.objects.create(
+        poi=franco, text="Hidden on this trip.", checked_on=date(2026, 10, 1), approval_status="approved"
+    )
     TripHiddenNote.objects.create(trip=trip, note=hidden)
-    guide = TripActivity.objects.create(trip=trip, day=d3, kind="tour", title="Student guide", provider="Uni Marburg",
-                                        start_time=time(15, 0), end_time=time(16, 30), place_text="Marktplatz",
-                                        est_cost=Decimal("40"), currency="EUR", notes="Meet at the fountain")
+    guide = TripActivity.objects.create(
+        trip=trip,
+        day=d3,
+        kind="tour",
+        title="Student guide",
+        provider="Uni Marburg",
+        start_time=time(15, 0),
+        end_time=time(16, 30),
+        place_text="Marktplatz",
+        est_cost=Decimal("40"),
+        currency="EUR",
+        notes="Meet at the fountain",
+    )
     guide.travelers.add(ada)
     TripActivity.objects.create(trip=trip, day=d4, kind="entry", title="Fuggerei entry")
 
@@ -126,57 +254,117 @@ def build_trip():
     docs = Checklist.objects.create(trip=trip, title="Documents", kind="documents")
     passport = ChecklistItem.objects.create(checklist=docs, text="Passport", per_person=True, order=0)
     ChecklistTick.objects.create(item=passport, traveler=ada)
-    ChecklistItem.objects.create(checklist=docs, text="Insurance", order=1, done_at=datetime(2027, 8, 1, tzinfo=dt_timezone.utc))
+    ChecklistItem.objects.create(
+        checklist=docs, text="Insurance", order=1, done_at=datetime(2027, 8, 1, tzinfo=dt_timezone.utc)
+    )
     db_ticket = Confirmation.attach_number(trip, "DB-1234", timed, provider="Deutsche Bahn")
     # A ticket on it (R5): the booklet names files, never embeds them. No real file is needed.
-    ConfirmationFile.objects.create(confirmation=db_ticket, file="trips/snapshot/ticket.pdf",
-                                    original_name="DB ticket.pdf", content_type="application/pdf", size=1000)
+    ConfirmationFile.objects.create(
+        confirmation=db_ticket,
+        file="trips/snapshot/ticket.pdf",
+        original_name="DB ticket.pdf",
+        content_type="application/pdf",
+        size=1000,
+    )
     Confirmation.attach_number(trip, "5305434791", hof, provider="Booking.com")
     Confirmation.attach_number(trip, "UNI-77", guide, provider="Uni Marburg")
     # Labelled as when it was attached to the section before conversion renamed it.
     Confirmation.attach_number(trip, "NIGHT1", tour, provider="Nightwatchman", label="Afternoon")
     Confirmation.attach_number(trip, "TABLE9", dinner, provider="Da Franco")
-    Confirmation.objects.create(trip=trip, confirmation_number="EUSP2592862107", provider="Allianz",
-                                label="Travel insurance")
+    Confirmation.objects.create(
+        trip=trip, confirmation_number="EUSP2592862107", provider="Allianz", label="Travel insurance"
+    )
 
     taxi = Contact.objects.create(trip=trip, name="Taxi Augsburg", role="Taxi", phone="+49 821 35025")
-    desk = Contact.objects.create(trip=trip, name="Hotel Hessischer Hof", phone="+49 6033 1234",
-                                  email="info@example.com", notes="Front desk 24 h",
-                                  address="Farbgasse 1, 35510 Butzbach", url="https://example.com/hof")
-    rules = TripInfo.objects.create(trip=trip, title="Bayern Ticket rules",
-                                    body="Valid on regional trains only.\n\nUp to 5 people.", url="https://example.com/bt")
+    desk = Contact.objects.create(
+        trip=trip,
+        name="Hotel Hessischer Hof",
+        phone="+49 6033 1234",
+        email="info@example.com",
+        notes="Front desk 24 h",
+        address="Farbgasse 1, 35510 Butzbach",
+        url="https://example.com/hof",
+    )
+    rules = TripInfo.objects.create(
+        trip=trip,
+        title="Bayern Ticket rules",
+        body="Valid on regional trains only.\n\nUp to 5 people.",
+        url="https://example.com/bt",
+    )
     TripInfo.objects.create(trip=trip, title="Currency", body="Cards almost everywhere.")  # linked to nothing
-    ItemLink.link(desk, hof)       # on each night of the stay
-    ItemLink.link(taxi, planned)   # under a leg
-    ItemLink.link(rules, travel)   # a section: the day's Good to know
-    ItemLink.link(rules, d2)       # the day itself
+    ItemLink.link(desk, hof)  # on each night of the stay
+    ItemLink.link(taxi, planned)  # under a leg
+    ItemLink.link(rules, travel)  # a section: the day's Good to know
+    ItemLink.link(rules, d2)  # the day itself
     make_task(trip, "ICE seats", planned, priority=2, due_note="before Sept 1")
     make_task(trip, "Hotel Augusta deposit", augusta, priority=1, due=date(2027, 8, 1))
     BookingTask.objects.create(trip=trip, title="Already done", done=True)
-    BookingTask.objects.create(trip=trip, title="Augsburg accommodation", priority=1,
-                               notes="Options moved to the choice “Augsburg accommodation” on Day 1.")
+    BookingTask.objects.create(
+        trip=trip,
+        title="Augsburg accommodation",
+        priority=1,
+        notes="Options moved to the choice “Augsburg accommodation” on Day 1.",
+    )
     # Day-first plan P5: a split afternoon on Day 4, Ada and Bo on their own tracks.
     afternoon = OptionGroup.objects.create(trip=trip, day=d4, prompt="Augsburg afternoon")
-    puppets = Option.objects.create(group=afternoon, title="Puppet museum", est_cost=Decimal("12"), currency="EUR",
-                                    order=0)
+    puppets = Option.objects.create(
+        group=afternoon, title="Puppet museum", est_cost=Decimal("12"), currency="EUR", order=0
+    )
     walk = Option.objects.create(group=afternoon, title="Old town walk", notes="Meet at the Rathaus", order=1)
-    TripActivity.objects.create(trip=trip, day=d4, title="Augsburger Puppenkiste", kind="entry",
-                                start_time=time(15, 0), option=puppets)
-    TripActivity.objects.create(trip=trip, day=d4, title="Fuggerei walk", kind="tour", start_time=time(14, 30),
-                                option=walk)
+    TripActivity.objects.create(
+        trip=trip, day=d4, title="Augsburger Puppenkiste", kind="entry", start_time=time(15, 0), option=puppets
+    )
+    TripActivity.objects.create(
+        trip=trip, day=d4, title="Fuggerei walk", kind="tour", start_time=time(14, 30), option=walk
+    )
     afternoon.split({puppets: [ada], walk: [bo]})
     # Typed choices T1: an undecided stay choice prints each option's line (nightly price × nights, place).
     where = OptionGroup.objects.create(trip=trip, day=d3, prompt="Where to stay in Marburg", kind="stay", nights=2)
-    Option.objects.create(group=where, title="Hotel Rosenpark", est_cost=Decimal("95"), currency="EUR",
-                          place_text="Anneliese-Pohl-Allee 7", order=0)
-    Option.objects.create(group=where, title="Old town flat", est_cost=Decimal("80"), currency="EUR", nights=3,
-                          place_text="Markt 12", notes="3-night minimum", order=1)
+    Option.objects.create(
+        group=where,
+        title="Hotel Rosenpark",
+        est_cost=Decimal("95"),
+        currency="EUR",
+        place_text="Anneliese-Pohl-Allee 7",
+        order=0,
+    )
+    Option.objects.create(
+        group=where,
+        title="Old town flat",
+        est_cost=Decimal("80"),
+        currency="EUR",
+        nights=3,
+        place_text="Markt 12",
+        notes="3-night minimum",
+        order=1,
+    )
     # A choice on Day 1, picked: what a converted decision to-do became (P4, retire-decision-todos D1).
-    day_first.make_group(trip, d1, "Augsburg accommodation", "", [
-        {"title": "Hotel Augusta", "notes": "Old town, 6 rooms", "url": "https://example.com/augusta",
-         "est_cost": Decimal("140"), "currency": "EUR", "order": 1, "chosen": True},
-        {"title": "Steigenberger Drei Mohren", "notes": "", "url": "", "est_cost": Decimal("210"), "currency": "EUR",
-         "order": 2, "chosen": False}])
+    day_first.make_group(
+        trip,
+        d1,
+        "Augsburg accommodation",
+        "",
+        [
+            {
+                "title": "Hotel Augusta",
+                "notes": "Old town, 6 rooms",
+                "url": "https://example.com/augusta",
+                "est_cost": Decimal("140"),
+                "currency": "EUR",
+                "order": 1,
+                "chosen": True,
+            },
+            {
+                "title": "Steigenberger Drei Mohren",
+                "notes": "",
+                "url": "",
+                "est_cost": Decimal("210"),
+                "currency": "EUR",
+                "order": 2,
+                "chosen": False,
+            },
+        ],
+    )
     return trip
 
 
@@ -192,8 +380,10 @@ class BookletSnapshotTests(TestCase):
             return b"%PDF"
 
         self.client.force_login(user)
-        with mock.patch("apps.trips.pdf.render_pdf", side_effect=fake), \
-                mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 8, 15)):
+        with (
+            mock.patch("apps.trips.pdf.render_pdf", side_effect=fake),
+            mock.patch("apps.trips.views.django_timezone.localdate", return_value=date(2027, 8, 15)),
+        ):
             self.assertEqual(self.client.get(reverse("trips:trip_pdf", args=[trip.pk])).status_code, 200)
         html = normalise(captured["html"])
         if os.environ.get("UPDATE_SNAPSHOTS"):
@@ -201,7 +391,12 @@ class BookletSnapshotTests(TestCase):
             return
         expected = SNAPSHOT.read_text(encoding="utf-8")
         if html != expected:
-            diff = "\n".join(list(difflib.unified_diff(expected.splitlines(), html.splitlines(), "snapshot", "now",
-                                                       lineterm=""))[:60])
-            self.fail("The booklet's HTML changed. If that's intended, rerun with UPDATE_SNAPSHOTS=1 and review "
-                      f"the diff.\n{diff}")
+            diff = "\n".join(
+                list(difflib.unified_diff(expected.splitlines(), html.splitlines(), "snapshot", "now", lineterm=""))[
+                    :60
+                ]
+            )
+            self.fail(
+                "The booklet's HTML changed. If that's intended, rerun with UPDATE_SNAPSHOTS=1 and review "
+                f"the diff.\n{diff}"
+            )

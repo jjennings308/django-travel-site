@@ -1,11 +1,12 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.locations.models import Country
 from apps.approval_system.models import ApprovalStatus
+from apps.locations.models import Country
 
 User = get_user_model()
+
 
 class Command(BaseCommand):
     """
@@ -23,7 +24,6 @@ class Command(BaseCommand):
     """
 
     help = "Seed/repair Countries (ISO-3166-1, sovereign-only) for Europe/Asia/North America/South America"
-
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -44,15 +44,13 @@ class Command(BaseCommand):
             try:
                 return User.objects.get(username=username)
             except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"User '{username}' not found. Trying first superuser..."
-                ))
-        
+                self.stdout.write(self.style.WARNING(f"User '{username}' not found. Trying first superuser..."))
+
         # Fallback to first superuser
         superuser = User.objects.filter(is_superuser=True).first()
         if superuser:
             return superuser
-        
+
         return None
 
     def handle(self, *args, **options):
@@ -62,17 +60,15 @@ class Command(BaseCommand):
         # Get approver user for marking imports as approved
         approver = self._get_approver(options.get("approved_by"))
         if not approver:
-            self.stdout.write(self.style.ERROR(
-                "No approver found. Please create a superuser first or specify --approved-by <username>."
-            ))
-            self.stdout.write(self.style.ERROR(
-                "Hint: Run 'python manage.py createsuperuser' to create one."
-            ))
+            self.stdout.write(
+                self.style.ERROR(
+                    "No approver found. Please create a superuser first or specify --approved-by <username>."
+                )
+            )
+            self.stdout.write(self.style.ERROR("Hint: Run 'python manage.py createsuperuser' to create one."))
             return
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Using approver: {approver.username} (ID: {approver.id})"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"Using approver: {approver.username} (ID: {approver.id})"))
 
         countries = [
             # -------------------------
@@ -98,10 +94,18 @@ class Command(BaseCommand):
             ("Panama", "PA", "PAN", "North America", "+507", "PAB", "Panamanian Balboa", "pa"),
             ("Saint Kitts and Nevis", "KN", "KNA", "North America", "+1-869", "XCD", "East Caribbean Dollar", "kn"),
             ("Saint Lucia", "LC", "LCA", "North America", "+1-758", "XCD", "East Caribbean Dollar", "lc"),
-            ("Saint Vincent and the Grenadines", "VC", "VCT", "North America", "+1-784", "XCD", "East Caribbean Dollar", "vc"),
+            (
+                "Saint Vincent and the Grenadines",
+                "VC",
+                "VCT",
+                "North America",
+                "+1-784",
+                "XCD",
+                "East Caribbean Dollar",
+                "vc",
+            ),
             ("Trinidad and Tobago", "TT", "TTO", "North America", "+1-868", "TTD", "Trinidad and Tobago Dollar", "tt"),
             ("United States", "US", "USA", "North America", "+1", "USD", "US Dollar", "us"),
-
             # -------------------------
             # South America
             # -------------------------
@@ -117,7 +121,6 @@ class Command(BaseCommand):
             ("Suriname", "SR", "SUR", "South America", "+597", "SRD", "Surinamese Dollar", "sr"),
             ("Uruguay", "UY", "URY", "South America", "+598", "UYU", "Uruguayan Peso", "uy"),
             ("Venezuela", "VE", "VEN", "South America", "+58", "VES", "Venezuelan Bolívar Soberano", "ve"),
-
             # -------------------------
             # Europe
             # -------------------------
@@ -126,7 +129,16 @@ class Command(BaseCommand):
             ("Austria", "AT", "AUT", "Europe", "+43", "EUR", "Euro", "at"),
             ("Belarus", "BY", "BLR", "Europe", "+375", "BYN", "Belarusian Ruble", "by"),
             ("Belgium", "BE", "BEL", "Europe", "+32", "EUR", "Euro", "be"),
-            ("Bosnia and Herzegovina", "BA", "BIH", "Europe", "+387", "BAM", "Bosnia-Herzegovina Convertible Mark", "ba"),
+            (
+                "Bosnia and Herzegovina",
+                "BA",
+                "BIH",
+                "Europe",
+                "+387",
+                "BAM",
+                "Bosnia-Herzegovina Convertible Mark",
+                "ba",
+            ),
             ("Bulgaria", "BG", "BGR", "Europe", "+359", "BGN", "Bulgarian Lev", "bg"),
             ("Croatia", "HR", "HRV", "Europe", "+385", "EUR", "Euro", "hr"),
             ("Cyprus", "CY", "CYP", "Europe", "+357", "EUR", "Euro", "cy"),
@@ -166,7 +178,6 @@ class Command(BaseCommand):
             ("Ukraine", "UA", "UKR", "Europe", "+380", "UAH", "Ukrainian Hryvnia", "ua"),
             ("United Kingdom", "GB", "GBR", "Europe", "+44", "GBP", "British Pound", "gb"),
             ("Vatican City", "VA", "VAT", "Europe", "+39", "EUR", "Euro", "va"),
-
             # -------------------------
             # Asia
             # -------------------------
@@ -218,7 +229,6 @@ class Command(BaseCommand):
             ("Vietnam", "VN", "VNM", "Asia", "+84", "VND", "Vietnamese Đồng", "vn"),
             ("Yemen", "YE", "YEM", "Asia", "+967", "YER", "Yemeni Rial", "ye"),
             ("Palestine", "PS", "PSE", "Asia", "+970", "ILS", "Israeli New Shekel", "ps"),
-
             # -------------------------
             # Africa
             # -------------------------
@@ -276,7 +286,6 @@ class Command(BaseCommand):
             ("Uganda", "UG", "UGA", "Africa", "+256", "UGX", "Ugandan Shilling", "ug"),
             ("Zambia", "ZM", "ZMB", "Africa", "+260", "ZMW", "Zambian Kwacha", "zm"),
             ("Zimbabwe", "ZW", "ZWE", "Africa", "+263", "ZWL", "Zimbabwean Dollar", "zw"),
-
             # -------------------------
             # Oceania
             # -------------------------
@@ -295,9 +304,10 @@ class Command(BaseCommand):
             ("Tuvalu", "TV", "TUV", "Oceania", "+688", "AUD", "Australian Dollar", "tv"),
             ("Vanuatu", "VU", "VUT", "Oceania", "+678", "VUV", "Vanuatu Vatu", "vu"),
         ]
-        
+
         created = 0
         updated = 0
+        approved_count = 0
         errors = 0
 
         allowed_continents = {c[0] for c in Country._meta.get_field("continent").choices}
@@ -305,9 +315,7 @@ class Command(BaseCommand):
         for name, iso2, iso3, continent, phone_code, currency_code, currency_name, flag_emoji in countries:
             try:
                 if continent not in allowed_continents:
-                    self.stdout.write(self.style.ERROR(
-                        f"✗ Invalid continent '{continent}' for {name} ({iso2}/{iso3})"
-                    ))
+                    self.stdout.write(self.style.ERROR(f"✗ Invalid continent '{continent}' for {name} ({iso2}/{iso3})"))
                     errors += 1
                     continue
 
@@ -321,7 +329,6 @@ class Command(BaseCommand):
                         "currency_code": currency_code,
                         "currency_name": currency_name,
                         "flag_emoji": flag_emoji,
-                        # ADD THESE APPROVAL FIELDS:
                         "approval_status": ApprovalStatus.APPROVED,
                         "submitted_by": approver,
                         "submitted_at": timezone.now(),
@@ -332,33 +339,30 @@ class Command(BaseCommand):
 
                 if was_created:
                     from apps.locations import flags
+
                     flags.attach(country)  # its flag as its picture (country-flags plan C1)
                     created += 1
-                    approved_count += 1  # ADD THIS COUNTER
-                    self.stdout.write(self.style.SUCCESS(
-                        f"✓ Created & Approved: {name} ({iso2})"
-                    ))
+                    approved_count += 1
+                    self.stdout.write(self.style.SUCCESS(f"✓ Created & Approved: {name} ({iso2})"))
                 else:
                     updated += 1
-                    # ADD THIS: Ensure existing country is approved
                     if country.approval_status != ApprovalStatus.APPROVED:
                         country.approval_status = ApprovalStatus.APPROVED
                         country.reviewed_by = approver
                         country.reviewed_at = timezone.now()
                         country.save()
                         approved_count += 1
-                    self.stdout.write(self.style.WARNING(
-                        f"↻ Updated: {name} ({iso2})"
-                    ))
+                    self.stdout.write(self.style.WARNING(f"↻ Updated: {name} ({iso2})"))
 
             except Exception as e:
                 errors += 1
                 self.stdout.write(self.style.ERROR(f"✗ Error importing {name} ({iso2}): {e}"))
 
         self.stdout.write(self.style.SUCCESS("\n" + "=" * 60))
-        self.stdout.write(self.style.SUCCESS("Countries seed/repair complete!")) 
-        self.stdout.write(self.style.SUCCESS(f"Created: {created}")) 
-        self.stdout.write(self.style.WARNING(f"Updated: {updated}")) 
+        self.stdout.write(self.style.SUCCESS("Countries seed/repair complete!"))
+        self.stdout.write(self.style.SUCCESS(f"Created: {created}"))
+        self.stdout.write(self.style.SUCCESS(f"Approved: {approved_count}"))
+        self.stdout.write(self.style.WARNING(f"Updated: {updated}"))
         if errors:
-            self.stdout.write(self.style.ERROR(f"Errors: {errors}")) 
+            self.stdout.write(self.style.ERROR(f"Errors: {errors}"))
         self.stdout.write(self.style.SUCCESS("=" * 60))

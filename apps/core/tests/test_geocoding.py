@@ -1,4 +1,5 @@
 """apps.core.geocoding: one Nominatim lookup, identifying itself, never raising."""
+
 import json
 from decimal import Decimal
 from unittest import mock
@@ -23,8 +24,12 @@ class FakeResponse:
         return False
 
 
-@override_settings(GEOCODING_ENABLED=True, GEOCODER_URL="https://geo.example/search", SITE_URL="https://sbl.example",
-                   LEGAL={"contact_email": "hello@sbl.example"})
+@override_settings(
+    GEOCODING_ENABLED=True,
+    GEOCODER_URL="https://geo.example/search",
+    SITE_URL="https://sbl.example",
+    LEGAL={"contact_email": "hello@sbl.example"},
+)
 class GeocodeTests(SimpleTestCase):
     @mock.patch("apps.core.geocoding.urllib.request.urlopen")
     def test_found(self, urlopen):

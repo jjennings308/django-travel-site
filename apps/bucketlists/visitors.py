@@ -1,4 +1,3 @@
-# bucketlists/visitors.py
 """``visitor_count`` on places, cities, regions and countries: how many members
 have been there.
 
@@ -17,6 +16,7 @@ only the counts that changed; signals call it when a goal or trip changes, and
 The same pass keeps each member's profile stats (``accounts.Profile``: countries visited, trips
 completed, goals ticked off) in step, by the same rule — they were never filled in before.
 """
+
 from collections import defaultdict
 
 from django.utils import timezone
@@ -31,11 +31,25 @@ def _visitors():
     """({city_id: {user_ids}}, {poi_id: {user_ids}}, {country_id: {user_ids}} for country-only goals)."""
     city, poi, country = defaultdict(set), defaultdict(set), defaultdict(set)
     for row in BucketListItem.objects.filter(status="completed").values(
-            "user_id", "city_id", "activity__city_id", "activity__country_id", "event__city_id",
-            "event__country_id", "event__poi_id", "event__poi__city_id", "pois__id", "pois__city_id"):
+        "user_id",
+        "city_id",
+        "activity__city_id",
+        "activity__country_id",
+        "event__city_id",
+        "event__country_id",
+        "event__poi_id",
+        "event__poi__city_id",
+        "pois__id",
+        "pois__city_id",
+    ):
         user = row["user_id"]
-        cities = {row["city_id"], row["activity__city_id"], row["event__city_id"], row["pois__city_id"],
-                  row["event__poi__city_id"]} - {None}
+        cities = {
+            row["city_id"],
+            row["activity__city_id"],
+            row["event__city_id"],
+            row["pois__city_id"],
+            row["event__poi__city_id"],
+        } - {None}
         for c in cities:
             city[c].add(user)
         for p in {row["pois__id"], row["event__poi_id"]} - {None}:
@@ -56,6 +70,7 @@ def _store_profiles(city_users, country_only):
     from django.db.models import Count
 
     from apps.accounts.models import Profile
+
     countries = defaultdict(set)
     city_country = dict(City.objects.filter(pk__in=city_users).values_list("pk", "country_id"))
     for city_id, users in city_users.items():
@@ -64,17 +79,28 @@ def _store_profiles(city_users, country_only):
     for country_id, users in country_only.items():
         for user in users:
             countries[user].add(country_id)
-    done = dict(BucketListItem.objects.filter(status="completed").values("user_id")
-                .annotate(n=Count("pk")).values_list("user_id", "n"))
-    finished = (Trip.objects.live().filter(end_date__lt=timezone.localdate(), travelers__user__isnull=False)
-                .values("travelers__user_id").annotate(n=Count("pk", distinct=True))
-                .values_list("travelers__user_id", "n"))
+    done = dict(
+        BucketListItem.objects.filter(status="completed")
+        .values("user_id")
+        .annotate(n=Count("pk"))
+        .values_list("user_id", "n")
+    )
+    finished = (
+        Trip.objects.live()
+        .filter(end_date__lt=timezone.localdate(), travelers__user__isnull=False)
+        .values("travelers__user_id")
+        .annotate(n=Count("pk", distinct=True))
+        .values_list("travelers__user_id", "n")
+    )
     trips = dict(finished)
     changed = []
     fields = ["countries_visited_count", "trips_completed_count", "bucket_list_completed_count"]
     for profile in Profile.objects.only("pk", "user_id", *fields):
-        new = (len(countries.get(profile.user_id, set()) - {None}), trips.get(profile.user_id, 0),
-               done.get(profile.user_id, 0))
+        new = (
+            len(countries.get(profile.user_id, set()) - {None}),
+            trips.get(profile.user_id, 0),
+            done.get(profile.user_id, 0),
+        )
         if tuple(getattr(profile, f) for f in fields) != new:
             for field, value in zip(fields, new):
                 setattr(profile, field, value)
@@ -82,9 +108,15 @@ def _store_profiles(city_users, country_only):
     Profile.objects.bulk_update(changed, fields, batch_size=500)
     # Profiles are made on first visit to the profile page; members with something to show get one now.
     have = set(Profile.objects.values_list("user_id", flat=True))
-    missing = [Profile(user_id=user, countries_visited_count=len(countries.get(user, set()) - {None}),
-                       trips_completed_count=trips.get(user, 0), bucket_list_completed_count=done.get(user, 0))
-               for user in (set(countries) | set(trips) | set(done)) - have]
+    missing = [
+        Profile(
+            user_id=user,
+            countries_visited_count=len(countries.get(user, set()) - {None}),
+            trips_completed_count=trips.get(user, 0),
+            bucket_list_completed_count=done.get(user, 0),
+        )
+        for user in (set(countries) | set(trips) | set(done)) - have
+    ]
     Profile.objects.bulk_create(missing, batch_size=500)
     return len(changed) + len(missing)
 
@@ -105,12 +137,15 @@ def recount():
     """Recompute visitor_count everywhere; returns how many rows changed."""
     city_users, poi_users, country_only = _visitors()
     region_users, country_users = defaultdict(set), defaultdict(set)
-    for city_id, region_id, country_id in City.objects.filter(pk__in=city_users).values_list("pk", "region_id", "country_id"):
+    for city_id, region_id, country_id in City.objects.filter(pk__in=city_users).values_list(
+        "pk", "region_id", "country_id"
+    ):
         if region_id:
             region_users[region_id] |= city_users[city_id]
         country_users[country_id] |= city_users[city_id]
     for country_id, users in country_only.items():
         country_users[country_id] |= users
-    return sum(_store(model, {pk: len(users) for pk, users in data.items()}) for model, data in (
-        (City, city_users), (POI, poi_users), (Region, region_users), (Country, country_users))
+    return sum(
+        _store(model, {pk: len(users) for pk, users in data.items()})
+        for model, data in ((City, city_users), (POI, poi_users), (Region, region_users), (Country, country_users))
     ) + _store_profiles(city_users, country_only)

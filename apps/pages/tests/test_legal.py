@@ -2,8 +2,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 FILLED = {
-    "entity": "Example Travel LLC", "contact_email": "privacy@example.com", "postal_address": "1 Main St",
-    "jurisdiction": "Pennsylvania, USA", "effective_date": "October 8, 2026", "min_age": "16",
+    "entity": "Example Travel LLC",
+    "contact_email": "privacy@example.com",
+    "postal_address": "1 Main St",
+    "jurisdiction": "Pennsylvania, USA",
+    "effective_date": "October 8, 2026",
+    "min_age": "16",
 }
 
 

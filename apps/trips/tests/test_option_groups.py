@@ -1,16 +1,26 @@
-""""Choose one" groups, options and votes (docs/plans/day-first-planning.md, P4)."""
+""" "Choose one" groups, options and votes (docs/plans/day-first-planning.md, P4)."""
+
 from datetime import date, time
 
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips import calendar, changes, day_first
-from apps.trips.booking_tasks import not_booked
 from apps.trips.forms import BookingTaskForm, TripActivityForm
-from apps.trips.models import (Comment, Confirmation, Day, Lodging, Option, OptionGroup, Section,
-                               TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripRole, Vote)
+from apps.trips.models import (
+    Day,
+    Lodging,
+    Option,
+    OptionGroup,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
+    Vote,
+)
 
 User = get_user_model()
 
@@ -20,22 +30,46 @@ class Fixture(TestCase):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd", first_name="Ed")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.commentor = User.objects.create_user("co", "co@example.com", "pw-1234-abcd", first_name="Cora")
-        self.trip = Trip.objects.create(name="Alps", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.editor, home_currency="EUR")
-        for user, role in ((self.editor, TripRole.EDITOR), (self.viewer, TripRole.VIEWER),
-                           (self.commentor, TripRole.COMMENTOR)):
+        self.trip = Trip.objects.create(
+            name="Alps",
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 9, 21),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
+        for user, role in (
+            (self.editor, TripRole.EDITOR),
+            (self.viewer, TripRole.VIEWER),
+            (self.commentor, TripRole.COMMENTOR),
+        ):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18))
         self.group = OptionGroup.objects.create(trip=self.trip, day=self.day, prompt="Afternoon")
         self.castle = Option.objects.create(group=self.group, title="Castle", est_cost=8, currency="EUR", order=0)
         self.museum = Option.objects.create(group=self.group, title="Deutsches Museum", order=1)
-        self.tour = TripActivity.objects.create(trip=self.trip, day=self.day, title="Castle tour", kind="tour",
-                                                start_time=time(14, 0), end_time=time(16, 0), est_cost=20,
-                                                currency="EUR", option=self.castle)
-        self.exhibit = TripActivity.objects.create(trip=self.trip, day=self.day, title="Museum entry", kind="entry",
-                                                   start_time=time(14, 0), option=self.museum)
-        self.train = TransportLeg.objects.create(trip=self.trip, date=self.day.date, origin="Munich",
-                                                 destination="Füssen", mode="train", operator="DB", option=self.castle)
+        self.tour = TripActivity.objects.create(
+            trip=self.trip,
+            day=self.day,
+            title="Castle tour",
+            kind="tour",
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            est_cost=20,
+            currency="EUR",
+            option=self.castle,
+        )
+        self.exhibit = TripActivity.objects.create(
+            trip=self.trip, day=self.day, title="Museum entry", kind="entry", start_time=time(14, 0), option=self.museum
+        )
+        self.train = TransportLeg.objects.create(
+            trip=self.trip,
+            date=self.day.date,
+            origin="Munich",
+            destination="Füssen",
+            mode="train",
+            operator="DB",
+            option=self.castle,
+        )
         self.lunch = TripActivity.objects.create(trip=self.trip, day=self.day, title="Lunch walk", kind="other")
 
     def page(self, user=None):
@@ -44,19 +78,19 @@ class Fixture(TestCase):
 
     def timeline(self, html):
         start = html.index('id="day-1"')
-        return html[start:html.index("</details>", start)]
+        return html[start : html.index("</details>", start)]
 
 
 class WhatCountsTests(Fixture):
     def test_undecided_items_are_only_in_the_box(self):
         html = self.timeline(self.page())
-        box = html[html.index('id="group-'):]
+        box = html[html.index('id="group-') :]
         self.assertIn("Castle tour", box)
         self.assertIn("Museum entry", box)
         self.assertIn("Undecided", box)
         self.assertIn("EUR 28.00", box)  # castle: its own 8 + the tour's 20
         self.assertIn("~2 h", box)  # the tour's time
-        outside = html[:html.index('id="group-')]
+        outside = html[: html.index('id="group-')]
         self.assertNotIn("Castle tour", outside)
         self.assertIn("Lunch walk", outside)
 
@@ -66,8 +100,9 @@ class WhatCountsTests(Fixture):
             ics = calendar.build(trip).decode()
             self.client.force_login(self.editor)
             page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
-            booked = {entry["item"].pk for entry in page.context["not_booked"]
-                      if isinstance(entry["item"], TripActivity)}
+            booked = {
+                entry["item"].pk for entry in page.context["not_booked"] if isinstance(entry["item"], TripActivity)
+            }
             return {
                 "calendar": {name for name in ("Castle tour", "Museum entry", "Lunch walk", "Füssen") if name in ics},
                 "not booked": {a.title for a in TripActivity.objects.filter(pk__in=booked)},
@@ -76,8 +111,10 @@ class WhatCountsTests(Fixture):
             }
 
         from django.apps import apps  # the estimate is in the reader's currency
+
         apps.get_model("accounts", "AccountSettings").objects.update_or_create(
-            user=self.editor, defaults={"preferred_currency": "EUR"})
+            user=self.editor, defaults={"preferred_currency": "EUR"}
+        )
         before = counted()
         self.assertEqual(before["calendar"], {"Lunch walk"})
         self.assertEqual(before["not booked"], set())
@@ -91,15 +128,33 @@ class WhatCountsTests(Fixture):
         self.assertFalse(after["undecided event"])
 
     def test_the_map_counts_only_decided_legs_and_stays(self):
-        from apps.locations.models import City, Country
         from apps.approval_system.models import ApprovalStatus
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=ApprovalStatus.APPROVED)
-        munich, fussen = (City.objects.create(name=n, slug=n.lower(), country=de, latitude=1, longitude=1,
-                                              approval_status=ApprovalStatus.APPROVED) for n in ("Munich", "Fussen"))
+        from apps.locations.models import City, Country
+
+        de = Country.objects.create(
+            name="Germany",
+            slug="de",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        munich, fussen = (
+            City.objects.create(
+                name=n, slug=n.lower(), country=de, latitude=1, longitude=1, approval_status=ApprovalStatus.APPROVED
+            )
+            for n in ("Munich", "Fussen")
+        )
         TransportLeg.objects.filter(pk=self.train.pk).update(origin_city=munich, destination_city=fussen)
-        Lodging.objects.create(trip=self.trip, name="Castle inn", check_in=self.day.date, check_out=date(2027, 9, 19),
-                               latitude=1, longitude=1, option=self.castle)
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Castle inn",
+            check_in=self.day.date,
+            check_out=date(2027, 9, 19),
+            latitude=1,
+            longitude=1,
+            option=self.castle,
+        )
         self.client.force_login(self.viewer)
         url = reverse("trips:trip_map_data", args=[self.trip.pk])
         layers = lambda: [f["properties"]["layer"] for f in self.client.get(url).json()["features"]]  # noqa: E731
@@ -137,9 +192,13 @@ class PickTests(Fixture):
     def test_editors_only(self):
         for user in (self.viewer, self.commentor):
             self.client.force_login(user)
-            self.assertEqual(self.client.post(reverse("trips:option_pick", args=[self.trip.pk, self.castle.pk])).status_code, 403)
+            self.assertEqual(
+                self.client.post(reverse("trips:option_pick", args=[self.trip.pk, self.castle.pk])).status_code, 403
+            )
         self.client.force_login(User.objects.create_user("x", "x@example.com", "pw-1234-abcd"))
-        self.assertEqual(self.client.post(reverse("trips:option_pick", args=[self.trip.pk, self.castle.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.post(reverse("trips:option_pick", args=[self.trip.pk, self.castle.pk])).status_code, 404
+        )
 
     def test_history_and_undo_reopens(self):
         self.client.force_login(self.editor)
@@ -171,28 +230,45 @@ class VoteTests(Fixture):
 
     def test_viewers_cant_vote(self):
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(reverse("trips:option_vote", args=[self.trip.pk, self.castle.pk])).status_code, 403)
+        self.assertEqual(
+            self.client.post(reverse("trips:option_vote", args=[self.trip.pk, self.castle.pk])).status_code, 403
+        )
         self.assertNotIn("data-vote", self.timeline(self.page(self.viewer)))
 
 
 class EditingTests(Fixture):
     def test_a_new_group_with_options_and_an_item_added_into_one(self):
         self.client.force_login(self.editor)
-        response = self.client.post(reverse("trips:group_new", args=[self.trip.pk, self.day.pk]), {
-            "prompt": "Dinner", "start_time": "19:00", "notes": "", "order": "",
-            "options-TOTAL_FORMS": "2", "options-INITIAL_FORMS": "0",
-            "options-0-title": "Augustiner", "options-0-currency": "EUR",
-            "options-1-title": "Hofbräuhaus", "options-1-currency": "EUR"})
+        response = self.client.post(
+            reverse("trips:group_new", args=[self.trip.pk, self.day.pk]),
+            {
+                "prompt": "Dinner",
+                "start_time": "19:00",
+                "notes": "",
+                "order": "",
+                "options-TOTAL_FORMS": "2",
+                "options-INITIAL_FORMS": "0",
+                "options-0-title": "Augustiner",
+                "options-0-currency": "EUR",
+                "options-1-title": "Hofbräuhaus",
+                "options-1-currency": "EUR",
+            },
+        )
         group = OptionGroup.objects.get(prompt="Dinner")
-        self.assertRedirects(response, reverse("trips:group_edit", args=[self.trip.pk, group.pk]) + "?next="
-                             + f"/trips/{self.trip.pk}/%23day-1", fetch_redirect_response=False)
+        self.assertRedirects(
+            response,
+            reverse("trips:group_edit", args=[self.trip.pk, group.pk]) + "?next=" + f"/trips/{self.trip.pk}/%23day-1",
+            fetch_redirect_response=False,
+        )
         self.assertEqual([o.title for o in group.options.all()], ["Augustiner", "Hofbräuhaus"])
         option = group.options.first()
         page = self.client.get(reverse("trips:group_edit", args=[self.trip.pk, group.pk]))
         self.assertContains(page, "data-add-to-option")
         here = reverse("trips:group_edit", args=[self.trip.pk, group.pk])
-        self.client.post(reverse("trips:quick_add", args=[self.trip.pk, self.day.pk]),
-                         {"text": "Dinner Augustiner 7pm", "option": option.pk, "next": here})
+        self.client.post(
+            reverse("trips:quick_add", args=[self.trip.pk, self.day.pk]),
+            {"text": "Dinner Augustiner 7pm", "option": option.pk, "next": here},
+        )
         self.assertEqual(option.meals.get().reserved_time, time(19, 0))
         self.assertIn("Dinner", self.timeline(self.page()))  # the group's box, at 7 PM
 
@@ -213,11 +289,15 @@ class EditingTests(Fixture):
 
     def test_plus_add_options(self):
         self.client.force_login(self.editor)
-        reply = self.client.post(reverse("trips:quick_add", args=[self.trip.pk, self.day.pk]),
-                                 {"text": "Evening", "kind": "options"}, HTTP_X_REQUESTED_WITH="fetch").json()
+        reply = self.client.post(
+            reverse("trips:quick_add", args=[self.trip.pk, self.day.pk]),
+            {"text": "Evening", "kind": "options"},
+            HTTP_X_REQUESTED_WITH="fetch",
+        ).json()
         group = OptionGroup.objects.get(prompt="Evening")
-        self.assertEqual(reply, {"url": reverse("trips:group_edit", args=[self.trip.pk, group.pk]),
-                                 "anchor": f"group-{group.pk}"})
+        self.assertEqual(
+            reply, {"url": reverse("trips:group_edit", args=[self.trip.pk, group.pk]), "anchor": f"group-{group.pk}"}
+        )
 
     def test_todo_lists_open_groups_and_new_todos_are_bookings(self):
         self.client.force_login(self.viewer)
@@ -235,36 +315,58 @@ class EditingTests(Fixture):
 class ConvertTests(Fixture):
     def test_a_choose_your_adventure_maps_to_a_group(self):
         """What the importer saves for a parsed choose-your-adventure (retire-old-section-types S2)."""
-        group = day_first.adventure_group("Morning", {
-            "prompt": "Pick one", "summary": "Both short.", "options": [
-                {"letter": "A", "title": "Lake", "description": "Swim", "duration": "2 h", "cost": "€8"},
-                {"title": "Old town", "description": "Stroll"}, "junk"]})
+        group = day_first.adventure_group(
+            "Morning",
+            {
+                "prompt": "Pick one",
+                "summary": "Both short.",
+                "options": [
+                    {"letter": "A", "title": "Lake", "description": "Swim", "duration": "2 h", "cost": "€8"},
+                    {"title": "Old town", "description": "Stroll"},
+                    "junk",
+                ],
+            },
+        )
         self.assertEqual((group["prompt"], group["notes"]), ("Pick one", "Both short."))
-        self.assertEqual([(o["title"], o["notes"], o["order"]) for o in group["options"]],
-                         [("Lake", "Swim\n2 h · €8", 0), ("Old town", "Stroll", 1)])
+        self.assertEqual(
+            [(o["title"], o["notes"], o["order"]) for o in group["options"]],
+            [("Lake", "Swim\n2 h · €8", 0), ("Old town", "Stroll", 1)],
+        )
         made = day_first.make_group(self.trip, self.day, group["prompt"], group["notes"], group["options"], order=3)
         self.assertEqual((made.order, made.state, made.options.count()), (3, "open", 2))
 
     def test_a_choose_your_adventure_maps_to_a_note(self):
         """For an old history snapshot restored onto its own row (S2); S1 made these for one with a confirmation."""
-        title, content = day_first.adventure_note("Tour", {
-            "prompt": "Which tour?", "summary": "Booked as one.", "source": "docx",
-            "options": [{"title": "A", "description": "Boat", "duration": "2 h", "cost": "€30"}, {"title": "B"}, "junk"]})
+        title, content = day_first.adventure_note(
+            "Tour",
+            {
+                "prompt": "Which tour?",
+                "summary": "Booked as one.",
+                "source": "docx",
+                "options": [
+                    {"title": "A", "description": "Boat", "duration": "2 h", "cost": "€30"},
+                    {"title": "B"},
+                    "junk",
+                ],
+            },
+        )
         self.assertEqual(title, "Which tour?")
-        self.assertEqual(content, {"source": "docx", "tone": "",
-                                   "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]})
-
+        self.assertEqual(
+            content, {"source": "docx", "tone": "", "paragraphs": ["Booked as one.", "• A — Boat (2 h · €30)", "• B"]}
+        )
 
 
 class BookletTests(Fixture):
     def test_undecided_prints_its_options_picked_prints_the_choice(self):
         from unittest import mock
+
         self.client.force_login(self.viewer)
         captured = {}
 
         def fake(html, base_url):
             captured["html"] = html
             return b"%PDF-"
+
         with mock.patch("apps.trips.pdf.render_pdf", side_effect=fake):
             self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk]))
         self.assertIn("Afternoon — undecided", captured["html"])
@@ -280,6 +382,7 @@ class BookletTests(Fixture):
 class PublicViewTests(Fixture):
     def test_nothing_undecided_is_public(self):
         from apps.trips.models import Meal
+
         Meal.objects.create(day=self.day, name="Undecided dinner", meal_type="dinner", option=self.castle)
         Meal.objects.create(day=self.day, name="Booked lunch", meal_type="lunch")
         self.trip.enable_public()

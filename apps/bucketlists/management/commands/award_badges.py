@@ -1,8 +1,9 @@
 """Award every badge users have already earned (e.g. after badges were added).
 
-    python manage.py award_badges            # silent: no notifications
-    python manage.py award_badges --notify   # also notify each new badge
+python manage.py award_badges            # silent: no notifications
+python manage.py award_badges --notify   # also notify each new badge
 """
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 

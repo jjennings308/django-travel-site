@@ -1,4 +1,5 @@
 """Download your data, and delete your account (site roadmap R13)."""
+
 import io
 import json
 import os
@@ -6,7 +7,6 @@ import shutil
 import tempfile
 import zipfile
 from datetime import date, timedelta
-from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -21,11 +21,18 @@ from django.utils import timezone
 from apps.activities.models import Activity, ActivityCategory
 from apps.bucketlists.models import BucketListItem
 from apps.media_app.models import Media
-from apps.pages import account_data
 from apps.reviews.models import Review
 from apps.trips import files
 from apps.trips.models import (
-    Comment, Confirmation, ConfirmationFile, Lodging, RewardsMembership, Traveler, Trip, TripGrant, TripRole,
+    Comment,
+    Confirmation,
+    ConfirmationFile,
+    Lodging,
+    RewardsMembership,
+    Traveler,
+    Trip,
+    TripGrant,
+    TripRole,
 )
 
 User = get_user_model()
@@ -48,33 +55,48 @@ class Fixture(TestCase):
         Traveler.objects.filter(pk=self.ada_traveler.pk).update(passport_number="ADA-PASSPORT", home_airport="PIT")
         self.bob_traveler = Traveler.objects.get(user=self.bob)
         Traveler.objects.filter(pk=self.bob_traveler.pk).update(passport_number="BOB-PASSPORT")
-        RewardsMembership.objects.create(traveler=self.ada_traveler, program="Delta SkyMiles", member_number="ADA-MILES")
+        RewardsMembership.objects.create(
+            traveler=self.ada_traveler, program="Delta SkyMiles", member_number="ADA-MILES"
+        )
         # A shared trip Ada created; Bob (viewer) and Cy (editor, joined later) are on it.
-        self.shared = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 4),
-                                          created_by=self.ada)
+        self.shared = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 4), created_by=self.ada
+        )
         for user, role in ((self.ada, "editor"), (self.bob, "viewer"), (self.cy, "editor")):
             TripGrant.objects.create(trip=self.shared, user=user, role=role)
         self.shared.travelers.set([self.ada_traveler, self.bob_traveler])
         # A trip only Ada is on.
-        self.solo = Trip.objects.create(name="Solo", start_date=date(2027, 6, 1), end_date=date(2027, 6, 2),
-                                        created_by=self.ada)
+        self.solo = Trip.objects.create(
+            name="Solo", start_date=date(2027, 6, 1), end_date=date(2027, 6, 2), created_by=self.ada
+        )
         TripGrant.objects.create(trip=self.solo, user=self.ada, role="editor")
         stay = Lodging.objects.create(trip=self.solo, name="Inn", check_in=date(2027, 6, 1), check_out=date(2027, 6, 2))
-        self.solo_ticket = files.add(Confirmation.attach_number(self.solo, "SOLO1", stay),
-                                     SimpleUploadedFile("solo.pdf", PDF), self.ada)
-        shared_stay = Lodging.objects.create(trip=self.shared, name="Hotel", check_in=date(2027, 5, 1),
-                                             check_out=date(2027, 5, 4))
-        self.shared_ticket = files.add(Confirmation.attach_number(self.shared, "ROMA1", shared_stay),
-                                       SimpleUploadedFile("rome.pdf", PDF), self.ada)
+        self.solo_ticket = files.add(
+            Confirmation.attach_number(self.solo, "SOLO1", stay), SimpleUploadedFile("solo.pdf", PDF), self.ada
+        )
+        shared_stay = Lodging.objects.create(
+            trip=self.shared, name="Hotel", check_in=date(2027, 5, 1), check_out=date(2027, 5, 4)
+        )
+        self.shared_ticket = files.add(
+            Confirmation.attach_number(self.shared, "ROMA1", shared_stay), SimpleUploadedFile("rome.pdf", PDF), self.ada
+        )
         self.goal = BucketListItem.objects.create(user=self.ada, custom_title="See the Colosseum")
-        self.photo = Media.objects.create(file=ContentFile(b"jpegbytes", name="goal.jpg"), uploaded_by=self.ada,
-                                          media_type="image", content_object=self.goal)
+        self.photo = Media.objects.create(
+            file=ContentFile(b"jpegbytes", name="goal.jpg"),
+            uploaded_by=self.ada,
+            media_type="image",
+            content_object=self.goal,
+        )
         category, _ = ActivityCategory.objects.get_or_create(name="Tours", defaults={"slug": "tours"})
-        self.activity = Activity.objects.create(name="Vespa tour", category=category, created_by=self.ada,
-                                                description="x")
-        self.catalogue_picture = Media.objects.create(file=ContentFile(b"jpegbytes", name="vespa.jpg"),
-                                                      uploaded_by=self.ada, media_type="image",
-                                                      content_object=self.activity)
+        self.activity = Activity.objects.create(
+            name="Vespa tour", category=category, created_by=self.ada, description="x"
+        )
+        self.catalogue_picture = Media.objects.create(
+            file=ContentFile(b"jpegbytes", name="vespa.jpg"),
+            uploaded_by=self.ada,
+            media_type="image",
+            content_object=self.activity,
+        )
         Activity.objects.filter(pk=self.activity.pk).update(featured_media=self.catalogue_picture)
         self.review = Review.objects.create(user=self.ada, activity=self.activity, rating=5, comment="Great")
         self.note = Comment.objects.create(author=self.ada, content_object=self.shared, body="Bring sun cream")
@@ -92,8 +114,16 @@ class ExportTests(Fixture):
     def test_contains_their_data_and_files(self):
         archive = self.zip()
         names = archive.namelist()
-        for part in ("README.txt", "account.json", "travel_profile.json", "bucket_list.json", "reviews.json",
-                     "trip_notes.json", "trips.json", "contributions.json"):
+        for part in (
+            "README.txt",
+            "account.json",
+            "travel_profile.json",
+            "bucket_list.json",
+            "reviews.json",
+            "trip_notes.json",
+            "trips.json",
+            "contributions.json",
+        ):
             self.assertIn(part, names)
         self.assertTrue(any(n.startswith(f"files/photos/{self.photo.pk}-") for n in names))  # stored names
         self.assertTrue(any(n.startswith("files/tickets/") and n.endswith("rome.pdf") for n in names))
@@ -114,10 +144,13 @@ class ExportTests(Fixture):
     def test_todos_list_what_they_cover(self):
         """Booking-todos K1: a to-do's covered items by label."""
         from apps.trips.models import BookingTask, TransportLeg
-        out = TransportLeg.objects.create(trip=self.shared, origin="Roma Termini", destination="Firenze SMN",
-                                          date=date(2027, 5, 2))
-        back = TransportLeg.objects.create(trip=self.shared, origin="Firenze SMN", destination="Roma Termini",
-                                           date=date(2027, 5, 3))
+
+        out = TransportLeg.objects.create(
+            trip=self.shared, origin="Roma Termini", destination="Firenze SMN", date=date(2027, 5, 2)
+        )
+        back = TransportLeg.objects.create(
+            trip=self.shared, origin="Firenze SMN", destination="Roma Termini", date=date(2027, 5, 3)
+        )
         task = BookingTask.objects.create(trip=self.shared, title="Train tickets")
         task.link(out)
         task.link(back)
@@ -127,12 +160,21 @@ class ExportTests(Fixture):
     def test_costs_list_what_they_paid_for(self):
         """Budget-estimates B3: each recorded cost, people by name, and what it was for."""
         from decimal import Decimal
+
         from apps.trips.models import Confirmation, Traveler, TripExpense
+
         payer = Traveler.objects.create(name="Payer P")
-        booking = Confirmation.objects.create(trip=self.shared, confirmation_number="GCH7JS", cost=Decimal("40"),
-                                              currency="EUR")
-        expense = TripExpense(trip=self.shared, description="Train", amount=Decimal("40"), currency="EUR",
-                              paid_by=payer, category="transport")
+        booking = Confirmation.objects.create(
+            trip=self.shared, confirmation_number="GCH7JS", cost=Decimal("40"), currency="EUR"
+        )
+        expense = TripExpense(
+            trip=self.shared,
+            description="Train",
+            amount=Decimal("40"),
+            currency="EUR",
+            paid_by=payer,
+            category="transport",
+        )
         expense.set_for(booking)
         expense.save()
         rome = next(t for t in json.loads(self.zip().read("trips.json")) if t["trip"][0]["name"] == "Rome")
@@ -178,6 +220,7 @@ class ScheduleTests(Fixture):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.get(reverse("bucketlists:public_list", args=["ada"])).status_code, 404)
         from apps.notifications.services import wants_email
+
         self.ada.refresh_from_db()
         self.assertFalse(wants_email(self.ada))
 

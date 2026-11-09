@@ -28,6 +28,7 @@ class YourModel(Approvable):
     # your fields
     pass
 
+
 # That's it! Now it has:
 # - Status workflow (draft → pending → approved/rejected)
 # - Review tracking (who, when, why)
@@ -74,7 +75,7 @@ class YourModel(Approvable):
    - API reference
    - Best practices
 
-2. **INTEGRATION_EXAMPLES.py** - Code examples
+2. **docs/architecture/approval-integration-examples.md** - Code examples
    - How to add to your models
    - Admin integration
    - View integration
@@ -119,6 +120,7 @@ urlpatterns = [
 # your_app/models.py
 from apps.approval_system.models import Approvable
 
+
 class YourModel(Approvable):
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -131,9 +133,10 @@ class YourModel(Approvable):
 # your_app/admin.py
 from apps.approval_system.admin import ApprovableAdminMixin
 
+
 @admin.register(YourModel)
 class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_display = ['title', 'created_at']
+    list_display = ["title", "created_at"]
     # Mixin adds approval_status_badge, bulk actions, filters
 ```
 
@@ -143,9 +146,7 @@ class YourModelAdmin(ApprovableAdminMixin, admin.ModelAdmin):
 from apps.approval_system.models import ApprovalStatus
 
 # Show only approved content
-public_items = YourModel.objects.filter(
-    approval_status=ApprovalStatus.APPROVED
-)
+public_items = YourModel.objects.filter(approval_status=ApprovalStatus.APPROVED)
 
 # Submit new content
 item = YourModel(...)
@@ -237,10 +238,7 @@ City.objects.filter(approval_status=ApprovalStatus.PENDING)
 City.objects.filter(submitted_by=request.user)
 
 # Urgent items
-City.objects.filter(
-    approval_status=ApprovalStatus.PENDING,
-    approval_priority=ApprovalPriority.URGENT
-)
+City.objects.filter(approval_status=ApprovalStatus.PENDING, approval_priority=ApprovalPriority.URGENT)
 ```
 
 ### Check Status
@@ -315,7 +313,6 @@ approval_system/
 ├── views.py (Dashboard views)
 ├── urls.py (URL routing)
 ├── IMPLEMENTATION_GUIDE.md (Complete guide)
-├── INTEGRATION_EXAMPLES.py (Code examples)
 ├── MIGRATION_GUIDE.md (Migration guide)
 └── README.md (This file)
 ```
@@ -358,7 +355,7 @@ GET  /approval/api/stats/          - Quick stats
 ## Next Steps
 
 1. **Read IMPLEMENTATION_GUIDE.md** for detailed setup
-2. **Check INTEGRATION_EXAMPLES.py** for code samples
+2. **Check docs/architecture/approval-integration-examples.md** for code samples
 3. **If migrating**, read MIGRATION_GUIDE.md
 4. **Add to your first model** and test
 5. **Create approval queues** for organization

@@ -1,5 +1,6 @@
 """trips 0054–0055 (docs/plans/retire-decision-todos.md, D2): a to-do's options go into its notes before
 ``TaskOption`` and ``BookingTask.kind`` are dropped; an open to-do that still has options stops it."""
+
 from datetime import date
 
 from django.db import connection
@@ -38,8 +39,10 @@ class RetireDecisionsMigrationTests(RestoringTransactionTestCase):
         plain = self.task(apps, title="Seats", notes="Window")
         apps = self.migrate(self.AFTER)
         BookingTask = apps.get_model("trips", "BookingTask")
-        self.assertEqual(BookingTask.objects.get(pk=task.pk).notes,
-                         "Booked in May\nOptions considered: Augusta (chosen); Drei Mohren")
+        self.assertEqual(
+            BookingTask.objects.get(pk=task.pk).notes,
+            "Booked in May\nOptions considered: Augusta (chosen); Drei Mohren",
+        )
         self.assertEqual(BookingTask.objects.get(pk=plain.pk).notes, "Window")
         self.assertNotIn("kind", [f.name for f in BookingTask._meta.get_fields()])
         with connection.cursor() as cursor:
@@ -50,8 +53,11 @@ class RetireDecisionsMigrationTests(RestoringTransactionTestCase):
         TaskOption = apps.get_model("trips", "TaskOption")
         task = self.task(apps, title="Which hotel")
         TaskOption.objects.create(task=task, title="Augusta")
-        with self.assertRaisesMessage(RuntimeError, f"Open to-dos still have options: run `manage.py "
-                                                    f"convert_day_first --all --apply` (on the D1 code) first. "
-                                                    f"Trips: {task.trip_id}"):
+        with self.assertRaisesMessage(
+            RuntimeError,
+            f"Open to-dos still have options: run `manage.py "
+            f"convert_day_first --all --apply` (on the D1 code) first. "
+            f"Trips: {task.trip_id}",
+        ):
             self.migrate(self.AFTER)
         TaskOption.objects.all().delete()

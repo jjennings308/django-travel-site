@@ -1,4 +1,5 @@
 """Your data: download it, or delete your account (site roadmap R13). Rules in ``account_data``."""
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -15,8 +16,10 @@ EXPORT_EVERY_SECONDS = 600
 
 
 class DeleteAccountForm(forms.Form):
-    password = forms.CharField(label="Your password", widget=forms.PasswordInput(attrs={"autocomplete": "current-password",
-                                                                                        "class": "sbl-input"}))
+    password = forms.CharField(
+        label="Your password",
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password", "class": "sbl-input"}),
+    )
     confirm = forms.BooleanField(label="I understand my account will be deleted after 30 days unless I sign in again")
 
     def __init__(self, *args, user=None, **kwargs):
@@ -36,8 +39,10 @@ def my_data(request):
     if request.method == "POST" and form.is_valid():
         when = account_data.schedule(request.user)
         logout(request)
-        messages.success(request, f"Your account will be deleted on {when:%B} {when.day}, {when.year}. "
-                                  "Sign in before then to cancel.")
+        messages.success(
+            request,
+            f"Your account will be deleted on {when:%B} {when.day}, {when.year}. Sign in before then to cancel.",
+        )
         return redirect("pages:home")
     return render(request, "pages/my_data.html", {"form": form, "grace_days": account_data.GRACE_DAYS})
 

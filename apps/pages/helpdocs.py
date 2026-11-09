@@ -22,6 +22,7 @@ sanitised — and they never contain secrets, server names or deploy steps.
 guide shows without a restart. A guide that fails to parse is skipped and logged on the site;
 ``tests/test_help.py`` parses each one strictly (``parse``) so a bad guide fails the suite instead.
 """
+
 import logging
 import re
 from dataclasses import dataclass, field
@@ -75,7 +76,7 @@ def _split(text):
         blank = lines.index("")
     except ValueError:
         return lines, ""
-    return lines[:blank], "\n".join(lines[blank + 1:])
+    return lines[:blank], "\n".join(lines[blank + 1 :])
 
 
 def parse(path):
@@ -111,9 +112,18 @@ def parse(path):
     # Tables scroll sideways inside their own box on a phone.
     html = html.replace("<table>", '<div class="help-table"><table>').replace("</table>", "</table></div>")
     toc = tuple((token["id"], token["name"]) for token in _flatten(md.toc_tokens) if token["level"] == 2)
-    return Guide(slug=path.stem, title=meta["title"], summary=meta["summary"], audience=meta["audience"],
-                 section=meta["section"], order=order, updated=updated, html=html, toc=toc,
-                 links=tuple(HREF.findall(html)))
+    return Guide(
+        slug=path.stem,
+        title=meta["title"],
+        summary=meta["summary"],
+        audience=meta["audience"],
+        section=meta["section"],
+        order=order,
+        updated=updated,
+        html=html,
+        toc=toc,
+        links=tuple(HREF.findall(html)),
+    )
 
 
 def _flatten(tokens):
@@ -156,5 +166,8 @@ def guide(slug, folder=None):
 def grouped(user, folder=None):
     """[(section, [guide, …])] for the index, in ``SECTIONS`` order, empty sections left out."""
     guides = visible_to(user, folder)
-    return [(section, [g for g in guides if g.section == section])
-            for section in SECTIONS if any(g.section == section for g in guides)]
+    return [
+        (section, [g for g in guides if g.section == section])
+        for section in SECTIONS
+        if any(g.section == section for g in guides)
+    ]

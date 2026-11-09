@@ -3,6 +3,7 @@
 Daily from cron on production. ``--dry-run`` lists who would go and changes nothing. Each account is
 its own transaction, so one failure doesn't stop the rest (and is reported, exit 1).
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.pages import account_data

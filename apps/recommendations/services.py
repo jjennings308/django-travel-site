@@ -1,4 +1,3 @@
-# recommendations/services.py
 """Rule-based suggestions for the dashboard ("Recommended for you").
 
 ``recommendations`` sits beside ``bucketlists`` in layer 4 and may not import
@@ -13,9 +12,9 @@ already covers. Candidates are public activities and upcoming events, scored:
 Ties go to featured items, then newest. The app has no models: the unused
 scaffolding models were removed in site roadmap R19.
 """
+
 from dataclasses import dataclass, field
 
-from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,6 +28,7 @@ POOL = 60  # candidates looked at per kind
 @dataclass
 class Goals:
     """What the user's bucket list already covers (ids)."""
+
     activity_ids: set = field(default_factory=set)
     event_ids: set = field(default_factory=set)
     undated_activity_ids: set = field(default_factory=set)  # activity goals with no date yet
@@ -39,7 +39,12 @@ class Goals:
 def _card(obj, kind, tag, description):
     url = reverse("activities:activity_detail" if kind == "activity" else "events:event_detail", args=[obj.slug])
     return {
-        "tag": tag, "title": obj.name, "description": description, "url": url, "kind": kind, "obj": obj,
+        "tag": tag,
+        "title": obj.name,
+        "description": description,
+        "url": url,
+        "kind": kind,
+        "obj": obj,
         "image_url": media.file.url if (media := obj.display_media) else None,
     }
 
@@ -49,10 +54,12 @@ def for_user(goals, limit=3):
     today = timezone.localdate()
     scored = []
 
-    events = (Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__gte=today)
-              .exclude(pk__in=goals.event_ids)
-              .select_related("category", "city__country", "country", "related_activity", *Event.PICTURE_RELATED)
-              .order_by("start_date")[:POOL])
+    events = (
+        Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__gte=today)
+        .exclude(pk__in=goals.event_ids)
+        .select_related("category", "city__country", "country", "related_activity", *Event.PICTURE_RELATED)
+        .order_by("start_date")[:POOL]
+    )
     for event in events:
         country_id = event.city.country_id if event.city_id else event.country_id
         when = f"{event.start_date:%b} {event.start_date.day}, {event.start_date.year}"
@@ -67,12 +74,16 @@ def for_user(goals, limit=3):
             score, tag, text = 0, "Popular", f"{when} · {event.place_name}. {event.short_description}"
         if event.related_activity_id in goals.activity_ids and score < 100:
             continue  # its activity is already a (dated) goal
-        scored.append((score, event.bucket_list_count, event.is_featured, event.created_at, _card(event, "event", tag, text)))
+        scored.append(
+            (score, event.bucket_list_count, event.is_featured, event.created_at, _card(event, "event", tag, text))
+        )
 
-    activities = (Activity.get_public_activities()
-                  .exclude(pk__in=goals.activity_ids)
-                  .select_related("category", "city", "region", "country", *Activity.PICTURE_RELATED)
-                  .order_by("-bucket_list_count", "-created_at")[:POOL])
+    activities = (
+        Activity.get_public_activities()
+        .exclude(pk__in=goals.activity_ids)
+        .select_related("category", "city", "region", "country", *Activity.PICTURE_RELATED)
+        .order_by("-bucket_list_count", "-created_at")[:POOL]
+    )
     for activity in activities:
         text = activity.short_description or activity.description
         if activity.category_id in goals.category_ids:
@@ -81,8 +92,15 @@ def for_user(goals, limit=3):
             score, tag = 20, "Near your plans"
         else:
             score, tag = 0, "Popular"
-        scored.append((score, activity.bucket_list_count, activity.is_featured, activity.created_at,
-                       _card(activity, "activity", tag, text)))
+        scored.append(
+            (
+                score,
+                activity.bucket_list_count,
+                activity.is_featured,
+                activity.created_at,
+                _card(activity, "activity", tag, text),
+            )
+        )
 
     scored.sort(key=lambda s: s[:4], reverse=True)
     # One card per activity: its dated event (when one is suggested) or the activity itself.

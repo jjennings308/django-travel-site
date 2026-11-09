@@ -1,4 +1,5 @@
 """The trip's To do page and to-dos added from their item (docs/plans/edit-by-day.md, E2)."""
+
 import re
 from datetime import date
 from unittest import mock
@@ -7,9 +8,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.trips.models import BookingTask, Day, Lodging, TransportLeg, Trip, TripActivity, TripGrant, TripRole
 from apps.trips.tests.helpers import make_task
-from apps.trips.models import (BookingTask, Day, Lodging, TransportLeg, Trip, TripActivity, TripGrant,
-                               TripRole)
 
 User = get_user_model()
 
@@ -19,13 +19,15 @@ class Fixture(TestCase):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 24),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 20), end_date=date(2027, 9, 24), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day4 = Day.objects.create(trip=self.trip, day_number=4, date=date(2027, 9, 23))
-        self.leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Munich", destination="Salzburg",
-                                               date=self.day4.date)
+        self.leg = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Munich", destination="Salzburg", date=self.day4.date
+        )
         self.url = reverse("trips:trip_todo", args=[self.trip.pk])
 
     def get(self, user, url=None):
@@ -64,17 +66,27 @@ class TodoPageTests(Fixture):
         self.assertIn(reverse("trips:task_edit", args=[self.trip.pk, task.pk]), html)
         self.assertEqual(self.get(self.stranger).status_code, 404)
         self.client.force_login(self.viewer)
-        for url in (reverse("trips:task_new", args=[self.trip.pk]),
-                    reverse("trips:task_edit", args=[self.trip.pk, task.pk]),
-                    reverse("trips:task_delete", args=[self.trip.pk, task.pk])):
+        for url in (
+            reverse("trips:task_new", args=[self.trip.pk]),
+            reverse("trips:task_edit", args=[self.trip.pk, task.pk]),
+            reverse("trips:task_delete", args=[self.trip.pk, task.pk]),
+        ):
             self.assertEqual(self.client.get(url).status_code, 403, url)
         self.assertEqual(self.client.post(reverse("trips:task_done", args=[self.trip.pk, task.pk])).status_code, 403)
 
 
 class TaskEditTests(Fixture):
     def data(self, **over):
-        values = {"title": "Rail passes", "priority": "2", "due": "", "due_note": "", "day": "",
-                  "confirmation": "", "order": "", "notes": ""}
+        values = {
+            "title": "Rail passes",
+            "priority": "2",
+            "due": "",
+            "due_note": "",
+            "day": "",
+            "confirmation": "",
+            "order": "",
+            "notes": "",
+        }
         values.update(over)
         return values
 
@@ -90,23 +102,28 @@ class TaskEditTests(Fixture):
 
     def test_another_trips_item_is_not_a_choice(self):
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
-        theirs = TransportLeg.objects.create(trip=other, mode="train", origin="A", destination="B",
-                                             date=date(2027, 1, 1))
+        theirs = TransportLeg.objects.create(
+            trip=other, mode="train", origin="A", destination="B", date=date(2027, 1, 1)
+        )
         their_day = Day.objects.create(trip=other, day_number=1, date=date(2027, 1, 1))
         self.client.force_login(self.editor)
-        response = self.client.post(reverse("trips:task_new", args=[self.trip.pk]),
-                                    self.data(covers=[f"leg-{theirs.pk}"], day=their_day.pk))
+        response = self.client.post(
+            reverse("trips:task_new", args=[self.trip.pk]), self.data(covers=[f"leg-{theirs.pk}"], day=their_day.pk)
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.context["form"].errors), {"covers", "day"})
         self.assertFalse(BookingTask.objects.exists())
         theirs_task = BookingTask.objects.create(trip=other, title="x")
-        self.assertEqual(self.client.get(reverse("trips:task_edit", args=[self.trip.pk, theirs_task.pk])).status_code,
-                         404)
+        self.assertEqual(
+            self.client.get(reverse("trips:task_edit", args=[self.trip.pk, theirs_task.pk])).status_code, 404
+        )
 
     def test_edit_mark_done_and_back_and_delete(self):
         task = BookingTask.objects.create(trip=self.trip, title="Seats")
         self.client.force_login(self.editor)
-        response = self.client.post(reverse("trips:task_edit", args=[self.trip.pk, task.pk]), self.data(title="Seat 12A"))
+        response = self.client.post(
+            reverse("trips:task_edit", args=[self.trip.pk, task.pk]), self.data(title="Seat 12A")
+        )
         self.assertEqual(response["Location"], self.url)  # back to the To do page by default
         task.refresh_from_db()
         self.assertEqual(task.title, "Seat 12A")
@@ -117,8 +134,9 @@ class TaskEditTests(Fixture):
         self.client.post(done, {"done": "0"})
         task.refresh_from_db()
         self.assertFalse(task.done)
-        response = self.client.post(reverse("trips:task_done", args=[self.trip.pk, task.pk]),
-                                    {"next": "https://evil.example/"})
+        response = self.client.post(
+            reverse("trips:task_done", args=[self.trip.pk, task.pk]), {"next": "https://evil.example/"}
+        )
         self.assertEqual(response["Location"], self.url)
         self.client.post(reverse("trips:task_delete", args=[self.trip.pk, task.pk]))
         self.assertFalse(BookingTask.objects.exists())
@@ -136,14 +154,18 @@ class LinksTests(Fixture):
         self.assertIn(f'href="{self.url}" data-all-todos>All to-dos</a>', html)
 
     def test_item_pages_add_a_todo_for_themselves(self):
-        stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.day4.date, check_out=date(2027, 9, 24))
+        stay = Lodging.objects.create(
+            trip=self.trip, name="Hotel", check_in=self.day4.date, check_out=date(2027, 9, 24)
+        )
         activity = TripActivity.objects.create(trip=self.trip, day=self.day4, title="Salt mine")
         task = make_task(self.trip, "Mine tickets", activity)
         new = reverse("trips:task_new", args=[self.trip.pk])
         self.client.force_login(self.editor)
-        pages = {"leg": (reverse("trips:leg_edit", args=[self.trip.pk, self.leg.pk]), self.leg),
-                 "stay": (reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]), stay),
-                 "activity": (reverse("trips:activity_edit", args=[self.trip.pk, self.day4.pk, activity.pk]), activity)}
+        pages = {
+            "leg": (reverse("trips:leg_edit", args=[self.trip.pk, self.leg.pk]), self.leg),
+            "stay": (reverse("trips:stay_edit", args=[self.trip.pk, stay.pk]), stay),
+            "activity": (reverse("trips:activity_edit", args=[self.trip.pk, self.day4.pk, activity.pk]), activity),
+        }
         for kind, (url, item) in pages.items():
             with self.subTest(kind=kind):
                 html = self.client.get(url).content.decode()

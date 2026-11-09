@@ -3,6 +3,7 @@
 ``manage.py`` picks this module for ``test`` when ``DJANGO_SETTINGS_MODULE`` isn't set; CI sets it
 explicitly. Nothing here is ever used by a running site.
 """
+
 from .base import *  # noqa: F401,F403
 
 DEBUG = False

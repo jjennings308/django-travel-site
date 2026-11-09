@@ -1,5 +1,6 @@
 """Typed choices T3 (docs/plans/typed-choices.md): ideas become options of choices their kind fits, undecided
 options with a place show on the map, and catalogue notes show under options while deciding."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -11,10 +12,9 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.catalogue_notes.models import CatalogueNote
-from apps.locations.models import City, Country, POI
+from apps.locations.models import POI, City, Country
 from apps.trips import ideas
-from apps.trips.models import (Day, Meal, Option, OptionGroup, TripActivity, Trip, TripGrant, TripIdea, TripRole,
-                               Vote)
+from apps.trips.models import Day, Meal, Option, OptionGroup, Trip, TripActivity, TripGrant, TripIdea, TripRole, Vote
 
 User = get_user_model()
 APPROVED = ApprovalStatus.APPROVED
@@ -24,23 +24,50 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.editor, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 9, 21),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=APPROVED)
-        self.munich = City.objects.create(name="Munich", slug="munich", country=de, latitude=48.1, longitude=11.6,
-                                          approval_status=APPROVED)
+        de = Country.objects.create(
+            name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe", approval_status=APPROVED
+        )
+        self.munich = City.objects.create(
+            name="Munich", slug="munich", country=de, latitude=48.1, longitude=11.6, approval_status=APPROVED
+        )
         self.trip.cities.add(self.munich)
-        self.keller = POI.objects.create(name="Augustiner Keller", slug="augustiner", city=self.munich, latitude=48.14,
-                                         longitude=11.55, approval_status=APPROVED, poi_type_id="food")
-        self.museum = POI.objects.create(name="Deutsches Museum", slug="museum", city=self.munich, latitude=48.13,
-                                         longitude=11.58, approval_status=APPROVED)
+        self.keller = POI.objects.create(
+            name="Augustiner Keller",
+            slug="augustiner",
+            city=self.munich,
+            latitude=48.14,
+            longitude=11.55,
+            approval_status=APPROVED,
+            poi_type_id="food",
+        )
+        self.museum = POI.objects.create(
+            name="Deutsches Museum",
+            slug="museum",
+            city=self.munich,
+            latitude=48.13,
+            longitude=11.58,
+            approval_status=APPROVED,
+        )
         category, _ = ActivityCategory.objects.get_or_create(name="Tours", defaults={"slug": "tours"})
-        self.tour = Activity.objects.create(name="Beer tour", slug="beer-tour", category=category, description="d",
-                                            city=self.munich, venue=self.keller, visibility="public",
-                                            approval_status=APPROVED)
+        self.tour = Activity.objects.create(
+            name="Beer tour",
+            slug="beer-tour",
+            category=category,
+            description="d",
+            city=self.munich,
+            venue=self.keller,
+            visibility="public",
+            approval_status=APPROVED,
+        )
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18), city=self.munich)
 
     def choice(self, kind, prompt=None):
@@ -63,7 +90,7 @@ class IdeaTests(Fixture):
         self.assertEqual([g.kind for g in (eat, do, stay, any_) if ideas.fits(typed, g)], ["any"])
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
-        card = html[html.index(f'id="idea-{food.pk}"'):html.index(f'id="idea-{place.pk}"')]
+        card = html[html.index(f'id="idea-{food.pk}"') : html.index(f'id="idea-{place.pk}"')]
         self.assertIn(f'value="group-{eat.pk}"', card)
         self.assertIn(f'value="group-{any_.pk}"', card)
         self.assertNotIn(f'value="group-{do.pk}"', card)
@@ -79,9 +106,11 @@ class IdeaTests(Fixture):
         self.assertEqual(idea.placed, option)
 
     def test_each_kinds_field(self):
-        cases = (("stay", {"city": self.munich}, "city", self.munich),
-                 ("do", {"activity": self.tour}, "activity", self.tour),
-                 ("do", {"poi": self.museum}, "poi", self.museum))
+        cases = (
+            ("stay", {"city": self.munich}, "city", self.munich),
+            ("do", {"activity": self.tour}, "activity", self.tour),
+            ("do", {"poi": self.museum}, "poi", self.museum),
+        )
         for kind, link, field, expected in cases:
             group = self.choice(kind)
             self.add(self.idea(f"{kind} idea", kind_hint=kind if kind == "stay" else "", **link), f"group-{group.pk}")
@@ -144,7 +173,7 @@ class NoteTests(Fixture):
         Option.objects.create(group=eat, title="Keller", poi=self.keller)
         Option.objects.create(group=eat, title="Elsewhere", place_text="x")
         html = self.page()
-        box = html[html.index(f'id="group-{eat.pk}"'):]
+        box = html[html.index(f'id="group-{eat.pk}"') :]
         self.assertIn("ⓘ 1 note from the catalogue", box)
         self.assertEqual(box.count("data-option-notes"), 1)
         self.assertIn("Closed Mondays", box)
@@ -165,7 +194,6 @@ class NoteTests(Fixture):
         self.client.get(url)
         with CaptureQueriesContext(connection) as ctx:
             self.client.get(url)
-        before = len(ctx.captured_queries)
         eat = self.choice("eat")
         Option.objects.create(group=eat, title="Keller", poi=self.keller)
         Option.objects.create(group=eat, title="Keller again", poi=self.keller)

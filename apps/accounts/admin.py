@@ -1,18 +1,23 @@
-# accounts/admin.py
+from datetime import datetime
+from zoneinfo import ZoneInfo, available_timezones
+
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.utils.translation import gettext_lazy as _
-from django import forms
-from datetime import datetime
-from zoneinfo import available_timezones, ZoneInfo
-
-from .models import (
-    User, Profile, TravelPreferences, AccountSettings,
-    RoleRequest, VendorProfile, ContentProviderProfile, UserRole, SignupCode
-)
 
 # AccountSettingsForm supplies the ISO 4217 currency choices
 from .forms import AccountSettingsForm
+from .models import (
+    AccountSettings,
+    ContentProviderProfile,
+    Profile,
+    RoleRequest,
+    SignupCode,
+    TravelPreferences,
+    User,
+    UserRole,
+    VendorProfile,
+)
 
 COMMON_TIMEZONES = [
     "America/New_York",
@@ -28,6 +33,7 @@ COMMON_TIMEZONES = [
     "Asia/Hong_Kong",
     "Australia/Sydney",
 ]
+
 
 def timezone_choices_grouped():
     all_tzs = sorted(available_timezones())
@@ -46,6 +52,7 @@ class AccountSettingsAdminForm(AccountSettingsForm):
     - ISO 4217 currency choices from AccountSettingsForm
     - Timezone dropdown with preview
     """
+
     timezone = forms.ChoiceField(choices=[], required=True)
 
     class Meta:
@@ -55,23 +62,24 @@ class AccountSettingsAdminForm(AccountSettingsForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Currency choices come from AccountSettingsForm.preferred_currency
-        
+
         # Set up timezone choices
         self.fields["timezone"].choices = timezone_choices_grouped()
-        
+
         tz = self.initial.get("timezone") or getattr(self.instance, "timezone", "UTC") or "UTC"
         try:
             now_local = datetime.now(ZoneInfo(tz)).strftime("%a %b %d, %Y %I:%M %p")
-            self.fields["timezone"].help_text = (
-                f"IANA timezone (e.g. America/New_York). Current local time: {now_local}"
-            )
+            self.fields[
+                "timezone"
+            ].help_text = f"IANA timezone (e.g. America/New_York). Current local time: {now_local}"
         except Exception:
             self.fields["timezone"].help_text = "IANA timezone (e.g. America/New_York)."
 
-    
+
 # ----------------------------
 # Inline Models
 # ----------------------------
+
 
 class ProfileInline(admin.StackedInline):
     model = Profile
@@ -115,6 +123,7 @@ class AccountSettingsInline(admin.StackedInline):
 # Custom User Admin
 # ----------------------------
 
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     model = User
@@ -156,6 +165,7 @@ class UserAdmin(DjangoUserAdmin):
     def suspend_accounts(self, request, queryset):
         """Site roadmap R15. Type a reason in Suspension reason first if you want one recorded."""
         from django.utils import timezone
+
         changed = 0
         for user in queryset.exclude(pk=request.user.pk).filter(is_superuser=False):
             user.is_active = False
@@ -172,70 +182,87 @@ class UserAdmin(DjangoUserAdmin):
 
     fieldsets = (
         (None, {"fields": ("username", "email", "password")}),
-        (_("Personal info"), {
-            "fields": (
-                "first_name",
-                "last_name",
-                "date_of_birth",
-                "phone_number",
-            )
-        }),
-        (_("Permissions"), {
-            "fields": (
-                "is_active",
-                "is_staff",
-                "is_superuser",
-                "groups",
-                "user_permissions",
-            )
-        }),
-        (_("Account Status"), {
-            "fields": (
-                "is_verified",
-                "subscription_tier",
-                "subscription_expires",
-                "profile_visibility",
-                "trip_creation_blocked",
-                "deletion_requested_at",
-                "suspended_at",
-                "suspension_reason",
-            )
-        }),
-        (_("Important dates"), {
-            "fields": (
-                "last_login",
-                "date_joined",
-                "created_at",
-                "updated_at",
-            )
-        }),
+        (
+            "Personal info",
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                    "date_of_birth",
+                    "phone_number",
+                )
+            },
+        ),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        (
+            "Account Status",
+            {
+                "fields": (
+                    "is_verified",
+                    "subscription_tier",
+                    "subscription_expires",
+                    "profile_visibility",
+                    "trip_creation_blocked",
+                    "deletion_requested_at",
+                    "suspended_at",
+                    "suspension_reason",
+                )
+            },
+        ),
+        (
+            "Important dates",
+            {
+                "fields": (
+                    "last_login",
+                    "date_joined",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
     )
 
     add_fieldsets = (
-        (None, {
-            "classes": ("wide",),
-            "fields": (
-                "username",
-                "email",
-                "first_name",
-                "last_name",
-                "password1",
-                "password2",
-                "is_staff",
-                "is_superuser",
-            ),
-        }),
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "username",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "password1",
+                    "password2",
+                    "is_staff",
+                    "is_superuser",
+                ),
+            },
+        ),
     )
-    
+
     def is_vendor(self, obj):
         """Show if user has vendor role"""
         return obj.is_vendor
+
     is_vendor.boolean = True
     is_vendor.short_description = "Vendor"
-    
+
     def is_content_provider(self, obj):
         """Show if user has content provider role"""
         return obj.is_content_provider
+
     is_content_provider.boolean = True
     is_content_provider.short_description = "Content Provider"
 
@@ -243,6 +270,7 @@ class UserAdmin(DjangoUserAdmin):
 # ----------------------------
 # Profile Admin
 # ----------------------------
+
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
@@ -270,6 +298,7 @@ class ProfileAdmin(admin.ModelAdmin):
 # ----------------------------
 # Travel Preferences Admin
 # ----------------------------
+
 
 @admin.register(TravelPreferences)
 class TravelPreferencesAdmin(admin.ModelAdmin):
@@ -300,6 +329,7 @@ class TravelPreferencesAdmin(admin.ModelAdmin):
 # ----------------------------
 # Account Settings Admin
 # ----------------------------
+
 
 @admin.register(AccountSettings)
 class AccountSettingsAdmin(admin.ModelAdmin):
@@ -338,6 +368,7 @@ class AccountSettingsAdmin(admin.ModelAdmin):
 # Role Request Admin
 # ----------------------------
 
+
 @admin.register(RoleRequest)
 class RoleRequestAdmin(admin.ModelAdmin):
     list_display = (
@@ -348,19 +379,19 @@ class RoleRequestAdmin(admin.ModelAdmin):
         "reviewed_at",
         "reviewed_by",
     )
-    
+
     list_filter = (
         "status",
         "requested_role",
         "created_at",
     )
-    
+
     search_fields = (
         "user__username",
         "user__email",
         "business_name",
     )
-    
+
     readonly_fields = (
         "created_at",
         "updated_at",
@@ -373,62 +404,73 @@ class RoleRequestAdmin(admin.ModelAdmin):
         """The file is in private storage (no public URL); link to the access-checked view."""
         from django.urls import reverse
         from django.utils.html import format_html
+
         if not obj.pk or not obj.supporting_documents:
             return "—"
         return format_html('<a href="{}">Download</a>', reverse("role_request_document", args=[obj.pk]))
-    
+
     fieldsets = (
-        ("Request Information", {
-            "fields": (
-                "user",
-                "requested_role",
-                "status",
-                "created_at",
-            )
-        }),
-        ("Application Details", {
-            "fields": (
-                "business_name",
-                "business_description",
-                "website",
-                "business_license",
-                "document_download",
-            )
-        }),
-        ("Review", {
-            "fields": (
-                "reviewed_by",
-                "reviewed_at",
-                "review_notes",
-                "rejection_reason",
-            )
-        }),
+        (
+            "Request Information",
+            {
+                "fields": (
+                    "user",
+                    "requested_role",
+                    "status",
+                    "created_at",
+                )
+            },
+        ),
+        (
+            "Application Details",
+            {
+                "fields": (
+                    "business_name",
+                    "business_description",
+                    "website",
+                    "business_license",
+                    "document_download",
+                )
+            },
+        ),
+        (
+            "Review",
+            {
+                "fields": (
+                    "reviewed_by",
+                    "reviewed_at",
+                    "review_notes",
+                    "rejection_reason",
+                )
+            },
+        ),
     )
-    
+
     def save_model(self, request, obj, form, change):
         """Auto-handle status changes from admin"""
         if change:  # If editing existing
             old_status = RoleRequest.objects.get(pk=obj.pk).status
             new_status = obj.status
-            
+
             # If manually approved in admin
-            if old_status == 'pending' and new_status == 'approved':
+            if old_status == "pending" and new_status == "approved":
                 obj.approve(reviewed_by=request.user)
                 return  # approve() calls save()
-            
+
             # If manually rejected in admin
-            elif old_status == 'pending' and new_status == 'rejected':
+            elif old_status == "pending" and new_status == "rejected":
                 if not obj.rejection_reason:
                     obj.rejection_reason = "Manually rejected by admin"
                 obj.reject(reviewed_by=request.user, reason=obj.rejection_reason)
                 return  # reject() calls save()
-        
+
         super().save_model(request, obj, form, change)
 
 
 # ----------------------------
 # Vendor Profile Admin
 # ----------------------------
+
 
 @admin.register(VendorProfile)
 class VendorProfileAdmin(admin.ModelAdmin):
@@ -440,23 +482,22 @@ class VendorProfileAdmin(admin.ModelAdmin):
         "average_rating",
         "total_bookings",
     )
-    
-    list_filter = (
-        "verification_status",
-    )
-    
+
+    list_filter = ("verification_status",)
+
     search_fields = (
         "user__username",
         "user__email",
         "business_name",
     )
-    
+
     readonly_fields = ("created_at", "updated_at")
 
 
 # ----------------------------
 # Content Provider Profile Admin
 # ----------------------------
+
 
 @admin.register(ContentProviderProfile)
 class ContentProviderProfileAdmin(admin.ModelAdmin):
@@ -465,18 +506,19 @@ class ContentProviderProfileAdmin(admin.ModelAdmin):
         "total_contributions",
         "content_rating",
     )
-    
+
     search_fields = (
         "user__username",
         "user__email",
     )
-    
+
     readonly_fields = ("created_at", "updated_at")
 
 
 # ============================================================================
 # App-wide trip roles
 # ============================================================================
+
 
 @admin.register(UserRole)
 class UserRoleAdmin(admin.ModelAdmin):
@@ -512,6 +554,7 @@ class SignupCodeAdmin(admin.ModelAdmin):
     """Codes that let someone register while sign-up is invite-only (site roadmap R14). Leave
     Code as suggested (8 letters, no look-alikes) or type your own; hand it out as a link:
     https://sharebucketlist.com/accounts/register/?code=CODE"""
+
     list_display = ("code", "note", "uses_left", "expires_at", "created_by", "created_at")
     search_fields = ("code", "note")
     readonly_fields = ("created_by", "created_at")

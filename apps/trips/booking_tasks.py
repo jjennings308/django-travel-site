@@ -26,6 +26,7 @@ A to-do covers any number of legs, stays and activities (booking-todos K1: ``Tas
 - ``offer_for(trip, before)``: the "mark these tasks done?" offer, for to-dos all of whose items are
   confirmed now and one of which just was.
 """
+
 import re
 
 
@@ -70,13 +71,19 @@ def suggest(task, legs, stays, activities=()):
     """The one leg, stay or activity this task's title names, or None."""
     dismissed = task.dismissed()
     title = task.title
-    candidates = [stay for stay in stays
-                  if len(stay.name.strip()) >= 4 and stay.name.strip().lower() in title.lower()]
-    candidates += [activity for activity in activities
-                   if len(activity.title.strip()) >= 4 and activity.title.strip().lower() in title.lower()]
-    candidates += [leg for leg in legs
-                   if _names(title, _first_word(leg.origin)) and _names(title, _first_word(leg.destination))
-                   and _first_word(leg.origin).lower() != _first_word(leg.destination).lower()]
+    candidates = [stay for stay in stays if len(stay.name.strip()) >= 4 and stay.name.strip().lower() in title.lower()]
+    candidates += [
+        activity
+        for activity in activities
+        if len(activity.title.strip()) >= 4 and activity.title.strip().lower() in title.lower()
+    ]
+    candidates += [
+        leg
+        for leg in legs
+        if _names(title, _first_word(leg.origin))
+        and _names(title, _first_word(leg.destination))
+        and _first_word(leg.origin).lower() != _first_word(leg.destination).lower()
+    ]
     candidates = [item for item in candidates if label(item).lower() not in dismissed]
     return candidates[0] if len(candidates) == 1 else None
 
@@ -92,11 +99,16 @@ def _activities(trip):
 def _when(item):
     """Sort key: an item's date, then (legs) its departure or order."""
     from datetime import date as _date
+
     if kind_of(item) == "stay":
         return (item.check_in or _date.max, 1, 0, item.pk)
     if kind_of(item) == "activity":
-        return (item.day.date if item.day_id and item.day.date else _date.max, 2,
-                item.start_time.hour * 60 + item.start_time.minute if item.start_time else 0, item.pk)
+        return (
+            item.day.date if item.day_id and item.day.date else _date.max,
+            2,
+            item.start_time.hour * 60 + item.start_time.minute if item.start_time else 0,
+            item.pk,
+        )
     return (item.date or _date.max, 0, item.departure_at.timestamp() if item.departure_at else item.order, item.pk)
 
 
@@ -110,8 +122,9 @@ def _same_place(city_a, text_a, city_b, text_b):
 
 def _reverses(leg, other):
     """``other`` goes back the way ``leg`` came (its ends swapped)."""
-    return (_same_place(other.origin_city_id, other.origin, leg.destination_city_id, leg.destination)
-            and _same_place(other.destination_city_id, other.destination, leg.origin_city_id, leg.origin))
+    return _same_place(other.origin_city_id, other.origin, leg.destination_city_id, leg.destination) and _same_place(
+        other.destination_city_id, other.destination, leg.origin_city_id, leg.origin
+    )
 
 
 def _connects(first, second):
@@ -172,8 +185,7 @@ def cover_label(items):
     if all(kind_of(item) == "leg" for item in items):
         if len(items) == 2 and _reverses(items[0], items[1]):
             return f"{items[0].origin} → {items[0].destination} and back"
-        if (len({leg.date for leg in items}) == 1
-                and all(_connects(a, b) for a, b in zip(items, items[1:]))):
+        if len({leg.date for leg in items}) == 1 and all(_connects(a, b) for a, b in zip(items, items[1:])):
             return " → ".join([items[0].origin] + [leg.destination for leg in items])
     return f"{label(items[0])} + {len(items) - 1} more"
 
@@ -181,7 +193,9 @@ def cover_label(items):
 def _item_index(legs, stays, activities):
     """{(content type id, pk): item} for the trip's legs, stays and activities."""
     from django.contrib.contenttypes.models import ContentType
+
     from .models import Lodging, TransportLeg, TripActivity
+
     types = ContentType.objects.get_for_models(TransportLeg, Lodging, TripActivity)
     index = {}
     for model, rows in ((TransportLeg, legs), (Lodging, stays), (TripActivity, activities)):
@@ -199,8 +213,11 @@ def attach(trip, suggestions=False):
     for item in legs + stays + activities:
         item.open_tasks = []
     for task in trip.booking_tasks.all():
-        items = [index[(link.content_type_id, link.object_id)] for link in task.links.all()
-                 if (link.content_type_id, link.object_id) in index]
+        items = [
+            index[(link.content_type_id, link.object_id)]
+            for link in task.links.all()
+            if (link.content_type_id, link.object_id) in index
+        ]
         task.items = sorted(items, key=_when)
         task.item = task.items[0] if task.items else None
         task.cover_label = cover_label(task.items)
@@ -209,8 +226,7 @@ def attach(trip, suggestions=False):
         task.suggestion = None
         if task.item is not None:
             kind = kind_of(task.item)
-            when = (task.item.date if kind == "leg" else task.item.check_in if kind == "stay"
-                    else task.item.day.date)
+            when = task.item.date if kind == "leg" else task.item.check_in if kind == "stay" else task.item.day.date
             task.item_day = days_by_date.get(when)
             if not task.done:
                 for item in task.items:
@@ -246,17 +262,24 @@ def back_on_booked_dates(task, items):
 def _tasked(trip):
     """{("leg" / "stay" / "activity", pk)} that any to-do covers, from the prefetched links."""
     from django.contrib.contenttypes.models import ContentType
+
     from .models import Lodging, TransportLeg, TripActivity
+
     types = ContentType.objects.get_for_models(TransportLeg, Lodging, TripActivity)
     kinds = {types[TransportLeg].pk: "leg", types[Lodging].pk: "stay", types[TripActivity].pk: "activity"}
-    return {(kinds[link.content_type_id], link.object_id) for task in trip.booking_tasks.all()
-            for link in task.links.all() if link.content_type_id in kinds}
+    return {
+        (kinds[link.content_type_id], link.object_id)
+        for task in trip.booking_tasks.all()
+        for link in task.links.all()
+        if link.content_type_id in kinds
+    }
 
 
 def _needs_booking(leg):
     Mode = type(leg).Mode
     return leg.mode in (Mode.PLANE, Mode.RENTAL_CAR) or (
-        leg.mode == Mode.TRAIN and bool(leg.operator.strip() or leg.service_number.strip()))
+        leg.mode == Mode.TRAIN and bool(leg.operator.strip() or leg.service_number.strip())
+    )
 
 
 def not_booked(trip):
@@ -273,11 +296,15 @@ def not_booked(trip):
         if not stay.no_booking and not getattr(stay, "confirmation_list", None) and ("stay", stay.pk) not in tasked:
             found.append({"item": stay, "what": "Stay", "when": stay.check_in, **describe(stay)})
     for activity in _activities(trip):
-        if (activity.kind in activity.BOOKABLE and not activity.no_booking
-                and not getattr(activity, "confirmation_list", None)
-                and ("activity", activity.pk) not in tasked):
-            found.append({"item": activity, "what": activity.get_kind_display(), "when": activity.day.date,
-                          **describe(activity)})
+        if (
+            activity.kind in activity.BOOKABLE
+            and not activity.no_booking
+            and not getattr(activity, "confirmation_list", None)
+            and ("activity", activity.pk) not in tasked
+        ):
+            found.append(
+                {"item": activity, "what": activity.get_kind_display(), "when": activity.day.date, **describe(activity)}
+            )
     return found
 
 
@@ -328,13 +355,29 @@ def to_book(trip):
         group = groups[key]
         first = group["items"][0]
         kind = kind_of(first)
-        when = first.date if kind == "leg" else first.check_in if kind == "stay" else (
-            first.day.date if first.day_id else None)
+        when = (
+            first.date
+            if kind == "leg"
+            else first.check_in
+            if kind == "stay"
+            else (first.day.date if first.day_id else None)
+        )
         day = (getattr(first, "on_day", None) if kind == "leg" else None) or by_date.get(when)
-        rows.append({"items": group["items"], "item": first, "kind": kind, "what": what(first),
-                     "label": cover_label(group["items"]), "anchor": anchor(first), "day": day, "when": when,
-                     "tasks": group["tasks"], "no_plan": not group["tasks"],
-                     "key": f"{kind}-{first.pk}"})
+        rows.append(
+            {
+                "items": group["items"],
+                "item": first,
+                "kind": kind,
+                "what": what(first),
+                "label": cover_label(group["items"]),
+                "anchor": anchor(first),
+                "day": day,
+                "when": when,
+                "tasks": group["tasks"],
+                "no_plan": not group["tasks"],
+                "key": f"{kind}-{first.pk}",
+            }
+        )
         shown.update(task.pk for task in group["tasks"])
     other = [task for task in trip.booking_tasks.all() if not task.done and task.pk not in shown]
     return {"rows": rows, "other": other}
@@ -343,17 +386,20 @@ def to_book(trip):
 def confirmed_items(trip):
     """{("leg", pk), ("stay", pk)} covered by at least one of the trip's confirmations."""
     from .models import ConfirmationLink
+
     kinds = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity"}
-    rows = ConfirmationLink.objects.filter(confirmation__trip=trip, content_type__app_label="trips",
-                                           content_type__model__in=kinds).values_list("content_type__model", "object_id")
+    rows = ConfirmationLink.objects.filter(
+        confirmation__trip=trip, content_type__app_label="trips", content_type__model__in=kinds
+    ).values_list("content_type__model", "object_id")
     return {(kinds[model], pk) for model, pk in rows}
 
 
 def task_keys(task):
     """{("leg" / "stay" / "activity", pk)} a to-do covers (one query)."""
     kinds = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity"}
-    return {(kinds[model], pk) for model, pk in task.links.values_list("content_type__model", "object_id")
-            if model in kinds}
+    return {
+        (kinds[model], pk) for model, pk in task.links.values_list("content_type__model", "object_id") if model in kinds
+    }
 
 
 def offer_after(trip, newly):

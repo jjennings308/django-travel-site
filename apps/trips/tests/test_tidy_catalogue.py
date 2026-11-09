@@ -1,5 +1,6 @@
 """Tidy: move a trip's callout about a linked place, activity or event to the catalogue
 (docs/plans/catalogue-notes.md, N5)."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -10,7 +11,7 @@ from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.catalogue_notes.models import CatalogueNote
 from apps.events.models import Event
-from apps.locations.models import City, Country, POI
+from apps.locations.models import POI, City, Country
 from apps.notifications.models import Notification
 from apps.trips import tidying
 from apps.trips.models import Day, Meal, Section, TidyDismissal, Trip, TripActivity, TripGrant, TripRole
@@ -22,32 +23,52 @@ APPROVED = ApprovalStatus.APPROVED
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 22),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 22), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=APPROVED)
-        city = City.objects.create(name="Marburg", slug="marburg", country=de, latitude=0, longitude=0,
-                                   approval_status=APPROVED)
-        self.castle = POI.objects.create(name="Marburg Castle", slug="marburg-castle", city=city, latitude=0,
-                                         longitude=0, approval_status=APPROVED)
-        self.wiesn = POI.objects.create(name="Theresienwiese", slug="theresienwiese", city=city, latitude=0,
-                                        longitude=0, approval_status=APPROVED)
+        de = Country.objects.create(
+            name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe", approval_status=APPROVED
+        )
+        city = City.objects.create(
+            name="Marburg", slug="marburg", country=de, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.castle = POI.objects.create(
+            name="Marburg Castle", slug="marburg-castle", city=city, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.wiesn = POI.objects.create(
+            name="Theresienwiese", slug="theresienwiese", city=city, latitude=0, longitude=0, approval_status=APPROVED
+        )
         category, _ = ActivityCategory.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
-        okto = Activity.objects.create(name="Oktoberfest", slug="oktoberfest", category=category, description="d",
-                                       venue=self.wiesn, visibility="public", approval_status=APPROVED)
-        self.okto27 = Event.objects.create(name="Oktoberfest 2027", slug="oktoberfest-2027", description="d",
-                                           category=category, start_date=date(2027, 9, 18),
-                                           end_date=date(2027, 10, 3), city=city, related_activity=okto,
-                                           poi=self.wiesn, approval_status=APPROVED)
+        okto = Activity.objects.create(
+            name="Oktoberfest",
+            slug="oktoberfest",
+            category=category,
+            description="d",
+            venue=self.wiesn,
+            visibility="public",
+            approval_status=APPROVED,
+        )
+        self.okto27 = Event.objects.create(
+            name="Oktoberfest 2027",
+            slug="oktoberfest-2027",
+            description="d",
+            category=category,
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 10, 3),
+            city=city,
+            related_activity=okto,
+            poi=self.wiesn,
+            approval_status=APPROVED,
+        )
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18))
         self.other_day = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 19))
-        TripActivity.objects.create(trip=self.trip, day=self.day, kind="entry", title="Castle museum",
-                                    poi=self.castle)
+        TripActivity.objects.create(trip=self.trip, day=self.day, kind="entry", title="Castle museum", poi=self.castle)
 
     def callout(self, text, day=None, title="Heads up", tone="warning"):
-        return Section.objects.create(day=day or self.day, section_type="note", title=title,
-                                      content={"tone": tone, "paragraphs": [text]})
+        return Section.objects.create(
+            day=day or self.day, section_type="note", title=title, content={"tone": tone, "paragraphs": [text]}
+        )
 
     def found(self):
         return [s for s in tidying.suggestions(self.trip) if s.kind == "catalogue_note"]
@@ -58,8 +79,12 @@ class DetectTests(Fixture):
         self.callout("Marburg Castle's museum is cash only.")
         self.callout("Marburg Castle again, but on a day with nothing linked.", day=self.other_day)
         self.callout("Olga is arranged by John.")
-        Section.objects.create(day=self.day, section_type="note", title="Marburg Castle",
-                               content={"paragraphs": ["Marburg Castle is up the hill."]})
+        Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="Marburg Castle",
+            content={"paragraphs": ["Marburg Castle is up the hill."]},
+        )
         found = self.found()
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0].change["target"]["name"], "Marburg Castle")
@@ -68,8 +93,9 @@ class DetectTests(Fixture):
 
     def test_an_events_activity_and_venue_count_and_capitals_and_accents_dont(self):
         Meal.objects.create(day=self.other_day, name="Tent lunch", meal_type="lunch")
-        Section.objects.create(day=self.other_day, section_type="note", title="Wiesn", event=self.okto27,
-                               content={"paragraphs": ["Beer."]})
+        Section.objects.create(
+            day=self.other_day, section_type="note", title="Wiesn", event=self.okto27, content={"paragraphs": ["Beer."]}
+        )
         self.callout("THERESIENWIESE: cash only in the tents.", day=self.other_day)
         self.assertEqual([s.change["target"]["kind"] for s in self.found()], ["poi"])
 
@@ -85,8 +111,10 @@ class ApplyTests(Fixture):
         applied, skipped = self.apply(self.editor)
         self.assertEqual((len(applied), skipped), (1, []))
         note = CatalogueNote.objects.get()
-        self.assertEqual((note.poi, note.tone, note.created_by, note.approval_status),
-                         (self.castle, "critical", self.editor, ApprovalStatus.PENDING))
+        self.assertEqual(
+            (note.poi, note.tone, note.created_by, note.approval_status),
+            (self.castle, "critical", self.editor, ApprovalStatus.PENDING),
+        )
         self.assertEqual(note.text, "Cash only: Marburg Castle museum has no ATM nearby.")
         self.assertFalse(Section.objects.filter(pk=section.pk).exists())
         self.assertTrue(Notification.objects.filter(user=staff).exists())  # as for any submission

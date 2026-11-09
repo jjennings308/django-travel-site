@@ -1,17 +1,28 @@
 """The trip page's shell (docs/plans/trip-page-ux.md, U2; trip-days-as-overview.md): header and ⋯ menu,
 the Needs attention banner, collapsible days whose summaries are the overview, About this trip, and
 Reference as the home of confirmations."""
+
 import re
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.trips.models import (
+    BookingTask,
+    Confirmation,
+    Day,
+    Lodging,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripGrant,
+    TripRole,
+)
 from apps.trips.tests.helpers import make_task
-from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripActivity,
-                               TripGrant, TripRole)
 
 User = get_user_model()
 UTC = dt_timezone.utc
@@ -22,12 +33,15 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 20),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 20), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
-        self.days = [Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 16 + n), theme=f"Theme {n}")
-                     for n in range(1, 5)]
+        self.days = [
+            Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 16 + n), theme=f"Theme {n}")
+            for n in range(1, 5)
+        ]
         self.url = reverse("trips:trip_detail", args=[self.trip.pk])
 
     def page(self, user=None, today=date(2027, 9, 18)):
@@ -73,8 +87,11 @@ class HeaderTests(Fixture):
 
 def summary(html, number):
     """The <summary> of day N's fold."""
-    found = re.search(rf'<details class="day day-fold" id="day-{number}"[^>]*>\s*<summary class="day-summary">(.*?)</summary>',
-                      html, re.S)
+    found = re.search(
+        rf'<details class="day day-fold" id="day-{number}"[^>]*>\s*<summary class="day-summary">(.*?)</summary>',
+        html,
+        re.S,
+    )
     return found.group(1)
 
 
@@ -82,16 +99,30 @@ class DaySummaryTests(Fixture):
     def setUp(self):
         super().setUp()
         d1, d2, d3, _d4 = self.days
-        TransportLeg.objects.create(trip=self.trip, mode="plane", origin="PIT", destination="FRA",
-                                    origin_timezone="America/New_York", destination_timezone="Europe/Berlin",
-                                    departure_at=datetime(2027, 9, 17, 22, 0, tzinfo=UTC),
-                                    arrival_at=datetime(2027, 9, 18, 6, 0, tzinfo=UTC))
+        TransportLeg.objects.create(
+            trip=self.trip,
+            mode="plane",
+            origin="PIT",
+            destination="FRA",
+            origin_timezone="America/New_York",
+            destination_timezone="Europe/Berlin",
+            departure_at=datetime(2027, 9, 17, 22, 0, tzinfo=UTC),
+            arrival_at=datetime(2027, 9, 18, 6, 0, tzinfo=UTC),
+        )
         for origin, destination, order in (("Butzbach", "Frankfurt", 0), ("Frankfurt", "Marburg", 1)):
-            TransportLeg.objects.create(trip=self.trip, mode="train", origin=origin, destination=destination,
-                                        date=d3.date, est_duration=timedelta(minutes=45), order=order)
+            TransportLeg.objects.create(
+                trip=self.trip,
+                mode="train",
+                origin=origin,
+                destination=destination,
+                date=d3.date,
+                est_duration=timedelta(minutes=45),
+                order=order,
+            )
         self.hof = Lodging.objects.create(trip=self.trip, name="Hessischer Hof", check_in=d2.date, check_out=d3.date)
-        Lodging.objects.create(trip=self.trip, name="Early Inn", check_in=date(2027, 9, 10),
-                               check_out=date(2027, 9, 11))
+        Lodging.objects.create(
+            trip=self.trip, name="Early Inn", check_in=date(2027, 9, 10), check_out=date(2027, 9, 11)
+        )
         TripActivity.objects.create(trip=self.trip, day=d3, kind="tour", title="Student guide", start_time=time(15))
         make_task(self.trip, "Hof rooms", self.hof)
 
@@ -133,10 +164,11 @@ class DaySummaryTests(Fixture):
         self.assertNotIn('id="needs-attention"', self.page().content.decode())
 
     def test_bookings_on_no_day_show_for_a_viewer(self):
-        TransportLeg.objects.create(trip=self.trip, mode="train", origin="Ulm", destination="Bonn",
-                                    date=date(2027, 9, 30))
+        TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Ulm", destination="Bonn", date=date(2027, 9, 30)
+        )
         html = self.page(self.viewer).content.decode()
-        block = html[html.index('id="not-on-any-day"'):html.index('id="day-1"')]
+        block = html[html.index('id="not-on-any-day"') : html.index('id="day-1"')]
         self.assertIn("Journeys not on any day", block)
         self.assertIn("Ulm", block)
         self.assertIn("Stays outside the trip&#x27;s days", block.replace("'", "&#x27;"))
@@ -149,11 +181,12 @@ class DaySummaryTests(Fixture):
 class AboutThisTripTests(Fixture):
     def test_closed_fold_with_travellers_cities_goals_and_notes(self):
         from apps.trips.models import Traveler
+
         self.trip.notes = "Bring the rail passes."
         self.trip.save()
         self.trip.travelers.add(Traveler.objects.create(name="Regan"))
         html = self.page().content.decode()
-        about = html[html.index('id="about"'):html.index("</details>", html.index('id="about"'))]
+        about = html[html.index('id="about"') : html.index("</details>", html.index('id="about"'))]
         self.assertIn('<details class="about-fold" id="about">', html)  # closed by default
         self.assertIn("About this trip", about)
         self.assertIn("Regan", about)
@@ -161,7 +194,7 @@ class AboutThisTripTests(Fixture):
         # The goals link moved to the Ideas shelf (P6), the fold after this one.
         goals = reverse("bucketlists:trip_goals", args=[self.trip.pk])
         self.assertNotIn(goals, about)
-        shelf = html[html.index('id="ideas"'):html.index("</details>", html.index('id="ideas"'))]
+        shelf = html[html.index('id="ideas"') : html.index("</details>", html.index('id="ideas"'))]
         self.assertIn(goals, shelf)
 
     def test_open_when_the_trip_has_no_days(self):
@@ -174,19 +207,20 @@ class TidyLinkTests(Fixture):
         tidy = reverse("trips:trip_tidy", args=[self.trip.pk])
         html = self.page(self.editor).content.decode()
         start = html.index("data-trip-menu")
-        menu = html[start:html.index("</header>", start)]
+        menu = html[start : html.index("</header>", start)]
         self.assertIn(f'href="{tidy}"', menu)
         self.assertNotIn(tidy, self.page(self.viewer).content.decode())
 
 
 class ReferenceTests(Fixture):
     def test_confirmation_row_once_with_chips_linking_to_it(self):
-        leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="A", destination="B",
-                                          date=self.days[2].date)
+        leg = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="A", destination="B", date=self.days[2].date
+        )
         conf = Confirmation.attach_number(self.trip, "DB-123", leg, provider="DB")
         html = self.page().content.decode()
         self.assertEqual(html.count(f'id="confirmation-{conf.pk}"'), 1)
         self.assertIn(f'href="#confirmation-{conf.pk}"', html)
-        row = html[html.index(f'id="confirmation-{conf.pk}"'):]
+        row = html[html.index(f'id="confirmation-{conf.pk}"') :]
         self.assertIn(f'href="#leg-{leg.pk}"', row[:2000])  # what it covers links back to the leg
         self.assertNotIn("Quick reference", html)

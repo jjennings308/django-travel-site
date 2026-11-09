@@ -1,92 +1,14 @@
-# accounts/forms.py
+from datetime import datetime
+from zoneinfo import ZoneInfo, available_timezones
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from datetime import datetime
-from zoneinfo import available_timezones, ZoneInfo
-from .models import (
-    User, Profile, TravelPreferences, AccountSettings, RoleRequest
-)
+
 from apps.core.utils.currency import CURRENCY_CHOICES
 
-
-class ProfileForm(forms.ModelForm):
-    """Form for user profile"""
-    
-    class Meta:
-        model = Profile
-        fields = [
-            'bio',
-            'avatar',
-            'cover_photo',
-            'home_country',
-            'home_city',
-            'current_location',
-            'website',
-            'instagram',
-            'twitter',
-        ]
-        widgets = {
-            'bio': forms.Textarea(attrs={
-                'class': 'sbl-input',
-                'rows': 4,
-                'placeholder': 'Tell us about yourself...'
-            }),
-            'avatar': forms.FileInput(attrs={'class': 'sbl-input'}),
-            'cover_photo': forms.FileInput(attrs={'class': 'sbl-input'}),
-            'home_country': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'e.g., United States'
-            }),
-            'home_city': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'e.g., New York'
-            }),
-            'current_location': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'Where are you now?'
-            }),
-            'website': forms.URLInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'https://'
-            }),
-            'instagram': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': '@username'
-            }),
-            'twitter': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': '@username'
-            }),
-        }
-
-
-class TravelPreferencesForm(forms.ModelForm):
-    """Form for travel preferences"""
-    
-    class Meta:
-        model = TravelPreferences
-        fields = [
-            'budget_preference',
-            'travel_styles',
-            'travel_pace',
-            'preferred_activities',
-            'fitness_level',
-            'mobility_restrictions',
-        ]
-        widgets = {
-            'budget_preference': forms.Select(attrs={'class': 'sbl-input'}),
-            'travel_styles': forms.CheckboxSelectMultiple(),
-            'travel_pace': forms.Select(attrs={'class': 'sbl-input'}),
-            'preferred_activities': forms.CheckboxSelectMultiple(),
-            'fitness_level': forms.NumberInput(attrs={
-                'class': 'sbl-input',
-                'min': 1,
-                'max': 5
-            }),
-            'mobility_restrictions': forms.CheckboxInput(attrs={'class': 'sbl-check'}),
-        }
+from .models import AccountSettings, Profile, RoleRequest, TravelPreferences, User
 
 COMMON_TIMEZONES = [
     "America/New_York",
@@ -98,6 +20,7 @@ COMMON_TIMEZONES = [
     "Europe/Paris",
     "Europe/Berlin",
 ]
+
 
 def timezone_choices_grouped():
     all_tzs = sorted(available_timezones())
@@ -111,98 +34,65 @@ def timezone_choices_grouped():
 
 class UserRegistrationForm(UserCreationForm):
     """Form for user registration with username and email"""
-    
+
     username = forms.CharField(
         required=True,
         max_length=30,
-        validators=[
-            RegexValidator(
-                r'^[a-zA-Z0-9_]+$',
-                'Username can only contain letters, numbers, and underscores'
-            )
-        ],
-        widget=forms.TextInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'Username (letters, numbers, and _ only)'
-        }),
-        help_text='Your unique username for your profile URL'
+        validators=[RegexValidator(r"^[a-zA-Z0-9_]+$", "Username can only contain letters, numbers, and underscores")],
+        widget=forms.TextInput(attrs={"class": "sbl-input", "placeholder": "Username (letters, numbers, and _ only)"}),
+        help_text="Your unique username for your profile URL",
     )
-    
+
     email = forms.EmailField(
-        required=True,
-        widget=forms.EmailInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'Email address'
-        })
+        required=True, widget=forms.EmailInput(attrs={"class": "sbl-input", "placeholder": "Email address"})
     )
-    
+
     first_name = forms.CharField(
-        required=True,
-        max_length=150,
-        widget=forms.TextInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'First name'
-        })
+        required=True, max_length=150, widget=forms.TextInput(attrs={"class": "sbl-input", "placeholder": "First name"})
     )
-    
+
     last_name = forms.CharField(
-        required=True,
-        max_length=150,
-        widget=forms.TextInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'Last name'
-        })
+        required=True, max_length=150, widget=forms.TextInput(attrs={"class": "sbl-input", "placeholder": "Last name"})
     )
-    
+
     password1 = forms.CharField(
-        label='Password',
-        widget=forms.PasswordInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'Password'
-        })
+        label="Password", widget=forms.PasswordInput(attrs={"class": "sbl-input", "placeholder": "Password"})
     )
-    
+
     password2 = forms.CharField(
-        label='Confirm Password',
-        widget=forms.PasswordInput(attrs={
-            'class': 'sbl-input',
-            'placeholder': 'Confirm password'
-        })
+        label="Confirm Password",
+        widget=forms.PasswordInput(attrs={"class": "sbl-input", "placeholder": "Confirm password"}),
     )
-    
+
     # Optional role requests during registration
     terms_accepted = forms.BooleanField(
         required=True,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'sbl-check'
-        }),
-        error_messages={
-            'required': 'You must accept the terms and conditions to register.'
-        }
+        widget=forms.CheckboxInput(attrs={"class": "sbl-check"}),
+        error_messages={"required": "You must accept the terms and conditions to register."},
     )
-    
+
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
-    
+        fields = ["username", "email", "first_name", "last_name", "password1", "password2"]
+
     def clean_username(self):
         """Validate that username is unique (case-insensitive)"""
-        username = self.cleaned_data.get('username')
+        username = self.cleaned_data.get("username")
         if User.objects.filter(username__iexact=username).exists():
-            raise ValidationError('This username is already taken.')
+            raise ValidationError("This username is already taken.")
         return username.lower()
-    
+
     def clean_email(self):
         """Validate that email is unique (case-insensitive)"""
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get("email")
         if User.objects.filter(email__iexact=email).exists():
-            raise ValidationError('An account with this email already exists.')
+            raise ValidationError("An account with this email already exists.")
         return email.lower()
-    
+
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.username = self.cleaned_data['username']
+        user.email = self.cleaned_data["email"]
+        user.username = self.cleaned_data["username"]
         if commit:
             user.save()
         return user
@@ -210,44 +100,30 @@ class UserRegistrationForm(UserCreationForm):
 
 class ProfileForm(forms.ModelForm):
     """Form for editing user profile"""
-    
+
     class Meta:
         model = Profile
         fields = [
-            'bio', 'avatar', 'cover_photo',
-            'home_country', 'home_city', 'current_location',
-            'website', 'instagram', 'twitter'
+            "bio",
+            "avatar",
+            "cover_photo",
+            "home_country",
+            "home_city",
+            "current_location",
+            "website",
+            "instagram",
+            "twitter",
         ]
         widgets = {
-            'bio': forms.Textarea(attrs={
-                'class': 'sbl-input',
-                'rows': 4,
-                'placeholder': 'Tell us about yourself...'
-            }),
-            'home_country': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'e.g., United States'
-            }),
-            'home_city': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'e.g., New York'
-            }),
-            'current_location': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'Where are you now?'
-            }),
-            'website': forms.URLInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'https://...'
-            }),
-            'instagram': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': '@username'
-            }),
-            'twitter': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': '@username'
-            }),
+            "bio": forms.Textarea(attrs={"class": "sbl-input", "rows": 4, "placeholder": "Tell us about yourself..."}),
+            "avatar": forms.FileInput(attrs={"class": "sbl-input"}),
+            "cover_photo": forms.FileInput(attrs={"class": "sbl-input"}),
+            "home_country": forms.TextInput(attrs={"class": "sbl-input", "placeholder": "e.g., United States"}),
+            "home_city": forms.TextInput(attrs={"class": "sbl-input", "placeholder": "e.g., New York"}),
+            "current_location": forms.TextInput(attrs={"class": "sbl-input", "placeholder": "Where are you now?"}),
+            "website": forms.URLInput(attrs={"class": "sbl-input", "placeholder": "https://..."}),
+            "instagram": forms.TextInput(attrs={"class": "sbl-input", "placeholder": "@username"}),
+            "twitter": forms.TextInput(attrs={"class": "sbl-input", "placeholder": "@username"}),
         }
 
 
@@ -354,7 +230,7 @@ class AccountSettingsForm(forms.ModelForm):
 
         # Timezone dropdown
         self.fields["timezone"].choices = timezone_choices_grouped()
-        current_tz = (getattr(self.instance, "timezone", None) or "UTC")
+        current_tz = getattr(self.instance, "timezone", None) or "UTC"
         self.initial.setdefault("timezone", current_tz)
         try:
             now_local = datetime.now(ZoneInfo(current_tz)).strftime("%a %b %d, %Y %I:%M %p")
@@ -369,99 +245,90 @@ class AccountSettingsForm(forms.ModelForm):
 
 class RoleRequestForm(forms.ModelForm):
     """Form for requesting vendor or content provider role"""
-    
+
     class Meta:
         model = RoleRequest
         fields = [
-            'requested_role',
-            'business_name',
-            'business_description',
-            'website',
-            'business_license',
-            'supporting_documents',
+            "requested_role",
+            "business_name",
+            "business_description",
+            "website",
+            "business_license",
+            "supporting_documents",
         ]
         widgets = {
-            'requested_role': forms.Select(attrs={'class': 'sbl-input'}),
-            'business_name': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'Your business or brand name'
-            }),
-            'business_description': forms.Textarea(attrs={
-                'class': 'sbl-input',
-                'rows': 5,
-                'placeholder': 'Tell us about your business, experience, and why you want this role...'
-            }),
-            'website': forms.URLInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'https://your-website.com (optional)'
-            }),
-            'business_license': forms.TextInput(attrs={
-                'class': 'sbl-input',
-                'placeholder': 'License number (if applicable)'
-            }),
-            'supporting_documents': forms.FileInput(attrs={
-                'class': 'sbl-input'
-            }),
+            "requested_role": forms.Select(attrs={"class": "sbl-input"}),
+            "business_name": forms.TextInput(
+                attrs={"class": "sbl-input", "placeholder": "Your business or brand name"}
+            ),
+            "business_description": forms.Textarea(
+                attrs={
+                    "class": "sbl-input",
+                    "rows": 5,
+                    "placeholder": "Tell us about your business, experience, and why you want this role...",
+                }
+            ),
+            "website": forms.URLInput(
+                attrs={"class": "sbl-input", "placeholder": "https://your-website.com (optional)"}
+            ),
+            "business_license": forms.TextInput(
+                attrs={"class": "sbl-input", "placeholder": "License number (if applicable)"}
+            ),
+            "supporting_documents": forms.FileInput(attrs={"class": "sbl-input"}),
         }
-    
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        
+
         # Make business_description required
-        self.fields['business_description'].required = True
-        
+        self.fields["business_description"].required = True
+
     def clean(self):
         cleaned_data = super().clean()
-        requested_role = cleaned_data.get('requested_role')
-        
+        requested_role = cleaned_data.get("requested_role")
+
         # Check if user already has this role
         if self.user:
             if requested_role == RoleRequest.RequestedRole.VENDOR and self.user.is_vendor:
-                raise ValidationError('You already have vendor access.')
+                raise ValidationError("You already have vendor access.")
             elif requested_role == RoleRequest.RequestedRole.CONTENT_PROVIDER and self.user.is_content_provider:
-                raise ValidationError('You already have content provider access.')
-        
+                raise ValidationError("You already have content provider access.")
+
         return cleaned_data
 
 
 class RoleRequestReviewForm(forms.Form):
     """Form for staff to review role requests"""
-    
+
     action = forms.ChoiceField(
         choices=[
-            ('approve', 'Approve'),
-            ('reject', 'Reject'),
+            ("approve", "Approve"),
+            ("reject", "Reject"),
         ],
-        widget=forms.RadioSelect
+        widget=forms.RadioSelect,
     )
-    
+
     review_notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'sbl-input',
-            'rows': 3,
-            'placeholder': 'Internal notes (optional)'
-        }),
-        label='Internal Notes'
+        widget=forms.Textarea(attrs={"class": "sbl-input", "rows": 3, "placeholder": "Internal notes (optional)"}),
+        label="Internal Notes",
     )
-    
+
     rejection_reason = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'sbl-input',
-            'rows': 3,
-            'placeholder': 'Reason for rejection (shown to user)'
-        }),
-        label='Rejection Reason (if rejecting)'
+        widget=forms.Textarea(
+            attrs={"class": "sbl-input", "rows": 3, "placeholder": "Reason for rejection (shown to user)"}
+        ),
+        label="Rejection Reason (if rejecting)",
     )
-    
+
     def clean(self):
         cleaned_data = super().clean()
-        action = cleaned_data.get('action')
-        rejection_reason = cleaned_data.get('rejection_reason')
-        
-        if action == 'reject' and not rejection_reason:
-            raise ValidationError('You must provide a rejection reason when rejecting a request.')
-        
+        action = cleaned_data.get("action")
+        rejection_reason = cleaned_data.get("rejection_reason")
+
+        if action == "reject" and not rejection_reason:
+            raise ValidationError("You must provide a rejection reason when rejecting a request.")
+
         return cleaned_data

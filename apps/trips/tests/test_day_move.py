@@ -3,7 +3,9 @@ journeys and one-night stays (``reschedule.move_day``) and is refused for anothe
 the day form has no day number; a reorder offers to move the stays it leaves behind; the fit page's start-date offer
 (also when only the start moved, keeping the length); "Change booking" to-dos that know when they aren't needed; and
 "To do:" on booked items."""
-from datetime import date, datetime, timedelta, timezone as dt_timezone
+
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -11,8 +13,17 @@ from django.urls import reverse
 
 from apps.locations.models import City, Country
 from apps.trips import reschedule
-from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripChange, TripGrant,
-                               TripRole)
+from apps.trips.models import (
+    BookingTask,
+    Confirmation,
+    Day,
+    Lodging,
+    TransportLeg,
+    Trip,
+    TripChange,
+    TripGrant,
+    TripRole,
+)
 from apps.trips.tests import test_reorder, test_reschedule
 
 User = get_user_model()
@@ -25,27 +36,49 @@ class Fixture(TestCase):
 
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 10), end_date=date(2027, 9, 16),
-                                        created_by=self.editor, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 10),
+            end_date=date(2027, 9, 16),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
-        self.d = {n: Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 9 + n), theme=f"Theme {n}")
-                  for n in range(1, 6)}
+        self.d = {
+            n: Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 9 + n), theme=f"Theme {n}")
+            for n in range(1, 6)
+        }
         self.train = TransportLeg.objects.create(  # 10:15 CEST on Sep 11
-            trip=self.trip, mode="train", origin="Augsburg", destination="Munich", origin_timezone="Europe/Berlin",
-            destination_timezone="Europe/Berlin", departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
-            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC))
-        self.inn = Lodging.objects.create(trip=self.trip, name="Gasthof Post", check_in=date(2027, 9, 11),
-                                          check_out=date(2027, 9, 12))
-        self.hotel = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 12),
-                                            check_out=date(2027, 9, 15))
+            trip=self.trip,
+            mode="train",
+            origin="Augsburg",
+            destination="Munich",
+            origin_timezone="Europe/Berlin",
+            destination_timezone="Europe/Berlin",
+            departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
+            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC),
+        )
+        self.inn = Lodging.objects.create(
+            trip=self.trip, name="Gasthof Post", check_in=date(2027, 9, 11), check_out=date(2027, 9, 12)
+        )
+        self.hotel = Lodging.objects.create(
+            trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 12), check_out=date(2027, 9, 15)
+        )
         self.client.force_login(self.editor)
 
     def edit(self, day, **data):
         url = reverse("trips:day_edit", args=[self.trip.pk, day.pk])
         formset = self.client.get(url).context["meal_formset"]
-        payload = {"date": day.date.isoformat(), "theme": day.theme, "meals_included": "",
-                   f"{formset.prefix}-TOTAL_FORMS": "0", f"{formset.prefix}-INITIAL_FORMS": "0",
-                   f"{formset.prefix}-MIN_NUM_FORMS": "0", f"{formset.prefix}-MAX_NUM_FORMS": "1000", **data}
+        payload = {
+            "date": day.date.isoformat(),
+            "theme": day.theme,
+            "meals_included": "",
+            f"{formset.prefix}-TOTAL_FORMS": "0",
+            f"{formset.prefix}-INITIAL_FORMS": "0",
+            f"{formset.prefix}-MIN_NUM_FORMS": "0",
+            f"{formset.prefix}-MAX_NUM_FORMS": "1000",
+            **data,
+        }
         return self.client.post(url, payload, follow=True)
 
 
@@ -67,8 +100,10 @@ class MoveDayTests(Fixture):
         line = TripChange.objects.filter(trip=self.trip).latest("id")
         self.assertTrue(line.summary.startswith("Moved Day 2 Day trip from Sep 11 to Sep 16"), line.summary)
         self.client.post(reverse("trips:change_undo", args=[self.trip.pk, line.pk]))
-        self.assertEqual([(d.date, d.day_number) for d in Day.objects.filter(trip=self.trip).order_by("day_number")],
-                         [(date(2027, 9, 9 + n), n) for n in range(1, 6)])
+        self.assertEqual(
+            [(d.date, d.day_number) for d in Day.objects.filter(trip=self.trip).order_by("day_number")],
+            [(date(2027, 9, 9 + n), n) for n in range(1, 6)],
+        )
         self.train.refresh_from_db()
         self.inn.refresh_from_db()
         self.assertEqual((self.train.date, self.inn.check_in), (date(2027, 9, 11), date(2027, 9, 11)))
@@ -77,8 +112,9 @@ class MoveDayTests(Fixture):
         response = self.edit(self.d[4], date="2027-09-16")
         self.hotel.refresh_from_db()
         self.assertEqual((self.hotel.check_in, self.hotel.check_out), (date(2027, 9, 12), date(2027, 9, 15)))
-        self.assertIn("Hotel Laimer Hof (Sep 12–15) wasn't moved: check it.",
-                      [str(m) for m in response.context["messages"]])
+        self.assertIn(
+            "Hotel Laimer Hof (Sep 12–15) wasn't moved: check it.", [str(m) for m in response.context["messages"]]
+        )
 
     def test_a_booked_journey_gets_a_change_booking_todo(self):
         Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
@@ -89,9 +125,10 @@ class MoveDayTests(Fixture):
 
     def test_another_day_s_date_is_refused_with_a_link_to_reorder(self):
         response = self.edit(self.d[2], date="2027-09-12")
-        self.assertEqual(response.context["form"].errors["date"],
-                         ["Sep 12 is Day 3 — Theme 3. To swap days, use Reorder days."])
-        self.assertContains(response, f'{reverse("trips:trip_reorder", args=[self.trip.pk])}?day={self.d[2].pk}')
+        self.assertEqual(
+            response.context["form"].errors["date"], ["Sep 12 is Day 3 — Theme 3. To swap days, use Reorder days."]
+        )
+        self.assertContains(response, f"{reverse('trips:trip_reorder', args=[self.trip.pk])}?day={self.d[2].pk}")
         self.assertEqual(Day.objects.get(pk=self.d[2].pk).date, date(2027, 9, 11))
 
     def test_a_date_outside_the_trip_is_refused(self):
@@ -177,12 +214,13 @@ class StartDateOfferTests(test_reschedule.Fixture):
         preview = self.client.get(self.url(moved_from="2027-09-17", keep_length=1)).content.decode()
         self.assertIn("and the trip's end to Monday, September 13 so it keeps its length", preview)
         response = self.client.post(self.url(), {"moved_from": "2027-09-17", "keep_length": "1"})
-        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]),
-                             fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]), fetch_redirect_response=False)
         self.trip.refresh_from_db()
         self.assertEqual((self.trip.start_date, self.trip.end_date), (date(2027, 9, 10), date(2027, 9, 13)))
-        self.assertEqual(sorted(d.date for d in Day.objects.filter(trip=self.trip)),
-                         [date(2027, 9, 10) + timedelta(days=n) for n in range(4)])
+        self.assertEqual(
+            sorted(d.date for d in Day.objects.filter(trip=self.trip)),
+            [date(2027, 9, 10) + timedelta(days=n) for n in range(4)],
+        )
         reschedule.undo_move(TripChange.objects.filter(trip=self.trip).latest("id"), self.editor)
         self.trip.refresh_from_db()  # back to just after Settings: the new start, the old end
         self.assertEqual((self.trip.start_date, self.trip.end_date), (date(2027, 9, 10), date(2027, 9, 20)))
@@ -196,8 +234,9 @@ class StartDateOfferTests(test_reschedule.Fixture):
 
     def test_no_offer_when_the_days_already_start_on_the_new_start(self):
         Day.objects.filter(pk=self.days[0].pk).update(date=date(2027, 9, 10))
-        html = self.client.get(reverse("trips:trip_days_fit", args=[self.trip.pk])
-                               + "?moved_from=2027-09-17").content.decode()
+        html = self.client.get(
+            reverse("trips:trip_days_fit", args=[self.trip.pk]) + "?moved_from=2027-09-17"
+        ).content.decode()
         self.assertNotIn("data-shift-offer", html)
 
 
@@ -221,8 +260,10 @@ class BookedForTests(Fixture):
         # Moved back by hand (a later change, so not by Undo): the to-dos aren't needed now.
         Day.objects.filter(pk=self.d[2].pk).update(date=date(2027, 9, 11))
         TransportLeg.objects.filter(pk=self.train.pk).update(
-            date=date(2027, 9, 11), departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
-            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC))
+            date=date(2027, 9, 11),
+            departure_at=datetime(2027, 9, 11, 8, 15, tzinfo=UTC),
+            arrival_at=datetime(2027, 9, 11, 8, 55, tzinfo=UTC),
+        )
         page = self.client.get(todo).content.decode()
         self.assertEqual(page.count("data-back-on-booked"), 1)  # the train's; the inn is still on Sep 16
         self.assertIn("Close this to-do", page)

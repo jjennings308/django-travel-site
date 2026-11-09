@@ -2,6 +2,7 @@
 stored, else the trip activity's place's entry-fee currency, the place's city, the day's city, else the trip's
 ``default_for`` — used by the day's notes, the Budget page, choices and the edit forms; ``fill_currencies`` stores
 it; a place's entry fee is offered as an activity's estimate."""
+
 from datetime import date
 from decimal import Decimal
 from io import StringIO
@@ -15,8 +16,21 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.models import ExchangeRate
 from apps.locations.models import POI, City
 from apps.trips import currencies
-from apps.trips.models import (Confirmation, Day, Lodging, Meal, Option, OptionGroup, TransportLeg, Traveler, Trip,
-                               TripActivity, TripChange, TripGrant, TripRole)
+from apps.trips.models import (
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
+)
 from apps.trips.tests.test_currencies import country
 
 User = get_user_model()
@@ -29,22 +43,48 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         de, gb = country("Germany", "DE", "EUR"), country("United Kingdom", "GB", "GBP")
-        city = lambda name, c: City.objects.create(name=name, slug=name.lower(), country=c, latitude=0, longitude=0,  # noqa: E731
-                                                   approval_status=ApprovalStatus.APPROVED)
+
+        def city(name, c):
+            return City.objects.create(
+                name=name,
+                slug=name.lower(),
+                country=c,
+                latitude=0,
+                longitude=0,
+                approval_status=ApprovalStatus.APPROVED,
+            )
+
         self.munich, self.schwangau, self.london = city("Munich", de), city("Schwangau", de), city("London", gb)
-        place = lambda name, c, **fee: POI.objects.create(  # noqa: E731
-            name=name, slug=name.lower().replace(" ", "-"), city=c, latitude=0, longitude=0,
-            approval_status=ApprovalStatus.APPROVED, **fee)
+
+        def place(name, c, **fee):
+            return POI.objects.create(
+                name=name,
+                slug=name.lower().replace(" ", "-"),
+                city=c,
+                latitude=0,
+                longitude=0,
+                approval_status=ApprovalStatus.APPROVED,
+                **fee,
+            )
+
         self.neuschwanstein = place("Neuschwanstein Castle", self.schwangau)
-        self.hohenschwangau = place("Hohenschwangau Castle", self.schwangau, entry_fee=D("21"),
-                                    entry_fee_currency="EUR")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 20),
-                                        created_by=self.editor, home_currency="USD")
+        self.hohenschwangau = place(
+            "Hohenschwangau Castle", self.schwangau, entry_fee=D("21"), entry_fee_currency="EUR"
+        )
+        self.trip = Trip.objects.create(
+            name="Europe",
+            start_date=date(2027, 9, 17),
+            end_date=date(2027, 9, 20),
+            created_by=self.editor,
+            home_currency="USD",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.trip.travelers.set([Traveler.objects.create(name="Ada"), Traveler.objects.create(name="Bo")])
         cities = [self.munich, self.schwangau, self.london, None]
-        self.days = [Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 16 + n), city=cities[n - 1])
-                     for n in (1, 2, 3, 4)]
+        self.days = [
+            Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 16 + n), city=cities[n - 1])
+            for n in (1, 2, 3, 4)
+        ]
         self.client.force_login(self.editor)
 
     def activity(self, n=2, **fields):
@@ -60,9 +100,16 @@ class CurrencyOfTests(Fixture):
         self.assertEqual(currencies.currency_of(self.activity(currency="chf"), self.trip), "CHF")
 
     def test_an_activity_falls_back_through_fee_place_day_and_home(self):
-        london_sight = POI.objects.create(name="Tower", slug="tower", city=self.london, latitude=0, longitude=0,
-                                          approval_status=ApprovalStatus.APPROVED, entry_fee=D("30"),
-                                          entry_fee_currency="EUR")
+        london_sight = POI.objects.create(
+            name="Tower",
+            slug="tower",
+            city=self.london,
+            latitude=0,
+            longitude=0,
+            approval_status=ApprovalStatus.APPROVED,
+            entry_fee=D("30"),
+            entry_fee_currency="EUR",
+        )
         trip = self.fresh()
         cases = [
             (self.activity(n=3, poi=london_sight), "EUR"),  # the place's own fee currency, before its city's
@@ -75,17 +122,38 @@ class CurrencyOfTests(Fixture):
 
     def test_each_kind(self):
         trip = self.fresh()
-        leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="London", destination="Munich",
-                                          date=self.days[0].date, origin_city=self.london, currency="")
-        stay = Lodging.objects.create(trip=self.trip, name="Inn", check_in=self.days[2].date,
-                                      check_out=self.days[3].date, city=self.munich, currency="")
+        leg = TransportLeg.objects.create(
+            trip=self.trip,
+            mode="train",
+            origin="London",
+            destination="Munich",
+            date=self.days[0].date,
+            origin_city=self.london,
+            currency="",
+        )
+        stay = Lodging.objects.create(
+            trip=self.trip,
+            name="Inn",
+            check_in=self.days[2].date,
+            check_out=self.days[3].date,
+            city=self.munich,
+            currency="",
+        )
         meal = Meal.objects.create(day=self.days[2], name="Lunch", poi=self.neuschwanstein)
         plain_meal = Meal.objects.create(day=self.days[2], name="Tea")
         group = OptionGroup.objects.create(trip=self.trip, day=self.days[1], prompt="Lunch?")
-        here, there = (Option.objects.create(group=group, title="Here"),
-                       Option.objects.create(group=group, title="There", city=self.london))
-        for item, code in ((leg, "GBP"), (stay, "EUR"), (meal, "EUR"), (plain_meal, "GBP"), (here, "EUR"),
-                           (there, "GBP")):
+        here, there = (
+            Option.objects.create(group=group, title="Here"),
+            Option.objects.create(group=group, title="There", city=self.london),
+        )
+        for item, code in (
+            (leg, "GBP"),
+            (stay, "EUR"),
+            (meal, "EUR"),
+            (plain_meal, "GBP"),
+            (here, "EUR"),
+            (there, "GBP"),
+        ):
             self.assertEqual(currencies.currency_of(item, trip), code, item)
 
     def test_a_confirmation_takes_the_places_it_covers_when_they_agree(self):
@@ -140,8 +208,16 @@ class FillTests(Fixture):
     def test_dry_run_lists_and_apply_saves_with_one_history_line(self):
         castle = self.activity(title="Neuschwanstein Castle", poi=self.neuschwanstein, est_cost=D("52"))
         fee = self.activity(title="Hohenschwangau", poi=self.hohenschwangau, est_cost=D("21"))
-        leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="London", destination="Munich",
-                                          date=self.days[2].date, origin_city=self.london, cost=D("90"), currency="")
+        leg = TransportLeg.objects.create(
+            trip=self.trip,
+            mode="train",
+            origin="London",
+            destination="Munich",
+            date=self.days[2].date,
+            origin_city=self.london,
+            cost=D("90"),
+            currency="",
+        )
         unpriced = self.activity(title="Walk")
         before = TripChange.objects.filter(trip=self.trip).count()  # creating them was recorded
         out = self.run_command()
@@ -171,8 +247,9 @@ class FeeOfferTests(Fixture):
         self.assertIn("Use Hohenschwangau Castle&#x27;s entry fee: €21 per person", page)
         tour.refresh_from_db()
         self.assertIsNone(tour.est_cost)  # never filled in silently
-        response = self.client.post(reverse("trips:activity_use_fee", args=[self.trip.pk, self.days[1].pk, tour.pk]),
-                                    {"next": url})
+        response = self.client.post(
+            reverse("trips:activity_use_fee", args=[self.trip.pk, self.days[1].pk, tour.pk]), {"next": url}
+        )
         self.assertRedirects(response, url)
         tour.refresh_from_db()
         self.assertEqual((tour.est_cost, tour.currency, tour.cost_basis), (D("21.00"), "EUR", "person"))

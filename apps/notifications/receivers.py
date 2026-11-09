@@ -1,5 +1,5 @@
-# notifications/receivers.py
 """Notifications for things announced by lower apps (connected in NotificationsConfig.ready)."""
+
 from django.dispatch import receiver
 from django.urls import reverse
 

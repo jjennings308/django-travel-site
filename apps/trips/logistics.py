@@ -16,6 +16,7 @@ arrows. ``total_notes(columns, rows)`` gives the "Total…" rows' text that isn'
 ``match_city(text, cities)`` finds a catalogue city named in a station or place
 ("Frankfurt Hbf" -> Frankfurt).
 """
+
 import re
 
 ARROW = re.compile(r"^\s*(?P<a>.+?)\s*(?:→|->|⟶|–>|—>|\bto\b)\s*(?P<b>.+?)\s*$", re.IGNORECASE)
@@ -24,17 +25,39 @@ SKIP_ROW = re.compile(r"^\s*(total|sum|overall)\b", re.IGNORECASE)
 OPERATOR_COLUMNS = ("train", "mode", "operator", "carrier", "airline", "service", "company")
 TIME_COLUMNS = ("time", "duration", "journey time", "travel time")
 # "Depart ABQ → SLC" is ABQ → SLC: a verb in front of the first place isn't part of it.
-LEADING_VERB = re.compile(r"^(?:depart(?:s|ing)?(?:\s+from)?|leave|leaving|from|arrive(?:\s+at)?|"
-                          r"continue(?:\s+on)?(?:\s+to)?|drive(?:\s+to)?|head(?:\s+to)?)\s+", re.IGNORECASE)
+LEADING_VERB = re.compile(
+    r"^(?:depart(?:s|ing)?(?:\s+from)?|leave|leaving|from|arrive(?:\s+at)?|"
+    r"continue(?:\s+on)?(?:\s+to)?|drive(?:\s+to)?|head(?:\s+to)?)\s+",
+    re.IGNORECASE,
+)
 # The first rough time in prose: "~35 min", "~1 hr 15 min", "2.5 hrs".
-ROUGH_TIME = re.compile(r"~?\s*\d+(?:[.,]\d+)?\s*(?:h|hrs?|hours?|m|mins?|minutes?)\b"
-                        r"(?:\s*\d+\s*(?:m|mins?|minutes?)\b)?", re.IGNORECASE)
+ROUGH_TIME = re.compile(
+    r"~?\s*\d+(?:[.,]\d+)?\s*(?:h|hrs?|hours?|m|mins?|minutes?)\b"
+    r"(?:\s*\d+\s*(?:m|mins?|minutes?)\b)?",
+    re.IGNORECASE,
+)
 
 # (mode, words): first match wins, checked against the whole row.
 MODE_WORDS = (
     ("plane", (r"\bflight\b", r"\bfly\b", r"\bairline", r"✈", r"\bair\b")),
-    ("train", (r"\bICE\b", r"\bIC\b", r"\bRE\d*\b", r"\bRB\d*\b", r"bahn", r"\brail", r"\btrain", r"avanti",
-               r"express", r"\bhbf\b", r"\bstation\b", r"railway", r"\beurostar")),
+    (
+        "train",
+        (
+            r"\bICE\b",
+            r"\bIC\b",
+            r"\bRE\d*\b",
+            r"\bRB\d*\b",
+            r"bahn",
+            r"\brail",
+            r"\btrain",
+            r"avanti",
+            r"express",
+            r"\bhbf\b",
+            r"\bstation\b",
+            r"railway",
+            r"\beurostar",
+        ),
+    ),
     ("rental_car", (r"\brental\b", r"\bhire car\b", r"\bcar hire\b", r"\brent(ed)? a car\b")),
     ("pov", (r"\bdrive\b", r"\bdriving\b", r"\bcar\b")),
     ("walking", (r"\bwalk", r"\bon foot\b")),
@@ -68,7 +91,11 @@ def proposed_legs(columns, rows):
         hop_col, match = next(((j, ARROW.match(c)) for j, c in enumerate(cells) if ARROW.match(c)), (None, None))
         if match is None:
             continue
-        operator = cells[operator_col] if operator_col is not None and operator_col < len(cells) and operator_col != hop_col else ""
+        operator = (
+            cells[operator_col]
+            if operator_col is not None and operator_col < len(cells) and operator_col != hop_col
+            else ""
+        )
         duration = None
         if time_col is not None and time_col < len(cells) and time_col != hop_col:
             duration = rough_duration(cells[time_col])
@@ -86,16 +113,18 @@ def proposed_legs(columns, rows):
             duration = rough_duration(found.group(0)) if found else None
         hop = cells[hop_col]
         strength = "arrow" if DRAWN_ARROW.search(hop) and not re.match(r"\s*via\b", hop, re.IGNORECASE) else "possible"
-        legs.append({
-            "row": i,
-            "origin": LEADING_VERB.sub("", match.group("a").strip()),
-            "destination": destination.strip(),
-            "mode": _mode(" ".join(cells)),
-            "operator": "" if operator in ("—", "-") else operator,
-            "notes": notes,
-            "duration": duration,
-            "strength": strength,
-        })
+        legs.append(
+            {
+                "row": i,
+                "origin": LEADING_VERB.sub("", match.group("a").strip()),
+                "destination": destination.strip(),
+                "mode": _mode(" ".join(cells)),
+                "operator": "" if operator in ("—", "-") else operator,
+                "notes": notes,
+                "duration": duration,
+                "strength": strength,
+            }
+        )
     return legs
 
 
@@ -110,8 +139,11 @@ def total_notes(columns, rows):
         cells = [str(c or "").strip() for c in row]
         if not cells or not SKIP_ROW.match(cells[0]):
             continue
-        keep = [c for j, c in enumerate(cells[1:], start=1)
-                if c and c not in ("—", "-") and j != time_col and not ROUGH_TIME.fullmatch(c.strip())]
+        keep = [
+            c
+            for j, c in enumerate(cells[1:], start=1)
+            if c and c not in ("—", "-") and j != time_col and not ROUGH_TIME.fullmatch(c.strip())
+        ]
         totals.append({"row": i, "note": " · ".join(keep)})
     return totals
 
@@ -133,6 +165,7 @@ def rough_duration(text):
     """A rough door-to-door time as a ``timedelta``, or None: "~45 min", "2.5 hrs",
     "~1 hr 15 min", "1:15" (h:mm), "90m". Approximate on purpose (``TransportLeg.est_duration``)."""
     from datetime import timedelta
+
     text = (text or "").strip().lstrip("~≈ ").strip()
     if not text:
         return None

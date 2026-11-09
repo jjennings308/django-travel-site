@@ -1,4 +1,5 @@
 """The installable / offline pieces served by core (site roadmap R6)."""
+
 import json
 
 from django.contrib.auth import get_user_model
@@ -28,6 +29,7 @@ class ServedTests(TestCase):
         self.assertEqual({icon["sizes"] for icon in data["icons"]}, {"192x192", "512x512"})
         from django.conf import settings
         from django.contrib.staticfiles import finders
+
         for icon in data["icons"]:
             self.assertIsNotNone(finders.find(icon["src"].removeprefix(settings.STATIC_URL)), icon["src"])
 

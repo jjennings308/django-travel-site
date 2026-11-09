@@ -1,4 +1,5 @@
 """Trip expenses: equal splits in cents, balances, settle-up, and who may do what."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -21,8 +22,14 @@ class BudgetFixture(TestCase):
         self.trip.travelers.add(self.james, self.regan, self.sara)
 
     def cost(self, amount, paid_by, shared=(), currency="EUR", **kw):
-        expense = TripExpense.objects.create(trip=self.trip, description=kw.pop("description", "x"), amount=Decimal(amount),
-                                             currency=currency, paid_by=paid_by, **kw)
+        expense = TripExpense.objects.create(
+            trip=self.trip,
+            description=kw.pop("description", "x"),
+            amount=Decimal(amount),
+            currency=currency,
+            paid_by=paid_by,
+            **kw,
+        )
         expense.shared_with.set(shared)
         return expense
 
@@ -35,14 +42,16 @@ class ArithmeticTests(BudgetFixture):
         self.assertEqual((split[self.regan], split[self.sara]), (3333, 3333))
 
     def test_settle_up_three_people(self):
-        self.cost("90.00", self.james)                                  # dinner for all three
+        self.cost("90.00", self.james)  # dinner for all three
         self.cost("30.00", self.regan, shared=[self.regan, self.sara])  # taxi for two
         s = summarize(TripExpense.objects.all(), [self.james, self.regan, self.sara])["EUR"]
         self.assertEqual(s["total"], Decimal("120.00"))
         balances = {p.name: b for p, _paid, _share, b in s["people"]}
         self.assertEqual(balances, {"James": Decimal("60.00"), "Regan": Decimal("-15.00"), "Sara": Decimal("-45.00")})
-        self.assertEqual([(d.name, c.name, a) for d, c, a in s["transfers"]],
-                         [("Sara", "James", Decimal("45.00")), ("Regan", "James", Decimal("15.00"))])
+        self.assertEqual(
+            [(d.name, c.name, a) for d, c, a in s["transfers"]],
+            [("Sara", "James", Decimal("45.00")), ("Regan", "James", Decimal("15.00"))],
+        )
 
     def test_currencies_are_kept_apart(self):
         self.cost("100.00", self.james, currency="EUR")
@@ -75,15 +84,31 @@ class BudgetPageTests(BudgetFixture):
 
     def test_editor_adds_edits_and_removes(self):
         self.client.force_login(self.editor)
-        response = self.client.post(self.url, {"description": "Colosseum tickets", "category": "activities",
-                                               "amount": "54.00", "currency": "eur", "spent_on": "2027-04-02",
-                                               "paid_by": self.regan.pk})
+        response = self.client.post(
+            self.url,
+            {
+                "description": "Colosseum tickets",
+                "category": "activities",
+                "amount": "54.00",
+                "currency": "eur",
+                "spent_on": "2027-04-02",
+                "paid_by": self.regan.pk,
+            },
+        )
         self.assertRedirects(response, self.url)
         expense = TripExpense.objects.get()
         self.assertEqual((expense.currency, expense.created_by, expense.paid_by), ("EUR", self.editor, self.regan))
         edit = reverse("trips:expense_edit", args=[self.trip.pk, expense.pk])
-        self.client.post(edit, {"description": "Colosseum", "category": "activities", "amount": "60.00",
-                                "currency": "EUR", "paid_by": self.regan.pk})
+        self.client.post(
+            edit,
+            {
+                "description": "Colosseum",
+                "category": "activities",
+                "amount": "60.00",
+                "currency": "EUR",
+                "paid_by": self.regan.pk,
+            },
+        )
         expense.refresh_from_db()
         self.assertEqual(expense.amount, Decimal("60.00"))
         self.client.post(edit, {"delete": "1"})
@@ -92,8 +117,10 @@ class BudgetPageTests(BudgetFixture):
     def test_payer_must_be_on_the_trip(self):
         stranger = Traveler.objects.create(name="Stranger")
         self.client.force_login(self.editor)
-        response = self.client.post(self.url, {"description": "x", "category": "other", "amount": "1",
-                                               "currency": "EUR", "paid_by": stranger.pk})
+        response = self.client.post(
+            self.url,
+            {"description": "x", "category": "other", "amount": "1", "currency": "EUR", "paid_by": stranger.pk},
+        )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(TripExpense.objects.exists())
 
@@ -112,6 +139,7 @@ class FormFieldsRenderTests(BudgetFixture):
 
     def test_day_and_budget_forms_show_their_fields(self):
         from apps.trips.models import Day
+
         editor = User.objects.create_user("editor", "e@example.com", "pw-1234-abcd")
         TripGrant.objects.create(trip=self.trip, user=editor, role=TripRole.EDITOR)
         day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 4, 1))

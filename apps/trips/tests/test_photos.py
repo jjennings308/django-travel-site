@@ -1,4 +1,5 @@
 """Trip photo albums: who sees, adds, removes and picks the cover; never on the shared link."""
+
 import io
 import shutil
 import tempfile
@@ -35,9 +36,14 @@ class TripPhotoTests(TestCase):
         self.commentor = User.objects.create_user("co", "co@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.stranger = User.objects.create_user("st", "st@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 4, 1), end_date=date(2027, 4, 8),
-                                        created_by=self.editor)
-        for user, role in ((self.editor, TripRole.EDITOR), (self.commentor, TripRole.COMMENTOR), (self.viewer, TripRole.VIEWER)):
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 4, 1), end_date=date(2027, 4, 8), created_by=self.editor
+        )
+        for user, role in (
+            (self.editor, TripRole.EDITOR),
+            (self.commentor, TripRole.COMMENTOR),
+            (self.viewer, TripRole.VIEWER),
+        ):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
         self.url = reverse("trips:trip_photos", args=[self.trip.pk])
 
@@ -74,7 +80,9 @@ class TripPhotoTests(TestCase):
         self.upload(self.commentor, "a.jpg", "b.jpg")
         first, second = [i.media for i in self.trip.photos()]
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(reverse("trips:trip_photo_delete", args=[self.trip.pk, first.pk])).status_code, 403)
+        self.assertEqual(
+            self.client.post(reverse("trips:trip_photo_delete", args=[self.trip.pk, first.pk])).status_code, 403
+        )
         self.client.force_login(self.commentor)
         self.client.post(reverse("trips:trip_photo_delete", args=[self.trip.pk, first.pk]))
         self.trip.refresh_from_db()
@@ -95,11 +103,15 @@ class TripPhotoTests(TestCase):
         self.assertEqual(self.trip.album.cover_image, second)
 
     def test_photos_of_another_trip_are_404(self):
-        other = Trip.objects.create(name="Paris", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3), created_by=self.editor)
+        other = Trip.objects.create(
+            name="Paris", start_date=date(2027, 5, 1), end_date=date(2027, 5, 3), created_by=self.editor
+        )
         TripGrant.objects.create(trip=other, user=self.editor, role=TripRole.EDITOR)
         self.upload(self.editor, "a.jpg")
         media = Media.objects.get()
-        self.assertEqual(self.client.post(reverse("trips:trip_photo_delete", args=[other.pk, media.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.post(reverse("trips:trip_photo_delete", args=[other.pk, media.pk])).status_code, 404
+        )
 
     def test_detail_links_photos_and_public_view_leaves_them_out(self):
         self.upload(self.editor, "a.jpg")

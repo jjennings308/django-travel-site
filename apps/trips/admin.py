@@ -7,30 +7,31 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils.html import format_html
 
+from apps.accounts.admin import UserAdmin as AccountsUserAdmin
+from apps.accounts.admin import UserRoleInline
+
 from .forms import DayAdminForm, LodgingAdminForm, TransportLegAdminForm
 from .models import (
-    TripExpense,
     BookingTask,
-    TaskLink,
     Confirmation,
     ConfirmationLink,
     Contact,
     Day,
-    TransportLeg,
-    TripActivity,
     Lodging,
     Meal,
     RewardsMembership,
     Section,
+    TaskLink,
+    TransportLeg,
     Traveler,
     Trip,
-    TripGrant,
-    TripInvite,
+    TripActivity,
     TripCalendarToken,
     TripChange,
+    TripExpense,
+    TripGrant,
+    TripInvite,
 )
-
-from apps.accounts.admin import UserAdmin as AccountsUserAdmin, UserRoleInline
 
 User = get_user_model()
 
@@ -202,9 +203,7 @@ class TripAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .annotate(
-                outstanding_task_count=Count(
-                    "booking_tasks", filter=Q(booking_tasks__done=False)
-                ),
+                outstanding_task_count=Count("booking_tasks", filter=Q(booking_tasks__done=False)),
                 granted_user_count=Count("grants", distinct=True),
             )
         )
@@ -227,9 +226,7 @@ class TripAdmin(admin.ModelAdmin):
             trip.restore()
             restored += 1
         if restored:
-            self.message_user(
-                request, f"Restored {restored} trip(s).", messages.SUCCESS
-            )
+            self.message_user(request, f"Restored {restored} trip(s).", messages.SUCCESS)
         else:
             self.message_user(
                 request,
@@ -277,8 +274,7 @@ class TripAdmin(admin.ModelAdmin):
             created += 1
         self.message_user(
             request,
-            f"Public link ready for {created} trip(s); {kept} already had one "
-            f"and were left alone.",
+            f"Public link ready for {created} trip(s); {kept} already had one and were left alone.",
             messages.SUCCESS,
         )
 
@@ -298,13 +294,13 @@ class TripAdmin(admin.ModelAdmin):
         if revoked:
             self.message_user(
                 request,
-                f"Revoked the public link for {revoked} trip(s). Any link "
-                f"already shared now returns 404.",
+                f"Revoked the public link for {revoked} trip(s). Any link already shared now returns 404.",
                 messages.WARNING,
             )
         else:
             self.message_user(
-                request, "None of the selected trips had a public link.",
+                request,
+                "None of the selected trips had a public link.",
                 messages.WARNING,
             )
 
@@ -327,8 +323,7 @@ class TripAdmin(admin.ModelAdmin):
         if remaining:
             messages.warning(
                 request,
-                f"Marked ready to go with {remaining} outstanding booking "
-                f"task{'s' if remaining != 1 else ''}.",
+                f"Marked ready to go with {remaining} outstanding booking task{'s' if remaining != 1 else ''}.",
             )
 
     def response_add(self, request, obj, post_url_continue=None):
@@ -396,9 +391,7 @@ class DayAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         # roster_summary reads the day roster on every row, so prefetch it and
         # the trip's travelers to keep the changelist a fixed query count.
-        return super().get_queryset(request).prefetch_related(
-            "travelers", "trip__travelers"
-        )
+        return super().get_queryset(request).prefetch_related("travelers", "trip__travelers")
 
 
 class RewardsMembershipInline(admin.TabularInline):
@@ -472,10 +465,7 @@ class TravelerAdmin(admin.ModelAdmin):
     def _make_account(self, traveler):
         """Create and link one account. Returns ``(username, error)``."""
         if traveler.user_id:
-            return None, (
-                f"{traveler.name} already has the account "
-                f"'{traveler.user.username}'."
-            )
+            return None, (f"{traveler.name} already has the account '{traveler.user.username}'.")
         parts = traveler.name.split()
         if not parts or not re.findall(r"[a-z0-9]+", traveler.name.lower()):
             return None, f"{traveler.name!r} has no name to derive an account from."
@@ -483,14 +473,8 @@ class TravelerAdmin(admin.ModelAdmin):
         # The signal links by the account's full name, so a second row spelled
         # differently ("Debbie" vs "Debbie Fowler") would be a trap: either
         # ambiguity is resolved first, or no account is made.
-        if (
-            Traveler.objects.filter(name__in={traveler.name, full_name}).count()
-            > 1
-        ):
-            return None, (
-                f"More than one traveler answers to {full_name!r}; "
-                "merge them with dedupe_travelers first."
-            )
+        if Traveler.objects.filter(name__in={traveler.name, full_name}).count() > 1:
+            return None, (f"More than one traveler answers to {full_name!r}; merge them with dedupe_travelers first.")
         user = User.objects.create(
             username=_username_for(traveler.name),
             first_name=parts[0],
@@ -583,6 +567,7 @@ class ContactAdmin(admin.ModelAdmin):
 def covers_text(task):
     """The items a to-do covers, by label ("—" for none)."""
     from .booking_tasks import label
+
     if not task.pk:
         return "—"
     return ", ".join(label(item) for item in task.covered()) or "—"
@@ -603,6 +588,7 @@ class TaskLinkInline(admin.TabularInline):
     @admin.display(description="Item")
     def item_label(self, obj):
         from .booking_tasks import label
+
         return label(obj.item) if obj.item is not None else "(gone)"
 
 
@@ -705,6 +691,7 @@ class TripGrantAdmin(admin.ModelAdmin):
 @admin.register(TripInvite)
 class TripInviteAdmin(admin.ModelAdmin):
     """Invites are made on the People page; here to look up and cancel (set "revoked at")."""
+
     list_display = ("email", "trip", "role", "invited_by", "sent_at", "expires_at", "accepted_by", "revoked_at")
     list_filter = ("role",)
     search_fields = ("email", "trip__name")
@@ -715,6 +702,7 @@ class TripInviteAdmin(admin.ModelAdmin):
 @admin.register(TripCalendarToken)
 class TripCalendarTokenAdmin(admin.ModelAdmin):
     """Calendar-feed links (made on the trip's Add to calendar page); set "revoked at" to stop one."""
+
     list_display = ("user", "trip", "created_at", "revoked_at")
     search_fields = ("user__username", "trip__name")
     readonly_fields = ("token", "created_at")
@@ -724,6 +712,7 @@ class TripCalendarTokenAdmin(admin.ModelAdmin):
 @admin.register(TripChange)
 class TripChangeAdmin(admin.ModelAdmin):
     """What changed on each trip (site roadmap R7; the digest). Read-only: written by trips/changes.py."""
+
     list_display = ("when", "trip", "actor", "kind", "summary", "digest_sent_at")
     list_filter = ("kind", "trip")
     search_fields = ("summary", "trip__name")

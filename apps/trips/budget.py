@@ -1,4 +1,3 @@
-# trips/budget.py
 """Trip expense arithmetic: equal splits, balances and who-owes-whom.
 
 Everything works in cents (integers), per currency, so nothing is lost to
@@ -6,6 +5,7 @@ floating point and the totals always balance: a cost's remainder cents go to
 the payer when they share it (they are owed slightly less), otherwise to the
 first sharers in name order.
 """
+
 from collections import defaultdict
 from decimal import Decimal
 
@@ -49,8 +49,9 @@ def summarize(expenses, everyone):
             cents = _cents(expense.amount)
             paid[expense.paid_by] += cents
             categories[expense.get_category_display()] += cents
-            for traveler, share in shares(expense.amount, expense.paid_by,
-                                          list(expense.shared_with.all()) or list(everyone)).items():
+            for traveler, share in shares(
+                expense.amount, expense.paid_by, list(expense.shared_with.all()) or list(everyone)
+            ).items():
                 owed[traveler] += share
         people = sorted(set(paid) | set(owed), key=lambda t: (t.name, t.pk))
         balance = {t: paid[t] - owed[t] for t in people}
@@ -86,6 +87,7 @@ def settle(balance):
 
 # ------------------------------------------------------------ one currency (site roadmap R10)
 
+
 class _Converted:
     """An expense seen in another currency, enough for ``summarize`` (settle up in one currency)."""
 
@@ -100,6 +102,7 @@ class _Converted:
 def rates_for(trip, currencies, dates=()):
     """``apps.core.rates.Rates`` for these currencies with the trip's own rates (two queries)."""
     from apps.core.rates import Rates
+
     overrides = {(r.from_currency, r.to_currency): r.rate for r in trip.rates.all()}
     return Rates(currencies, dates, overrides)
 

@@ -1,4 +1,4 @@
-'''
+"""
 URL configuration for config project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -13,45 +13,45 @@ Class-based views
 Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-'''
-from django.contrib import admin
-from django.urls import path, include
+"""
+
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap as sitemap_view
+from django.urls import include, path
 
 from apps.core.health import healthz
 from apps.core.pwa import manifest, service_worker
 from apps.pages.sitemaps import SITEMAPS, robots_txt
-from django.contrib.sitemaps.views import sitemap as sitemap_view
 from apps.trips.views import public_trip_detail
 
-
 urlpatterns = [
-    path('healthz/', healthz, name='healthz'),
-    path('robots.txt', robots_txt, name='robots_txt'),
-    path('sitemap.xml', sitemap_view, {'sitemaps': SITEMAPS}, name='sitemap'),
-    path('sw.js', service_worker, name='service_worker'),
-    path('manifest.webmanifest', manifest, name='manifest'),
-    path('admin/', admin.site.urls),
-    path('', include(('apps.pages.urls', 'pages'), namespace='pages')),
-    path('accounts/', include('apps.accounts.urls')),
-    path('rewards/', include(('apps.rewards.urls','rewards'), namespace='rewards')),
-    path('bucketlists/', include(('apps.bucketlists.urls', 'bucketlists'), namespace='bucketlists')),
-    path('activities/', include(('apps.activities.urls', 'activities'), namespace='activities')),
-    path('events/', include(('apps.events.urls', 'events'), namespace='events')),
-    path('locations/', include(('apps.locations.urls', 'locations'), namespace='locations')),
-    path('trips/', include('apps.trips.urls')),
-    path('staff/', include(('apps.accounts.staff_urls', 'staff'), namespace='staff')),  # staff dashboard urls here
-    path('staff/trips/', include('apps.trips.staff_urls')),
-    path('staff/import/', include('apps.admin_tools.urls')),
-    path('report/', include(('apps.admin_tools.report_urls', 'reports'), namespace='reports')),
+    path("healthz/", healthz, name="healthz"),
+    path("robots.txt", robots_txt, name="robots_txt"),
+    path("sitemap.xml", sitemap_view, {"sitemaps": SITEMAPS}, name="sitemap"),
+    path("sw.js", service_worker, name="service_worker"),
+    path("manifest.webmanifest", manifest, name="manifest"),
+    path("admin/", admin.site.urls),
+    path("", include(("apps.pages.urls", "pages"), namespace="pages")),
+    path("accounts/", include("apps.accounts.urls")),
+    path("rewards/", include(("apps.rewards.urls", "rewards"), namespace="rewards")),
+    path("bucketlists/", include(("apps.bucketlists.urls", "bucketlists"), namespace="bucketlists")),
+    path("activities/", include(("apps.activities.urls", "activities"), namespace="activities")),
+    path("events/", include(("apps.events.urls", "events"), namespace="events")),
+    path("locations/", include(("apps.locations.urls", "locations"), namespace="locations")),
+    path("trips/", include("apps.trips.urls")),
+    path("staff/", include(("apps.accounts.staff_urls", "staff"), namespace="staff")),  # staff dashboard urls here
+    path("staff/trips/", include("apps.trips.staff_urls")),
+    path("staff/import/", include("apps.admin_tools.urls")),
+    path("report/", include(("apps.admin_tools.report_urls", "reports"), namespace="reports")),
     # Public, non-detailed trip summary behind a share token. Outside the trips:
     # namespace because every URL there assumes a signed-in reader with a grant.
-    path('public/<uuid:token>/', public_trip_detail, name='public_trip'),
-    path('approval/', include('apps.approval_system.urls')),
-    path('notifications/', include('apps.notifications.urls')),
-    path('reviews/', include('apps.reviews.urls')),
-    path('notes/', include('apps.catalogue_notes.urls')),
+    path("public/<uuid:token>/", public_trip_detail, name="public_trip"),
+    path("approval/", include("apps.approval_system.urls")),
+    path("notifications/", include("apps.notifications.urls")),
+    path("reviews/", include("apps.reviews.urls")),
+    path("notes/", include("apps.catalogue_notes.urls")),
 ]
 
 if settings.DEBUG:
