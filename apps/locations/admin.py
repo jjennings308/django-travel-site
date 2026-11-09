@@ -1,10 +1,10 @@
-# locations/admin.py
 from django import forms
 from django.contrib import admin
-from apps.approval_system.admin import ApprovableAdminMixin
 from django.db.models import Count
 
-from .models import Country, Region, City, POI, PlaceType
+from apps.approval_system.admin import ApprovableAdminMixin
+
+from .models import POI, City, Country, PlaceType, Region
 from .widgets import CountryTaggedSelect
 
 
@@ -29,255 +29,275 @@ class CityAdminForm(forms.ModelForm):
 @admin.register(Country)
 class CountryAdmin(ApprovableAdminMixin, admin.ModelAdmin):
     list_display = [
-        'flag_emoji', 'name', 'iso_code', 'continent', 
-        'currency_code', 'get_city_count', 'visitor_count', 'is_featured'
+        "flag_emoji",
+        "name",
+        "iso_code",
+        "continent",
+        "currency_code",
+        "get_city_count",
+        "visitor_count",
+        "is_featured",
     ]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
-    
-    list_filter = ['continent', 'is_featured']
+
+    list_filter = ["continent", "is_featured"]
     # ApprovableAdminMixin automatically adds: approval_status, approval_priority, submitted_at
-    
-    search_fields = ['name', 'iso_code', 'iso3_code']
-    prepopulated_fields = {'slug': ('name',)}
-    list_editable = ['is_featured']
-    
+
+    search_fields = ["name", "iso_code", "iso3_code"]
+    prepopulated_fields = {"slug": ("name",)}
+    list_editable = ["is_featured"]
+
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('name', 'slug', 'iso_code', 'iso3_code', 'flag_emoji')
-        }),
-        ('Geographic Data', {
-            'fields': ('continent', 'latitude', 'longitude')
-        }),
-        ('Travel Information', {
-            'fields': (
-                'currency_code', 'currency_name', 'phone_code',
-                'description', 'travel_tips'
-            )
-        }),
-        ('Visa Information', {
-            'fields': ('visa_required', 'visa_info'),
-            'classes': ('collapse',)
-        }),
-        ('Featured', {
-            'fields': ('is_featured', 'featured_order'),
-        }),
-        ('Statistics', {
-            'fields': ('get_city_count_display', 'get_poi_count_display', 'visitor_count'),
-            'classes': ('collapse',)
-        }),
-        ('Approval Information', {
-            'fields': ('approval_status', 'approval_priority', 
-                      'submitted_by', 'submitted_at',
-                      'reviewed_by', 'reviewed_at'),
-            'classes': ('collapse',)
-        }),        
-       ('Featured Media', {
-            'fields': ('featured_media',), 
-            'classes': ('collapse',)
-        }),          
+        ("Basic Information", {"fields": ("name", "slug", "iso_code", "iso3_code", "flag_emoji")}),
+        ("Geographic Data", {"fields": ("continent", "latitude", "longitude")}),
+        (
+            "Travel Information",
+            {"fields": ("currency_code", "currency_name", "phone_code", "description", "travel_tips")},
+        ),
+        ("Visa Information", {"fields": ("visa_required", "visa_info"), "classes": ("collapse",)}),
+        (
+            "Featured",
+            {
+                "fields": ("is_featured", "featured_order"),
+            },
+        ),
+        (
+            "Statistics",
+            {"fields": ("get_city_count_display", "get_poi_count_display", "visitor_count"), "classes": ("collapse",)},
+        ),
+        (
+            "Approval Information",
+            {
+                "fields": (
+                    "approval_status",
+                    "approval_priority",
+                    "submitted_by",
+                    "submitted_at",
+                    "reviewed_by",
+                    "reviewed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Featured Media", {"fields": ("featured_media",), "classes": ("collapse",)}),
     )
-    
+
     # ApprovableAdminMixin automatically adds these to readonly_fields,
     # but we include our custom ones here
     readonly_fields = [
-        'get_city_count_display', 'get_poi_count_display', 'visitor_count',
-        'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
+        "get_city_count_display",
+        "get_poi_count_display",
+        "visitor_count",
+        "submitted_by",
+        "submitted_at",
+        "reviewed_by",
+        "reviewed_at",
     ]
-    
+
     def get_queryset(self, request):
         """Optimize queryset with count annotations"""
         from django.db.models import Count, Q
+
         from apps.approval_system.models import ApprovalStatus
-        
+
         qs = super().get_queryset(request)
         return qs.annotate(
-            _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED)),
-            _poi_count=Count('cities__pois', filter=Q(cities__pois__approval_status=ApprovalStatus.APPROVED))
+            _city_count=Count("cities", filter=Q(cities__approval_status=ApprovalStatus.APPROVED)),
+            _poi_count=Count("cities__pois", filter=Q(cities__pois__approval_status=ApprovalStatus.APPROVED)),
         )
-    
+
     def get_city_count(self, obj):
         """Display city count in list view"""
-        return getattr(obj, '_city_count', obj.city_count)
-    get_city_count.short_description = 'Cities'
-    get_city_count.admin_order_field = '_city_count'
-    
+        return getattr(obj, "_city_count", obj.city_count)
+
+    get_city_count.short_description = "Cities"
+    get_city_count.admin_order_field = "_city_count"
+
     def get_poi_count(self, obj):
         """Display POI count in list view"""
-        return getattr(obj, '_poi_count', obj.poi_count)
-    get_poi_count.short_description = 'POIs'
-    get_poi_count.admin_order_field = '_poi_count'
-    
+        return getattr(obj, "_poi_count", obj.poi_count)
+
+    get_poi_count.short_description = "POIs"
+    get_poi_count.admin_order_field = "_poi_count"
+
     def get_city_count_display(self, obj):
         """Display city count in detail view"""
         return obj.city_count
-    get_city_count_display.short_description = 'Number of Cities'
-    
+
+    get_city_count_display.short_description = "Number of Cities"
+
     def get_poi_count_display(self, obj):
         """Display POI count in detail view"""
         return obj.poi_count
-    get_poi_count_display.short_description = 'Number of POIs'
+
+    get_poi_count_display.short_description = "Number of POIs"
 
 
 @admin.register(Region)
 class RegionAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_display = ['name', 'country', 'code', 'get_city_count']
+    list_display = ["name", "country", "code", "get_city_count"]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
-    
-    list_filter = ['country']
+
+    list_filter = ["country"]
     # ApprovableAdminMixin automatically adds: approval_status, approval_priority, submitted_at
-    
-    search_fields = ['name', 'code', 'country__name']
-    prepopulated_fields = {'slug': ('name',)}
-    autocomplete_fields = ['country']
-    
+
+    search_fields = ["name", "code", "country__name"]
+    prepopulated_fields = {"slug": ("name",)}
+    autocomplete_fields = ["country"]
+
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('country', 'name', 'slug', 'code')
-        }),
-        ('Geographic Data', {
-            'fields': ('latitude', 'longitude', 'description')
-        }),
-        ('Statistics', {
-            'fields': ('get_city_count_display',),
-            'classes': ('collapse',)
-        }),
-        ('Approval Information', {
-            'fields': ('approval_status', 'approval_priority',
-                      'submitted_by', 'submitted_at',
-                      'reviewed_by', 'reviewed_at'),
-            'classes': ('collapse',)
-        }),
-       ('Featured Media', {
-            'fields': ('featured_media',), 
-            'classes': ('collapse',)
-        }),          
+        ("Basic Information", {"fields": ("country", "name", "slug", "code")}),
+        ("Geographic Data", {"fields": ("latitude", "longitude", "description")}),
+        ("Statistics", {"fields": ("get_city_count_display",), "classes": ("collapse",)}),
+        (
+            "Approval Information",
+            {
+                "fields": (
+                    "approval_status",
+                    "approval_priority",
+                    "submitted_by",
+                    "submitted_at",
+                    "reviewed_by",
+                    "reviewed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Featured Media", {"fields": ("featured_media",), "classes": ("collapse",)}),
     )
-    
-    readonly_fields = [
-        'get_city_count_display',
-        'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
-    ]
-    
+
+    readonly_fields = ["get_city_count_display", "submitted_by", "submitted_at", "reviewed_by", "reviewed_at"]
+
     def get_queryset(self, request):
         """Optimize queryset with city count annotation"""
         from django.db.models import Count, Q
+
         from apps.approval_system.models import ApprovalStatus
-        
+
         qs = super().get_queryset(request)
-        return qs.annotate(
-            _city_count=Count('cities', filter=Q(cities__approval_status=ApprovalStatus.APPROVED))
-        )
-    
+        return qs.annotate(_city_count=Count("cities", filter=Q(cities__approval_status=ApprovalStatus.APPROVED)))
+
     def get_city_count(self, obj):
         """Display city count in list view"""
         # Use annotated value if available, otherwise fall back to property
-        return getattr(obj, '_city_count', obj.city_count)
-    get_city_count.short_description = 'Cities'
-    get_city_count.admin_order_field = '_city_count'  # Allows column order sorting
-    
+        return getattr(obj, "_city_count", obj.city_count)
+
+    get_city_count.short_description = "Cities"
+    get_city_count.admin_order_field = "_city_count"  # Allows column order sorting
+
     def get_city_count_display(self, obj):
         """Display city count in detail view"""
         return obj.city_count
-    get_city_count_display.short_description = 'Number of Cities'
+
+    get_city_count_display.short_description = "Number of Cities"
 
 
 @admin.register(City)
 class CityAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_display = [
-        'name', 'country', 'region', 'population', 
-        'get_poi_count', 'average_rating', 'is_featured'
-    ]
+    list_display = ["name", "country", "region", "population", "get_poi_count", "average_rating", "is_featured"]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
-    
-    list_filter = ['country', 'is_featured']
+
+    list_filter = ["country", "is_featured"]
     # ApprovableAdminMixin automatically adds: approval_status, approval_priority, submitted_at
-    
-    search_fields = ['name', 'country__name', 'region__name']
-    prepopulated_fields = {'slug': ('name',)}
-    list_editable = ['is_featured']
-    autocomplete_fields = ['country']
+
+    search_fields = ["name", "country__name", "region__name"]
+    prepopulated_fields = {"slug": ("name",)}
+    list_editable = ["is_featured"]
+    autocomplete_fields = ["country"]
     # Region is a plain select limited to the chosen country (see CityAdminForm).
     form = CityAdminForm
 
     class Media:
-        js = ['locations/country_filter.js']
-    
+        js = ["locations/country_filter.js"]
+
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('country', 'region', 'name', 'slug')
-        }),
-        ('Geographic Data', {
-            'fields': ('latitude', 'longitude', 'timezone')
-        }),
-        ('Information', {
-            'fields': ('description', 'population', 'best_time_to_visit', 'average_daily_budget')
-        }),
-        ('Featured', {
-            'fields': ('is_featured', 'featured_order'),
-        }),
-        ('Statistics', {
-            'fields': ('get_poi_count_display', 'visitor_count', 'average_rating', 'review_count'),
-            'classes': ('collapse',)
-        }),
-        ('Approval Information', {
-            'fields': ('approval_status', 'approval_priority',
-                      'submitted_by', 'submitted_at',
-                      'reviewed_by', 'reviewed_at'),
-            'classes': ('collapse',)
-        }),
-       ('Featured Media', {
-            'fields': ('featured_media',), 
-            'classes': ('collapse',)
-        }),          
+        ("Basic Information", {"fields": ("country", "region", "name", "slug")}),
+        ("Geographic Data", {"fields": ("latitude", "longitude", "timezone")}),
+        ("Information", {"fields": ("description", "population", "best_time_to_visit", "average_daily_budget")}),
+        (
+            "Featured",
+            {
+                "fields": ("is_featured", "featured_order"),
+            },
+        ),
+        (
+            "Statistics",
+            {
+                "fields": ("get_poi_count_display", "visitor_count", "average_rating", "review_count"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Approval Information",
+            {
+                "fields": (
+                    "approval_status",
+                    "approval_priority",
+                    "submitted_by",
+                    "submitted_at",
+                    "reviewed_by",
+                    "reviewed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Featured Media", {"fields": ("featured_media",), "classes": ("collapse",)}),
     )
-    
+
     readonly_fields = [
-        'get_poi_count_display', 'visitor_count', 'average_rating', 'review_count',
-        'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
+        "get_poi_count_display",
+        "visitor_count",
+        "average_rating",
+        "review_count",
+        "submitted_by",
+        "submitted_at",
+        "reviewed_by",
+        "reviewed_at",
     ]
-    
+
     def get_queryset(self, request):
         """Optimize queryset with POI count annotation"""
         from django.db.models import Count, Q
+
         from apps.approval_system.models import ApprovalStatus
-        
+
         qs = super().get_queryset(request)
-        return qs.annotate(
-            _poi_count=Count('pois', filter=Q(pois__approval_status=ApprovalStatus.APPROVED))
-        )
-    
+        return qs.annotate(_poi_count=Count("pois", filter=Q(pois__approval_status=ApprovalStatus.APPROVED)))
+
     def get_poi_count(self, obj):
         """Display POI count in list view"""
-        return getattr(obj, '_poi_count', obj.poi_count)
-    get_poi_count.short_description = 'POIs'
-    get_poi_count.admin_order_field = '_poi_count'
-    
+        return getattr(obj, "_poi_count", obj.poi_count)
+
+    get_poi_count.short_description = "POIs"
+    get_poi_count.admin_order_field = "_poi_count"
+
     def get_poi_count_display(self, obj):
         """Display POI count in detail view"""
         return obj.poi_count
-    get_poi_count_display.short_description = 'Number of POIs'
 
+    get_poi_count_display.short_description = "Number of POIs"
 
 
 @admin.register(PlaceType)
 class PlaceTypeAdmin(admin.ModelAdmin):
     """Place types (what kind of place a POI is). The code is what places store, so it is
     fixed once saved; a type in use can't be deleted (untick Active to retire it)."""
-    list_display = ['name', 'code', 'icon', 'sort_order', 'is_active', 'place_count']
-    list_editable = ['sort_order', 'is_active']
-    list_filter = ['is_active']
-    search_fields = ['name', 'code']
-    prepopulated_fields = {'code': ('name',)}
+
+    list_display = ["name", "code", "icon", "sort_order", "is_active", "place_count"]
+    list_editable = ["sort_order", "is_active"]
+    list_filter = ["is_active"]
+    search_fields = ["name", "code"]
+    prepopulated_fields = {"code": ("name",)}
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(_places=Count('places'))
+        return super().get_queryset(request).annotate(_places=Count("places"))
 
-    @admin.display(description='Places', ordering='_places')
+    @admin.display(description="Places", ordering="_places")
     def place_count(self, obj):
         return obj._places
 
     def get_readonly_fields(self, request, obj=None):
-        return ['code'] if obj else []
+        return ["code"] if obj else []
 
     def get_prepopulated_fields(self, request, obj=None):
         return {} if obj else self.prepopulated_fields
@@ -285,60 +305,60 @@ class PlaceTypeAdmin(admin.ModelAdmin):
 
 @admin.register(POI)
 class POIAdmin(ApprovableAdminMixin, admin.ModelAdmin):
-    list_select_related = ['city', 'poi_type']
-    list_display = [
-        'name', 'city', 'poi_type', 'entry_fee', 
-        'average_rating', 'review_count', 'is_featured'
-    ]
+    list_select_related = ["city", "poi_type"]
+    list_display = ["name", "city", "poi_type", "entry_fee", "average_rating", "review_count", "is_featured"]
     # ApprovableAdminMixin automatically adds: approval_status_badge, submitted_by, reviewed_by
-    
-    list_filter = ['poi_type', ('city__country', admin.RelatedOnlyFieldListFilter), 'is_featured', 'wheelchair_accessible', 'parking_available']
+
+    list_filter = [
+        "poi_type",
+        ("city__country", admin.RelatedOnlyFieldListFilter),
+        "is_featured",
+        "wheelchair_accessible",
+        "parking_available",
+    ]
     # ApprovableAdminMixin automatically adds: approval_status, approval_priority, submitted_at
-    
-    search_fields = ['name', 'address', 'city__name']
-    prepopulated_fields = {'slug': ('name',)}
-    list_editable = ['is_featured']
-    autocomplete_fields = ['city']
-    
+
+    search_fields = ["name", "address", "city__name"]
+    prepopulated_fields = {"slug": ("name",)}
+    list_editable = ["is_featured"]
+    autocomplete_fields = ["city"]
+
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('city', 'name', 'slug', 'poi_type')
-        }),
-        ('Geographic Data', {
-            'fields': ('latitude', 'longitude', 'address', 'elevation_m')
-        }),
-        ('Information', {
-            'fields': ('description', 'website', 'phone')
-        }),
-        ('Visiting Information', {
-            'fields': (
-                'entry_fee', 'entry_fee_currency', 
-                'opening_hours', 'typical_duration'
-            )
-        }),
-        ('Accessibility', {
-            'fields': ('wheelchair_accessible', 'parking_available')
-        }),
-        ('Featured', {
-            'fields': ('is_featured', 'featured_order'),
-        }),
-        ('Statistics', {
-            'fields': ('visitor_count', 'average_rating', 'review_count'),
-            'classes': ('collapse',)
-        }),
-        ('Approval Information', {
-            'fields': ('approval_status', 'approval_priority',
-                      'submitted_by', 'submitted_at',
-                      'reviewed_by', 'reviewed_at'),
-            'classes': ('collapse',)
-        }),
-       ('Featured Media', {
-            'fields': ('featured_media',), 
-            'classes': ('collapse',)
-        }),          
+        ("Basic Information", {"fields": ("city", "name", "slug", "poi_type")}),
+        ("Geographic Data", {"fields": ("latitude", "longitude", "address", "elevation_m")}),
+        ("Information", {"fields": ("description", "website", "phone")}),
+        ("Visiting Information", {"fields": ("entry_fee", "entry_fee_currency", "opening_hours", "typical_duration")}),
+        ("Accessibility", {"fields": ("wheelchair_accessible", "parking_available")}),
+        (
+            "Featured",
+            {
+                "fields": ("is_featured", "featured_order"),
+            },
+        ),
+        ("Statistics", {"fields": ("visitor_count", "average_rating", "review_count"), "classes": ("collapse",)}),
+        (
+            "Approval Information",
+            {
+                "fields": (
+                    "approval_status",
+                    "approval_priority",
+                    "submitted_by",
+                    "submitted_at",
+                    "reviewed_by",
+                    "reviewed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Featured Media", {"fields": ("featured_media",), "classes": ("collapse",)}),
     )
-    
+
     readonly_fields = [
-        'visitor_count', 'average_rating', 'review_count',
-        'submitted_by', 'submitted_at', 'reviewed_by', 'reviewed_at'
+        "visitor_count",
+        "average_rating",
+        "review_count",
+        "submitted_by",
+        "submitted_at",
+        "reviewed_by",
+        "reviewed_at",
     ]

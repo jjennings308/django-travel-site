@@ -1,11 +1,11 @@
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.locations.models import CapitalType, City, Country, Region
 from apps.approval_system.models import ApprovalStatus
+from apps.locations.models import CapitalType, City, Country, Region
 
 User = get_user_model()
 
@@ -13,7 +13,7 @@ User = get_user_model()
 class Command(BaseCommand):
     """
     Seed/repair Cities (curated set for US/MX/CR/DE/AT; offline & idempotent).
-    
+
     Now includes approval system integration - all imported cities are
     automatically marked as APPROVED since these are system-level imports.
     """
@@ -39,15 +39,13 @@ class Command(BaseCommand):
             try:
                 return User.objects.get(username=username)
             except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"User '{username}' not found. Trying first superuser..."
-                ))
-        
+                self.stdout.write(self.style.WARNING(f"User '{username}' not found. Trying first superuser..."))
+
         # Fallback to first superuser
         superuser = User.objects.filter(is_superuser=True).first()
         if superuser:
             return superuser
-        
+
         return None
 
     def handle(self, *args, **options):
@@ -58,14 +56,14 @@ class Command(BaseCommand):
         # Get approver user for marking imports as approved
         approver = self._get_approver(options.get("approved_by"))
         if not approver:
-            self.stdout.write(self.style.ERROR(
-                "No approver found. Please create a superuser first or specify --approved-by <username>."
-            ))
+            self.stdout.write(
+                self.style.ERROR(
+                    "No approver found. Please create a superuser first or specify --approved-by <username>."
+                )
+            )
             return
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Using approver: {approver.username} (ID: {approver.id})"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"Using approver: {approver.username} (ID: {approver.id})"))
 
         # Tuple formats supported:
         #   (city_name, region_name, lat, lon, description)
@@ -141,9 +139,7 @@ class Command(BaseCommand):
                     elif len(row) == 6:
                         city_name, region_name, lat, lon, description, capital_type = row
                     else:
-                        raise ValueError(
-                            f"City tuple must have 5 or 6 values, got {len(row)}: {row!r}"
-                        )
+                        raise ValueError(f"City tuple must have 5 or 6 values, got {len(row)}: {row!r}")
 
                     # Ensure Region exists (safety net)
                     region, _ = Region.objects.get_or_create(
@@ -199,9 +195,7 @@ class Command(BaseCommand):
 
                 except Exception as e:
                     errors += 1
-                    self.stdout.write(
-                        self.style.ERROR(f"✗ Error seeding city row {row!r} for {iso2}: {e}")
-                    )
+                    self.stdout.write(self.style.ERROR(f"✗ Error seeding city row {row!r} for {iso2}: {e}"))
 
             self.stdout.write(self.style.SUCCESS(f"✓ Done: {country.name} ({iso2})"))
 

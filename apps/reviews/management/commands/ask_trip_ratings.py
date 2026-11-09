@@ -3,6 +3,7 @@
 The daily ``send_trip_digests`` already does this (through ``trips.signals.daily_run``); this command
 is for running it by hand. Each person is asked once per trip, ever.
 """
+
 from django.core.management.base import BaseCommand
 
 from apps.reviews import trip_ratings

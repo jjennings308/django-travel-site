@@ -5,6 +5,7 @@ folder its script comes from; the trip page registers it with scope ``/trips/``)
 ``/manifest.webmanifest`` lets phones add the site to the home screen. ``offline_cache_key``
 names a person's offline cache without revealing who they are.
 """
+
 import json
 
 from django.conf import settings

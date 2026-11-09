@@ -6,6 +6,7 @@ both sides (``unaccent`` on the name, ``strip_accents`` on the query), a trigram
 name, a bonus for an exact (2.0) or leading (0.6) name and a substring match from 3 letters. Approved
 cities, plus the member's own pending submissions (so a city they just added is usable at once).
 """
+
 import unicodedata
 
 from django.contrib.postgres.search import TrigramWordSimilarity
@@ -44,18 +45,27 @@ def search(q, user, country=None, limit=LIMIT):
         return []
     cities = visible_cities(user).select_related("region", "country")
     if country:
-        cities = cities.filter(Q(country__iso_code__iexact=country) if not str(country).isdigit()
-                               else Q(country_id=country))
+        cities = cities.filter(
+            Q(country__iso_code__iexact=country) if not str(country).isdigit() else Q(country_id=country)
+        )
     return list(
-        cities.annotate(name_plain=Lower(_ua("name")),
-                        similarity=TrigramWordSimilarity(Value(plain), Lower(_ua("name"))),
-                        bonus=Case(When(name_plain=plain, then=Value(2.0)),
-                                   When(name_plain__startswith=plain, then=Value(0.6)),
-                                   default=Value(0.0), output_field=FloatField()))
-        .filter(Q(similarity__gte=SIMILAR if len(plain) >= 5 else SIMILAR_SHORT)
-                | (Q(name_plain__contains=plain) if len(plain) >= 3 else Q(name_plain__startswith=plain)))
+        cities.annotate(
+            name_plain=Lower(_ua("name")),
+            similarity=TrigramWordSimilarity(Value(plain), Lower(_ua("name"))),
+            bonus=Case(
+                When(name_plain=plain, then=Value(2.0)),
+                When(name_plain__startswith=plain, then=Value(0.6)),
+                default=Value(0.0),
+                output_field=FloatField(),
+            ),
+        )
+        .filter(
+            Q(similarity__gte=SIMILAR if len(plain) >= 5 else SIMILAR_SHORT)
+            | (Q(name_plain__contains=plain) if len(plain) >= 3 else Q(name_plain__startswith=plain))
+        )
         .annotate(score=F("similarity") + F("bonus"))
-        .order_by("-score", "-visitor_count", "name")[:limit])
+        .order_by("-score", "-visitor_count", "name")[:limit]
+    )
 
 
 def as_json(city):

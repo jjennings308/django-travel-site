@@ -15,6 +15,7 @@ rate and a stay option's estimate are per night, a meal's estimate is per person
 ``annotate(trip)`` gives each counted item on the trip page its quiet ``cost_note`` (B3). The Budget page's Plan,
 which adds these up, is ``budget_plan``; the expense arithmetic (shares, settle-up) is ``budget``.
 """
+
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -74,7 +75,7 @@ def basis_of(item):
 
 
 def money(amount, currency):
-    """"€95", "€15.50", "$1,140", "CHF 12" — whole amounts without cents."""
+    """ "€95", "€15.50", "$1,140", "CHF 12" — whole amounts without cents."""
     if amount is None:
         return ""
     amount = Decimal(amount).quantize(Decimal("0.01"))
@@ -177,11 +178,14 @@ def estimate(item, day=None, trip=None, people=None):
     elif basis == Basis.PER_ROOM_NIGHT:
         rooms_text = f"{rooms} room{'s' if rooms != 1 else ''}" if rooms else "? rooms"
         total = amount * rooms * nights if rooms and nights else None
-        line = f"{head} per room per night × {rooms_text} × {nights_text}" + (f" = {m(total)}" if total is not None else "")
+        line = f"{head} per room per night × {rooms_text} × {nights_text}" + (
+            f" = {m(total)}" if total is not None else ""
+        )
     else:  # per person per night
         total = amount * count * nights if known and nights else None
         line = f"{head} per person per night × {count if known else '?'} × {nights_text}" + (
-            f" = {m(total)}" if total is not None else "")
+            f" = {m(total)}" if total is not None else ""
+        )
     per_person = None
     if total is not None and known and count:
         base, extra = divmod(_cents(total), count)
@@ -190,9 +194,18 @@ def estimate(item, day=None, trip=None, people=None):
             line += f" · {m(per_person)} each ({count})"
     if not known:
         line += " · people not set"
-    return Cost(amount=Decimal(amount), currency=currency, basis=basis, people=count, people_known=known,
-                nights=nights, rooms=rooms, total=Decimal(total) if total is not None else None,
-                per_person=per_person, line=line)
+    return Cost(
+        amount=Decimal(amount),
+        currency=currency,
+        basis=basis,
+        people=count,
+        people_known=known,
+        nights=nights,
+        rooms=rooms,
+        total=Decimal(total) if total is not None else None,
+        per_person=per_person,
+        line=line,
+    )
 
 
 def _days_by(trip):
@@ -224,6 +237,7 @@ def planned_items(trip):
 
 
 # ---- costs where you plan (budget-estimates B3) --------------------------------------------------------------
+
 
 def note_for(item, day, trip):
     """The quiet note at the end of an item's row on its day: "€1,140 · booked" (a costed confirmation covers it;

@@ -1,4 +1,5 @@
 """The dashboard's first-run welcome (site roadmap R14)."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -22,8 +23,9 @@ class WelcomeTests(TestCase):
     def test_steps_tick_off(self):
         self.assertEqual([s["done"] for s in self.steps()], [False, False, False])
         BucketListItem.objects.create(user=self.ada, custom_title="See the Alps")
-        trip = Trip.objects.create(name="Alps", start_date=date(2027, 7, 1), end_date=date(2027, 7, 5),
-                                   created_by=self.ada)
+        trip = Trip.objects.create(
+            name="Alps", start_date=date(2027, 7, 1), end_date=date(2027, 7, 5), created_by=self.ada
+        )
         TripGrant.objects.create(trip=trip, user=self.ada, role="editor")
         self.assertEqual([s["done"] for s in self.steps()], [True, True, False])
         bob = User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd")

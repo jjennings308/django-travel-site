@@ -34,7 +34,7 @@ You have two options:
 # settings.py
 INSTALLED_APPS = [
     # ...
-    'approval_system',
+    "approval_system",
     # ...
 ]
 ```
@@ -52,10 +52,9 @@ python manage.py migrate approval_system
 # project/urls.py
 urlpatterns = [
     # Keep existing
-    path('locations/', include('locations.urls')),
-    
+    path("locations/", include("locations.urls")),
     # Add new
-    path('approval/', include('approval_system.urls')),
+    path("approval/", include("approval_system.urls")),
 ]
 ```
 
@@ -78,12 +77,12 @@ settings.save()
 from apps.locations.models import City, Country, POI, Region
 
 locations_queue = ApprovalQueue.objects.create(
-    name='Locations',
-    slug='locations',
-    description='User-submitted locations',
-    status_filter='pending',
-    color='#007bff',
-    icon='📍'
+    name="Locations",
+    slug="locations",
+    description="User-submitted locations",
+    status_filter="pending",
+    color="#007bff",
+    icon="📍",
 )
 
 locations_queue.content_types.add(
@@ -102,16 +101,17 @@ Keep old fields, add new mixin alongside:
 # apps/locations/models.py
 from apps.approval_system.models import Approvable
 
+
 class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, Approvable):
     # Keep existing fields temporarily
     status = models.CharField(...)  # OLD - keep for now
     submitted_by_old = models.ForeignKey(...)  # OLD - keep for now
-    
+
     # Approvable adds new fields:
     # - approval_status
     # - submitted_by (from Approvable)
     # - etc.
-    
+
     # Your other fields
     name = models.CharField(max_length=100)
     # ...
@@ -126,56 +126,57 @@ Map old fields to new ones:
 
 from django.db import migrations
 
+
 def migrate_statuses(apps, schema_editor):
     """Map old status field to new approval_status"""
-    
-    Country = apps.get_model('locations', 'Country')
-    
+
+    Country = apps.get_model("locations", "Country")
+
     status_mapping = {
-        'pending': 'pending',
-        'approved': 'approved',
-        'rejected': 'rejected',
-        'needs_changes': 'changes_requested',
+        "pending": "pending",
+        "approved": "approved",
+        "rejected": "rejected",
+        "needs_changes": "changes_requested",
     }
-    
+
     for country in Country.objects.all():
         # Map status
         if country.status in status_mapping:
             country.approval_status = status_mapping[country.status]
-        
+
         # Map submitted_by if it exists
-        if hasattr(country, 'submitted_by_old') and country.submitted_by_old:
+        if hasattr(country, "submitted_by_old") and country.submitted_by_old:
             country.submitted_by = country.submitted_by_old
-        
+
         # Map reviewed_by
-        if hasattr(country, 'reviewed_by_old') and country.reviewed_by_old:
+        if hasattr(country, "reviewed_by_old") and country.reviewed_by_old:
             country.reviewed_by = country.reviewed_by_old
-        
+
         # Map timestamps
-        if hasattr(country, 'reviewed_at_old'):
+        if hasattr(country, "reviewed_at_old"):
             country.reviewed_at = country.reviewed_at_old
-        
+
         country.save()
 
 
 def reverse_migrate(apps, schema_editor):
     """Reverse migration if needed"""
-    Country = apps.get_model('locations', 'Country')
-    
+    Country = apps.get_model("locations", "Country")
+
     for country in Country.objects.all():
         # Map back to old fields
-        if country.approval_status == 'pending':
-            country.status = 'pending'
+        if country.approval_status == "pending":
+            country.status = "pending"
         # ... etc
         country.save()
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('locations', '0005_add_review_system_and_featured_media'),
-        ('approval_system', '0001_initial'),
+        ("locations", "0005_add_review_system_and_featured_media"),
+        ("approval_system", "0001_initial"),
     ]
-    
+
     operations = [
         migrations.RunPython(migrate_statuses, reverse_migrate),
     ]
@@ -252,38 +253,38 @@ from apps.approval_system.models import ApprovalStatus
 def city_list(request):
     # OLD:
     # cities = City.objects.filter(status='approved')
-    
+
     # NEW:
     cities = City.objects.filter(approval_status=ApprovalStatus.APPROVED)
-    
-    return render(request, 'locations/city_list.html', {'cities': cities})
+
+    return render(request, "locations/city_list.html", {"cities": cities})
 
 
 # Update submission views
 def submit_city(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         city = City()
         # ... populate from form
-        
+
         # OLD:
         # city.status = 'pending'
         # city.submitted_by = request.user
         # city.save()
-        
+
         # NEW:
         city.submit_for_review(request.user)
         # Automatically sets status, submitted_by, submitted_at, creates log
-        
-        messages.success(request, 'City submitted for review!')
-        return redirect('approval_system:my_submissions')
-    
-    return render(request, 'locations/submit_city.html')
+
+        messages.success(request, "City submitted for review!")
+        return redirect("approval_system:my_submissions")
+
+    return render(request, "locations/submit_city.html")
 
 
 # User's submissions - now unified
 def my_submissions(request):
     # Redirect to unified submissions page
-    return redirect('approval_system:my_submissions')
+    return redirect("approval_system:my_submissions")
 ```
 
 ### Phase 7: Clean Up Old Code (Optional)
@@ -308,8 +309,8 @@ rm locations/templates/locations/review_location.html
 
 # Keep only public-facing URLs
 urlpatterns = [
-    path('countries/', views.country_list, name='country_list'),
-    path('cities/', views.city_list, name='city_list'),
+    path("countries/", views.country_list, name="country_list"),
+    path("cities/", views.city_list, name="city_list"),
     # ...
 ]
 ```
@@ -321,14 +322,15 @@ urlpatterns = [
 
 from django.db import migrations
 
+
 class Migration(migrations.Migration):
     dependencies = [
-        ('locations', '0006_migrate_to_approval_system'),
+        ("locations", "0006_migrate_to_approval_system"),
     ]
-    
+
     operations = [
-        migrations.RemoveField(model_name='country', name='status'),
-        migrations.RemoveField(model_name='country', name='submitted_by_old'),
+        migrations.RemoveField(model_name="country", name="status"),
+        migrations.RemoveField(model_name="country", name="submitted_by_old"),
         # ... remove other old fields
     ]
 ```
@@ -388,11 +390,11 @@ from apps.locations.models import Country
 
 # Check a country that was approved
 country = Country.objects.get(name="United States")
-assert country.approval_status == 'approved'
+assert country.approval_status == "approved"
 assert country.is_public() == True
 
 # Check a country that was pending
-pending_country = Country.objects.filter(approval_status='pending').first()
+pending_country = Country.objects.filter(approval_status="pending").first()
 assert pending_country.is_pending() == True
 ```
 
@@ -419,12 +421,12 @@ assert logs.first().action == 'submitted'
 ```python
 # Test approval
 city.approve(staff_user, "Looks good!")
-assert city.approval_status == 'approved'
+assert city.approval_status == "approved"
 assert city.reviewed_by == staff_user
 
 # Verify log
 logs = city.get_approval_history()
-approval_log = logs.filter(action='approved').first()
+approval_log = logs.filter(action="approved").first()
 assert approval_log.notes == "Looks good!"
 ```
 
@@ -445,10 +447,10 @@ http://localhost:8000/approval/
 
 ```python
 # Public content only
-public_cities = City.objects.filter(approval_status='approved')
+public_cities = City.objects.filter(approval_status="approved")
 
 # Pending review
-pending = City.objects.filter(approval_status='pending')
+pending = City.objects.filter(approval_status="pending")
 
 # User's submissions
 mine = City.objects.filter(submitted_by=request.user)
@@ -468,11 +470,11 @@ python manage.py migrate locations 0005
 3. **Switch URLs back**
 ```python
 # Use old review URLs again
-path('locations/review/', views.review_dashboard),
+(path("locations/review/", views.review_dashboard),)
 ```
 4. **Revert views** to use old fields
 ```python
-cities = City.objects.filter(status='approved')  # old field
+cities = City.objects.filter(status="approved")  # old field
 ```
 
 ## Support

@@ -1,4 +1,5 @@
 """Staff CSV import of activities and events: preview, create, update, errors."""
+
 import csv as csv_module
 import io
 from datetime import date, time
@@ -9,8 +10,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.admin_tools import importers
 from apps.activities.models import Activity, ActivityCategory, ActivityTag
+from apps.admin_tools import importers
 from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI, City, Country, Region
@@ -25,13 +26,27 @@ def upload(text, name="data.csv"):
 class ImportFixture(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user("staffer", "s@example.com", "pw-1234-abcd")
-        self.staff.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard",
-                                                               content_type__app_label="accounts"))
-        self.germany = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU",
-                                              continent="Europe", approval_status=ApprovalStatus.APPROVED)
+        self.staff.user_permissions.add(
+            Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
+        )
+        self.germany = Country.objects.create(
+            name="Germany",
+            slug="germany",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.bavaria = Region.objects.create(country=self.germany, name="Bavaria", slug="bavaria")
-        self.munich = City.objects.create(name="Munich", slug="munich", country=self.germany, region=self.bavaria,
-                                          latitude=48, longitude=11, approval_status=ApprovalStatus.APPROVED)
+        self.munich = City.objects.create(
+            name="Munich",
+            slug="munich",
+            country=self.germany,
+            region=self.bavaria,
+            latitude=48,
+            longitude=11,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.festival = ActivityCategory.objects.get(name="Festival")
         self.client.force_login(self.staff)
 
@@ -64,9 +79,13 @@ class ImportTests(ImportFixture):
         example names tags, which must exist: an import never creates one.)"""
         for name in ("Food", "Music"):
             ActivityTag.objects.create(name=name)
-        self.preview("activity", self.client.get(reverse("admin_tools:import_template", args=["activity"])).content.decode())
+        self.preview(
+            "activity", self.client.get(reverse("admin_tools:import_template", args=["activity"])).content.decode()
+        )
         self.confirm()
-        page = self.preview("event", self.client.get(reverse("admin_tools:import_template", args=["event"])).content.decode())
+        page = self.preview(
+            "event", self.client.get(reverse("admin_tools:import_template", args=["event"])).content.decode()
+        )
         self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 0})
 
     def test_tags_column_round_trips_keeps_on_blank_and_refuses_unknown(self):
@@ -104,8 +123,10 @@ class ImportTests(ImportFixture):
         self.assertFalse(ActivityTag.objects.filter(name="Outdoorsy").exists())
 
     def test_activity_create_then_update(self):
-        csv = ("Name,Category,Description,City,Country,Recurrence,Usual Months,Booking required\n"
-               "Oktoberfest,festival,Beer.,Munich,Germany,Every year,\"Sep, Oct\",yes\n")
+        csv = (
+            "Name,Category,Description,City,Country,Recurrence,Usual Months,Booking required\n"
+            'Oktoberfest,festival,Beer.,Munich,Germany,Every year,"Sep, Oct",yes\n'
+        )
         page = self.preview("activity", csv)
         self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 0})
         self.assertFalse(Activity.objects.exists())  # preview saves nothing
@@ -113,25 +134,39 @@ class ImportTests(ImportFixture):
         okto = Activity.objects.get()
         self.assertEqual((okto.city, okto.region, okto.country), (self.munich, self.bavaria, self.germany))
         self.assertEqual((okto.recurrence, okto.usual_months, okto.booking_required), ("yearly", [9, 10], True))
-        self.assertEqual((okto.approval_status, okto.visibility, okto.source, okto.created_by),
-                         (ApprovalStatus.APPROVED, "public", "import", self.staff))
+        self.assertEqual(
+            (okto.approval_status, okto.visibility, okto.source, okto.created_by),
+            (ApprovalStatus.APPROVED, "public", "import", self.staff),
+        )
 
-        page = self.preview("activity", "name,category,description,timing_notes\nOKTOBERFEST,Festival,Beer and brass.,\n")
+        page = self.preview(
+            "activity", "name,category,description,timing_notes\nOKTOBERFEST,Festival,Beer and brass.,\n"
+        )
         self.assertEqual(page.context["counts"], {"create": 0, "update": 1, "error": 0})
         self.assertEqual(page.context["importer"].rows[0].changes, ["Description"])  # not Name: capitals ignored
         self.confirm()
         okto.refresh_from_db()
         self.assertEqual(Activity.objects.count(), 1)
-        self.assertEqual((okto.name, okto.description, okto.city, okto.recurrence),
-                         ("Oktoberfest", "Beer and brass.", self.munich, "yearly"))  # matched ignoring capitals; name kept
+        self.assertEqual(
+            (okto.name, okto.description, okto.city, okto.recurrence),
+            ("Oktoberfest", "Beer and brass.", self.munich, "yearly"),
+        )  # matched ignoring capitals; name kept
 
     def test_event_rows(self):
-        okto = Activity.objects.create(category=self.festival, name="Oktoberfest", description="d", created_by=self.staff,
-                                       visibility="public", approval_status=ApprovalStatus.APPROVED)
-        csv = ("name,start_date,end_date,start_time,activity,category,description,city,country,free\n"
-               "Oktoberfest 2027,9/18/2027,10/3/2027,10:00 AM,Oktoberfest,,Beer.,Munich,Germany,yes\n"
-               "Village Fair,2027-07-01,,,,Community,Fun.,Smallville,Germany,no\n"
-               "No Category Gig,2027-07-02,,,,,Loud.,Munich,Germany,no\n")
+        okto = Activity.objects.create(
+            category=self.festival,
+            name="Oktoberfest",
+            description="d",
+            created_by=self.staff,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        csv = (
+            "name,start_date,end_date,start_time,activity,category,description,city,country,free\n"
+            "Oktoberfest 2027,9/18/2027,10/3/2027,10:00 AM,Oktoberfest,,Beer.,Munich,Germany,yes\n"
+            "Village Fair,2027-07-01,,,,Community,Fun.,Smallville,Germany,no\n"
+            "No Category Gig,2027-07-02,,,,,Loud.,Munich,Germany,no\n"
+        )
         page = self.preview("event", csv)
         self.assertEqual(page.context["counts"], {"create": 2, "update": 0, "error": 1})
         self.assertContains(page, "Choose a category (or the activity this is a date for)")
@@ -144,11 +179,13 @@ class ImportTests(ImportFixture):
         self.assertEqual(fair.approval_status, ApprovalStatus.APPROVED)
 
     def test_errors_are_reported_and_skipped(self):
-        csv = ("name,category,description,city\n"
-               "Good one,Festival,Fine.,Munich\n"
-               "Bad category,Knitting,x,\n"
-               "Good one,Festival,Same again.,\n"
-               ",Festival,No name,\n")
+        csv = (
+            "name,category,description,city\n"
+            "Good one,Festival,Fine.,Munich\n"
+            "Bad category,Knitting,x,\n"
+            "Good one,Festival,Same again.,\n"
+            ",Festival,No name,\n"
+        )
         page = self.preview("activity", csv)
         self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 3})
         self.assertContains(page, "isn&#x27;t a category")
@@ -172,25 +209,44 @@ class LocationImportTests(ImportFixture):
         steps = [
             ("country", "name,iso_code,iso3_code,continent,visa_required\nIceland,IS,ISL,Europe,no\n"),
             ("region", "name,country,code\nCapital Region,Iceland,1\n"),
-            ("city", "name,country,region,latitude,longitude,capital\nReykjavik,Iceland,Capital Region,64.1466,-21.9426,country\n"),
-            ("poi", "name,city,country,type,latitude,longitude,wheelchair_accessible\nHallgrimskirkja,Reykjavik,Iceland,temple,64.1417,-21.9266,yes\n"),
-            ("activity", "name,category,description,city,country,venue,recurrence,usual_months\n"
-                         "Organ concert,Festival,Sunday recitals.,Reykjavik,Iceland,Hallgrimskirkja,Several times a year,Jun;Jul;Aug\n"),
-            ("event", "name,start_date,activity,description,city,country,place\n"
-                      "Organ concert June,2027-06-06,Organ concert,Recital.,Reykjavik,Iceland,Hallgrimskirkja\n"),
+            (
+                "city",
+                "name,country,region,latitude,longitude,capital\nReykjavik,Iceland,Capital Region,64.1466,-21.9426,country\n",
+            ),
+            (
+                "poi",
+                "name,city,country,type,latitude,longitude,wheelchair_accessible\nHallgrimskirkja,Reykjavik,Iceland,temple,64.1417,-21.9266,yes\n",
+            ),
+            (
+                "activity",
+                "name,category,description,city,country,venue,recurrence,usual_months\n"
+                "Organ concert,Festival,Sunday recitals.,Reykjavik,Iceland,Hallgrimskirkja,Several times a year,Jun;Jul;Aug\n",
+            ),
+            (
+                "event",
+                "name,start_date,activity,description,city,country,place\n"
+                "Organ concert June,2027-06-06,Organ concert,Recital.,Reykjavik,Iceland,Hallgrimskirkja\n",
+            ),
         ]
         for kind, text in steps:
             with self.subTest(kind=kind):
                 page = self.preview(kind, text)
-                self.assertEqual(page.context["counts"], {"create": 1, "update": 0, "error": 0},
-                                 [r.errors for r in page.context["importer"].rows])
+                self.assertEqual(
+                    page.context["counts"],
+                    {"create": 1, "update": 0, "error": 0},
+                    [r.errors for r in page.context["importer"].rows],
+                )
                 self.confirm()
         iceland = Country.objects.get(iso_code="IS")
         city = City.objects.get(name="Reykjavik")
-        self.assertEqual((iceland.visa_required, iceland.approval_status, iceland.flag_emoji), (False, ApprovalStatus.APPROVED, "🇮🇸"))
+        self.assertEqual(
+            (iceland.visa_required, iceland.approval_status, iceland.flag_emoji), (False, ApprovalStatus.APPROVED, "🇮🇸")
+        )
         self.assertEqual((city.region.name, city.capital_type, city.is_capital), ("Capital Region", "country", True))
         poi = city.pois.get() if hasattr(city, "pois") else POI.objects.get(city=city)
-        self.assertEqual((poi.poi_type_id, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED))
+        self.assertEqual(
+            (poi.poi_type_id, poi.wheelchair_accessible, poi.approval_status), ("temple", True, ApprovalStatus.APPROVED)
+        )
         concert = Activity.objects.get(name="Organ concert")
         self.assertEqual((concert.venue, concert.city, concert.recurrence), (poi, city, "seasonal"))
         self.assertEqual(Event.objects.get(name="Organ concert June").poi, poi)
@@ -199,10 +255,15 @@ class LocationImportTests(ImportFixture):
         self.assertEqual(self.client.get(reverse("admin_tools:import_preview")).context["counts"]["update"], 1)
 
     def test_place_type_by_name_and_export_writes_the_name(self):
-        for kind, text in (("country", "name,iso_code,iso3_code,continent\nIceland,IS,ISL,Europe\n"),
-                           ("city", "name,country,latitude,longitude\nVik,Iceland,63.4,-19.0\n"),
-                           ("poi", "name,city,country,type,latitude,longitude\nReynisfjara,Vik,Iceland,beach,63.4,-19.0\n"
-                                   "Vik stadium,Vik,Iceland,Sports Venues,63.4,-19.0\n")):
+        for kind, text in (
+            ("country", "name,iso_code,iso3_code,continent\nIceland,IS,ISL,Europe\n"),
+            ("city", "name,country,latitude,longitude\nVik,Iceland,63.4,-19.0\n"),
+            (
+                "poi",
+                "name,city,country,type,latitude,longitude\nReynisfjara,Vik,Iceland,beach,63.4,-19.0\n"
+                "Vik stadium,Vik,Iceland,Sports Venues,63.4,-19.0\n",
+            ),
+        ):
             page = self.preview(kind, text)
             self.assertEqual(page.context["counts"]["error"], 0, [r.errors for r in page.context["importer"].rows])
             self.confirm()
@@ -210,7 +271,9 @@ class LocationImportTests(ImportFixture):
         page = self.preview("poi", "name,city,country,type,latitude,longitude\nX,Vik,Iceland,spaceport,1,2\n")
         self.assertEqual(page.context["counts"]["error"], 1)
         import io
+
         from apps.admin_tools.importers import export_csv
+
         out = io.StringIO()
         export_csv("poi", out)
         self.assertIn("Sports Venues", out.getvalue())
@@ -218,17 +281,28 @@ class LocationImportTests(ImportFixture):
     def test_place_needs_an_existing_city_and_region_in_country(self):
         page = self.preview("poi", "name,city,latitude,longitude\nSomewhere,Atlantis,1,2\n")
         self.assertContains(page, "isn&#x27;t a city in the catalogue")
-        france = Country.objects.create(name="France", slug="france", iso_code="FR", iso3_code="FRA", continent="Europe")
+        france = Country.objects.create(
+            name="France", slug="france", iso_code="FR", iso3_code="FRA", continent="Europe"
+        )
         page = self.preview("city", "name,country,region,latitude,longitude\nLyon,France,Bavaria,45.76,4.83\n")
         self.assertContains(page, "isn&#x27;t a region in the catalogue")
         self.assertTrue(france)
 
     def test_export_round_trip(self):
-        Activity.objects.create(category=self.festival, name="Oktoberfest", description="Beer, music", city=self.munich,
-                                recurrence="yearly", usual_months=[9, 10], created_by=self.staff, visibility="public",
-                                approval_status=ApprovalStatus.APPROVED)
-        Activity.objects.create(category=self.festival, name="Secret", description="d", created_by=self.staff,
-                                visibility="private")
+        Activity.objects.create(
+            category=self.festival,
+            name="Oktoberfest",
+            description="Beer, music",
+            city=self.munich,
+            recurrence="yearly",
+            usual_months=[9, 10],
+            created_by=self.staff,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        Activity.objects.create(
+            category=self.festival, name="Secret", description="d", created_by=self.staff, visibility="private"
+        )
         for kind in ("country", "region", "city", "activity"):
             with self.subTest(kind=kind):
                 response = self.client.get(reverse("admin_tools:export", args=[kind]))
@@ -243,11 +317,17 @@ class LocationImportTests(ImportFixture):
                 self.assertEqual((counts["create"], counts["error"]), (0, 0))
                 self.assertEqual([r.changes for r in page.context["importer"].rows], [[]] * counts["update"])
 
-
     def test_event_export_writes_month_day_year_and_round_trips(self):
-        Event.objects.create(name="Oktoberfest 2027", start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
-                             category=self.festival, description="Beer.", city=self.munich,
-                             created_by=self.staff, approval_status=ApprovalStatus.APPROVED)
+        Event.objects.create(
+            name="Oktoberfest 2027",
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 10, 3),
+            category=self.festival,
+            description="Beer.",
+            city=self.munich,
+            created_by=self.staff,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         text = self.client.get(reverse("admin_tools:export", args=["event"])).content.decode("utf-8-sig")
         self.assertIn(",9/18/2027,10/3/2027,", text)  # no leading zeros, month first
         page = self.preview("event", text)
@@ -265,52 +345,83 @@ class SameNameCityTests(ImportFixture):
 
     def setUp(self):
         super().setUp()
-        self.us = Country.objects.create(name="United States", slug="united-states", iso_code="US", iso3_code="USA",
-                                         continent="North America", approval_status=ApprovalStatus.APPROVED)
+        self.us = Country.objects.create(
+            name="United States",
+            slug="united-states",
+            iso_code="US",
+            iso3_code="USA",
+            continent="North America",
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.mo = Region.objects.create(country=self.us, name="Missouri", code="MO", slug="missouri")
         self.ks = Region.objects.create(country=self.us, name="Kansas", code="KS", slug="kansas")
 
     def test_both_kansas_cities_import(self):
-        csv = ("name,country,region,latitude,longitude\n"
-               "Kansas City,United States,Missouri,39.0997,-94.5786\n"
-               "Kansas City,United States,Kansas,39.1141,-94.6275\n")
+        csv = (
+            "name,country,region,latitude,longitude\n"
+            "Kansas City,United States,Missouri,39.0997,-94.5786\n"
+            "Kansas City,United States,Kansas,39.1141,-94.6275\n"
+        )
         page = self.preview("city", csv)
-        self.assertEqual(page.context["counts"], {"create": 2, "update": 0, "error": 0},
-                         [r.errors for r in page.context["importer"].rows])
+        self.assertEqual(
+            page.context["counts"],
+            {"create": 2, "update": 0, "error": 0},
+            [r.errors for r in page.context["importer"].rows],
+        )
         self.confirm()
         cities = City.objects.filter(name="Kansas City").order_by("region__name")
-        self.assertEqual([(c.region.code, c.slug) for c in cities], [("KS", "kansas-city-ks-us"), ("MO", "kansas-city-mo-us")])
+        self.assertEqual(
+            [(c.region.code, c.slug) for c in cities], [("KS", "kansas-city-ks-us"), ("MO", "kansas-city-mo-us")]
+        )
         self.assertEqual(str(cities[0]), "Kansas City, KS, US")
 
         # re-import updates the right one; a row without the region is ambiguous now
-        page = self.preview("city", "name,country,region,latitude,longitude,population\n"
-                                    "Kansas City,United States,Kansas,39.1141,-94.6275,156607\n"
-                                    "Kansas City,United States,,39.1,-94.6,1\n")
+        page = self.preview(
+            "city",
+            "name,country,region,latitude,longitude,population\n"
+            "Kansas City,United States,Kansas,39.1141,-94.6275,156607\n"
+            "Kansas City,United States,,39.1,-94.6,1\n",
+        )
         rows = page.context["importer"].rows
         self.assertEqual((rows[0].action, rows[0].instance.region.code), ("update", "KS"))
         self.assertEqual(rows[1].action, "error")
         self.assertIn("several cities are called Kansas City", rows[1].errors[0])
 
         # a place attaches to the city its region names
-        self.preview("poi", "name,city,region,country,type,latitude,longitude\n"
-                            "Children's Mercy Park,Kansas City,Kansas,United States,sports,39.1218,-94.8231\n")
+        self.preview(
+            "poi",
+            "name,city,region,country,type,latitude,longitude\n"
+            "Children's Mercy Park,Kansas City,Kansas,United States,sports,39.1218,-94.8231\n",
+        )
         self.confirm()
         self.assertEqual(POI.objects.get(name="Children's Mercy Park").city.region, self.ks)
 
     def test_same_name_in_the_same_region_is_still_refused(self):
         from django.db import IntegrityError, transaction
-        City.objects.create(name="Kansas City", country=self.us, region=self.mo, latitude=39, longitude=-94,
-                            approval_status=ApprovalStatus.APPROVED)
+
+        City.objects.create(
+            name="Kansas City",
+            country=self.us,
+            region=self.mo,
+            latitude=39,
+            longitude=-94,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         with self.assertRaises(IntegrityError), transaction.atomic():
-            City.objects.create(name="Kansas City", slug="kc-dup", country=self.us, region=self.mo, latitude=39, longitude=-94)
+            City.objects.create(
+                name="Kansas City", slug="kc-dup", country=self.us, region=self.mo, latitude=39, longitude=-94
+            )
         City.objects.create(name="Lonely", country=self.us, latitude=1, longitude=1)
         with self.assertRaises(IntegrityError), transaction.atomic():  # two region-less ones clash too
             City.objects.create(name="Lonely", slug="lonely-2", country=self.us, latitude=1, longitude=1)
 
     def test_city_without_region_gets_one_instead_of_a_duplicate(self):
-        old = City.objects.create(name="Kansas City", country=self.us, latitude=39, longitude=-94,
-                                  approval_status=ApprovalStatus.APPROVED)
-        self.preview("city", "name,country,region,latitude,longitude\nKansas City,United States,Missouri,39.0997,-94.5786\n")
+        old = City.objects.create(
+            name="Kansas City", country=self.us, latitude=39, longitude=-94, approval_status=ApprovalStatus.APPROVED
+        )
+        self.preview(
+            "city", "name,country,region,latitude,longitude\nKansas City,United States,Missouri,39.0997,-94.5786\n"
+        )
         self.confirm()
         old.refresh_from_db()
         self.assertEqual((City.objects.filter(name="Kansas City").count(), old.region), (1, self.mo))

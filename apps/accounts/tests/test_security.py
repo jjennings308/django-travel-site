@@ -1,9 +1,9 @@
 """Role-request documents are private; the theme cookie is locked down."""
+
 import shutil
 import tempfile
 from pathlib import Path
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -28,8 +28,10 @@ class RoleDocumentTests(TestCase):
     def setUp(self):
         self.ada = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
         self.request = RoleRequest.objects.create(
-            user=self.ada, requested_role=RoleRequest.RequestedRole.VENDOR,
-            supporting_documents=SimpleUploadedFile("licence.pdf", b"%PDF-1.4 secret", content_type="application/pdf"))
+            user=self.ada,
+            requested_role=RoleRequest.RequestedRole.VENDOR,
+            supporting_documents=SimpleUploadedFile("licence.pdf", b"%PDF-1.4 secret", content_type="application/pdf"),
+        )
         self.url = reverse("role_request_document", args=[self.request.pk])
 
     def test_stored_outside_media(self):
@@ -46,10 +48,14 @@ class RoleDocumentTests(TestCase):
         self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 secret")
         self.assertIn("attachment", response["Content-Disposition"])
         staffer = User.objects.create_user("staffer", "s@example.com", "pw-1234-abcd")
-        staffer.user_permissions.add(Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts"))
+        staffer.user_permissions.add(
+            Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
+        )
         self.client.force_login(User.objects.get(pk=staffer.pk))
         self.assertEqual(self.client.get(self.url).status_code, 200)
-        self.assertContains(self.client.get(reverse("staff:admin_role_request_detail", args=[self.request.pk])), self.url)
+        self.assertContains(
+            self.client.get(reverse("staff:admin_role_request_detail", args=[self.request.pk])), self.url
+        )
 
     def test_others_get_404_and_anonymous_must_log_in(self):
         self.client.force_login(User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd"))

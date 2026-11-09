@@ -1,4 +1,3 @@
-# core/middleware.py
 from django.utils import timezone
 
 try:
@@ -37,6 +36,7 @@ class UserTimezoneMiddleware:
 
         return self.get_response(request)
 
+
 class UserThemeMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -63,10 +63,12 @@ class UserThemeMiddleware:
 
         # keep cookie synced with resolved theme
         # Server-read only (no JS uses it): HttpOnly; Secure whenever the request came over HTTPS.
-        response.set_cookie("ui_theme", theme, max_age=60 * 60 * 24 * 365,
-                            secure=request.is_secure(), httponly=True, samesite="Lax")
+        response.set_cookie(
+            "ui_theme", theme, max_age=60 * 60 * 24 * 365, secure=request.is_secure(), httponly=True, samesite="Lax"
+        )
 
         return response
+
 
 class CurrentUserMiddleware:
     """Make ``request.user`` available to code without a request (``apps.core.current``)."""
@@ -76,6 +78,7 @@ class CurrentUserMiddleware:
 
     def __call__(self, request):
         from .current import acting_as
+
         with acting_as(getattr(request, "user", None)):
             return self.get_response(request)
 

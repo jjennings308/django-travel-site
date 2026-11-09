@@ -1,11 +1,13 @@
 """activities.0008 + events.0005/0006 on real-looking data: event categories are
 carried across to the shared activity categories by name, and "Concert" activities
 are re-filed (Oktoberfest -> Festival, others -> Music) before Concert is removed."""
-from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
+
 from datetime import date
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 
 # trips 0044 (R18) needs today's activities, so trips is pinned below it.
 TRIPS = ("trips", "0043_alter_comment_author")
@@ -13,7 +15,13 @@ TRIPS = ("trips", "0043_alter_comment_author")
 NOTES = ("catalogue_notes", None)
 # bucketlists 0007 (P6) needs today's trips, so it steps back with them.
 GOALS = ("bucketlists", "0006_badge_code")
-BEFORE = [("events", "0004_event_unlisted_location"), ("activities", "0007_alter_activity_specificity_level"), TRIPS, NOTES, GOALS]
+BEFORE = [
+    ("events", "0004_event_unlisted_location"),
+    ("activities", "0007_alter_activity_specificity_level"),
+    TRIPS,
+    NOTES,
+    GOALS,
+]
 AFTER = [("events", "0006_shared_categories_swap"), ("activities", "0008_shared_categories"), TRIPS, NOTES, GOALS]
 
 
@@ -44,14 +52,26 @@ class SharedCategoryMigrationTests(RestoringTransactionTestCase):
         User = apps.get_model("accounts", "User")
         owner = User.objects.create(username="owner", email="owner@example.com")
         concert, _ = ActivityCategory.objects.get_or_create(name="Concert", defaults={"slug": "concert"})
-        Activity.objects.create(category=concert, name="Oktoberfest", slug="oktoberfest", description="d", created_by=owner)
-        Activity.objects.create(category=concert, name="See Kenny Chesney", slug="kenny", description="d", created_by=owner)
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
+        Activity.objects.create(
+            category=concert, name="Oktoberfest", slug="oktoberfest", description="d", created_by=owner
+        )
+        Activity.objects.create(
+            category=concert, name="See Kenny Chesney", slug="kenny", description="d", created_by=owner
+        )
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
+        )
         city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2)
-        music, _ = EventCategory.objects.get_or_create(name="Music", defaults={"slug": "music"})  # as seeded by events.0003
+        music, _ = EventCategory.objects.get_or_create(
+            name="Music", defaults={"slug": "music"}
+        )  # as seeded by events.0003
         odd = EventCategory.objects.create(name="Kite Flying", slug="kite-flying")
-        Event.objects.create(name="Gig", slug="gig", category=music, description="d", city=city, start_date=date(2027, 1, 1))
-        Event.objects.create(name="Kites", slug="kites", category=odd, description="d", city=city, start_date=date(2027, 1, 2))
+        Event.objects.create(
+            name="Gig", slug="gig", category=music, description="d", city=city, start_date=date(2027, 1, 1)
+        )
+        Event.objects.create(
+            name="Kites", slug="kites", category=odd, description="d", city=city, start_date=date(2027, 1, 2)
+        )
 
         apps = self.migrate(AFTER)
         Event = apps.get_model("events", "Event")

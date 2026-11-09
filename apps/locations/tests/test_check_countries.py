@@ -1,5 +1,6 @@
 """The monthly country check against REST Countries (docs/plans/country-flags.md, C2). No network: ``urlopen`` is
 patched with small hand-written answers in the API's shape (not a copy of their data)."""
+
 import io
 import json
 import urllib.error
@@ -18,18 +19,24 @@ KEY = "rc_test_key"
 
 
 def country(a2, a3, common, currencies, calling, continents, official="", alternates=()):
-    return {"names": {"common": common, "official": official or common, "alternates": list(alternates)},
-            "codes": {"alpha_2": a2, "alpha_3": a3}, "currencies": currencies, "calling_codes": calling,
-            "continents": continents}
+    return {
+        "names": {"common": common, "official": official or common, "alternates": list(alternates)},
+        "codes": {"alpha_2": a2, "alpha_3": a3},
+        "currencies": currencies,
+        "calling_codes": calling,
+        "continents": continents,
+    }
 
 
 THEIRS = [
     country("DE", "DEU", "Germany", {"EUR": {"name": "Euro", "symbol": "€"}}, ["49"], ["Europe"]),
     country("ZW", "ZWE", "Zimbabwe", {"ZWG": {"name": "Zimbabwe Gold"}}, ["263"], ["Africa"]),
-    country("CH", "CHE", "Switzerland", {"CHF": {"name": "Swiss franc"}, "CHE": {"name": "WIR euro"}}, ["41"],
-            ["Europe"]),
-    country("AG", "ATG", "Antigua and Barbuda", {"XCD": {"name": "East Caribbean Dollar"}}, ["1268"],
-            ["North America"]),
+    country(
+        "CH", "CHE", "Switzerland", {"CHF": {"name": "Swiss franc"}, "CHE": {"name": "WIR euro"}}, ["41"], ["Europe"]
+    ),
+    country(
+        "AG", "ATG", "Antigua and Barbuda", {"XCD": {"name": "East Caribbean Dollar"}}, ["1268"], ["North America"]
+    ),
     country("PR", "PRI", "Puerto Rico", {"USD": {"name": "US Dollar"}}, ["1787"], ["North America"]),
 ]
 
@@ -51,24 +58,41 @@ class Answer:
 
 
 def page(objects, more=False, offset=0):
-    return Answer({"data": {"objects": objects, "meta": {"total": 5, "count": len(objects), "limit": 100,
-                                                          "offset": offset, "more": more}}})
+    return Answer(
+        {
+            "data": {
+                "objects": objects,
+                "meta": {"total": 5, "count": len(objects), "limit": 100, "offset": offset, "more": more},
+            }
+        }
+    )
 
 
 def http_error(code, retry_after=None):
     headers = {"Retry-After": retry_after} if retry_after else {}
-    return urllib.error.HTTPError("https://api.restcountries.com/countries/v5", code, "error", headers,
-                                  io.BytesIO(b"{}"))
+    return urllib.error.HTTPError(
+        "https://api.restcountries.com/countries/v5", code, "error", headers, io.BytesIO(b"{}")
+    )
 
 
 def ours(**extra):
-    defaults = [("Germany", "DE", "DEU", "EUR", "Euro", "+49", "Europe"),
-                ("Zimbabwe", "ZW", "ZWE", "ZWL", "Zimbabwean Dollar", "+263", "Africa"),
-                ("Switzerland", "CH", "CHE", "CHF", "Swiss franc", "+41", "Europe"),
-                ("Antigua and Barbuda", "AG", "ATG", "XCD", "East Caribbean Dollar", "+1-268", "North America")]
+    defaults = [
+        ("Germany", "DE", "DEU", "EUR", "Euro", "+49", "Europe"),
+        ("Zimbabwe", "ZW", "ZWE", "ZWL", "Zimbabwean Dollar", "+263", "Africa"),
+        ("Switzerland", "CH", "CHE", "CHF", "Swiss franc", "+41", "Europe"),
+        ("Antigua and Barbuda", "AG", "ATG", "XCD", "East Caribbean Dollar", "+1-268", "North America"),
+    ]
     for name, a2, a3, code, money, phone, continent in defaults:
-        Country.objects.create(name=name, slug=a2.lower(), iso_code=a2, iso3_code=a3, currency_code=code,
-                               currency_name=money, phone_code=phone, continent=continent)
+        Country.objects.create(
+            name=name,
+            slug=a2.lower(),
+            iso_code=a2,
+            iso3_code=a3,
+            currency_code=code,
+            currency_name=money,
+            phone_code=phone,
+            continent=continent,
+        )
 
 
 @override_settings(RESTCOUNTRIES_API_KEY=KEY)
@@ -78,8 +102,9 @@ class CheckTests(TestCase):
 
     def run_check(self, *args, answers=None):
         out, err = StringIO(), StringIO()
-        with mock.patch("apps.locations.restcountries.urllib.request.urlopen",
-                        side_effect=answers or [page(THEIRS)]) as urlopen:
+        with mock.patch(
+            "apps.locations.restcountries.urllib.request.urlopen", side_effect=answers or [page(THEIRS)]
+        ) as urlopen:
             try:
                 call_command("check_countries", *args, stdout=out, stderr=err)
                 code = 0  # finished normally: nothing differs
@@ -102,18 +127,32 @@ class CheckTests(TestCase):
         self.assertIn("response_fields=", request.full_url)
 
     def test_each_field(self):
-        Country.objects.filter(iso_code="DE").update(name="Deutschland", iso3_code="GER", currency_name="Mark",
-                                                     phone_code="+4", continent="Asia")
+        Country.objects.filter(iso_code="DE").update(
+            name="Deutschland", iso3_code="GER", currency_name="Mark", phone_code="+4", continent="Asia"
+        )
         out, _, code, _ = self.run_check()
-        for line in ("DE name: ours Deutschland, theirs Germany", "DE iso3_code: ours GER, theirs DEU",
-                     "DE currency_name: ours Mark, theirs Euro", "DE phone_code: ours +4, theirs +49",
-                     "DE continent: ours Asia, theirs Europe"):
+        for line in (
+            "DE name: ours Deutschland, theirs Germany",
+            "DE iso3_code: ours GER, theirs DEU",
+            "DE currency_name: ours Mark, theirs Euro",
+            "DE phone_code: ours +4, theirs +49",
+            "DE continent: ours Asia, theirs Europe",
+        ):
             self.assertIn(line, out)
 
     def test_an_official_or_alternate_name_matches(self):
         Country.objects.filter(iso_code="DE").update(name="Federal Republic of Germany")
-        theirs = [country("DE", "DEU", "Germany", {"EUR": {"name": "Euro"}}, ["49"], ["Europe"],
-                          official="Federal Republic of Germany")]
+        theirs = [
+            country(
+                "DE",
+                "DEU",
+                "Germany",
+                {"EUR": {"name": "Euro"}},
+                ["49"],
+                ["Europe"],
+                official="Federal Republic of Germany",
+            )
+        ]
         out, _, code, _ = self.run_check("--country", "DE", answers=[page(theirs)])
         self.assertEqual(code, 0)
         self.assertIn("No differences.", out)
@@ -166,9 +205,10 @@ class CheckTests(TestCase):
     @override_settings(ADMINS=["James <james@example.com>"])
     def test_email_sends_the_differences_and_exits_0(self):
         from django.core import mail
+
         out, _, code, _ = self.run_check("--email")
         self.assertEqual(code, 0)  # reported by mail: scripts/run_job.sh doesn't send it again
-        message, = mail.outbox
+        (message,) = mail.outbox
         self.assertEqual(message.subject, "[ShareBucketList job] check_countries: 1 to look at")
         self.assertIn("ZW currency_code: ours ZWL, theirs ZWG", message.body)
         self.assertIn("Emailed to DJANGO_ADMINS.", out)
@@ -176,6 +216,7 @@ class CheckTests(TestCase):
     @override_settings(ADMINS=["James <james@example.com>"])
     def test_email_with_nothing_to_report_sends_nothing(self):
         from django.core import mail
+
         Country.objects.filter(iso_code="ZW").update(currency_code="ZWG", currency_name="Zimbabwe Gold")
         _, _, code, _ = self.run_check("--email")
         self.assertEqual((code, mail.outbox), (0, []))
@@ -183,6 +224,9 @@ class CheckTests(TestCase):
     def test_nothing_is_saved(self):
         with CaptureQueriesContext(connection) as ctx:
             self.run_check()
-        writes = [q["sql"] for q in ctx.captured_queries if q["sql"].lstrip().upper().startswith(
-            ("INSERT", "UPDATE", "DELETE"))]
+        writes = [
+            q["sql"]
+            for q in ctx.captured_queries
+            if q["sql"].lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE"))
+        ]
         self.assertEqual(writes, [])

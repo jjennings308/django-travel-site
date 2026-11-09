@@ -1,6 +1,7 @@
 """Notes on catalogue pages (docs/plans/catalogue-notes.md, N1): the Good to know card's list (loaded after
 the place / city / activity / event page, so the page itself pays no query), and adding, editing, deleting and
 reporting a note."""
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -22,8 +23,7 @@ def can_edit(user, note):
     """Staff always; the member who wrote it until it's approved."""
     if _is_staff(user):
         return True
-    return (user.is_authenticated and note.created_by_id == user.pk
-            and note.approval_status != ApprovalStatus.APPROVED)
+    return user.is_authenticated and note.created_by_id == user.pk and note.approval_status != ApprovalStatus.APPROVED
 
 
 def for_target(request, kind, slug):
@@ -31,8 +31,11 @@ def for_target(request, kind, slug):
     notes = notes_for(target, request.user)
     for note in notes:
         note.editable = can_edit(request.user, note)
-    return render(request, "catalogue_notes/_list.html", {"target": target, "kind": kind, "notes": notes,
-                                                          "target_url": target_url(target)})
+    return render(
+        request,
+        "catalogue_notes/_list.html",
+        {"target": target, "kind": kind, "notes": notes, "target_url": target_url(target)},
+    )
 
 
 @login_required
@@ -52,8 +55,11 @@ def add(request, kind, slug):
             note.submit_for_review(request.user)
             messages.success(request, "Thanks! Your note was sent for review; only you can see it until it's approved.")
         return redirect(note.get_absolute_url())
-    return render(request, "catalogue_notes/note_form.html", {"form": form, "target": target, "kind": kind,
-                                                              "note": None, "target_url": target_url(target)})
+    return render(
+        request,
+        "catalogue_notes/note_form.html",
+        {"form": form, "target": target, "kind": kind, "note": None, "target_url": target_url(target)},
+    )
 
 
 @login_required
@@ -65,15 +71,26 @@ def edit(request, pk):
     if request.method == "POST" and form.is_valid():
         note = form.save()
         if not _is_staff(request.user) and note.approval_status in (
-                ApprovalStatus.REJECTED, ApprovalStatus.CHANGES_REQUESTED, ApprovalStatus.DRAFT):
+            ApprovalStatus.REJECTED,
+            ApprovalStatus.CHANGES_REQUESTED,
+            ApprovalStatus.DRAFT,
+        ):
             note.submit_for_review(request.user)
             messages.success(request, "Saved and sent for review again.")
         else:
             messages.success(request, "Saved.")
         return redirect(note.get_absolute_url())
-    return render(request, "catalogue_notes/note_form.html", {"form": form, "target": note.target,
-                                                              "kind": kind_of(note.target), "note": note,
-                                                              "target_url": target_url(note.target)})
+    return render(
+        request,
+        "catalogue_notes/note_form.html",
+        {
+            "form": form,
+            "target": note.target,
+            "kind": kind_of(note.target),
+            "note": note,
+            "target_url": target_url(note.target),
+        },
+    )
 
 
 @login_required
@@ -94,11 +111,19 @@ def delete(request, pk):
 def report(request, pk):
     """Tell staff a published note looks wrong or out of date."""
     from apps.notifications.services import notify_staff
-    note = get_object_or_404(CatalogueNote.objects.select_related("poi", "activity", "event", "city"), pk=pk,
-                             approval_status=ApprovalStatus.APPROVED)
+
+    note = get_object_or_404(
+        CatalogueNote.objects.select_related("poi", "activity", "event", "city"),
+        pk=pk,
+        approval_status=ApprovalStatus.APPROVED,
+    )
     reason = (request.POST.get("reason") or "").strip()[:500]
-    notify_staff("content_reported", f"A note on “{note.target_name}” was reported",
-                 f"{request.user.get_username()}: {reason or 'no reason given'}\n\n“{note.text[:300]}”",
-                 note.get_absolute_url(), obj=note)
+    notify_staff(
+        "content_reported",
+        f"A note on “{note.target_name}” was reported",
+        f"{request.user.get_username()}: {reason or 'no reason given'}\n\n“{note.text[:300]}”",
+        note.get_absolute_url(),
+        obj=note,
+    )
     messages.success(request, "Thanks, staff will take a look.")
     return redirect(note.get_absolute_url())

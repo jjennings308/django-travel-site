@@ -11,6 +11,7 @@ Writes ``apps/locations/flags/<iso2>.png`` (1200 × 900, optimised with Pillow; 
 lossless palette PNG) for every two-letter flag (the regional ones such as ``gb-eng`` and groupings such as ``eu``
 are left out) and copies flag-icons' ``LICENSE`` (MIT) beside them. Prints how many it wrote and the folder's total size.
 """
+
 import io
 import shutil
 import sys

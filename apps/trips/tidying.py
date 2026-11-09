@@ -3,12 +3,13 @@ a trip into the plain data ``tidy.suggest`` reads, and ``apply(trip, suggestions
 carries out the ticked suggestions in one transaction. Each change is re-checked against the
 current data first; a suggestion whose text has changed since it was made is skipped, not forced.
 """
+
 import re
 
 from django.db import transaction
 
 from . import tidy
-from .models import Confirmation, Contact, ItemLink, LINKABLE, Meal, Section, TidyDismissal, TripInfo
+from .models import LINKABLE, Confirmation, Contact, ItemLink, Meal, Section, TidyDismissal, TripInfo
 
 
 def snapshot(trip):
@@ -18,31 +19,61 @@ def snapshot(trip):
     stays = list(trip.lodging.all())
     activities = list(trip.activities.select_related("poi", *EVENT))
     meals = list(Meal.objects.filter(day__trip=trip).select_related("poi").order_by("order", "id"))
-    sections = list(Section.objects.filter(day__trip=trip).select_related("poi", "activity__venue", *EVENT)
-                    .order_by("order", "id"))
+    sections = list(
+        Section.objects.filter(day__trip=trip).select_related("poi", "activity__venue", *EVENT).order_by("order", "id")
+    )
     plain_days = []
     for day in days:
         plain_sections = []
         for s in (s for s in sections if s.day_id == day.pk):
             c = s.content if isinstance(s.content, dict) else {}
-            plain_sections.append({
-                "id": s.pk, "type": s.section_type, "title": s.title, "tone": c.get("tone") or "",
-                "paragraphs": list(c.get("paragraphs") or []),
-                "columns": list(c.get("columns") or []), "rows": [list(r) for r in c.get("rows") or []]})
-        plain_days.append({
-            "id": day.pk, "number": day.day_number, "date": day.date, "sections": plain_sections,
-            "legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination}
-                     for l in legs if l.date and l.date == day.date],
-            "stays": [{"id": st.pk, "name": st.name} for st in stays if day.date in (st.check_in, st.check_out)],
-            "meals": [{"id": m.pk, "name": m.name, "notes": m.reservation_notes, "type": m.meal_type,
-                       "time": m.reserved_time.strftime("%H:%M") if m.reserved_time else None}
-                      for m in meals if m.day_id == day.pk],
-            "activities": [{"id": a.pk, "title": a.title} for a in activities if a.day_id == day.pk],
-            "catalogue": _catalogue_targets([*(m for m in meals if m.day_id == day.pk),
-                                             *(a for a in activities if a.day_id == day.pk),
-                                             *(s for s in sections if s.day_id == day.pk)])})
+            plain_sections.append(
+                {
+                    "id": s.pk,
+                    "type": s.section_type,
+                    "title": s.title,
+                    "tone": c.get("tone") or "",
+                    "paragraphs": list(c.get("paragraphs") or []),
+                    "columns": list(c.get("columns") or []),
+                    "rows": [list(r) for r in c.get("rows") or []],
+                }
+            )
+        plain_days.append(
+            {
+                "id": day.pk,
+                "number": day.day_number,
+                "date": day.date,
+                "sections": plain_sections,
+                "legs": [
+                    {"id": leg.pk, "origin": leg.origin, "destination": leg.destination}
+                    for leg in legs
+                    if leg.date and leg.date == day.date
+                ],
+                "stays": [{"id": st.pk, "name": st.name} for st in stays if day.date in (st.check_in, st.check_out)],
+                "meals": [
+                    {
+                        "id": m.pk,
+                        "name": m.name,
+                        "notes": m.reservation_notes,
+                        "type": m.meal_type,
+                        "time": m.reserved_time.strftime("%H:%M") if m.reserved_time else None,
+                    }
+                    for m in meals
+                    if m.day_id == day.pk
+                ],
+                "activities": [{"id": a.pk, "title": a.title} for a in activities if a.day_id == day.pk],
+                "catalogue": _catalogue_targets(
+                    [
+                        *(m for m in meals if m.day_id == day.pk),
+                        *(a for a in activities if a.day_id == day.pk),
+                        *(s for s in sections if s.day_id == day.pk),
+                    ]
+                ),
+            }
+        )
     tasks = []
     from .booking_tasks import _when, kind_of
+
     for task in trip.booking_tasks.filter(done=False).prefetch_related("links__item"):
         # Its first covered item (booking-todos K1: a to-do may cover several) is where a note goes.
         covered = sorted((link.item for link in task.links.all() if link.item is not None), key=_when)
@@ -50,14 +81,19 @@ def snapshot(trip):
         if covered:
             first = covered[0]
             kind = kind_of(first)
-            text = (f"{first.origin} → {first.destination}" if kind == "leg" else
-                    first.name if kind == "stay" else first.title)
+            text = (
+                f"{first.origin} → {first.destination}"
+                if kind == "leg"
+                else first.name
+                if kind == "stay"
+                else first.title
+            )
             item = {"kind": kind, "id": first.pk, "label": text}
         tasks.append({"id": task.pk, "title": task.title, "item": item})
     return {
         "notes": trip.notes,
         "days": plain_days,
-        "trip_legs": [{"id": l.pk, "origin": l.origin, "destination": l.destination} for l in legs],
+        "trip_legs": [{"id": leg.pk, "origin": leg.origin, "destination": leg.destination} for leg in legs],
         "trip_stays": [{"id": st.pk, "name": st.name} for st in stays],
         "tasks": tasks,
         "known_numbers": list(Confirmation.objects.filter(trip=trip).values_list("confirmation_number", flat=True)),
@@ -114,8 +150,11 @@ def _section(trip, pk):
 
 def _plain(section):
     content = section.content if isinstance(section.content, dict) else {}
-    return {"type": section.section_type, "tone": content.get("tone") or "",
-            "paragraphs": list(content.get("paragraphs") or [])}
+    return {
+        "type": section.section_type,
+        "tone": content.get("tone") or "",
+        "paragraphs": list(content.get("paragraphs") or []),
+    }
 
 
 def _callout_text(section):
@@ -236,8 +275,9 @@ def _apply_one(trip, s, action, user=None):
                 lines[lines.index(place["line"])] = place["rest"]
             trip.notes = "\n".join(lines).strip()
             trip.save(update_fields=["notes"])
-        contact = Contact.objects.create(trip=trip, name=c["name"][:200], phone=c["number"][:40],
-                                         notes=c.get("notes", ""))
+        contact = Contact.objects.create(
+            trip=trip, name=c["name"][:200], phone=c["number"][:40], notes=c.get("notes", "")
+        )
         if c.get("link"):
             ItemLink.link(contact, _item(trip, c["link"]))
     elif op == "notes_remove":
@@ -253,12 +293,28 @@ def _apply_one(trip, s, action, user=None):
             raise Stale("the trip notes changed")
         # A "choose one" group on its day (day-first P4), never a decision to-do any more.
         from . import day_first
+
         day = trip.days.filter(day_number=c.get("day")).first() if c.get("day") is not None else None
         if day is None:
             raise Stale("the trip has no such day" if c.get("day") is not None else "the trip has no days yet")
-        day_first.make_group(trip, day, c["title"][:200], "", [
-            {"title": title, "notes": "", "url": "", "est_cost": None, "currency": "", "order": order, "chosen": False}
-            for order, title in enumerate(c["options"])])
+        day_first.make_group(
+            trip,
+            day,
+            c["title"][:200],
+            "",
+            [
+                {
+                    "title": title,
+                    "notes": "",
+                    "url": "",
+                    "est_cost": None,
+                    "currency": "",
+                    "order": order,
+                    "chosen": False,
+                }
+                for order, title in enumerate(c["options"])
+            ],
+        )
         for line in c["lines"]:
             lines.remove(line)
         trip.notes = "\n".join(lines).strip()
@@ -275,6 +331,7 @@ def _apply_one(trip, s, action, user=None):
             if meal.reserved_time is not None:
                 raise Stale("the meal already has a time")
             from datetime import time as clock
+
             hours, minutes = map(int, c["time"].split(":"))
             meal.reserved_time = clock(hours, minutes)
             meal.save(update_fields=["reserved_time"])
@@ -284,8 +341,12 @@ def _apply_one(trip, s, action, user=None):
     elif op == "table_to_info":
         section = _section(trip, c["section"])
         columns = c["columns"]
-        body = "\n\n".join(" · ".join(f"{columns[i]}: {cell}" if i < len(columns) and columns[i] else str(cell)
-                                      for i, cell in enumerate(row)) for row in c["rows"])
+        body = "\n\n".join(
+            " · ".join(
+                f"{columns[i]}: {cell}" if i < len(columns) and columns[i] else str(cell) for i, cell in enumerate(row)
+            )
+            for row in c["rows"]
+        )
         info = TripInfo.objects.create(trip=trip, title=c["title"][:200], body=body)
         ItemLink.link(info, _item(trip, {"kind": "activity", "id": c["activity"]}))
         section.delete()
@@ -299,6 +360,7 @@ def apply(trip, found, chosen, user=None):
     a stale suggestion rolls the whole batch back."""
     by_key = {s.key: s for s in found}
     from .changes import batch
+
     applied, skipped = [], []
     with transaction.atomic(), batch("Applied tidy suggestions", trip=trip):
         for key, action in chosen.items():

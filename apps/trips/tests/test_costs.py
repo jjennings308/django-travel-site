@@ -1,5 +1,6 @@
 """What a cost means (docs/plans/budget-estimates.md, B1): every item's estimate with its basis, people and nights
 (apps/trips/costs.py), the trip's planned total without the old double count, choices and Pick, the forms."""
+
 from datetime import date, time
 from decimal import Decimal
 
@@ -8,9 +9,22 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips import costs
-from apps.trips.forms import LegEditForm, LodgingForm, MealForm, OptionForm, TripActivityForm
-from apps.trips.models import (Confirmation, Day, Lodging, Meal, Option, OptionGroup, TransportLeg, Traveler, Trip,
-                               TripActivity, TripChange, TripGrant, TripRole)
+from apps.trips.forms import LegEditForm, LodgingForm, MealForm, TripActivityForm
+from apps.trips.models import (
+    Confirmation,
+    Day,
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
+)
 
 User = get_user_model()
 D = Decimal
@@ -19,20 +33,32 @@ D = Decimal
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 25),
-                                        created_by=self.editor, home_currency="EUR")
+        self.trip = Trip.objects.create(
+            name="Bavaria",
+            start_date=date(2027, 9, 20),
+            end_date=date(2027, 9, 25),
+            created_by=self.editor,
+            home_currency="EUR",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         self.people = [Traveler.objects.create(name=n) for n in ("Ada", "Bo", "Cy", "Di", "Ed", "Flo")]
         self.trip.travelers.set(self.people)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
 
     def stay(self, nights=4, **fields):
-        return Lodging.objects.create(trip=self.trip, name="Hotel Augusta", check_in=date(2027, 9, 20),
-                                      check_out=date(2027, 9, 20 + nights), currency="EUR", **fields)
+        return Lodging.objects.create(
+            trip=self.trip,
+            name="Hotel Augusta",
+            check_in=date(2027, 9, 20),
+            check_out=date(2027, 9, 20 + nights),
+            currency="EUR",
+            **fields,
+        )
 
     def leg(self, **fields):
-        return TransportLeg.objects.create(trip=self.trip, origin="Augsburg", destination="Munich",
-                                           date=date(2027, 9, 20), currency="EUR", **fields)
+        return TransportLeg.objects.create(
+            trip=self.trip, origin="Augsburg", destination="Munich", date=date(2027, 9, 20), currency="EUR", **fields
+        )
 
     def line(self, item):
         return costs.estimate(item, self.day, self.trip).line
@@ -40,21 +66,26 @@ class Fixture(TestCase):
 
 class BasisTests(Fixture):
     def test_stays(self):
-        self.assertEqual(self.line(self.stay(nightly_rate=D("95"), cost_basis="room_night", rooms=3)),
-                         "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)")
+        self.assertEqual(
+            self.line(self.stay(nightly_rate=D("95"), cost_basis="room_night", rooms=3)),
+            "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)",
+        )
         vrbo = self.stay(nightly_rate=D("310"))  # blank basis: per night, as nightly_rate always meant
         cost = costs.estimate(vrbo, self.day, self.trip)
         self.assertEqual(cost.line, "€310 per night × 4 nights = €1,240 · €206.67 each (6)")
         self.assertEqual((cost.basis, cost.total, cost.per_person), ("night", D("1240"), D("206.67")))
-        self.assertEqual(self.line(self.stay(nightly_rate=D("40"), cost_basis="person_night")),
-                         "€40 per person per night × 6 × 4 nights = €960 · €160 each (6)")
+        self.assertEqual(
+            self.line(self.stay(nightly_rate=D("40"), cost_basis="person_night")),
+            "€40 per person per night × 6 × 4 nights = €960 · €160 each (6)",
+        )
         self.assertEqual(self.line(self.stay(nightly_rate=D("900"), cost_basis="total")), "€900 total · €150 each (6)")
 
     def test_legs_activities_meals(self):
         self.assertEqual(self.line(self.leg(cost=D("62"), cost_people=4)), "€62 total · €15.50 each (4)")
         self.assertEqual(self.line(self.leg(cost=D("12"), cost_basis="person")), "€12 per person × 6 = €72")
-        museum = TripActivity.objects.create(trip=self.trip, day=self.day, title="Castle museum", est_cost=D("8"),
-                                             currency="EUR", cost_basis="person")
+        museum = TripActivity.objects.create(
+            trip=self.trip, day=self.day, title="Castle museum", est_cost=D("8"), currency="EUR", cost_basis="person"
+        )
         self.assertEqual(self.line(museum), "€8 per person × 6 = €48")
         lunch = Meal.objects.create(day=self.day, name="Lunch", est_cost=D("15"), currency="EUR")  # per person
         self.assertEqual(self.line(lunch), "€15 per person × 6 = €90")
@@ -66,8 +97,9 @@ class BasisTests(Fixture):
 
 class PeopleAndNightsTests(Fixture):
     def test_from_own_travellers_then_the_roster_then_the_trip_then_the_override(self):
-        tour = TripActivity.objects.create(trip=self.trip, day=self.day, title="Tour", est_cost=D("20"),
-                                           currency="EUR", cost_basis="person")
+        tour = TripActivity.objects.create(
+            trip=self.trip, day=self.day, title="Tour", est_cost=D("20"), currency="EUR", cost_basis="person"
+        )
         tour.travelers.set(self.people[:2])
         self.assertEqual(costs.people_for(tour, self.day, self.trip), (2, True))
         self.day.travelers.set(self.people[:3])
@@ -108,14 +140,16 @@ class PeopleAndNightsTests(Fixture):
 class PlannedTotalTests(Fixture):
     def page_estimate(self):
         from apps.accounts.models import AccountSettings
+
         AccountSettings.objects.update_or_create(user=self.editor, defaults={"preferred_currency": "EUR"})
         self.client.force_login(self.editor)
         return self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).context["cost_estimate"]
 
     def test_a_confirmation_counts_once_across_its_legs_and_their_estimates_step_aside(self):
         legs = [self.leg(cost=D("100")) for _ in range(4)]
-        booking = Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS", cost=D("380"),
-                                              currency="EUR")
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="GCH7JS", cost=D("380"), currency="EUR"
+        )
         for leg in legs:
             booking.link(leg)
         self.leg(cost=D("50"))  # not booked: its estimate counts
@@ -143,27 +177,38 @@ class PlannedTotalTests(Fixture):
 class ChoiceTests(Fixture):
     def setUp(self):
         super().setUp()
-        self.group = OptionGroup.objects.create(trip=self.trip, day=self.day, prompt="Where to stay", kind="stay",
-                                                nights=4)
+        self.group = OptionGroup.objects.create(
+            trip=self.trip, day=self.day, prompt="Where to stay", kind="stay", nights=4
+        )
 
     def test_old_options_read_as_before_and_new_bases_read_as_costs(self):
         old = Option.objects.create(group=self.group, title="Flat", est_cost=D("80"), currency="EUR")
         self.assertEqual(old.kind_line(), "EUR 80.00/night × 4 = EUR 320.00")  # the booklet's wording, unchanged
         self.assertEqual(old.own_cost, D("320"))
-        rooms = Option.objects.create(group=self.group, title="Hotel", est_cost=D("95"), currency="EUR",
-                                      cost_basis="room_night", rooms=3)
+        rooms = Option.objects.create(
+            group=self.group, title="Hotel", est_cost=D("95"), currency="EUR", cost_basis="room_night", rooms=3
+        )
         rooms._people = (6, True)
         self.assertEqual(rooms.kind_line(), "€95 per room per night × 3 rooms × 4 nights = €1,140 · €190 each (6)")
         self.assertEqual(rooms.own_cost, D("1140"))
 
     def test_pick_carries_the_basis_rooms_and_people(self):
         from apps.trips.options import make_item
-        option = Option.objects.create(group=self.group, title="Hotel", est_cost=D("95"), currency="EUR",
-                                       cost_basis="room_night", rooms=3, cost_people=5)
+
+        option = Option.objects.create(
+            group=self.group,
+            title="Hotel",
+            est_cost=D("95"),
+            currency="EUR",
+            cost_basis="room_night",
+            rooms=3,
+            cost_people=5,
+        )
         self.group.pick(option)
         stay = make_item(option)
-        self.assertEqual((stay.nightly_rate, stay.cost_basis, stay.rooms, stay.cost_people),
-                         (D("95"), "room_night", 3, 5))
+        self.assertEqual(
+            (stay.nightly_rate, stay.cost_basis, stay.rooms, stay.cost_people), (D("95"), "room_night", 3, 5)
+        )
         eat = OptionGroup.objects.create(trip=self.trip, day=self.day, prompt="Dinner", kind="eat", meal_type="dinner")
         menu = Option.objects.create(group=eat, title="Augustiner", est_cost=D("120"), currency="EUR")
         eat.pick(menu)
@@ -174,8 +219,17 @@ class ChoiceTests(Fixture):
 class FormTests(Fixture):
     def test_each_kind_offers_its_bases_and_refuses_others(self):
         stay = self.stay()
-        form = LodgingForm({"name": "Hotel", "check_in": "2027-09-20", "check_out": "2027-09-24",
-                            "nightly_rate": "95", "currency": "EUR", "cost_basis": "person"}, instance=stay)
+        form = LodgingForm(
+            {
+                "name": "Hotel",
+                "check_in": "2027-09-20",
+                "check_out": "2027-09-24",
+                "nightly_rate": "95",
+                "currency": "EUR",
+                "cost_basis": "person",
+            },
+            instance=stay,
+        )
         self.assertFalse(form.is_valid())
         self.assertIn("cost_basis", form.errors)
         leg_basis = [v for v, _ in LegEditForm(instance=self.leg()).fields["cost_basis"].choices]
@@ -187,8 +241,15 @@ class FormTests(Fixture):
 
     def test_rooms_only_with_per_room_per_night(self):
         stay = self.stay()
-        data = {"name": "Hotel", "check_in": "2027-09-20", "check_out": "2027-09-24", "nightly_rate": "95",
-                "currency": "EUR", "cost_basis": "night", "rooms": "3"}
+        data = {
+            "name": "Hotel",
+            "check_in": "2027-09-20",
+            "check_out": "2027-09-24",
+            "nightly_rate": "95",
+            "currency": "EUR",
+            "cost_basis": "night",
+            "rooms": "3",
+        }
         form = LodgingForm(data, instance=stay)
         self.assertTrue(form.is_valid(), form.errors)
         self.assertIsNone(form.save().rooms)
@@ -204,15 +265,29 @@ class FormTests(Fixture):
         self.assertIn('data-nights="4"', html)
         self.assertIn('data-people="6"', html)
         self.assertEqual(html.count('name="cost_basis"'), 1)
-        self.assertIn('data-cost-rooms', html)
+        self.assertIn("data-cost-rooms", html)
 
     def test_the_return_trip_copies_basis_and_people_not_the_amount(self):
         from apps.trips.forms import TransportLegForm
+
         leg = self.leg(cost=D("12"), cost_basis="person", cost_people=4)
-        form = TransportLegForm({"mode": "train", "origin": "Augsburg", "destination": "Munich", "date": "2027-09-20",
-                                 "origin_timezone": "Europe/Berlin", "destination_timezone": "Europe/Berlin",
-                                 "currency": "EUR", "cost": "12", "cost_basis": "person", "cost_people": "4",
-                                 "add_return": "on", "return_date": "2027-09-22"}, instance=leg)
+        form = TransportLegForm(
+            {
+                "mode": "train",
+                "origin": "Augsburg",
+                "destination": "Munich",
+                "date": "2027-09-20",
+                "origin_timezone": "Europe/Berlin",
+                "destination_timezone": "Europe/Berlin",
+                "currency": "EUR",
+                "cost": "12",
+                "cost_basis": "person",
+                "cost_people": "4",
+                "add_return": "on",
+                "return_date": "2027-09-22",
+            },
+            instance=leg,
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         back = form.return_leg

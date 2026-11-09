@@ -1,5 +1,6 @@
 """Reference's "To book" list you can work in (docs/plans/booking-todos.md, K2): one row per item still to book,
 No plan yet or its to-dos, Other to-dos, Mark done in place, the quick actions and "No booking needed"."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -10,8 +11,18 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.trips import booking_tasks
-from apps.trips.models import (BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripActivity, TripChange,
-                               TripGrant, TripRole)
+from apps.trips.models import (
+    BookingTask,
+    Confirmation,
+    Day,
+    Lodging,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
+)
 from apps.trips.tests.helpers import make_task
 
 User = get_user_model()
@@ -21,8 +32,9 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 25),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Bavaria", start_date=date(2027, 9, 20), end_date=date(2027, 9, 25), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day1 = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))
@@ -30,16 +42,19 @@ class Fixture(TestCase):
         self.out = self.leg("Augsburg Hbf", "München Hbf", date(2027, 9, 20))
         self.back = self.leg("München Hbf", "Augsburg Hbf", date(2027, 9, 22))
         self.walk_up = self.leg("Augsburg Hbf", "Ulm", date(2027, 9, 22), operator="")  # no operator: not bookable
-        self.hotel = Lodging.objects.create(trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 20),
-                                            check_out=date(2027, 9, 22))
+        self.hotel = Lodging.objects.create(
+            trip=self.trip, name="Hotel Laimer Hof", check_in=date(2027, 9, 20), check_out=date(2027, 9, 22)
+        )
         self.detail = reverse("trips:trip_detail", args=[self.trip.pk])
 
     def leg(self, origin, destination, when, operator="DB"):
-        return TransportLeg.objects.create(trip=self.trip, mode="train", operator=operator, origin=origin,
-                                           destination=destination, date=when)
+        return TransportLeg.objects.create(
+            trip=self.trip, mode="train", operator=operator, origin=origin, destination=destination, date=when
+        )
 
     def to_book(self):
         from apps.trips.views import _attach_confirmations
+
         trip = Trip.objects.get(pk=self.trip.pk)
         prefetch_related_objects([trip], "transport", "lodging", "days", "booking_tasks__links")
         _attach_confirmations(trip)
@@ -54,9 +69,10 @@ class Fixture(TestCase):
 class RowTests(Fixture):
     def test_no_plan_rows_in_date_order(self):
         rows = self.to_book()["rows"]
-        self.assertEqual([(r["label"], r["no_plan"]) for r in rows],
-                         [("Augsburg Hbf → München Hbf", True), ("Hotel Laimer Hof", True),
-                          ("München Hbf → Augsburg Hbf", True)])
+        self.assertEqual(
+            [(r["label"], r["no_plan"]) for r in rows],
+            [("Augsburg Hbf → München Hbf", True), ("Hotel Laimer Hof", True), ("München Hbf → Augsburg Hbf", True)],
+        )
         self.assertEqual(rows[0]["day"], self.day1)
 
     def test_a_round_trip_todo_is_one_row_and_other_todos_follow(self):
@@ -89,14 +105,25 @@ class PageTests(Fixture):
         task = make_task(self.trip, "Book trains", self.out, self.back)
         html = self.page()
         self.assertIn('id="to-book"', html)
-        self.assertIn(f'id="to-book-leg-{self.out.pk}" data-to-book-row data-panel="'
-                      f'{reverse("trips:task_edit", args=[self.trip.pk, task.pk])}"', html)
-        self.assertIn(f'id="to-book-stay-{self.hotel.pk}" data-to-book-row data-panel="'
-                      f'{reverse("trips:stay_edit", args=[self.trip.pk, self.hotel.pk])}"', html)
-        self.assertIn(f'href="{reverse("trips:task_new", args=[self.trip.pk])}?stay={self.hotel.pk}" data-panel-link>Add a to-do',
-                      html)
-        self.assertIn(f'href="{reverse("trips:item_confirmations", args=[self.trip.pk, "stay", self.hotel.pk])}" '
-                      f'data-panel-link>Add confirmation', html)
+        self.assertIn(
+            f'id="to-book-leg-{self.out.pk}" data-to-book-row data-panel="'
+            f'{reverse("trips:task_edit", args=[self.trip.pk, task.pk])}"',
+            html,
+        )
+        self.assertIn(
+            f'id="to-book-stay-{self.hotel.pk}" data-to-book-row data-panel="'
+            f'{reverse("trips:stay_edit", args=[self.trip.pk, self.hotel.pk])}"',
+            html,
+        )
+        self.assertIn(
+            f'href="{reverse("trips:task_new", args=[self.trip.pk])}?stay={self.hotel.pk}" data-panel-link>Add a to-do',
+            html,
+        )
+        self.assertIn(
+            f'href="{reverse("trips:item_confirmations", args=[self.trip.pk, "stay", self.hotel.pk])}" '
+            f"data-panel-link>Add confirmation",
+            html,
+        )
         self.assertIn(reverse("trips:item_no_booking", args=[self.trip.pk, "stay", self.hotel.pk]), html)
         self.assertIn("trips/to_book.js", html)
         self.assertIn('if (id === "still-to-book" || id === "not-booked") id = "to-book";', html)
@@ -162,7 +189,7 @@ class TodoPageTests(Fixture):
         make_task(self.trip, "Pay deposit", priority=1)
         html = self.page(name="trip_todo")
         self.assertLess(html.index("Pay deposit"), html.index("Book trains"))  # priority order kept
-        no_plan = html[html.index('id="no-plan"'):]
+        no_plan = html[html.index('id="no-plan"') :]
         self.assertIn("Hotel Laimer Hof", no_plan)
         self.assertNotIn("Augsburg Hbf → München Hbf", no_plan)  # it has a to-do, listed above
         self.assertIn("data-mark-done", html)
@@ -172,8 +199,10 @@ class TodoPageTests(Fixture):
     def test_bookings_lists_no_plan_rows_read_only(self):
         make_task(self.trip, "Book trains", self.out, self.back)
         html = self.page(self.viewer, name="trip_bookings")
-        block = html[html.index('id="not-booked"'):]
-        self.assertIn(f'href="{self.detail}?item=stay-{self.hotel.pk}#stay-{self.hotel.pk}">Hotel Laimer Hof</a>', block)
+        block = html[html.index('id="not-booked"') :]
+        self.assertIn(
+            f'href="{self.detail}?item=stay-{self.hotel.pk}#stay-{self.hotel.pk}">Hotel Laimer Hof</a>', block
+        )
         self.assertNotIn("Augsburg Hbf → München Hbf and back", block)
         self.assertNotIn("data-to-book-actions", block)
 
@@ -196,16 +225,20 @@ class NoBookingTests(Fixture):
 
     def test_editors_only_and_this_trip_only(self):
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "leg", self.out.pk]))
-                         .status_code, 403)
-        other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2),
-                                    created_by=self.editor)
+        self.assertEqual(
+            self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "leg", self.out.pk])).status_code, 403
+        )
+        other = Trip.objects.create(
+            name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2), created_by=self.editor
+        )
         theirs = TransportLeg.objects.create(trip=other, origin="X", destination="Y", date=date(2027, 1, 1))
         self.client.force_login(self.editor)
-        self.assertEqual(self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "leg", theirs.pk]))
-                         .status_code, 404)
-        self.assertEqual(self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "meal", 1]))
-                         .status_code, 404)
+        self.assertEqual(
+            self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "leg", theirs.pk])).status_code, 404
+        )
+        self.assertEqual(
+            self.client.post(reverse("trips:item_no_booking", args=[self.trip.pk, "meal", 1])).status_code, 404
+        )
 
     def test_not_booked_skips_it_and_the_forms_save_it(self):
         self.hotel.no_booking = True
@@ -215,6 +248,7 @@ class NoBookingTests(Fixture):
         booking_tasks.attach(trip)
         self.assertNotIn(self.hotel, [e["item"] for e in booking_tasks.not_booked(trip)])
         from apps.trips.forms import LegEditForm, LodgingForm, TripActivityForm
+
         self.assertIn("no_booking", LegEditForm(instance=self.out).fields)
         self.assertIn("no_booking", dict(LegEditForm(instance=self.out).GROUPS)["Details"])
         self.assertIn("no_booking", LodgingForm(instance=self.hotel).fields)

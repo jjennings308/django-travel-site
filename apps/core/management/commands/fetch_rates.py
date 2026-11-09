@@ -4,6 +4,7 @@ Daily from cron after the ECB publishes (around 16:00 CET), e.g. 17:30 Europe ti
 should be ``--history all`` (every day since 1999) or ``--history 90d``. A failure to reach the ECB
 or a file that isn't rates is an error (exit 1) and writes nothing.
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.core import rates
@@ -13,8 +14,11 @@ class Command(BaseCommand):
     help = "Fetch the European Central Bank's reference exchange rates."
 
     def add_arguments(self, parser):
-        parser.add_argument("--history", choices=["90d", "all"],
-                            help="Also fetch the last 90 days, or every day since 1999 (first run).")
+        parser.add_argument(
+            "--history",
+            choices=["90d", "all"],
+            help="Also fetch the last 90 days, or every day since 1999 (first run).",
+        )
 
     def handle(self, *args, history=None, **options):
         try:

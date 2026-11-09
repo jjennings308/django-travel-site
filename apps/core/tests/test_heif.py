@@ -1,4 +1,5 @@
 """HEIC/HEIF (iPhone photos) open in Pillow once core registers pillow-heif."""
+
 import io
 
 from django import forms

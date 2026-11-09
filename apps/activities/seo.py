@@ -1,13 +1,18 @@
 """An activity's page tags and schema.org JSON-LD (site roadmap R22): a ``TouristTrip`` (something to do,
 not a dated event), with its place when it has one."""
+
 from django.urls import reverse
 
 from apps.core import seo
 
 
 def activity_jsonld(activity):
-    data = {"@context": "https://schema.org", "@type": "TouristTrip", "name": activity.name,
-            "url": seo.absolute(reverse("activities:activity_detail", args=[activity.slug]))}
+    data = {
+        "@context": "https://schema.org",
+        "@type": "TouristTrip",
+        "name": activity.name,
+        "url": seo.absolute(reverse("activities:activity_detail", args=[activity.slug])),
+    }
     description = seo.describe(activity.short_description, activity.description, limit=500)
     if description:
         data["description"] = description
@@ -22,7 +27,13 @@ def activity_jsonld(activity):
 
 
 def activity_meta(activity):
-    return seo.meta(title=activity.name,
-                    description=seo.describe(activity.short_description, activity.description,
-                                             f"{activity.name}{f' in {activity.place_name}' if activity.place_name else ''}."),
-                    image=seo.media_url(activity.display_media), jsonld=activity_jsonld(activity))
+    return seo.meta(
+        title=activity.name,
+        description=seo.describe(
+            activity.short_description,
+            activity.description,
+            f"{activity.name}{f' in {activity.place_name}' if activity.place_name else ''}.",
+        ),
+        image=seo.media_url(activity.display_media),
+        jsonld=activity_jsonld(activity),
+    )

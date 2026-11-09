@@ -10,10 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-from pathlib import Path
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -37,67 +37,65 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.humanize', 
-    'django.contrib.postgres',  # catalogue search: unaccent, trigram, full-text (R20)
-    'django.contrib.sitemaps',  # sitemap.xml (R22, apps/pages/sitemaps.py)
-    'widget_tweaks',
-    'taggit',
-    
-    # local apps 
-    'apps.core',
-    'apps.accounts',
-    'apps.locations',
-    'apps.activities',
-    'apps.vendors',
-    'apps.events',
-    'apps.catalogue_notes',  # notes on places, activities and events that flow into trips
-    'apps.media_app',
-    'apps.bucketlists',
-    'apps.trips',
-    'apps.reviews',
-    'apps.notifications',
-    'apps.recommendations',
-    'apps.admin_tools',
-    'apps.rewards',
-    'apps.approval_system',
-    'apps.pages',
-    'theme',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.humanize",
+    "django.contrib.postgres",  # catalogue search: unaccent, trigram, full-text (R20)
+    "django.contrib.sitemaps",  # sitemap.xml (R22, apps/pages/sitemaps.py)
+    "widget_tweaks",
+    "taggit",
+    # local apps
+    "apps.core",
+    "apps.accounts",
+    "apps.locations",
+    "apps.activities",
+    "apps.vendors",
+    "apps.events",
+    "apps.catalogue_notes",  # notes on places, activities and events that flow into trips
+    "apps.media_app",
+    "apps.bucketlists",
+    "apps.trips",
+    "apps.reviews",
+    "apps.notifications",
+    "apps.recommendations",
+    "apps.admin_tools",
+    "apps.rewards",
+    "apps.approval_system",
+    "apps.pages",
+    "theme",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.core.middleware.UserTimezoneMiddleware',
-    'apps.core.middleware.UserThemeMiddleware',
-    'apps.core.middleware.CurrentUserMiddleware',  # who made a change (trips.changes)
-    'apps.media_app.middleware.QuotaMiddleware',  # a refused upload -> message (R15)
-    'apps.accounts.middleware.LegalAcceptanceMiddleware',  # accept changed terms first (R16)
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.UserTimezoneMiddleware",
+    "apps.core.middleware.UserThemeMiddleware",
+    "apps.core.middleware.CurrentUserMiddleware",  # who made a change (trips.changes)
+    "apps.media_app.middleware.QuotaMiddleware",  # a refused upload -> message (R15)
+    "apps.accounts.middleware.LegalAcceptanceMiddleware",  # accept changed terms first (R16)
 ]
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        "LOCATION": "unique-snowflake", # Optional location identifier
-
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",  # Optional location identifier
     }
 }
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"], 
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -105,26 +103,26 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "apps.core.context_processors.site_branding",   
+                "apps.core.context_processors.site_branding",
                 "apps.core.context_processors.user_settings",
-                "apps.core.context_processors.user_preferences",                             
+                "apps.core.context_processors.user_preferences",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-#DATABASES = {
+# DATABASES = {
 #    'default': {
 #        'ENGINE': 'django.db.backends.sqlite3',
 #        'NAME': BASE_DIR / 'db.sqlite3',
 #    }
-#}
+# }
 
 DATABASES = {
     "default": {
@@ -143,31 +141,31 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
-    'apps.accounts.backends.EmailOrUsernameBackend',  # NEW - allows email or username login
-    'django.contrib.auth.backends.ModelBackend',  # Keep as fallback
+    "apps.accounts.backends.EmailOrUsernameBackend",  # NEW - allows email or username login
+    "django.contrib.auth.backends.ModelBackend",  # Keep as fallback
 ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -177,8 +175,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "uploads"
@@ -186,11 +184,12 @@ MEDIA_ROOT = BASE_DIR / "uploads"
 # never serves them; apps.core.storage.PrivateStorage, downloaded only through access-checked views.
 PRIVATE_MEDIA_ROOT = BASE_DIR / "private_uploads"
 
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"
 
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'pages:dashboard'
-LOGOUT_REDIRECT_URL = 'pages:home'
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "pages:dashboard"
+LOGOUT_REDIRECT_URL = "pages:home"
+
 
 # Outgoing mail. Every value comes from the environment (.env), so each machine
 # can use its own provider; credentials never go in code. dev.py / prod.py pick
@@ -201,10 +200,11 @@ def _env_flag(name, default):
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = _env_flag("EMAIL_USE_TLS", "True")    # STARTTLS, usually port 587
-EMAIL_USE_SSL = _env_flag("EMAIL_USE_SSL", "False")   # implicit TLS, usually port 465
+EMAIL_USE_TLS = _env_flag("EMAIL_USE_TLS", "True")  # STARTTLS, usually port 587
+EMAIL_USE_SSL = _env_flag("EMAIL_USE_SSL", "False")  # implicit TLS, usually port 465
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     from django.core.exceptions import ImproperlyConfigured
+
     raise ImproperlyConfigured("Set only one of EMAIL_USE_TLS / EMAIL_USE_SSL (port 587 -> TLS, 465 -> SSL).")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
@@ -215,15 +215,16 @@ SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)  # sender of e
 # Who gets error emails (prod.py wires apps.core.alerts to django.request), e.g.
 # DJANGO_ADMINS="James <james@example.com>, ops@example.com". Empty = no error emails.
 from apps.core.settings_helpers import parse_admins  # noqa: E402
+
 ADMINS = parse_admins(os.environ.get("DJANGO_ADMINS", ""))
 
-SITE_NAME = 'ShareBucketList'
+SITE_NAME = "ShareBucketList"
 # Who may register (site roadmap R14): "invite" = only with a trip invite link or a sign-up code
 # (accounts.SignupCode, made in the admin); "open" = anyone (email verification still required).
 SIGNUP_MODE = os.environ.get("SIGNUP_MODE", "invite").strip().lower()
 # Per-account storage for photos and tickets (apps.media_app.quota, R15); staff are unlimited.
 STORAGE_LIMIT_MB = int(os.environ.get("STORAGE_LIMIT_MB", "1024"))
-SITE_TAGLINE = 'Plan it. Live it. Share it.'
+SITE_TAGLINE = "Plan it. Live it. Share it."
 
 # Details used by the Terms, Privacy and Safety pages (apps/pages, templates under
 # pages/legal/). Set them in .env; while any is still a [bracketed] placeholder the
@@ -234,7 +235,8 @@ SITE_TAGLINE = 'Plan it. Live it. Share it.'
 MAP_PROVIDER = os.environ.get("MAP_PROVIDER", "osm")
 MAP_TILE_URL = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
 MAP_ATTRIBUTION = os.environ.get(
-    "MAP_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
+    "MAP_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+)
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")  # unused until a Google adapter exists
 # Address -> coordinates for trip stays (apps/core/geocoding.py; OpenStreetMap Nominatim by default).
 GEOCODER_URL = os.environ.get("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
@@ -267,4 +269,4 @@ LEGAL = {
 
 # The 'theme' app (installed here) ships the built CSS that collectstatic gathers.
 # The 'tailwind' app that can rebuild it is installed only in dev.py.
-TAILWIND_APP_NAME = 'theme'
+TAILWIND_APP_NAME = "theme"

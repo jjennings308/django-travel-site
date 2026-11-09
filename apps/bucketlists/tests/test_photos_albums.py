@@ -1,4 +1,5 @@
 """Goal photos at any stage, and personal albums (My albums)."""
+
 import io
 import shutil
 import tempfile
@@ -67,12 +68,16 @@ class GoalPhotoTests(PhotoFixture):
 
 class AlbumTests(PhotoFixture):
     def make(self, **data):
-        self.client.post(reverse("bucketlists:album_new"), {"title": "Parks 2026", "description": "", "privacy": "private", **data})
+        self.client.post(
+            reverse("bucketlists:album_new"), {"title": "Parks 2026", "description": "", "privacy": "private", **data}
+        )
         return MediaAlbum.objects.get(title="Parks 2026")
 
     def test_make_and_pick_from_goals_and_trips(self):
         self.item.add_photos([photo("goal.jpg")], self.alice)
-        trip = Trip.objects.create(name="Moab", start_date=date(2026, 9, 1), end_date=date(2026, 9, 5), created_by=self.alice)
+        trip = Trip.objects.create(
+            name="Moab", start_date=date(2026, 9, 1), end_date=date(2026, 9, 5), created_by=self.alice
+        )
         TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.EDITOR)
         trip.add_photos([photo("trip.jpg")], self.alice)
         trip.add_photos([photo("bobs.jpg")], self.bob)  # someone else's photo is not offered
@@ -99,7 +104,7 @@ class AlbumTests(PhotoFixture):
         self.client.post(reverse("bucketlists:album_remove", args=[album.pk, uploaded.pk]))
         self.assertFalse(Media.objects.filter(pk=uploaded.pk).exists())  # uploaded into the album: deleted
         self.client.post(reverse("bucketlists:album_remove", args=[album.pk, borrowed.pk]))
-        self.assertTrue(Media.objects.filter(pk=borrowed.pk).exists())   # borrowed from the goal: stays
+        self.assertTrue(Media.objects.filter(pk=borrowed.pk).exists())  # borrowed from the goal: stays
         self.assertFalse(album.items().exists())
 
     def test_delete_album_keeps_borrowed_photos(self):
@@ -117,10 +122,10 @@ class AlbumTests(PhotoFixture):
         album = self.make()
         url = reverse("bucketlists:album_detail", args=[album.pk])
         self.client.force_login(self.bob)
-        self.assertEqual(self.client.get(url).status_code, 404)              # private
+        self.assertEqual(self.client.get(url).status_code, 404)  # private
         album.privacy = "public"
         album.save()
-        self.assertEqual(self.client.get(url).status_code, 404)              # public album, private profile
+        self.assertEqual(self.client.get(url).status_code, 404)  # public album, private profile
         self.alice.profile_visibility = "public"
         self.alice.save()
         page = self.client.get(url)
@@ -131,7 +136,9 @@ class AlbumTests(PhotoFixture):
         self.assertEqual(self.client.post(url, {"photos": [photo()]}).status_code, 404)
 
     def test_trip_album_not_reachable_as_personal(self):
-        trip = Trip.objects.create(name="Moab", start_date=date(2026, 9, 1), end_date=date(2026, 9, 5), created_by=self.alice)
+        trip = Trip.objects.create(
+            name="Moab", start_date=date(2026, 9, 1), end_date=date(2026, 9, 5), created_by=self.alice
+        )
         trip.add_photos([photo()], self.alice)
         trip.refresh_from_db()
         self.assertEqual(self.client.get(reverse("bucketlists:album_detail", args=[trip.album_id])).status_code, 404)

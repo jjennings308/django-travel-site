@@ -1,4 +1,5 @@
 """Place (POI) types are a table managed in the admin, keyed by a fixed code."""
+
 from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
 from django.test import TestCase
@@ -15,28 +16,48 @@ class PlaceTypeTests(TestCase):
     def setUp(self):
         self.staff = get_user_model().objects.create_superuser("boss", "boss@example.com", "pw-1234-abcd")
         self.client.force_login(self.staff)
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD",
-                                         continent="Europe", approval_status=APPROVED)
-        self.city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2,
-                                        approval_status=APPROVED)
-        self.poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=self.city, latitude=1, longitude=2,
-                                      poi_type_id="historical", approval_status=APPROVED)
+        country = Country.objects.create(
+            name="Testland",
+            slug="testland",
+            iso_code="TL",
+            iso3_code="TLD",
+            continent="Europe",
+            approval_status=APPROVED,
+        )
+        self.city = City.objects.create(
+            name="Testville", slug="testville", country=country, latitude=1, longitude=2, approval_status=APPROVED
+        )
+        self.poi = POI.objects.create(
+            name="Old Bridge",
+            slug="old-bridge",
+            city=self.city,
+            latitude=1,
+            longitude=2,
+            poi_type_id="historical",
+            approval_status=APPROVED,
+        )
 
     def test_seeded_with_the_old_list(self):
         self.assertEqual(PlaceType.objects.count(), 15)  # the 14 old types + Food & drink (0015, R18)
         self.assertEqual(PlaceType.objects.get(code="sports").name, "Sports Venues")
-        self.assertEqual(POI.objects.create(name="X", slug="x", city=self.city, latitude=1, longitude=2).poi_type_id, "landmark")
+        self.assertEqual(
+            POI.objects.create(name="X", slug="x", city=self.city, latitude=1, longitude=2).poi_type_id, "landmark"
+        )
 
     def test_added_in_admin_and_offered(self):
-        self.client.post(reverse("admin:locations_placetype_add"),
-                         {"name": "Waterfall", "code": "waterfall", "icon": "", "sort_order": 5, "is_active": "on"})
+        self.client.post(
+            reverse("admin:locations_placetype_add"),
+            {"name": "Waterfall", "code": "waterfall", "icon": "", "sort_order": 5, "is_active": "on"},
+        )
         self.assertTrue(PlaceType.objects.filter(code="waterfall", name="Waterfall").exists())
         self.assertIn("waterfall", [c for c, _ in PlaceType.choices()])
         self.assertIn(PlaceType.objects.get(code="waterfall"), POIForm(instance=self.poi).fields["poi_type"].queryset)
         self.assertContains(self.client.get(reverse("locations:poi_list")), 'value="waterfall"')
 
     def test_code_is_fixed_once_saved(self):
-        page = self.client.get(reverse("admin:locations_placetype_change", args=[PlaceType.objects.get(code="museum").pk]))
+        page = self.client.get(
+            reverse("admin:locations_placetype_change", args=[PlaceType.objects.get(code="museum").pk])
+        )
         self.assertNotContains(page, 'name="code"')
 
     def test_retired_type_kept_by_its_places(self):
@@ -62,17 +83,42 @@ class PlaceListCountryFilterTests(TestCase):
 
     def setUp(self):
         self.client.force_login(get_user_model().objects.create_superuser("boss", "boss@example.com", "pw-1234-abcd"))
-        self.us = Country.objects.create(name="United States", slug="us", iso_code="US", iso3_code="USA",
-                                         continent="North America", approval_status=APPROVED)
-        self.ca = Country.objects.create(name="Canada", slug="ca", iso_code="CA", iso3_code="CAN",
-                                         continent="North America", approval_status=APPROVED)
-        Country.objects.create(name="Empty", slug="empty", iso_code="EM", iso3_code="EMP", continent="Europe",
-                               approval_status=APPROVED)
+        self.us = Country.objects.create(
+            name="United States",
+            slug="us",
+            iso_code="US",
+            iso3_code="USA",
+            continent="North America",
+            approval_status=APPROVED,
+        )
+        self.ca = Country.objects.create(
+            name="Canada",
+            slug="ca",
+            iso_code="CA",
+            iso3_code="CAN",
+            continent="North America",
+            approval_status=APPROVED,
+        )
+        Country.objects.create(
+            name="Empty", slug="empty", iso_code="EM", iso3_code="EMP", continent="Europe", approval_status=APPROVED
+        )
         for country, place in ((self.us, "Arches"), (self.ca, "Bell Centre")):
-            city = City.objects.create(name=f"{place} town", slug=f"{place}-town".lower().replace(" ", "-"),
-                                       country=country, latitude=1, longitude=2, approval_status=APPROVED)
-            POI.objects.create(name=place, slug=place.lower().replace(" ", "-"), city=city, latitude=1, longitude=2,
-                               approval_status=APPROVED)
+            city = City.objects.create(
+                name=f"{place} town",
+                slug=f"{place}-town".lower().replace(" ", "-"),
+                country=country,
+                latitude=1,
+                longitude=2,
+                approval_status=APPROVED,
+            )
+            POI.objects.create(
+                name=place,
+                slug=place.lower().replace(" ", "-"),
+                city=city,
+                latitude=1,
+                longitude=2,
+                approval_status=APPROVED,
+            )
 
     def test_filter_and_choices(self):
         url = reverse("locations:poi_list")

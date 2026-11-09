@@ -35,9 +35,7 @@ User = get_user_model()
 def grant_staff_dashboard(user):
     """The permission that gates /staff/ on this site (``User.can_access_staff``)."""
     user.user_permissions.add(
-        Permission.objects.get(
-            codename="can_access_staff_dashboard", content_type__app_label="accounts"
-        )
+        Permission.objects.get(codename="can_access_staff_dashboard", content_type__app_label="accounts")
     )
     return User.objects.get(pk=user.pk)  # drop the cached permission set
 
@@ -71,9 +69,7 @@ class DashboardAccessTests(TestCase):
         self.assertEqual(self.client.get(reverse("trips_staff:dashboard")).status_code, 403)
 
     def test_superuser_is_allowed_even_without_is_staff(self):
-        boss = User.objects.create_user(
-            "boss", "boss@example.com", "pw-1234", is_superuser=True
-        )
+        boss = User.objects.create_user("boss", "boss@example.com", "pw-1234", is_superuser=True)
         self.client.force_login(boss)
         self.assertEqual(self.client.get(reverse("trips_staff:dashboard")).status_code, 200)
 
@@ -98,9 +94,7 @@ class DashboardStatsTests(TestCase):
     def test_trips_by_status_and_total(self):
         stats = build_dashboard()
         self.assertEqual(stats["trips"]["total"], 2)
-        by_status = {
-            row["value"]: row["count"] for row in stats["trips"]["by_status"]
-        }
+        by_status = {row["value"]: row["count"] for row in stats["trips"]["by_status"]}
         self.assertEqual(by_status[Trip.Status.CONFIRMING], 1)
         self.assertEqual(by_status[Trip.Status.READY_TO_GO], 1)
         self.assertEqual(by_status[Trip.Status.STARTING], 0)
@@ -127,9 +121,7 @@ class DashboardStatsTests(TestCase):
         self.assertEqual(stats["tasks"]["completed"], 1)
         self.assertEqual(stats["tasks"]["overdue"], 1)
         self.assertEqual(stats["tasks"]["trips_with_outstanding"], 1)
-        by_priority = {
-            row["value"]: row["count"] for row in stats["tasks"]["by_priority"]
-        }
+        by_priority = {row["value"]: row["count"] for row in stats["tasks"]["by_priority"]}
         self.assertEqual(by_priority[BookingTask.Priority.CRITICAL], 1)
         self.assertEqual(by_priority[BookingTask.Priority.MEDIUM], 1)
         self.assertEqual(by_priority[BookingTask.Priority.LOW], 0)
@@ -174,21 +166,11 @@ class DashboardStatsTests(TestCase):
         self.assertEqual(build_dashboard()["trips"]["unowned"], 1)
 
     def test_content_totals_and_section_types(self):
-        day = Day.objects.create(
-            trip=self.europe, day_number=1, date=self.start
-        )
-        Section.objects.create(
-            day=day, section_type=Section.Type.NOTE, content={"tone": "tip", "paragraphs": ["a"]}
-        )
-        Section.objects.create(
-            day=day, section_type=Section.Type.NOTE, content={"paragraphs": ["b"]}
-        )
-        Section.objects.create(
-            day=day, section_type=Section.Type.TRAVEL, content={}
-        )
-        Meal.objects.create(
-            day=day, name="Cafe", meal_type=Meal.MealType.LUNCH, price_range="$$"
-        )
+        day = Day.objects.create(trip=self.europe, day_number=1, date=self.start)
+        Section.objects.create(day=day, section_type=Section.Type.NOTE, content={"tone": "tip", "paragraphs": ["a"]})
+        Section.objects.create(day=day, section_type=Section.Type.NOTE, content={"paragraphs": ["b"]})
+        Section.objects.create(day=day, section_type=Section.Type.TRAVEL, content={})
+        Meal.objects.create(day=day, name="Cafe", meal_type=Meal.MealType.LUNCH, price_range="$$")
         Comment.objects.create(
             author=self.alice,
             content_type=ContentType.objects.get_for_model(Trip),
@@ -201,9 +183,7 @@ class DashboardStatsTests(TestCase):
         self.assertEqual(stats["content"]["meals"], 1)
         self.assertEqual(stats["content"]["comments"], 1)
         self.assertEqual(stats["content"]["comments_recent"], 1)
-        by_type = {
-            row["value"]: row["count"] for row in stats["sections_by_type"]
-        }
+        by_type = {row["value"]: row["count"] for row in stats["sections_by_type"]}
         self.assertEqual(by_type[Section.Type.NOTE], 2)
         self.assertEqual(by_type[Section.Type.TRAVEL], 1)
         self.assertEqual(by_type[Section.Type.LOGISTICS_TABLE], 0)
@@ -211,9 +191,7 @@ class DashboardStatsTests(TestCase):
     def test_roster_linkage_is_counted(self):
         Traveler.objects.create(name="Unlinked Person")
         stats = build_dashboard()
-        self.assertEqual(
-            stats["travelers"]["total"], Traveler.objects.count()
-        )
+        self.assertEqual(stats["travelers"]["total"], Traveler.objects.count())
         self.assertEqual(
             stats["travelers"]["linked"],
             Traveler.objects.filter(user__isnull=False).count(),

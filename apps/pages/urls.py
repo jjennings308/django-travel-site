@@ -1,5 +1,5 @@
-# pages/urls.py
 from django.urls import path
+
 from . import account_views, staff, views
 
 app_name = "pages"
@@ -21,4 +21,4 @@ urlpatterns = [
     path("account/data/", account_views.my_data, name="my_data"),
     path("dashboard/welcome/hide/", views.welcome_dismiss, name="welcome_dismiss"),
     path("account/data/download/", account_views.data_export, name="data_export"),
- ]
+]

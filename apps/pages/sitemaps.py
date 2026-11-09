@@ -1,6 +1,7 @@
 """sitemap.xml and robots.txt (site roadmap R22). Addresses are built from ``SITE_URL`` (never the request's
 host), and only published items are listed: approved places, public approved activities, approved events
 from a year ago on, the help guides for everyone and the public pages. Members' bucket lists are left out."""
+
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -31,10 +32,24 @@ class SiteSitemap(Sitemap):
 
 class PagesSitemap(SiteSitemap):
     changefreq = "weekly"
-    NAMES = ["pages:home", "pages:about", "pages:features", "pages:help", "pages:contact", "pages:terms",
-             "pages:privacy", "pages:safety", "activities:activity_list", "events:event_list",
-             "events:calendar_today", "locations:country_list", "locations:region_list", "locations:city_list",
-             "locations:poi_list", "locations:poi_map"]
+    NAMES = [
+        "pages:home",
+        "pages:about",
+        "pages:features",
+        "pages:help",
+        "pages:contact",
+        "pages:terms",
+        "pages:privacy",
+        "pages:safety",
+        "activities:activity_list",
+        "events:event_list",
+        "events:calendar_today",
+        "locations:country_list",
+        "locations:region_list",
+        "locations:city_list",
+        "locations:poi_list",
+        "locations:poi_map",
+    ]
 
     def items(self):
         return self.NAMES
@@ -114,20 +129,45 @@ class EventSitemap(ModelSitemap):
         return _approved(Event).filter(start_date__gte=since)
 
 
-SITEMAPS = {"pages": PagesSitemap, "help": HelpSitemap, "countries": CountrySitemap, "regions": RegionSitemap,
-            "cities": CitySitemap, "places": PlaceSitemap, "activities": ActivitySitemap, "events": EventSitemap}
+SITEMAPS = {
+    "pages": PagesSitemap,
+    "help": HelpSitemap,
+    "countries": CountrySitemap,
+    "regions": RegionSitemap,
+    "cities": CitySitemap,
+    "places": PlaceSitemap,
+    "activities": ActivitySitemap,
+    "events": EventSitemap,
+}
 
 #: Never crawled: private or per-person areas, fragments and search results.
-DISALLOW = ["/trips/", "/public/", "/accounts/", "/staff/", "/admin/", "/approval/", "/notifications/",
-            "/bucketlists/", "/search/", "/events/whats-on/", "/report/", "/reviews/", "/notes/"]
+DISALLOW = [
+    "/trips/",
+    "/public/",
+    "/accounts/",
+    "/staff/",
+    "/admin/",
+    "/approval/",
+    "/notifications/",
+    "/bucketlists/",
+    "/search/",
+    "/events/whats-on/",
+    "/report/",
+    "/reviews/",
+    "/notes/",
+]
 
 
 def robots_txt(request):
     if getattr(settings, "STAGING", False):
         lines = ["User-agent: *", "Disallow: /"]
     else:
-        lines = ["User-agent: *", *(f"Disallow: {path}" for path in DISALLOW), "",
-                 f"Sitemap: {settings.SITE_URL.rstrip('/')}{reverse('sitemap')}"]
+        lines = [
+            "User-agent: *",
+            *(f"Disallow: {path}" for path in DISALLOW),
+            "",
+            f"Sitemap: {settings.SITE_URL.rstrip('/')}{reverse('sitemap')}",
+        ]
     response = HttpResponse("\n".join(lines) + "\n", content_type="text/plain; charset=utf-8")
     response["Cache-Control"] = "public, max-age=86400"
     return response

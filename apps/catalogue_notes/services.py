@@ -4,6 +4,7 @@ An event shows its own notes, then its activity's, then its venue's (``Event.poi
 then its venue's (``Activity.venue``); a place or a city its own. Approved notes for everyone; on catalogue pages a
 member also sees their own notes still waiting for review, and staff see every note.
 """
+
 from django.db.models import Q
 from django.http import Http404
 
@@ -33,12 +34,17 @@ def get_target(kind, slug):
 
 
 #: URL kind -> its detail page's URL name
-DETAIL = {"poi": "locations:poi_detail", "activity": "activities:activity_detail", "event": "events:event_detail",
-          "city": "locations:city_detail"}
+DETAIL = {
+    "poi": "locations:poi_detail",
+    "activity": "activities:activity_detail",
+    "event": "events:event_detail",
+    "city": "locations:city_detail",
+}
 
 
 def target_url(target):
     from django.urls import reverse
+
     return reverse(DETAIL[kind_of(target)], args=[target.slug])
 
 
@@ -74,8 +80,11 @@ def notes_for(target, user=None):
     combined = Q()
     for _label, field, pk in groups:
         combined |= Q(**{field: pk})
-    notes = list(visible(CatalogueNote.objects.filter(combined), user)
-                 .select_related("poi", "activity", "event", "city", "created_by"))
+    notes = list(
+        visible(CatalogueNote.objects.filter(combined), user).select_related(
+            "poi", "activity", "event", "city", "created_by"
+        )
+    )
     ordered = []
     for label, field, pk in groups:
         for note in notes:

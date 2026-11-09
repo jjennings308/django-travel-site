@@ -1,5 +1,6 @@
 """The zone chosen in Settings is the one pages use (UserTimezoneMiddleware; fixed in site roadmap R21 —
 it used to read the deprecated UserPreferences, so everyone was UTC)."""
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, TestCase
@@ -18,6 +19,7 @@ class UserTimezoneTests(TestCase):
         def view(request):
             seen["zone"] = timezone.get_current_timezone_name()
             return None
+
         request = RequestFactory().get("/")
         request.user = user
         UserTimezoneMiddleware(view)(request)

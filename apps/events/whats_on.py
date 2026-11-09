@@ -3,6 +3,7 @@
 An event's dates are local dates where it happens, so a month is just a date range — no time-zone
 shifting; only "today" depends on the reader (``timezone.localdate()`` under UserTimezoneMiddleware).
 """
+
 import calendar as calendar_lib
 import math
 from dataclasses import dataclass, field
@@ -33,6 +34,7 @@ def last_day(event):
 
 # --- the month calendar -------------------------------------------------------------------------
 
+
 @dataclass
 class Day:
     date: date
@@ -52,9 +54,11 @@ def month_events(qs, year, month):
     """Events of ``qs`` running on any day of the month (one query), in start order."""
     first = date(year, month, 1)
     last = date(year, month, calendar_lib.monthrange(year, month)[1])
-    return list(qs.filter(start_date__lte=last)
-                .filter(Q(end_date__gte=first) | Q(end_date__isnull=True, start_date__gte=first))
-                .order_by("start_date", "start_time", "name"))
+    return list(
+        qs.filter(start_date__lte=last)
+        .filter(Q(end_date__gte=first) | Q(end_date__isnull=True, start_date__gte=first))
+        .order_by("start_date", "start_time", "name")
+    )
 
 
 def month_grid(events, year, month):
@@ -77,6 +81,7 @@ def neighbours(year, month):
 
 
 # --- events near a place ----------------------------------------------------------------------
+
 
 def distance_km(lat1, lon1, lat2, lon2):
     """Great-circle distance (haversine)."""
@@ -114,8 +119,12 @@ def events_for(kind, target, qs):
     dlon = NEARBY_KM / (111.0 * max(math.cos(math.radians(lat)), 0.01))
     box = Q()
     for prefix in ("", "poi__", "city__"):
-        box |= Q(**{f"{prefix}latitude__range": (lat - dlat, lat + dlat),
-                    f"{prefix}longitude__range": (lon - dlon, lon + dlon)})
+        box |= Q(
+            **{
+                f"{prefix}latitude__range": (lat - dlat, lat + dlat),
+                f"{prefix}longitude__range": (lon - dlon, lon + dlon),
+            }
+        )
     found = []
     for event in qs.filter(Q(city=target) | box)[:200]:
         if event.city_id == target.pk:
@@ -138,13 +147,18 @@ def _at(event, km):
 def things_to_do(kind, target):
     """Published activities for a place page, most popular first. One query."""
     qs = Activity.get_public_activities().select_related("category", "city", "country", *Activity.PICTURE_RELATED)
-    where = {"place": Q(venue=target), "city": Q(city=target),
-             "region": Q(region=target) | Q(city__region=target), "country": Q(country=target)}[kind]
+    where = {
+        "place": Q(venue=target),
+        "city": Q(city=target),
+        "region": Q(region=target) | Q(city__region=target),
+        "country": Q(country=target),
+    }[kind]
     qs = qs.filter(where)
     return list(qs.order_by("-popularity_score", "-bucket_list_count", "name")[:SHOWN])
 
 
 # --- one event as iCalendar ------------------------------------------------------------------
+
 
 def _zone(name):
     try:
@@ -157,6 +171,7 @@ def event_ics(event, url):
     """``event`` as an .ics (bytes): timed in its own zone (TZID) when it has a start time, else all day
     (end date exclusive)."""
     from apps.core.ical import calendar, vevent
+
     cal = calendar("Event", event.name)
     zone = _zone(event.timezone)
     if event.start_time and not event.is_all_day:
@@ -170,6 +185,15 @@ def event_ics(event, url):
     else:
         start, end = event.start_date, last_day(event) + timedelta(days=1)
     lines = [event.short_description or "", url]
-    cal.add_component(vevent(f"event-{event.pk}", event.name, start, end, event.venue_and_place,
-                             "\n".join(line for line in lines if line), url))
+    cal.add_component(
+        vevent(
+            f"event-{event.pk}",
+            event.name,
+            start,
+            end,
+            event.venue_and_place,
+            "\n".join(line for line in lines if line),
+            url,
+        )
+    )
     return cal.to_ical()

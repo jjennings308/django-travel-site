@@ -1,4 +1,3 @@
-# core/templatetags/conversion_tags.py
 """
 Template tags for unit conversions based on user preferences.
 
@@ -10,249 +9,247 @@ Usage in templates:
 """
 
 from django import template
-from decimal import Decimal
+
+from apps.core.utils.currency import convert_currency, format_currency
 
 # Updated imports for new utils structure
 from apps.core.utils.helpers import (
     convert_distance_by_preference,
+    convert_elevation_by_preference,
     convert_temperature_by_preference,
-    convert_elevation_by_preference
 )
 from apps.core.utils.imperial_metric import (
-    km_to_miles,
-    miles_to_km,
     celsius_to_fahrenheit,
     fahrenheit_to_celsius,
+    feet_to_meters,
     kg_to_lbs,
+    km_to_miles,
     lbs_to_kg,
     meters_to_feet,
-    feet_to_meters
-)
-from apps.core.utils.currency import (
-    convert_currency,
-    format_currency
+    miles_to_km,
 )
 
 register = template.Library()
 
 
 @register.filter
-def distance(km, unit_system='metric'):
+def distance(km, unit_system="metric"):
     """
     Convert distance based on user's unit preference.
-    
+
     Usage:
         {{ trip.distance|distance:user.settings.unit_system }}
         {{ 100|distance:'imperial' }}  # Returns "62.14 mi"
     """
     if km is None:
-        return ''
-    
+        return ""
+
     result = convert_distance_by_preference(km, unit_system)
-    return result['formatted'] if result else ''
+    return result["formatted"] if result else ""
+
 
 @register.filter
-def elevation(m, unit_system='metric'):
+def elevation(m, unit_system="metric"):
     """
     Convert distance based on user's unit preference.
-    
+
     Usage:
         {{ trip.elevation|distance:user.settings.unit_system }}
         {{ 100|elevation:'imperial' }}  # Returns "328.08 ft"
     """
     if m is None:
-        return ''
-    
+        return ""
+
     result = convert_elevation_by_preference(m, unit_system)
-    return result['formatted'] if result else ''
+    return result["formatted"] if result else ""
 
 
 @register.filter
-def temperature(celsius, unit_system='metric'):
+def temperature(celsius, unit_system="metric"):
     """
     Convert temperature based on user's unit preference.
-    
+
     Usage:
         {{ weather.temp|temperature:user.settings.unit_system }}
         {{ 25|temperature:'imperial' }}  # Returns "77.0°F"
     """
     if celsius is None:
-        return ''
-    
+        return ""
+
     result = convert_temperature_by_preference(celsius, unit_system)
-    return result['formatted'] if result else ''
+    return result["formatted"] if result else ""
 
 
 @register.filter
 def km_miles(km):
     """
     Convert kilometers to miles.
-    
+
     Usage:
         {{ distance_km|km_miles }}
     """
     if km is None:
-        return ''
+        return ""
     miles = km_to_miles(km)
-    return f"{miles} mi" if miles else ''
+    return f"{miles} mi" if miles else ""
 
 
 @register.filter
 def miles_km(miles):
     """
     Convert miles to kilometers.
-    
+
     Usage:
         {{ distance_miles|miles_km }}
     """
     if miles is None:
-        return ''
+        return ""
     km = miles_to_km(miles)
-    return f"{km} km" if km else ''
+    return f"{km} km" if km else ""
 
 
 @register.filter
 def c_to_f(celsius):
     """
     Convert Celsius to Fahrenheit.
-    
+
     Usage:
         {{ temp_c|c_to_f }}
     """
     if celsius is None:
-        return ''
+        return ""
     f = celsius_to_fahrenheit(celsius)
-    return f"{f}°F" if f else ''
+    return f"{f}°F" if f else ""
 
 
 @register.filter
 def f_to_c(fahrenheit):
     """
     Convert Fahrenheit to Celsius.
-    
+
     Usage:
         {{ temp_f|f_to_c }}
     """
     if fahrenheit is None:
-        return ''
+        return ""
     c = fahrenheit_to_celsius(fahrenheit)
-    return f"{c}°C" if c else ''
+    return f"{c}°C" if c else ""
 
 
 @register.filter
 def kg_pounds(kg):
     """
     Convert kilograms to pounds.
-    
+
     Usage:
         {{ weight_kg|kg_pounds }}
     """
     if kg is None:
-        return ''
+        return ""
     lbs = kg_to_lbs(kg)
-    return f"{lbs} lbs" if lbs else ''
+    return f"{lbs} lbs" if lbs else ""
 
 
 @register.filter
 def pounds_kg(lbs):
     """
     Convert pounds to kilograms.
-    
+
     Usage:
         {{ weight_lbs|pounds_kg }}
     """
     if lbs is None:
-        return ''
+        return ""
     kg = lbs_to_kg(lbs)
-    return f"{kg} kg" if kg else ''
+    return f"{kg} kg" if kg else ""
 
 
 @register.filter
 def m_to_ft(meters):
     """
     Convert meters to feet.
-    
+
     Usage:
         {{ height_m|m_to_ft }}
     """
     if meters is None:
-        return ''
+        return ""
     feet = meters_to_feet(meters)
-    return f"{feet} ft" if feet else ''
+    return f"{feet} ft" if feet else ""
 
 
 @register.filter
 def ft_to_m(feet):
     """
     Convert feet to meters.
-    
+
     Usage:
         {{ height_ft|ft_to_m }}
     """
     if feet is None:
-        return ''
+        return ""
     m = feet_to_meters(feet)
-    return f"{m} m" if m else ''
+    return f"{m} m" if m else ""
 
 
 @register.filter
-def currency(amount, currency_code='USD'):
+def currency(amount, currency_code="USD"):
     """
     Format amount as currency.
-    
+
     Usage:
         {{ price|currency:'USD' }}
         {{ price|currency:'EUR' }}
     """
     if amount is None:
-        return ''
-    return format_currency(amount, currency_code) or ''
+        return ""
+    return format_currency(amount, currency_code) or ""
 
 
 @register.filter
 def convert_curr(amount, conversion):
     """
     Convert currency from one to another.
-    
+
     Usage:
         {{ price|convert_curr:'USD:EUR' }}
     """
     if amount is None or not conversion:
-        return ''
-    
+        return ""
+
     try:
-        from_curr, to_curr = conversion.split(':')
+        from_curr, to_curr = conversion.split(":")
         result = convert_currency(amount, from_curr.strip(), to_curr.strip())
-        return format_currency(result, to_curr.strip()) if result else ''
+        return format_currency(result, to_curr.strip()) if result else ""
     except (ValueError, AttributeError):
-        return ''
+        return ""
 
 
 @register.simple_tag
-def distance_display(km, unit_system='metric'):
+def distance_display(km, unit_system="metric"):
     """
     Display distance with proper formatting.
-    
+
     Usage:
         {% distance_display trip.distance user.settings.unit_system %}
     """
     if km is None:
-        return ''
-    
+        return ""
+
     result = convert_distance_by_preference(km, unit_system)
-    return result['formatted'] if result else ''
+    return result["formatted"] if result else ""
 
 
 @register.simple_tag
-def temp_display(celsius, unit_system='metric'):
+def temp_display(celsius, unit_system="metric"):
     """
     Display temperature with proper formatting.
-    
+
     Usage:
         {% temp_display weather.temp user.settings.unit_system %}
     """
     if celsius is None:
-        return ''
-    
+        return ""
+
     result = convert_temperature_by_preference(celsius, unit_system)
-    return result['formatted'] if result else ''
+    return result["formatted"] if result else ""

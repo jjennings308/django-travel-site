@@ -7,6 +7,7 @@ Upload helpers call ``check(user, incoming_bytes)`` *before* saving anything; it
 that into a message and a trip back to the page, so views don't each need handling. Staff are
 unlimited.
 """
+
 from django.conf import settings
 from django.db.models import Sum
 
@@ -30,6 +31,7 @@ def limit_bytes():
 
 def used(user):
     from .models import Media
+
     total = Media.objects.filter(uploaded_by=user).aggregate(total=Sum("file_size"))["total"] or 0
     return total + sum(fn(user) for fn in _providers)
 
@@ -39,7 +41,7 @@ def size_of(files):
 
 
 def _gb(n):
-    return f"{n / (1024 ** 3):.1f} GB" if n >= 1024 ** 3 else f"{max(1, round(n / (1024 ** 2)))} MB"
+    return f"{n / (1024**3):.1f} GB" if n >= 1024**3 else f"{max(1, round(n / (1024**2)))} MB"
 
 
 def check(user, incoming):
@@ -48,5 +50,7 @@ def check(user, incoming):
         return
     have, cap = used(user), limit_bytes()
     if have + incoming > cap:
-        raise QuotaExceeded(f"Not uploaded: you've used {_gb(have)} of your {_gb(cap)} for photos and tickets. "
-                            "Remove some first, then try again.")
+        raise QuotaExceeded(
+            f"Not uploaded: you've used {_gb(have)} of your {_gb(cap)} for photos and tickets. "
+            "Remove some first, then try again."
+        )

@@ -1,4 +1,3 @@
-# reviews/services.py
 """Member reviews of activities, events, cities and places.
 
 A review targets one published catalogue item (``TARGETS``, looked up by slug);
@@ -6,6 +5,7 @@ each member reviews an item at most once and can edit it. Visible reviews
 (``is_approved``) feed the item's stored ``average_rating`` / ``review_count``,
 recounted whenever a review is saved or deleted (``signals.py``).
 """
+
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Avg, Count
@@ -92,7 +92,7 @@ def upsert_review(user, target, rating, comment, title="", visit_date=None, veri
 def recount(target):
     """Store ``average_rating`` / ``review_count`` on ``target`` from its visible reviews."""
     stats = reviews_of(target).aggregate(avg=Avg("rating"), n=Count("pk"))
-    average = (Decimal(stats["avg"]).quantize(Decimal("0.01"), ROUND_HALF_UP) if stats["avg"] is not None else None)
+    average = Decimal(stats["avg"]).quantize(Decimal("0.01"), ROUND_HALF_UP) if stats["avg"] is not None else None
     if target.average_rating != average or target.review_count != stats["n"]:
         type(target).objects.filter(pk=target.pk).update(average_rating=average, review_count=stats["n"])
         target.average_rating, target.review_count = average, stats["n"]

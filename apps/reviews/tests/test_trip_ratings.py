@@ -1,6 +1,8 @@
 """Rating a finished trip's places (site roadmap R17)."""
+
 import io
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -21,15 +23,34 @@ TODAY = date(2027, 6, 10)
 class Fixture(TestCase):
     def setUp(self):
         self.ada = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")  # travelled
-        self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")    # followed along
-        country = Country.objects.create(name="Italy", slug="italy", iso_code="IT", iso3_code="ITA", continent="EU",
-                                         approval_status=ApprovalStatus.APPROVED)
-        self.rome = City.objects.create(name="Rome", slug="rome", country=country, latitude=1, longitude=1,
-                                        approval_status=ApprovalStatus.APPROVED)
-        self.draft = City.objects.create(name="Draftville", slug="draftville", country=country, latitude=1,
-                                         longitude=1, approval_status=ApprovalStatus.PENDING)
-        self.colosseum = POI.objects.create(name="Colosseum", slug="colosseum", city=self.rome, latitude=1,
-                                            longitude=1, approval_status=ApprovalStatus.APPROVED)
+        self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")  # followed along
+        country = Country.objects.create(
+            name="Italy",
+            slug="italy",
+            iso_code="IT",
+            iso3_code="ITA",
+            continent="EU",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.rome = City.objects.create(
+            name="Rome", slug="rome", country=country, latitude=1, longitude=1, approval_status=ApprovalStatus.APPROVED
+        )
+        self.draft = City.objects.create(
+            name="Draftville",
+            slug="draftville",
+            country=country,
+            latitude=1,
+            longitude=1,
+            approval_status=ApprovalStatus.PENDING,
+        )
+        self.colosseum = POI.objects.create(
+            name="Colosseum",
+            slug="colosseum",
+            city=self.rome,
+            latitude=1,
+            longitude=1,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 6, 1), end_date=date(2027, 6, 5))
         self.trip.cities.set([self.rome, self.draft])
         day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 6, 1), city=self.rome)
@@ -60,6 +81,7 @@ class AskTests(Fixture):
 
     def test_the_daily_digest_run_sends_them(self):
         from unittest import mock
+
         with mock.patch("apps.reviews.trip_ratings.timezone.localdate", return_value=TODAY):
             out = io.StringIO()
             call_command("send_trip_digests", stdout=out)
@@ -102,6 +124,7 @@ class PageTests(Fixture):
 
     def test_finished_trip_page_links_here(self):
         from unittest import mock
+
         self.client.force_login(self.ada)
         with mock.patch("apps.trips.models.django_timezone.localdate", return_value=TODAY):
             page = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))

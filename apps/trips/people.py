@@ -8,6 +8,7 @@ someone. Two rules hold everywhere, and the page and its tests both go through t
 
 Anyone may remove themselves (leave the trip), except the creator.
 """
+
 import logging
 from datetime import timedelta
 
@@ -96,12 +97,21 @@ def invite_url(invite):
 def send_invite(invite):
     """Email the link. Mail trouble is logged and reported as False, never raised."""
     inviter = invite.invited_by
-    context = {"invite": invite, "trip": invite.trip, "url": invite_url(invite), "site_name": settings.SITE_NAME,
-               "inviter": (inviter.get_full_name() or inviter.username) if inviter else settings.SITE_NAME}
+    context = {
+        "invite": invite,
+        "trip": invite.trip,
+        "url": invite_url(invite),
+        "site_name": settings.SITE_NAME,
+        "inviter": (inviter.get_full_name() or inviter.username) if inviter else settings.SITE_NAME,
+    }
     body = render_to_string("trips/emails/invite.txt", context)
     try:
-        EmailMessage(subject=f"[{settings.SITE_NAME}] {context['inviter']} invited you to “{invite.trip.name}”",
-                     body=body, from_email=settings.DEFAULT_FROM_EMAIL, to=[invite.email]).send()
+        EmailMessage(
+            subject=f"[{settings.SITE_NAME}] {context['inviter']} invited you to “{invite.trip.name}”",
+            body=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[invite.email],
+        ).send()
         return True
     except Exception:  # noqa: BLE001 - the invite stays; the editor can copy its link instead
         log.exception("Could not email trip invite %s", invite.pk)
@@ -147,8 +157,13 @@ def accept(invite, user, travelling=True):
                 trip.travelers.add(traveler)
     if locked.invited_by_id and locked.invited_by_id != user.pk:
         name = user.get_full_name() or user.username
-        notify(locked.invited_by, "trip_invite_accepted", f"{name} joined “{trip.name}”",
-               f"{name} accepted your invitation to “{trip.name}” and can now see it as "
-               f"{grant.get_role_display().lower()}.",
-               reverse("trips:trip_people", args=[trip.pk]), obj=trip)
+        notify(
+            locked.invited_by,
+            "trip_invite_accepted",
+            f"{name} joined “{trip.name}”",
+            f"{name} accepted your invitation to “{trip.name}” and can now see it as "
+            f"{grant.get_role_display().lower()}.",
+            reverse("trips:trip_people", args=[trip.pk]),
+            obj=trip,
+        )
     return grant

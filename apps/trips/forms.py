@@ -25,33 +25,31 @@ from django.utils import timezone as django_timezone
 
 from apps.core.widgets import CurrencySelect, DateInput, DateTimeLocalInput, TimeInput
 from apps.locations.models import POI, City
-from apps.media_app.forms import MAX_PICTURE_MB, PictureFormMixin
 from apps.locations.widgets import CitySearchInput, CitySearchMultiple
+from apps.media_app.forms import MAX_PICTURE_MB, PictureFormMixin
 
 from . import currencies
 from .models import (
-    Option,
-    OptionGroup,
-    TripIdea,
-    TripExpense,
-    TripRate,
     BookingTask,
     Comment,
     Confirmation,
     Contact,
-    ItemLink,
-    TripInfo,
     Day,
+    ItemLink,
     Lodging,
     Meal,
+    Option,
+    OptionGroup,
     RewardsMembership,
     Section,
-    Traveler,
     TransportLeg,
-    TripActivity,
+    Traveler,
     Trip,
-    format_local_date,
-    format_local_time,
+    TripActivity,
+    TripExpense,
+    TripIdea,
+    TripInfo,
+    TripRate,
     localize,
     validate_timezone_name,
 )
@@ -79,9 +77,7 @@ def _timezone_choices():
     ``get_fixed_timezones()`` no longer exists (and ``get_fixed_timezone()``
     now takes a numeric offset, not a name).
     """
-    return [("", "---------")] + sorted(
-        (name, name) for name in available_timezones()
-    )
+    return [("", "---------")] + sorted((name, name) for name in available_timezones())
 
 
 class LocalDateTimeField(forms.Field):
@@ -123,9 +119,7 @@ class LocalDateTimeField(forms.Field):
                 return datetime.strptime(text, fmt)
             except ValueError:
                 continue
-        raise forms.ValidationError(
-            self.error_messages["invalid"], code="invalid"
-        )
+        raise forms.ValidationError(self.error_messages["invalid"], code="invalid")
 
     def prepare_value(self, value):
         """Render an existing UTC value as editable local text."""
@@ -187,9 +181,7 @@ def validate_day_roster(trip, chosen):
     if trip is None or not chosen:
         return
     on_trip = set(trip.travelers.values_list("pk", flat=True))
-    strangers = sorted(
-        traveler.name for traveler in chosen if traveler.pk not in on_trip
-    )
+    strangers = sorted(traveler.name for traveler in chosen if traveler.pk not in on_trip)
     if strangers:
         raise forms.ValidationError(
             "Not on this trip: "
@@ -266,9 +258,7 @@ class ZoneNameField(forms.CharField):
     def __init__(self, *args, label_example="America/New_York", **kwargs):
         kwargs.setdefault("required", False)
         kwargs.setdefault("max_length", 64)
-        kwargs.setdefault(
-            "help_text", f"IANA zone name, e.g. {label_example}. Leave blank for UTC."
-        )
+        kwargs.setdefault("help_text", f"IANA zone name, e.g. {label_example}. Leave blank for UTC.")
         super().__init__(*args, **kwargs)
         self.validators.append(validate_timezone_name)
 
@@ -320,7 +310,7 @@ class LocalLegTimeMixin:
                 required=False,
                 label="Departure (local)",
                 help_text="Wall-clock time at the origin. Converted to UTC on save. "
-                          "Leave both times blank while it's only planned; add them when booked.",
+                "Leave both times blank while it's only planned; add them when booked.",
             ),
             "arrival_local": LocalDateTimeField(
                 required=False,
@@ -372,17 +362,14 @@ class LocalLegTimeMixin:
         if not zone_name:
             self.add_error(
                 zone_field_name,
-                f"{label} needs a timezone to convert from, since no offset "
-                f"was included in the time.",
+                f"{label} needs a timezone to convert from, since no offset was included in the time.",
             )
             return None
 
         try:
             converted = local_to_utc(raw, zone_name)
         except (ZoneInfoNotFoundError, ValueError, KeyError):
-            self.add_error(
-                zone_field_name, f"{zone_name!r} is not a valid timezone."
-            )
+            self.add_error(zone_field_name, f"{zone_name!r} is not a valid timezone.")
             return None
 
         if converted is None:
@@ -452,14 +439,16 @@ class RoughDurationField(forms.CharField):
 
     def prepare_value(self, value):
         from datetime import timedelta
+
         if isinstance(value, timedelta):
             minutes = int(value.total_seconds() // 60)
             hours, minutes = divmod(minutes, 60)
-            return (f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min")
+            return f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min"
         return value
 
     def clean(self, value):
         from .logistics import rough_duration
+
         text = super().clean(value)
         if not text:
             return None
@@ -551,6 +540,7 @@ def _city_choices(trip=None):
     so a city just added from the city box is usable at once (day-first plan, P1)."""
     from apps.approval_system.models import ApprovalStatus
     from apps.core.current import get_user
+
     q = models.Q(approval_status=ApprovalStatus.APPROVED)
     user = get_user()
     if user is not None:
@@ -571,9 +561,11 @@ def _trip_city_choices(trip):
     zones = {str(city.pk): city.timezone for city in cities if city.timezone}
     own = set(trip.cities.values_list("pk", flat=True)) if trip is not None and trip.pk else set()
     if own:
-        choices = [("", "---------"),
-                   ("This trip", [(city.pk, str(city)) for city in cities if city.pk in own]),
-                   ("Everywhere else", [(city.pk, str(city)) for city in cities if city.pk not in own])]
+        choices = [
+            ("", "---------"),
+            ("This trip", [(city.pk, str(city)) for city in cities if city.pk in own]),
+            ("Everywhere else", [(city.pk, str(city)) for city in cities if city.pk not in own]),
+        ]
     else:
         choices = [("", "---------"), *((city.pk, str(city)) for city in cities)]
     if trip is not None:
@@ -599,8 +591,11 @@ def option_choices(trip, day):
     """The options an item on ``day`` may belong to (its "In option" field): those of the day's groups."""
     if trip is None or day is None:
         return Option.objects.none()
-    return Option.objects.filter(group__trip=trip, group__day=day).select_related("group").order_by(
-        "group__order", "group_id", "order", "id")
+    return (
+        Option.objects.filter(group__trip=trip, group__day=day)
+        .select_related("group")
+        .order_by("group__order", "group_id", "order", "id")
+    )
 
 
 class InOptionMixin:
@@ -628,10 +623,14 @@ class SyncsTripCitiesMixin:
 
     def save(self, commit=True):
         obj = super().save(commit)
-        trip = (getattr(self, "trip", None) or getattr(obj, "trip", None)
-                or getattr(getattr(obj, "day", None), "trip", None))
+        trip = (
+            getattr(self, "trip", None)
+            or getattr(obj, "trip", None)
+            or getattr(getattr(obj, "day", None), "trip", None)
+        )
         if commit and trip is not None:
             from . import trip_cities
+
             trip_cities.sync(trip)
         return obj
 
@@ -650,14 +649,21 @@ class CoverPhotoForm(PictureFormMixin, forms.Form):
         self.trip = trip
         self.setup_picture()
         self.fields["picture"].label = "Upload a cover photo"
-        self.fields["picture"].help_text = (f"JPEG, PNG, WebP or iPhone HEIC, up to {MAX_PICTURE_MB} MB. A wide "
-                                            "picture fills the cover best. It also joins the trip's photos.")
+        self.fields["picture"].help_text = (
+            f"JPEG, PNG, WebP or iPhone HEIC, up to {MAX_PICTURE_MB} MB. A wide "
+            "picture fills the cover best. It also joins the trip's photos."
+        )
         self.fields["remove_picture"].label = "Take the photo off the cover (it stays in the trip's photos)"
         # The trip's photos to choose from: one query, only when the trip has an album.
         self.photos = [item.media for item in trip.photos()] if trip is not None and trip.album_id else []
         self.fields["choose"] = forms.TypedChoiceField(
-            required=False, coerce=int, empty_value=None, label="Or choose one of the trip's photos",
-            choices=[(media.pk, media.title or str(media.pk)) for media in self.photos], widget=forms.RadioSelect)
+            required=False,
+            coerce=int,
+            empty_value=None,
+            label="Or choose one of the trip's photos",
+            choices=[(media.pk, media.title or str(media.pk)) for media in self.photos],
+            widget=forms.RadioSelect,
+        )
         if trip is not None and trip.cover_photo_id:
             self.initial["choose"] = trip.cover_photo_id
 
@@ -665,7 +671,7 @@ class CoverPhotoForm(PictureFormMixin, forms.Form):
         """Apply the choice to ``self.trip``; returns True when the cover changed."""
         trip, data = self.trip, self.cleaned_data
         if data.get("picture"):
-            media, = trip.add_photos([data["picture"]], user)
+            (media,) = trip.add_photos([data["picture"]], user)
         elif data.get("remove_picture"):
             media = None
         elif data.get("choose"):
@@ -708,13 +714,25 @@ class TripForm(forms.ModelForm):
         # creator's, the common ones, and Other… for the rest.
         self.fields["home_currency"] = currencies.CurrencyField(
             required=False,  # blank: Trip.save() takes the creator's preferred currency
-            label="Home currency", help_text=Trip._meta.get_field("home_currency").help_text,
-            widget=CurrencySelect([self.instance.home_currency, preferred, *HOME_CURRENCY_CHOICES], styled=False))
+            label="Home currency",
+            help_text=Trip._meta.get_field("home_currency").help_text,
+            widget=CurrencySelect([self.instance.home_currency, preferred, *HOME_CURRENCY_CHOICES], styled=False),
+        )
         # The daily food allowance's currency (budget-estimates B2): blank = the home currency.
         self.fields["food_allowance_currency"] = currencies.CurrencyField(
-            required=False, label="Daily food currency", help_text="Blank: the trip's home currency.",
-            widget=CurrencySelect([self.instance.food_allowance_currency or self.instance.home_currency, preferred,
-                                   *HOME_CURRENCY_CHOICES], allow_blank=True, styled=False))
+            required=False,
+            label="Daily food currency",
+            help_text="Blank: the trip's home currency.",
+            widget=CurrencySelect(
+                [
+                    self.instance.food_allowance_currency or self.instance.home_currency,
+                    preferred,
+                    *HOME_CURRENCY_CHOICES,
+                ],
+                allow_blank=True,
+                styled=False,
+            ),
+        )
         if "cities" in self.fields:
             # Chips: type to add, × to remove (day-first plan, P1); a city something on the trip
             # uses can't be removed (clean_cities). The trip's cities also fill themselves in.
@@ -722,8 +740,9 @@ class TripForm(forms.ModelForm):
             self.fields["cities"].queryset = _city_choices(trip)
             self.fields["cities"].label_from_instance = str  # "Kansas City, KS, US" tells same names apart
             self.fields["cities"].widget = CitySearchMultiple(attrs={"size": 6})
-            self.fields["cities"].help_text = ("Filled in from the days, stays and legs as you plan; add others "
-                                               "you're thinking of.")
+            self.fields["cities"].help_text = (
+                "Filled in from the days, stays and legs as you plan; add others you're thinking of."
+            )
 
     class Meta:
         model = Trip
@@ -757,13 +776,16 @@ class TripForm(forms.ModelForm):
         if not self.instance.pk or cities is None:
             return cities
         from . import trip_cities
+
         kept = {city.pk for city in cities}
         removed = [city for city in self.instance.cities.all() if city.pk not in kept]
         if removed:
             used = trip_cities.used_by(self.instance)
-            refused = [f"{city.name} is used by {', '.join(used[city.pk][:3])}"
-                       f"{' and more' if len(used[city.pk]) > 3 else ''}"
-                       for city in removed if city.pk in used]
+            refused = [
+                f"{city.name} is used by {', '.join(used[city.pk][:3])}{' and more' if len(used[city.pk]) > 3 else ''}"
+                for city in removed
+                if city.pk in used
+            ]
             if refused:
                 raise forms.ValidationError("; ".join(refused) + ". Change those first.")
         return cities
@@ -831,8 +853,10 @@ class LocatingStayMixin:
     days_filled = 0
 
     def save(self, commit=True):
-        self.instance.locate(address_changed="address" in self.changed_data,
-                             coordinates_edited=bool({"latitude", "longitude"} & set(self.changed_data)))
+        self.instance.locate(
+            address_changed="address" in self.changed_data,
+            coordinates_edited=bool({"latitude", "longitude"} & set(self.changed_data)),
+        )
         stay = super().save(commit)
         if commit:
             self.days_filled = stay.fill_day_cities()
@@ -852,6 +876,7 @@ class CostFieldsMixin:
 
     def setup_cost(self, kind, amount_field):
         from .costs import BASES_FOR, Basis
+
         self.cost_kind, self.cost_amount_field = kind, amount_field
         allowed = BASES_FOR[kind]
         if "cost_basis" in self.fields:
@@ -887,6 +912,7 @@ class CostFieldsMixin:
     def cost_nights(self):
         """The item's nights for the preview (a stay's, a stay option's), else None."""
         from .costs import nights_for
+
         try:
             return nights_for(self.instance)
         except (AttributeError, KeyError, TypeError):
@@ -897,6 +923,7 @@ class CostFieldsMixin:
         """How many people the item's cost is for when People is blank (``costs.people_for``), for the preview.
         A choice's options share their group's answer, so the options formset costs one lookup, not one a row."""
         from .costs import people_for, roster_count
+
         item = self.instance
         try:
             if type(item).__name__ == "Option":
@@ -904,8 +931,11 @@ class CostFieldsMixin:
                 if not hasattr(group, "_cost_people_default"):
                     group._cost_people_default = roster_count(group.day, group.trip) or None
                 return group._cost_people_default
-            trip = item.trip if hasattr(item, "trip_id") and item.trip_id else (
-                item.day.trip if getattr(item, "day_id", None) else None)
+            trip = (
+                item.trip
+                if hasattr(item, "trip_id") and item.trip_id
+                else (item.day.trip if getattr(item, "day_id", None) else None)
+            )
             if trip is None:
                 return None
             if getattr(item, "day_id", None):
@@ -961,8 +991,9 @@ class LodgingForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, Locating
         check_in = self.instance.check_in or self.initial.get("check_in")
         self.setup_option(trip, trip.days.filter(date=check_in).first() if trip and check_in else None)
         if trip is not None:  # home + the city's local currency (E4)
-            currencies.setup(self, "currency", trip, [self.initial.get("city") or self.instance.city_id],
-                             given_initial=given)
+            currencies.setup(
+                self, "currency", trip, [self.initial.get("city") or self.instance.city_id], given_initial=given
+            )
         self.setup_cost("stay", "nightly_rate")
 
     def clean(self):
@@ -991,9 +1022,11 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
 
     @staticmethod
     def zone_field(label_example):
-        return ZoneNameField(label_example=label_example,
-                             help_text=f"Filled in from the city; change it for an airport in another zone. "
-                                       f"An IANA zone name, e.g. {label_example}.")
+        return ZoneNameField(
+            label_example=label_example,
+            help_text=f"Filled in from the city; change it for an airport in another zone. "
+            f"An IANA zone name, e.g. {label_example}.",
+        )
 
     class Meta:
         model = TransportLeg
@@ -1017,15 +1050,15 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
             "cost_people",
             "notes",
         ]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2}),
-                   "date": DateInput(styled=False)}
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2}), "date": DateInput(styled=False)}
         help_texts = {"date": "The day it happens. Filled in from the departure once there is one."}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.trip_id:  # home + both ends' local currencies (E4)
-            currencies.setup(self, "currency", self.instance.trip,
-                             [self.instance.origin_city_id, self.instance.destination_city_id])
+            currencies.setup(
+                self, "currency", self.instance.trip, [self.instance.origin_city_id, self.instance.destination_city_id]
+            )
         self.setup_cost("leg", "cost")
         # Point the zone inputs at the datalist the formset renders once. The
         # id is the datalist leg_form.html renders once (COMMON_ZONE_SUGGESTIONS).
@@ -1039,27 +1072,40 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
         # "Also add the return trip": a second leg with the ends swapped, made on save.
         # Added here, not declared, because LocalLegTimeMixin rebuilds declared_fields.
         self.fields["add_return"] = forms.BooleanField(
-            required=False, label="Also add the return trip",
-            help_text="Makes a second leg back the other way when you save; only its times are needed.")
+            required=False,
+            label="Also add the return trip",
+            help_text="Makes a second leg back the other way when you save; only its times are needed.",
+        )
         self.fields["return_departure_local"] = LocalDateTimeField(
-            required=False, label="Return departs (local)",
-            help_text="Wall-clock time where this leg arrives (the destination's zone).")
+            required=False,
+            label="Return departs (local)",
+            help_text="Wall-clock time where this leg arrives (the destination's zone).",
+        )
         self.fields["return_arrival_local"] = LocalDateTimeField(
-            required=False, label="Return arrives (local)",
-            help_text="Wall-clock time back where this leg left from (the origin's zone).")
+            required=False,
+            label="Return arrives (local)",
+            help_text="Wall-clock time back where this leg left from (the origin's zone).",
+        )
         self.fields["return_date"] = forms.DateField(
-            required=False, label="Return day (if no times yet)",
+            required=False,
+            label="Return day (if no times yet)",
             widget=DateInput(styled=False),
-            help_text="For a planned return: just the day, without times.")
+            help_text="For a planned return: just the day, without times.",
+        )
         # Booking-todos K1: the return joins the way out's open to-dos and confirmations. Ticked when the
         # way out has either, so a round trip bought as one ticket stays one booking.
         self.fields["same_booking"] = forms.BooleanField(
-            required=False, label="Same booking as the way out",
-            help_text="The return joins this leg's open to-dos and confirmations (one ticket for both ways).")
+            required=False,
+            label="Same booking as the way out",
+            help_text="The return joins this leg's open to-dos and confirmations (one ticket for both ways).",
+        )
         if self.instance.pk and not self.is_bound:
             from .models import BookingTask, Confirmation
-            self.initial["same_booking"] = (BookingTask.for_item(self.instance).filter(done=False).exists()
-                                            or Confirmation.for_item(self.instance).exists())
+
+            self.initial["same_booking"] = (
+                BookingTask.for_item(self.instance).filter(done=False).exists()
+                or Confirmation.for_item(self.instance).exists()
+            )
         self._return_times = None
         self.return_leg = None
 
@@ -1120,10 +1166,14 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
                 return
             self._return_times = ("planned", return_date)
             return
-        departure = self._return_utc(cleaned_data.get("return_departure_local"),
-                                     cleaned_data.get("destination_timezone"), "return_departure_local")
-        arrival = self._return_utc(cleaned_data.get("return_arrival_local"),
-                                   cleaned_data.get("origin_timezone"), "return_arrival_local")
+        departure = self._return_utc(
+            cleaned_data.get("return_departure_local"),
+            cleaned_data.get("destination_timezone"),
+            "return_departure_local",
+        )
+        arrival = self._return_utc(
+            cleaned_data.get("return_arrival_local"), cleaned_data.get("origin_timezone"), "return_arrival_local"
+        )
         if departure is None or arrival is None:
             return
         if arrival < departure:
@@ -1144,14 +1194,23 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
             else:
                 times = {"departure_at": first, "arrival_at": second}
             self.return_leg = TransportLeg.objects.create(
-                trip=leg.trip, mode=leg.mode, operator=leg.operator,
-                origin=leg.destination, destination=leg.origin,
-                origin_city=leg.destination_city, destination_city=leg.origin_city,
-                origin_timezone=leg.destination_timezone, destination_timezone=leg.origin_timezone,
-                currency=leg.currency, cost_basis=leg.cost_basis, cost_people=leg.cost_people, **times,
+                trip=leg.trip,
+                mode=leg.mode,
+                operator=leg.operator,
+                origin=leg.destination,
+                destination=leg.origin,
+                origin_city=leg.destination_city,
+                destination_city=leg.origin_city,
+                origin_timezone=leg.destination_timezone,
+                destination_timezone=leg.origin_timezone,
+                currency=leg.currency,
+                cost_basis=leg.cost_basis,
+                cost_people=leg.cost_people,
+                **times,
             )  # Not copied: service number, cost (its basis and people are), notes (they differ on the way back).
             if self.cleaned_data.get("same_booking"):  # one booking for both ways (K1)
                 from .models import BookingTask, Confirmation
+
                 for task in BookingTask.for_item(leg).filter(done=False):
                     task.link(self.return_leg)
                 for confirmation in Confirmation.for_item(leg):
@@ -1165,6 +1224,7 @@ def linkable_choices(trip):
     choices in day order (U4): each day, then its legs, the stays checking in, activities, meals
     and sections."""
     from .models import LINKABLE, item_label  # noqa: F401  (LINKABLE documents the kinds)
+
     days = list(trip.days.order_by("date", "day_number"))
     legs = list(trip.transport.all())
     stays = list(trip.lodging.all())
@@ -1192,18 +1252,28 @@ class _LinksMixin:
 
     def setup_links(self, trip):
         from django.contrib.contenttypes.models import ContentType
+
         from .models import LINKABLE
+
         self.trip = trip
         self.fields["links"] = forms.MultipleChoiceField(
-            choices=linkable_choices(trip), required=False, widget=forms.CheckboxSelectMultiple,
-            label="Show it on", help_text="It appears on these items and their days, and always in Reference.")
+            choices=linkable_choices(trip),
+            required=False,
+            widget=forms.CheckboxSelectMultiple,
+            label="Show it on",
+            help_text="It appears on these items and their days, and always in Reference.",
+        )
         if self.instance.pk:
             kinds = {ContentType.objects.get_for_model(model).pk: kind for kind, model in LINKABLE.items()}
-            self.initial["links"] = [f"{kinds[link.target_type_id]}:{link.target_id}"
-                                     for link in self.instance.item_links.all() if link.target_type_id in kinds]
+            self.initial["links"] = [
+                f"{kinds[link.target_type_id]}:{link.target_id}"
+                for link in self.instance.item_links.all()
+                if link.target_type_id in kinds
+            ]
 
     def save_links(self):
         from .models import LINKABLE
+
         wanted = set(self.cleaned_data.get("links") or [])
         current = set(self.initial.get("links") or [])
         for value in wanted - current:
@@ -1249,6 +1319,7 @@ class TripInfoForm(_LinksMixin, forms.ModelForm):
 
 class QuickContactForm(forms.Form):
     """Create a contact from an item's Contacts & info block."""
+
     name = forms.CharField(max_length=200)
     role = forms.CharField(max_length=120, required=False)
     phone = forms.CharField(max_length=40, required=False)
@@ -1257,6 +1328,7 @@ class QuickContactForm(forms.Form):
 
 class QuickInfoForm(forms.Form):
     """Create an info note from an item's Contacts & info block."""
+
     title = forms.CharField(max_length=200)
     body = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
@@ -1283,10 +1355,17 @@ def cover_choices(trip):
     for stay in trip.lodging.order_by("check_in", "pk"):
         put(f"stay-{stay.pk}", stay, f"Stay: {stay.name}", by_date.get(stay.check_in))
     for activity in trip.activities.select_related("day").order_by("day__date", "start_time", "order", "pk"):
-        put(f"activity-{activity.pk}", activity, f"{activity.get_kind_display()}: {activity.title}",
-            activity.day if activity.day_id in groups else None)
-    choices = [(f"Day {day.day_number}" + (f" · {day.date:%a %b} {day.date.day}" if day.date else ""), groups[day.pk])
-               for day in days if groups[day.pk]]
+        put(
+            f"activity-{activity.pk}",
+            activity,
+            f"{activity.get_kind_display()}: {activity.title}",
+            activity.day if activity.day_id in groups else None,
+        )
+    choices = [
+        (f"Day {day.day_number}" + (f" · {day.date:%a %b} {day.date.day}" if day.date else ""), groups[day.pk])
+        for day in days
+        if groups[day.pk]
+    ]
     if loose:
         choices.append(("Not on a day", loose))
     trip._cover_choices = (choices, items)
@@ -1296,6 +1375,7 @@ def cover_choices(trip):
 def cover_key(item):
     """``leg-<pk>`` / ``stay-<pk>`` / ``activity-<pk>``: an item's value in ``covers``."""
     from .booking_tasks import kind_of
+
     return f"{kind_of(item)}-{item.pk}"
 
 
@@ -1309,8 +1389,11 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
     """
 
     covers = forms.MultipleChoiceField(
-        required=False, label="Covers", widget=forms.CheckboxSelectMultiple,
-        help_text="Every journey, stay or activity this booking is for; each then shows it as “Still to book”.")
+        required=False,
+        label="Covers",
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Every journey, stay or activity this booking is for; each then shows it as “Still to book”.",
+    )
 
     class Meta:
         model = BookingTask
@@ -1353,8 +1436,10 @@ class BookingTaskForm(BlankOrderFallbackMixin, forms.ModelForm):
         """The Covers checkboxes for the template: [(group label, [(key, label, ticked), …]), …]."""
         value = self["covers"].value() or []
         ticked = {str(v) for v in (value if isinstance(value, (list, tuple)) else [value])}
-        return [(group, [(key, text, key in ticked) for key, text in options])
-                for group, options in self.fields["covers"].choices]
+        return [
+            (group, [(key, text, key in ticked) for key, text in options])
+            for group, options in self.fields["covers"].choices
+        ]
 
     def save(self, commit=True):
         task = super().save(commit=commit)
@@ -1456,7 +1541,8 @@ class DayForm(SyncsTripCitiesMixin, forms.ModelForm):
             self.fields["city"].help_text = (
                 "Where you spend the day (Munich for Oktoberfest, even if you sleep in Augsburg). "
                 "Days a stay covers are filled in from its city when blank; change day trips here. "
-                "Add the trains, flights or drives with + Leg above.")
+                "Add the trains, flights or drives with + Leg above."
+            )
         # A new date must be free and inside the trip (DR3); a clash points at Reorder days.
         self.old_date = self.instance.date if self.instance.pk else None
         self.date_problem = None
@@ -1469,6 +1555,7 @@ class DayForm(SyncsTripCitiesMixin, forms.ModelForm):
         new = cleaned_data.get("date")
         if trip is not None and new and new != getattr(self, "old_date", None):
             from .reschedule import move_day_check
+
             problem = move_day_check(trip, new, exclude_pk=self.instance.pk)
             if problem:
                 self.date_problem, text = problem
@@ -1482,6 +1569,7 @@ def catalogue_places(trip, food_first=False):
     """Approved catalogue places in the trip's cities, for an item's Place select (site roadmap R18;
     the same rule as day activities). ``food_first`` puts Food & drink places first, for meals."""
     from apps.approval_system.models import ApprovalStatus
+
     cities = list(trip.cities.values_list("pk", flat=True)) if trip else []
     if not cities:
         return POI.objects.none()
@@ -1495,27 +1583,36 @@ def catalogue_places(trip, food_first=False):
 def catalogue_activities(trip):
     """Published activities in the trip's cities, or country-wide ones (no city) in their countries."""
     from apps.activities.models import Activity
+
     cities = list(trip.cities.values_list("pk", "country_id")) if trip else []
     if not cities:
         return Activity.objects.none()
-    return (Activity.get_public_activities()
-            .filter(Q(city_id__in=[c for c, _ in cities])
-                    | Q(city__isnull=True, country_id__in={k for _, k in cities if k}))
-            .select_related("city", "country").order_by("name"))
+    return (
+        Activity.get_public_activities()
+        .filter(
+            Q(city_id__in=[c for c, _ in cities]) | Q(city__isnull=True, country_id__in={k for _, k in cities if k})
+        )
+        .select_related("city", "country")
+        .order_by("name")
+    )
 
 
 def catalogue_events(trip):
     """Published events whose dates overlap the trip (catalogue-notes N4), the ones in its cities first."""
     from apps.approval_system.models import ApprovalStatus
     from apps.events.models import Event
+
     if trip is None or not trip.start_date or not trip.end_date:
         return Event.objects.none()
     cities = list(trip.cities.values_list("pk", flat=True))
-    events = (Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__lte=trip.end_date)
-              .filter(Q(end_date__gte=trip.start_date) | Q(end_date__isnull=True, start_date__gte=trip.start_date))
-              .select_related("city"))
-    return (events.annotate(elsewhere=Case(When(city_id__in=cities, then=Value(0)), default=Value(1)))
-            .order_by("elsewhere", "start_date", "name"))
+    events = (
+        Event.objects.filter(approval_status=ApprovalStatus.APPROVED, start_date__lte=trip.end_date)
+        .filter(Q(end_date__gte=trip.start_date) | Q(end_date__isnull=True, start_date__gte=trip.start_date))
+        .select_related("city")
+    )
+    return events.annotate(elsewhere=Case(When(city_id__in=cities, then=Value(0)), default=Value(1))).order_by(
+        "elsewhere", "start_date", "name"
+    )
 
 
 def _event_label(event):
@@ -1531,13 +1628,16 @@ def _setup_catalogue_fields(form, trip, food_first=False):
     """Limit a form's ``poi`` (and ``activity``) selects to the trip's cities."""
     form.fields["poi"].queryset = catalogue_places(trip, food_first)
     form.fields["poi"].label_from_instance = _place_label
-    form.fields["poi"].help_text = ("Optional: the catalogue place, when it's in one of this trip's cities."
-                                    if trip and trip.cities.exists() else
-                                    "Add cities to the trip to link a catalogue place.")
+    form.fields["poi"].help_text = (
+        "Optional: the catalogue place, when it's in one of this trip's cities."
+        if trip and trip.cities.exists()
+        else "Add cities to the trip to link a catalogue place."
+    )
     if "activity" in form.fields:
         form.fields["activity"].queryset = catalogue_activities(trip)
-        form.fields["activity"].label_from_instance = (
-            lambda a: f"{a.name} · {a.city.name if a.city_id else a.country.name}" if (a.city_id or a.country_id) else a.name)
+        form.fields["activity"].label_from_instance = lambda a: (
+            f"{a.name} · {a.city.name if a.city_id else a.country.name}" if (a.city_id or a.country_id) else a.name
+        )
         form.fields["activity"].help_text = "Optional: the catalogue activity this is about."
     if "event" in form.fields:
         form.fields["event"].queryset = catalogue_events(trip)
@@ -1582,9 +1682,7 @@ class MealForm(CostFieldsMixin, BlankOrderFallbackMixin, forms.ModelForm):
         self.setup_cost("meal", "est_cost")
 
 
-MealFormSet = inlineformset_factory(
-    Day, Meal, form=MealForm, extra=1, can_delete=True
-)
+MealFormSet = inlineformset_factory(Day, Meal, form=MealForm, extra=1, can_delete=True)
 
 #: Meal formset prefix, and so the POST key prefix: ``meals-0-name``.
 MEAL_FORMSET_PREFIX = "meals"
@@ -1693,11 +1791,15 @@ class NotePayloadForm(PayloadForm):
     title (``SectionForm``); a tone makes it stand out like the old callouts."""
 
     TONES = (("", "None"), ("tip", "Tip"), ("warning", "Warning"), ("critical", "Critical"))
-    tone = forms.ChoiceField(choices=TONES, required=False,
-                             help_text="Tip, Warning and Critical stand out on the page and in the booklet.")
+    tone = forms.ChoiceField(
+        choices=TONES, required=False, help_text="Tip, Warning and Critical stand out on the page and in the booklet."
+    )
     paragraphs = forms.CharField(
-        label="Text", required=False, widget=forms.Textarea(attrs={"rows": 6}),
-        help_text="One paragraph per line. Start a line with • for a bullet.")
+        label="Text",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 6}),
+        help_text="One paragraph per line. Start a line with • for a bullet.",
+    )
 
     payload_keys = ("tone", "paragraphs")
 
@@ -1727,16 +1829,14 @@ class LogisticsTablePayloadForm(PayloadForm):
         label="Columns",
         widget=forms.Textarea(attrs={"rows": 2}),
         help_text=(
-            "One column name per line — these are the table's headers, so a "
-            "rename here changes every row's header."
+            "One column name per line — these are the table's headers, so a rename here changes every row's header."
         ),
     )
     rows = forms.CharField(
         label="Rows",
         widget=forms.Textarea(attrs={"rows": 8}),
         help_text=(
-            "One row per line, cells separated by a “|”. Every row needs "
-            "exactly as many cells as there are columns."
+            "One row per line, cells separated by a “|”. Every row needs exactly as many cells as there are columns."
         ),
     )
 
@@ -1745,10 +1845,7 @@ class LogisticsTablePayloadForm(PayloadForm):
     def initial_from_content(self, content):
         return {
             "columns": _list_to_lines(content.get("columns")),
-            "rows": "\n".join(
-                ROW_CELL_SEPARATOR.join(str(cell) for cell in row)
-                for row in content.get("rows") or []
-            ),
+            "rows": "\n".join(ROW_CELL_SEPARATOR.join(str(cell) for cell in row) for row in content.get("rows") or []),
         }
 
     def managed_content(self):
@@ -1786,8 +1883,12 @@ class TravelPayloadForm(LogisticsTablePayloadForm):
     price, what a pass covers). Its legs are TransportLegs placed here
     (``TransportLeg.section``), edited as legs, never as rows."""
 
-    intro = forms.CharField(label="Intro", required=False, widget=forms.Textarea(attrs={"rows": 2}),
-                            help_text="Optional line above the legs.")
+    intro = forms.CharField(
+        label="Intro",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+        help_text="Optional line above the legs.",
+    )
 
     payload_keys = ("intro", "columns", "rows")
 
@@ -1796,8 +1897,9 @@ class TravelPayloadForm(LogisticsTablePayloadForm):
         self.fields["columns"].required = False
         self.fields["rows"].required = False
         self.fields["columns"].help_text = "Only for reference rows (prices, what a ticket covers): one name per line."
-        self.fields["rows"].help_text = ("Reference rows, cells separated by “|”. The legs themselves are added "
-                                         "on the trip page and edited as legs.")
+        self.fields["rows"].help_text = (
+            "Reference rows, cells separated by “|”. The legs themselves are added on the trip page and edited as legs."
+        )
         self.order_fields(["intro", "columns", "rows"])
 
     def initial_from_content(self, content):
@@ -1811,8 +1913,11 @@ class TravelPayloadForm(LogisticsTablePayloadForm):
         if intro or "intro" in self.stored:
             content["intro"] = intro
         columns = _lines_to_list(self.cleaned_data.get("columns"))
-        rows = [[cell.strip() for cell in line.split(ROW_CELL_SEPARATOR)]
-                for line in (self.cleaned_data.get("rows") or "").splitlines() if line.strip()]
+        rows = [
+            [cell.strip() for cell in line.split(ROW_CELL_SEPARATOR)]
+            for line in (self.cleaned_data.get("rows") or "").splitlines()
+            if line.strip()
+        ]
         if columns or "columns" in self.stored:
             content["columns"] = columns
         return _list_payload(content, "rows", rows)
@@ -1857,11 +1962,7 @@ class SectionForm(InOptionMixin, SyncsTripCitiesMixin, BlankOrderFallbackMixin, 
     class Meta:
         model = Section
         fields = ["title", "icon", "poi", "activity", "event", "order", "option"]
-        widgets = {
-            "icon": forms.TextInput(
-                attrs={"placeholder": "emoji or short label", "autocomplete": "off"}
-            )
-        }
+        widgets = {"icon": forms.TextInput(attrs={"placeholder": "emoji or short label", "autocomplete": "off"})}
 
     def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2013,8 +2114,15 @@ class TravelerProfileForm(forms.ModelForm):
 
 
 # The catalogue's program types -> this model's kinds (site roadmap R11).
-CATALOGUE_KIND = {"airline": "airline", "hotel": "hotel", "car_rental": "car_rental", "credit_card": "credit_card",
-                  "train": "rail", "cruise": "other", "other": "other"}
+CATALOGUE_KIND = {
+    "airline": "airline",
+    "hotel": "hotel",
+    "car_rental": "car_rental",
+    "credit_card": "credit_card",
+    "train": "rail",
+    "cruise": "other",
+    "other": "other",
+}
 
 
 class RewardsMembershipForm(forms.ModelForm):
@@ -2033,10 +2141,13 @@ class RewardsMembershipForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.rewards.models import RewardsProgram
+
         self.fields["catalogue_program"].queryset = RewardsProgram.objects.filter(is_active=True).order_by(
-            "company", "name")
+            "company", "name"
+        )
         self.fields["catalogue_program"].label_from_instance = lambda p: (
-            p.name if p.company.lower() in p.name.lower() else f"{p.company} {p.name}")
+            p.name if p.company.lower() in p.name.lower() else f"{p.company} {p.name}"
+        )
         self.fields["program"].required = False
 
     def clean(self):
@@ -2083,13 +2194,21 @@ class TripExpenseForm(forms.ModelForm):
         self.fields["day"].queryset = trip.days.order_by("day_number")
         self.fields["day"].required = False
         # Home + the day's local currency, else the trip's (E4).
-        currencies.setup(self, "currency", trip, [self.instance.day.city_id] if self.instance.day_id else [],
-                         given_initial="currency" in (kwargs.get("initial") or {}))
+        currencies.setup(
+            self,
+            "currency",
+            trip,
+            [self.instance.day.city_id] if self.instance.day_id else [],
+            given_initial="currency" in (kwargs.get("initial") or {}),
+        )
         # What it paid for (budget-estimates B3), optional: a booking, or a journey, stay, activity or meal.
         choices, self.for_items = expense_for_choices(trip)
         self.fields["paid_for"] = forms.ChoiceField(
-            required=False, label="For", choices=[("", "Nothing in particular")] + choices,
-            help_text="The booking or item it paid for: the Plan then shows it as paid there.")
+            required=False,
+            label="For",
+            choices=[("", "Nothing in particular")] + choices,
+            help_text="The booking or item it paid for: the Plan then shows it as paid there.",
+        )
         if "paid_for" not in self.initial and self.instance.for_type_id and self.instance.for_id:
             self.initial["paid_for"] = f"{_for_kind(self.instance.for_type.model)}-{self.instance.for_id}"
 
@@ -2103,8 +2222,13 @@ class TripExpenseForm(forms.ModelForm):
         return expense
 
 
-_FOR_MODEL_KIND = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity", "meal": "meal",
-                   "confirmation": "confirmation"}
+_FOR_MODEL_KIND = {
+    "transportleg": "leg",
+    "lodging": "stay",
+    "tripactivity": "activity",
+    "meal": "meal",
+    "confirmation": "confirmation",
+}
 
 
 def _for_kind(model_name):
@@ -2115,12 +2239,15 @@ def expense_for_choices(trip):
     """(choices, items) for an expense's **For** (B3): the trip's bookings, then its journeys, stays and activities by
     day (``cover_choices``), then its meals; ``items`` maps each key (``confirmation-5``, ``leg-12``, ``meal-3``) to it."""
     from .models import Meal
+
     groups, items = [], {}
     bookings = []
     for confirmation in trip.confirmations.order_by("pk"):
         key = f"confirmation-{confirmation.pk}"
         items[key] = confirmation
-        bookings.append((key, f"{confirmation.confirmation_number}" + (f" · {confirmation.label}" if confirmation.label else "")))
+        bookings.append(
+            (key, f"{confirmation.confirmation_number}" + (f" · {confirmation.label}" if confirmation.label else ""))
+        )
     if bookings:
         groups.append(("Bookings", bookings))
     cover, cover_items = cover_choices(trip)
@@ -2139,6 +2266,7 @@ def expense_for_choices(trip):
 class LegProposalForm(forms.Form):
     """One travel row of a logistics table, reviewed as a leg (``travel_tables``): linked to
     the day's existing leg when it already is one, else a planned leg to create."""
+
     include = forms.BooleanField(required=False, label="Make this leg")
     section = forms.IntegerField(widget=forms.HiddenInput)
     row = forms.IntegerField(widget=forms.HiddenInput)
@@ -2149,8 +2277,9 @@ class LegProposalForm(forms.Form):
     destination = forms.CharField(max_length=120, label="To")
     destination_city = forms.ModelChoiceField(queryset=City.objects.none(), required=False, label="To city")
     operator = forms.CharField(max_length=120, required=False)
-    duration = forms.CharField(max_length=40, required=False, label="Rough time",
-                               help_text='e.g. "45 min", "2 h 30 min"')
+    duration = forms.CharField(
+        max_length=40, required=False, label="Rough time", help_text='e.g. "45 min", "2 h 30 min"'
+    )
     notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
 
     def __init__(self, *args, cities=None, **kwargs):
@@ -2161,6 +2290,7 @@ class LegProposalForm(forms.Form):
 
     def clean_duration(self):
         from .logistics import rough_duration
+
         text = self.cleaned_data["duration"].strip()
         if not text:
             return None
@@ -2181,13 +2311,27 @@ class LegEditForm(InOptionMixin, TransportLegForm):
     #: Fieldsets for the template: (heading, field names).
     GROUPS = (
         ("Route", ("origin", "origin_city", "destination", "destination_city", "mode")),
-        ("Schedule", ("date", "departure_local", "origin_timezone", "arrival_local", "destination_timezone",
-                      "est_duration", "order")),
-        ("Details", ("operator", "service_number", "cost", "currency", "cost_basis", "cost_people", "notes",
-                     "no_booking")),
+        (
+            "Schedule",
+            (
+                "date",
+                "departure_local",
+                "origin_timezone",
+                "arrival_local",
+                "destination_timezone",
+                "est_duration",
+                "order",
+            ),
+        ),
+        (
+            "Details",
+            ("operator", "service_number", "cost", "currency", "cost_basis", "cost_people", "notes", "no_booking"),
+        ),
         ("Placement", ("section", "option")),
-        ("Return trip", ("add_return", "return_departure_local", "return_arrival_local", "return_date",
-                         "same_booking")),
+        (
+            "Return trip",
+            ("add_return", "return_departure_local", "return_arrival_local", "return_date", "same_booking"),
+        ),
     )
 
     class Meta(TransportLegForm.Meta):
@@ -2198,8 +2342,9 @@ class LegEditForm(InOptionMixin, TransportLegForm):
         leg = self.instance
         day_sections = Section.objects.none()
         if leg.trip_id and leg.date:
-            day_sections = (Section.objects.filter(day__trip_id=leg.trip_id, day__date=leg.date,
-                                                   section_type=Section.Type.TRAVEL).select_related("day"))
+            day_sections = Section.objects.filter(
+                day__trip_id=leg.trip_id, day__date=leg.date, section_type=Section.Type.TRAVEL
+            ).select_related("day")
         self.fields["section"].queryset = day_sections
         self.fields["section"].required = False
         self.fields["section"].empty_label = "This day's “Getting around” block"
@@ -2216,6 +2361,7 @@ class LegEditForm(InOptionMixin, TransportLegForm):
 
 class LegQuickAddForm(forms.Form):
     """A planned leg typed like a table row, from a day on the trip page."""
+
     origin = forms.CharField(max_length=120, label="From")
     destination = forms.CharField(max_length=120, label="To")
     mode = forms.ChoiceField(choices=TransportLeg.Mode.choices, initial=TransportLeg.Mode.TRAIN)
@@ -2231,11 +2377,22 @@ class ConfirmationEditForm(forms.ModelForm):
 
     class Meta:
         model = Confirmation
-        fields = ["confirmation_number", "provider", "label", "url", "booked_on", "cost", "currency", "notes",
-                  "travelers"]
+        fields = [
+            "confirmation_number",
+            "provider",
+            "label",
+            "url",
+            "booked_on",
+            "cost",
+            "currency",
+            "notes",
+            "travelers",
+        ]
         labels = {"confirmation_number": "Confirmation number", "travelers": "Who's on it"}
-        help_texts = {"label": "Optional: blank shows what it covers, e.g. “BWI→ATL, ATL→ABQ · Sat Sep 12”.",
-                      "travelers": "Leave empty when it covers everyone on these items."}
+        help_texts = {
+            "label": "Optional: blank shows what it covers, e.g. “BWI→ATL, ATL→ABQ · Sat Sep 12”.",
+            "travelers": "Leave empty when it covers everyone on these items.",
+        }
         widgets = {
             "booked_on": DateInput(styled=False),
             "notes": forms.Textarea(attrs={"rows": 2}),
@@ -2256,8 +2413,25 @@ class TripActivityForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, for
 
     class Meta:
         model = TripActivity
-        fields = ["kind", "title", "provider", "start_time", "end_time", "poi", "event", "place_text", "travelers",
-                  "est_cost", "currency", "cost_basis", "cost_people", "notes", "no_booking", "order", "option"]
+        fields = [
+            "kind",
+            "title",
+            "provider",
+            "start_time",
+            "end_time",
+            "poi",
+            "event",
+            "place_text",
+            "travelers",
+            "est_cost",
+            "currency",
+            "cost_basis",
+            "cost_people",
+            "notes",
+            "no_booking",
+            "order",
+            "option",
+        ]
         widgets = {
             "start_time": TimeInput(styled=False),
             "end_time": TimeInput(styled=False),
@@ -2265,27 +2439,47 @@ class TripActivityForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, for
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
         labels = {"travelers": "Who's going", "est_cost": "Estimated cost"}
-        help_texts = {"travelers": "Leave empty when it's everyone on the day.",
-                      "order": "Sorts activities without a time; leave at 0 unless you care."}
+        help_texts = {
+            "travelers": "Leave empty when it's everyone on the day.",
+            "order": "Sorts activities without a time; leave at 0 unless you care.",
+        }
 
     def __init__(self, *args, trip, **kwargs):
         super().__init__(*args, **kwargs)
         self.setup_option(trip, self.instance.day if self.instance.day_id else None)
         from apps.approval_system.models import ApprovalStatus
+
         cities = list(trip.cities.values_list("pk", flat=True))
-        self.fields["poi"].queryset = (POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED)
-                                       .select_related("city").order_by("name")) if cities else POI.objects.none()
-        self.fields["poi"].label_from_instance = lambda poi: f"{poi.name} · {poi.city.name}" if poi.city_id else poi.name
-        self.fields["poi"].help_text = ("Places in this trip's cities." if cities
-                                        else "Add cities to the trip to pick a catalogue place; or type it below.")
+        self.fields["poi"].queryset = (
+            (
+                POI.objects.filter(city_id__in=cities, approval_status=ApprovalStatus.APPROVED)
+                .select_related("city")
+                .order_by("name")
+            )
+            if cities
+            else POI.objects.none()
+        )
+        self.fields["poi"].label_from_instance = lambda poi: (
+            f"{poi.name} · {poi.city.name}" if poi.city_id else poi.name
+        )
+        self.fields["poi"].help_text = (
+            "Places in this trip's cities."
+            if cities
+            else "Add cities to the trip to pick a catalogue place; or type it below."
+        )
         self.fields["travelers"].queryset = trip.travelers.all()
         self.fields["order"].required = False
         self.fields["event"].queryset = catalogue_events(trip)  # N4: a booking for a dated event
         self.fields["event"].label_from_instance = _event_label
         self.fields["event"].help_text = "Optional: the catalogue event this is for, e.g. Oktoberfest 2027."
         # Home + the place's (else the day's) local currency (E4).
-        currencies.setup(self, "currency", trip, currencies.activity_city_ids(self.instance),
-                         given_initial="currency" in (kwargs.get("initial") or {}))
+        currencies.setup(
+            self,
+            "currency",
+            trip,
+            currencies.activity_city_ids(self.instance),
+            given_initial="currency" in (kwargs.get("initial") or {}),
+        )
         # Cost, Currency, Cost is and People drawn together (B1). Without this the page hid them, and saving it
         # stored a blank currency (blank-currencies CU1).
         self.setup_cost("activity", "est_cost")
@@ -2330,8 +2524,9 @@ class RouteStopForm(forms.Form):
     A row with no city is ignored."""
 
     city = forms.ModelChoiceField(queryset=City.objects.none(), required=False)
-    nights = forms.IntegerField(min_value=1, max_value=90, required=False,
-                                widget=forms.NumberInput(attrs={"class": "w-20"}))
+    nights = forms.IntegerField(
+        min_value=1, max_value=90, required=False, widget=forms.NumberInput(attrs={"class": "w-20"})
+    )
 
     def __init__(self, *args, trip=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2357,15 +2552,23 @@ class OptionGroupForm(forms.ModelForm):
     below it."""
 
     #: The group fields each kind uses; the rest are cleared on save so a changed kind leaves no strays.
-    KIND_FIELDS = {"stay": ("nights",), "eat": ("meal_type", "start_time"), "do": ("start_time", "end_time"),
-                   "travel": ("mode", "start_time"), "any": ("start_time",)}
+    KIND_FIELDS = {
+        "stay": ("nights",),
+        "eat": ("meal_type", "start_time"),
+        "do": ("start_time", "end_time"),
+        "travel": ("mode", "start_time"),
+        "any": ("start_time",),
+    }
 
     class Meta:
         model = OptionGroup
         fields = ["prompt", "kind", "nights", "meal_type", "start_time", "end_time", "mode", "notes", "order"]
         labels = {"start_time": "Time", "end_time": "Until"}
-        widgets = {"start_time": TimeInput(styled=False), "end_time": TimeInput(styled=False),
-                   "notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {
+            "start_time": TimeInput(styled=False),
+            "end_time": TimeInput(styled=False),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2399,14 +2602,36 @@ class OptionForm(CostFieldsMixin, forms.ModelForm):
     page)."""
 
     #: The option fields each kind asks for, besides title, notes, link and cost (always).
-    KIND_FIELDS = {"stay": ("city", "poi", "place_text", "nights"), "eat": ("poi", "place_text"),
-                   "do": ("poi", "activity", "event", "place_text"), "travel": ("from_text", "to_text"), "any": ()}
+    KIND_FIELDS = {
+        "stay": ("city", "poi", "place_text", "nights"),
+        "eat": ("poi", "place_text"),
+        "do": ("poi", "activity", "event", "place_text"),
+        "travel": ("from_text", "to_text"),
+        "any": (),
+    }
     EXTRA = ("poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text")
 
     class Meta:
         model = Option
-        fields = ["title", "poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text",
-                  "notes", "url", "est_cost", "currency", "cost_basis", "cost_people", "rooms", "order"]
+        fields = [
+            "title",
+            "poi",
+            "activity",
+            "event",
+            "city",
+            "place_text",
+            "nights",
+            "from_text",
+            "to_text",
+            "notes",
+            "url",
+            "est_cost",
+            "currency",
+            "cost_basis",
+            "cost_people",
+            "rooms",
+            "order",
+        ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
 
     def __init__(self, *args, trip=None, city_ids=(), kind="any", **kwargs):
@@ -2443,8 +2668,12 @@ class OptionForm(CostFieldsMixin, forms.ModelForm):
         formset has a form per option (``share_choices`` then loads each list once)."""
         cached = getattr(trip, "_option_pickers", None) if trip is not None else None
         if cached is None:
-            cached = {"places": catalogue_places(trip), "food": catalogue_places(trip, food_first=True),
-                      "activities": catalogue_activities(trip), "events": catalogue_events(trip)}
+            cached = {
+                "places": catalogue_places(trip),
+                "food": catalogue_places(trip, food_first=True),
+                "activities": catalogue_activities(trip),
+                "events": catalogue_events(trip),
+            }
             if trip is not None:
                 trip._option_pickers = cached
         return cached
@@ -2476,8 +2705,13 @@ class SplitForm(forms.Form):
         choices = [(o.pk, o.title) for o in self.options]
         for traveler in self.travelers:
             self.fields[f"t{traveler.pk}"] = forms.TypedChoiceField(
-                label=traveler.name, choices=choices, coerce=int, widget=forms.RadioSelect,
-                initial=current.get(traveler.pk), error_messages={"required": f"Choose where {traveler.name} goes."})
+                label=traveler.name,
+                choices=choices,
+                coerce=int,
+                widget=forms.RadioSelect,
+                initial=current.get(traveler.pk),
+                error_messages={"required": f"Choose where {traveler.name} goes."},
+            )
 
     def clean(self):
         cleaned = super().clean()
@@ -2496,8 +2730,6 @@ class SplitForm(forms.Form):
 
     def rows(self):
         return [(traveler, self[f"t{traveler.pk}"]) for traveler in self.travelers]
-
-
 
 
 class MealPageForm(InOptionMixin, MealForm):

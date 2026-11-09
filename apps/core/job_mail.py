@@ -13,6 +13,7 @@ sent while ``ADMINS`` is empty; a failure to send is logged as a warning and nev
 because of its own report. Bodies hold counts, step names, file paths and log tails — never secrets, passwords, API
 keys or personal data (emails, phones, travel documents).
 """
+
 import logging
 
 from django.conf import settings

@@ -1,5 +1,6 @@
 """Contacts and info notes linked to items (docs/plans/trip-page-ux.md, U4): ItemLink, where they
 show on the web and in the booklet, editing, and the privacy audit."""
+
 from datetime import date, timedelta
 from io import StringIO
 from unittest import mock
@@ -9,8 +10,18 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.models import (Contact, Day, ItemLink, Lodging, Section, TransportLeg, Trip, TripGrant, TripInfo,
-                               TripRole)
+from apps.trips.models import (
+    Contact,
+    Day,
+    ItemLink,
+    Lodging,
+    Section,
+    TransportLeg,
+    Trip,
+    TripGrant,
+    TripInfo,
+    TripRole,
+)
 
 User = get_user_model()
 
@@ -19,19 +30,29 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 26), end_date=date(2027, 9, 29),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 26), end_date=date(2027, 9, 29), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.days = [Day.objects.create(trip=self.trip, day_number=n, date=date(2027, 9, 25 + n)) for n in range(1, 5)]
-        self.hotel = Lodging.objects.create(trip=self.trip, name="Hard Days Night Hotel", check_in=self.days[0].date,
-                                            check_out=self.days[3].date)
-        self.leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Augsburg", destination="Munich",
-                                               date=self.days[1].date, est_duration=timedelta(minutes=35))
-        self.section = Section.objects.create(day=self.days[1], section_type="note", title="Oktoberfest",
-                                              content={"paragraphs": ["Tents open at 10."]})
-        self.desk = Contact.objects.create(trip=self.trip, name="Front desk", role="Hotel", phone="+44 151 236 1964",
-                                           email="desk@example.com")
+        self.hotel = Lodging.objects.create(
+            trip=self.trip, name="Hard Days Night Hotel", check_in=self.days[0].date, check_out=self.days[3].date
+        )
+        self.leg = TransportLeg.objects.create(
+            trip=self.trip,
+            mode="train",
+            origin="Augsburg",
+            destination="Munich",
+            date=self.days[1].date,
+            est_duration=timedelta(minutes=35),
+        )
+        self.section = Section.objects.create(
+            day=self.days[1], section_type="note", title="Oktoberfest", content={"paragraphs": ["Tents open at 10."]}
+        )
+        self.desk = Contact.objects.create(
+            trip=self.trip, name="Front desk", role="Hotel", phone="+44 151 236 1964", email="desk@example.com"
+        )
         self.rules = TripInfo.objects.create(trip=self.trip, title="Bayern Ticket rules", body="Regional trains only.")
         self.other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         self.other_day = Day.objects.create(trip=self.other, day_number=1, date=date(2027, 1, 1))
@@ -44,7 +65,7 @@ class Fixture(TestCase):
     def day_html(self, html, number):
         start = html.index(f'id="day-{number}"')
         end = html.find(f'id="day-{number + 1}"', start)
-        return html[start:end if end != -1 else html.index('id="reference"')]
+        return html[start : end if end != -1 else html.index('id="reference"')]
 
 
 class ModelTests(Fixture):
@@ -75,7 +96,7 @@ class WebTests(Fixture):
         for number in (1, 2, 3):
             self.assertIn("Front desk", self.day_html(html, number))
         self.assertNotIn("Front desk", self.day_html(html, 4))  # check-out morning: no night there
-        reference = html[html.index('id="reference"'):]
+        reference = html[html.index('id="reference"') :]
         self.assertEqual(reference.count(f'id="contact-{self.desk.pk}"'), 1)
         self.assertIn('href="tel:+441512361964"', html)
         self.assertIn('href="mailto:desk@example.com"', html)
@@ -85,10 +106,10 @@ class WebTests(Fixture):
         ItemLink.link(self.rules, self.leg)
         ItemLink.link(self.rules, self.days[2])
         html = self.page()
-        leg_row = html[html.index(f'id="leg-{self.leg.pk}"'):]
+        leg_row = html[html.index(f'id="leg-{self.leg.pk}"') :]
         self.assertIn("Bayern Ticket rules", leg_row[:3000])
         self.assertIn("Good to know", self.day_html(html, 3))
-        self.assertIn(f'id="info-{self.rules.pk}"', html[html.index('id="reference"'):])
+        self.assertIn(f'id="info-{self.rules.pk}"', html[html.index('id="reference"') :])
 
     def test_in_the_booklet_on_its_day_and_in_reference(self):
         ItemLink.link(self.rules, self.leg)
@@ -113,10 +134,14 @@ class EditingTests(Fixture):
     def test_attach_create_and_remove_from_an_item(self):
         self.client.force_login(self.editor)
         self.client.post(self.url("leg", self.leg), {"action": "attach", "source": f"contact:{self.desk.pk}"})
-        self.client.post(self.url("stay", self.hotel), {"action": "new_contact", "contact-name": "Taxi",
-                                                        "contact-phone": "+44 151 222"})
-        self.client.post(self.url("day", self.days[1]), {"action": "new_info", "info-title": "Tent guide",
-                                                         "info-body": "Arrive early."})
+        self.client.post(
+            self.url("stay", self.hotel),
+            {"action": "new_contact", "contact-name": "Taxi", "contact-phone": "+44 151 222"},
+        )
+        self.client.post(
+            self.url("day", self.days[1]),
+            {"action": "new_info", "info-title": "Tent guide", "info-body": "Arrive early."},
+        )
         self.assertEqual(ItemLink.objects.count(), 3)
         taxi = Contact.objects.get(name="Taxi")
         self.client.post(self.url("stay", self.hotel), {"action": "detach", "source": f"contact:{taxi.pk}"})
@@ -125,29 +150,45 @@ class EditingTests(Fixture):
 
     def test_refuses_other_trips_and_checks_permissions(self):
         self.client.force_login(self.editor)
-        self.assertEqual(self.client.get(reverse("trips:item_links",
-                                                 args=[self.trip.pk, "day", self.other_day.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("trips:item_links", args=[self.trip.pk, "day", self.other_day.pk])).status_code, 404
+        )
         theirs = Contact.objects.create(trip=self.other, name="Theirs")
-        self.assertEqual(self.client.post(self.url("leg", self.leg), {"action": "attach",
-                                                                      "source": f"contact:{theirs.pk}"}).status_code, 404)
+        self.assertEqual(
+            self.client.post(
+                self.url("leg", self.leg), {"action": "attach", "source": f"contact:{theirs.pk}"}
+            ).status_code,
+            404,
+        )
         self.client.force_login(self.viewer)
         self.assertEqual(self.client.get(self.url("leg", self.leg)).status_code, 403)
 
     def test_contact_and_info_pages_save_their_ticks(self):
         self.client.force_login(self.editor)
-        self.client.post(reverse("trips:contact_edit", args=[self.trip.pk, self.desk.pk]), {
-            "name": "Front desk", "phone": "+44 151 236 1964", "address": "Mathew St, Liverpool",
-            "links": [f"stay:{self.hotel.pk}", f"leg:{self.leg.pk}"]})
+        self.client.post(
+            reverse("trips:contact_edit", args=[self.trip.pk, self.desk.pk]),
+            {
+                "name": "Front desk",
+                "phone": "+44 151 236 1964",
+                "address": "Mathew St, Liverpool",
+                "links": [f"stay:{self.hotel.pk}", f"leg:{self.leg.pk}"],
+            },
+        )
         self.desk.refresh_from_db()
         self.assertEqual((self.desk.address, self.desk.item_links.count()), ("Mathew St, Liverpool", 2))
-        self.client.post(reverse("trips:contact_edit", args=[self.trip.pk, self.desk.pk]), {
-            "name": "Front desk", "links": [f"stay:{self.hotel.pk}"]})
+        self.client.post(
+            reverse("trips:contact_edit", args=[self.trip.pk, self.desk.pk]),
+            {"name": "Front desk", "links": [f"stay:{self.hotel.pk}"]},
+        )
         self.assertEqual(self.desk.item_links.count(), 1)
-        self.client.post(reverse("trips:info_new", args=[self.trip.pk]), {
-            "title": "Currency", "body": "Cards everywhere.", "links": [f"section:{self.section.pk}"]})
+        self.client.post(
+            reverse("trips:info_new", args=[self.trip.pk]),
+            {"title": "Currency", "body": "Cards everywhere.", "links": [f"section:{self.section.pk}"]},
+        )
         self.assertEqual(TripInfo.objects.get(title="Currency").item_links.count(), 1)
-        self.assertNotIn(f"day:{self.other_day.pk}", self.client.get(
-            reverse("trips:info_new", args=[self.trip.pk])).content.decode())
+        self.assertNotIn(
+            f"day:{self.other_day.pk}", self.client.get(reverse("trips:info_new", args=[self.trip.pk])).content.decode()
+        )
 
 
 class AuditTests(Fixture):

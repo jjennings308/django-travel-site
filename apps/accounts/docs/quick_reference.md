@@ -47,24 +47,20 @@ user.can_access_content_dashboard  # content provider OR staff
 ### Query Users by Role
 ```python
 # All vendors
-User.objects.filter(groups__name='Vendors')
+User.objects.filter(groups__name="Vendors")
 
 # All content providers
-User.objects.filter(groups__name='Content Providers')
+User.objects.filter(groups__name="Content Providers")
 
 # Premium vendors
-User.objects.filter(
-    groups__name='Vendors'
-).exclude(subscription_tier='free')
+User.objects.filter(groups__name="Vendors").exclude(subscription_tier="free")
 ```
 
 ### Handle Role Requests
 ```python
 # User applies
 role_request = RoleRequest.objects.create(
-    user=user,
-    requested_role=RoleRequest.RequestedRole.VENDOR,
-    business_description="..."
+    user=user, requested_role=RoleRequest.RequestedRole.VENDOR, business_description="..."
 )
 
 # Staff approves
@@ -75,10 +71,7 @@ role_request.approve(reviewed_by=staff_user)
 # - Sets status to approved
 
 # Staff rejects
-role_request.reject(
-    reviewed_by=staff_user,
-    reason="Does not meet requirements"
-)
+role_request.reject(reviewed_by=staff_user, reason="Does not meet requirements")
 ```
 
 ### Upgrade Subscription
@@ -222,7 +215,7 @@ content_rating  # DecimalField
 
 ### Checking Membership
 ```python
-user.groups.filter(name='Vendors').exists()  # Boolean
+user.groups.filter(name="Vendors").exists()  # Boolean
 user.is_vendor  # Property shortcut (same thing)
 ```
 
@@ -231,7 +224,7 @@ user.is_vendor  # Property shortcut (same thing)
 from django.contrib.auth.models import Group
 
 # Add to group
-vendor_group = Group.objects.get(name='Vendors')
+vendor_group = Group.objects.get(name="Vendors")
 user.groups.add(vendor_group)
 
 # Remove from group
@@ -265,15 +258,11 @@ from django.contrib.auth.models import Group
 from apps.accounts.models import VendorProfile
 
 # Add to group
-vendor_group, _ = Group.objects.get_or_create(name='Vendors')
+vendor_group, _ = Group.objects.get_or_create(name="Vendors")
 user.groups.add(vendor_group)
 
 # Create profile
-VendorProfile.objects.create(
-    user=user,
-    business_name="Their Business",
-    business_description="Description here"
-)
+VendorProfile.objects.create(user=user, business_name="Their Business", business_description="Description here")
 ```
 
 ### Upgrade to Premium
@@ -288,7 +277,7 @@ user.save()
 
 ### Check Pending Role Requests
 ```python
-pending = RoleRequest.objects.filter(status='pending')
+pending = RoleRequest.objects.filter(status="pending")
 for req in pending:
     print(f"{req.user.username} wants to be {req.requested_role}")
 ```
@@ -298,11 +287,11 @@ for req in pending:
 from django.contrib.auth.models import Group
 
 # Remove from group
-vendor_group = Group.objects.get(name='Vendors')
+vendor_group = Group.objects.get(name="Vendors")
 user.groups.remove(vendor_group)
 
 # Optionally delete profile
-if hasattr(user, 'vendor_profile'):
+if hasattr(user, "vendor_profile"):
     user.vendor_profile.delete()
 ```
 
@@ -316,25 +305,21 @@ from apps.accounts.models import User
 client = Client()
 
 # Create user
-user = User.objects.create_user(
-    username='testuser',
-    email='test@example.com',
-    password='testpass123'
-)
+user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass123")
 
 # Login with username
-response = client.post('/accounts/login/', {
-    'username': 'testuser',
-    'password': 'testpass123'
-})
+response = client.post("/accounts/login/", {"username": "testuser", "password": "testpass123"})
 assert response.status_code == 302  # Redirect on success
 
 # Login with email
 client.logout()
-response = client.post('/accounts/login/', {
-    'username': 'test@example.com',  # Email in username field
-    'password': 'testpass123'
-})
+response = client.post(
+    "/accounts/login/",
+    {
+        "username": "test@example.com",  # Email in username field
+        "password": "testpass123",
+    },
+)
 assert response.status_code == 302  # Also works!
 ```
 
@@ -344,20 +329,18 @@ from apps.accounts.models import RoleRequest
 
 # User applies
 role_request = RoleRequest.objects.create(
-    user=user,
-    requested_role=RoleRequest.RequestedRole.VENDOR,
-    business_description="Test business"
+    user=user, requested_role=RoleRequest.RequestedRole.VENDOR, business_description="Test business"
 )
 
-assert role_request.status == 'pending'
+assert role_request.status == "pending"
 assert not user.is_vendor
 
 # Approve
 role_request.approve(reviewed_by=admin_user)
 
-assert role_request.status == 'approved'
+assert role_request.status == "approved"
 assert user.is_vendor
-assert hasattr(user, 'vendor_profile')
+assert hasattr(user, "vendor_profile")
 ```
 
 ## Troubleshooting

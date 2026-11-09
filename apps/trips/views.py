@@ -25,60 +25,59 @@ from urllib.parse import quote
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone as django_timezone
+from django.views.decorators.http import require_POST
 
+from apps.core.pwa import offline_cache_key
+from apps.locations.models import City
 
+from . import budget_plan, checklists, costs, currencies, itinerary, route, trip_cities, trip_notes
+from .dashboard import build_dashboard
 from .forms import (
-    CoverPhotoForm,
-    TripExpenseForm,
     AddTravelerForm,
     CommentForm,
+    CoverPhotoForm,
     DayForm,
     MealFormSet,
     RewardsMembershipFormSet,
     SectionForm,
     TravelerProfileForm,
+    TripExpenseForm,
     TripForm,
     section_payload_form,
 )
-from apps.locations.models import City
-from . import budget, budget_plan, checklists, costs, currencies, itinerary, route, trip_cities, trip_notes
 from .models import (
-    counts_q,
-    TripExpense,
+    COMMENT_TARGET_KINDS,
     BookingTask,
     Comment,
+    Confirmation,
+    ConfirmationLink,
     Day,
+    ItemLink,
     Lodging,
     Meal,
     Section,
+    TidyDismissal,
+    TransportLeg,
     Traveler,
     Trip,
+    TripActivity,
+    TripExpense,
     TripGrant,
     TripRole,
-    TransportLeg,
-    TripActivity,
-    TidyDismissal,
-    Confirmation,
-    ConfirmationLink,
-    ItemLink,
     can_create_trip,
-    role_capabilities,
     comment_kind,
     comment_trip,
-    COMMENT_TARGET_KINDS,
+    counts_q,
+    role_capabilities,
 )
-from apps.core.pwa import offline_cache_key
-
-from .dashboard import build_dashboard
 from .public import public_trip
 
 
@@ -100,18 +99,14 @@ def _visible_capabilities(user, trips):
         {}
         if staff
         else dict(
-            TripGrant.objects.filter(
-                user=user, trip__in=[trip.pk for trip in trips]
-            ).values_list("trip_id", "role")
+            TripGrant.objects.filter(user=user, trip__in=[trip.pk for trip in trips]).values_list("trip_id", "role")
         )
     )
     for trip in trips:
         if staff:
             allowed = {"edit", "delete"}
         else:
-            allowed = role_capabilities(
-                roles.get(trip.pk), owns=trip.created_by_id == user.pk
-            )
+            allowed = role_capabilities(roles.get(trip.pk), owns=trip.created_by_id == user.pk)
         trip.list_capabilities = {
             "edit": "edit" in allowed,
             "delete": "delete" in allowed,
@@ -160,7 +155,9 @@ def _day_workshop(trip, day):
     day, then its sections and food ideas, each item with its confirmation numbers and linked
     contacts/notes. An edit page, so a handful of plain queries is fine here."""
     from django.contrib.contenttypes.models import ContentType
+
     from .models import Contact, ItemLink, TripInfo
+
     day.day_legs = list(trip.transport.filter(date=day.date)) if day.date else []
     for leg in day.day_legs:
         leg.order_label = f"order {leg.order}"  # untimed legs run in this order
@@ -168,17 +165,28 @@ def _day_workshop(trip, day):
     day.ordered_meals = list(day.meals.select_related("poi").order_by("order", "id"))
     sections = list(_day_sections(day).select_related("poi", "activity", "event"))
     from . import catalogue_links
+
     catalogue_links.attach_suggestions(trip, day.ordered_meals, sections)
     itinerary.timeline([day])
     # Stays (E1): checking out, checking in, or the night you're sleeping there — as on the trip page.
-    stays = list(trip.lodging.filter(check_in__lte=day.date, check_out__gte=day.date).select_related("city")) if day.date else []
+    stays = (
+        list(trip.lodging.filter(check_in__lte=day.date, check_out__gte=day.date).select_related("city"))
+        if day.date
+        else []
+    )
     for stay in stays:
-        stay.workshop_label = ("Check in" if stay.check_in == day.date
-                               else "Check out" if stay.check_out == day.date else "Sleeping")
+        stay.workshop_label = (
+            "Check in" if stay.check_in == day.date else "Check out" if stay.check_out == day.date else "Sleeping"
+        )
     stays.sort(key=lambda stay: ("Check out", "Check in", "Sleeping").index(stay.workshop_label))
     items = {}
-    for model, objs in ((TransportLeg, day.day_legs), (TripActivity, day.ordered_activities),
-                        (Meal, day.ordered_meals), (Section, sections), (Lodging, stays)):
+    for model, objs in (
+        (TransportLeg, day.day_legs),
+        (TripActivity, day.ordered_activities),
+        (Meal, day.ordered_meals),
+        (Section, sections),
+        (Lodging, stays),
+    ):
         type_id = ContentType.objects.get_for_model(model).pk
         for obj in objs:
             obj.confirmation_list, obj.refs = [], []
@@ -194,8 +202,13 @@ def _day_workshop(trip, day):
         source = sources.get((link.source_type_id, link.source_id))
         if item is not None and source is not None:
             item.refs.append(source)
-    return {"sections": sections, "timeline": day.timeline, "any_time": day.any_time,
-            "food_ideas": day.food_ideas, "day_stays": stays}
+    return {
+        "sections": sections,
+        "timeline": day.timeline,
+        "any_time": day.any_time,
+        "food_ideas": day.food_ideas,
+        "day_stays": stays,
+    }
 
 
 @login_required
@@ -204,6 +217,7 @@ def catalogue_link(request, trip_pk, day_pk, kind, item_pk):
     """Link a meal or section to a suggested catalogue place / activity, or say "Not this one"
     (site roadmap R18). The target must be among the trip's catalogue choices."""
     from . import catalogue_links
+
     trip, day = _editable_day(request, trip_pk, day_pk)
     model = catalogue_links.KINDS.get(kind)
     if model is None:
@@ -214,7 +228,8 @@ def catalogue_link(request, trip_pk, day_pk, kind, item_pk):
         return HttpResponseBadRequest("Missing target.")
     if request.POST.get("dismiss"):
         TidyDismissal.objects.get_or_create(
-            trip=trip, key=catalogue_links.dismissal_key(kind, item.pk, target_kind, int(target_pk)))
+            trip=trip, key=catalogue_links.dismissal_key(kind, item.pk, target_kind, int(target_pk))
+        )
     elif catalogue_links.link(trip, item, target_kind, int(target_pk)):
         messages.success(request, f"Linked to {getattr(item, target_kind).name} in the catalogue.")
     else:
@@ -250,9 +265,7 @@ def trip_list(request):
         Trip.objects.visible_to(request.user)
         .prefetch_related("travelers")
         .annotate(
-            outstanding_task_count=Count(
-                "booking_tasks", filter=Q(booking_tasks__done=False), distinct=True
-            ),
+            outstanding_task_count=Count("booking_tasks", filter=Q(booking_tasks__done=False), distinct=True),
             days_count=Count("days", distinct=True),
         )
     )
@@ -327,10 +340,7 @@ def _trip_comments(trip, user):
     # per model, so four kinds would have cost four queries on every trip page
     # render — a fixed tax on the page's query count for no information.
     content_types = ContentType.objects.get_for_models(*COMMENT_TARGET_KINDS.values())
-    kind_for_content_type = {
-        content_types[model].pk: kind
-        for kind, model in COMMENT_TARGET_KINDS.items()
-    }
+    kind_for_content_type = {content_types[model].pk: kind for kind, model in COMMENT_TARGET_KINDS.items()}
 
     condition = Q()
     for kind, model in COMMENT_TARGET_KINDS.items():
@@ -340,11 +350,7 @@ def _trip_comments(trip, user):
                 object_id__in=ids[kind],
             )
 
-    rows = (
-        Comment.objects.filter(condition)
-        .annotate_editable(user)
-        .select_related("author")
-    )
+    rows = Comment.objects.filter(condition).annotate_editable(user).select_related("author")
     by_target = {}
     for row in rows:
         kind = kind_for_content_type.get(row.content_type_id)
@@ -363,8 +369,11 @@ def _trip_comments(trip, user):
 def _target_comments(user, kind, obj):
     """One day's or section's comments, for its edit page in the item panel (P2: the Comments tab)."""
     content_type = ContentType.objects.get_for_model(COMMENT_TARGET_KINDS[kind])
-    return list(Comment.objects.filter(content_type=content_type, object_id=obj.pk)
-                .annotate_editable(user).select_related("author"))
+    return list(
+        Comment.objects.filter(content_type=content_type, object_id=obj.pk)
+        .annotate_editable(user)
+        .select_related("author")
+    )
 
 
 def _trip_page_queryset(user):
@@ -384,9 +393,13 @@ def _trip_page_queryset(user):
             Prefetch(
                 "days__sections",
                 # Their catalogue place (with city) and activity ride along (R18; no extra query).
-                queryset=Section.objects.select_related("poi__city__country", "activity__city__country",
-                                                        "event__related_activity", "event__poi__city__country",
-                                                        "event__city__country").order_by("order", "id"),
+                queryset=Section.objects.select_related(
+                    "poi__city__country",
+                    "activity__city__country",
+                    "event__related_activity",
+                    "event__poi__city__country",
+                    "event__city__country",
+                ).order_by("order", "id"),
                 to_attr="ordered_sections",
             ),
             Prefetch(
@@ -398,9 +411,9 @@ def _trip_page_queryset(user):
             # going: two fixed queries.
             Prefetch(
                 "days__activities",
-                queryset=TripActivity.objects.select_related("poi__city__country", "event__related_activity",
-                                                         "event__poi__city__country", "event__city__country")
-                .prefetch_related("travelers"),
+                queryset=TripActivity.objects.select_related(
+                    "poi__city__country", "event__related_activity", "event__poi__city__country", "event__city__country"
+                ).prefetch_related("travelers"),
                 to_attr="ordered_activities",
             ),
             # The template calls day.is_split and day.roster_summary per day, and
@@ -434,11 +447,7 @@ def _trip_page_queryset(user):
             "checklists__items__ticks",
             "travelers",
         )
-        .annotate(
-            outstanding_task_count=Count(
-                "booking_tasks", filter=Q(booking_tasks__done=False), distinct=True
-            )
-        )
+        .annotate(outstanding_task_count=Count("booking_tasks", filter=Q(booking_tasks__done=False), distinct=True))
     )
 
 
@@ -460,6 +469,7 @@ def trip_detail(request, pk):
     context = _trip_page_context(request, trip)
     # The Ideas shelf (day-first plan P6): two queries, the whole page only (not a day's fragment).
     from . import ideas
+
     all_ideas = ideas.load(trip, request.user)
     shelf = [idea for idea in all_ideas if idea.on_shelf]
     for idea in shelf:  # "Add as an option" offers the undecided choices its kind fits (typed-choices T3)
@@ -468,8 +478,14 @@ def trip_detail(request, pk):
     return render(request, "trips/trip_detail.html", context)
 
 
-QUICK_ADD_KINDS = [("travel", "Travel"), ("stay", "Stay"), ("do", "Do"), ("eat", "Eat"), ("note", "Note"),
-                   ("options", "Options")]  # + Add's kind buttons (P3; Options, a "choose one", P4)
+QUICK_ADD_KINDS = [
+    ("travel", "Travel"),
+    ("stay", "Stay"),
+    ("do", "Do"),
+    ("eat", "Eat"),
+    ("note", "Note"),
+    ("options", "Options"),
+]  # + Add's kind buttons (P3; Options, a "choose one", P4)
 
 
 def _trip_page_context(request, trip):
@@ -484,13 +500,16 @@ def _trip_page_context(request, trip):
     # "Choose one" groups (day-first plan P4): items in an undecided or unchosen option leave the
     # prefetched lists here, so everything below counts only what's decided. Three queries.
     from . import options as option_groups
+
     all_groups = option_groups.load(trip)
     open_groups = option_groups.attach(trip, list(trip.days.all()), request.user, groups=all_groups)
     stray_legs = itinerary.place_legs(trip)
     _attach_confirmations(trip)
     from . import booking_tasks
+
     booking_tasks.attach(trip, suggestions="edit" in capabilities)
     from .travel_tables import has_pending
+
     travel_tables_pending = "edit" in capabilities and has_pending(trip.days.all())
     # The page shell (trip-page UX plan, U2): where you sleep each night, the Overview row per
     # day and the day to open on arrival — all from the rows above, no queries.
@@ -579,20 +598,27 @@ def _to_book_urls(trip, to_book, can_edit):
     for row in to_book["rows"]:
         item, kind = row["item"], row["kind"]
         if row["no_plan"]:
-            row["open"] = (_item_page(trip, item) if can_edit
-                           else reverse("trips:item_panel", args=[trip.pk, kind, item.pk]))
+            row["open"] = (
+                _item_page(trip, item) if can_edit else reverse("trips:item_panel", args=[trip.pk, kind, item.pk])
+            )
         else:
             task = row["tasks"][0]
-            row["open"] = (reverse("trips:task_edit", args=[trip.pk, task.pk]) if can_edit
-                           else reverse("trips:item_panel", args=[trip.pk, "task", task.pk]))
+            row["open"] = (
+                reverse("trips:task_edit", args=[trip.pk, task.pk])
+                if can_edit
+                else reverse("trips:item_panel", args=[trip.pk, "task", task.pk])
+            )
         row["item_page"] = _item_page(trip, item)
         if can_edit:
             row["todo"] = reverse("trips:task_new", args=[trip.pk]) + f"?{kind}={item.pk}"
             row["confirm"] = reverse("trips:item_confirmations", args=[trip.pk, kind, item.pk])
             row["no_booking"] = reverse("trips:item_no_booking", args=[trip.pk, kind, item.pk])
     for task in to_book["other"]:
-        task.open_url = (reverse("trips:task_edit", args=[trip.pk, task.pk]) if can_edit
-                         else reverse("trips:item_panel", args=[trip.pk, "task", task.pk]))
+        task.open_url = (
+            reverse("trips:task_edit", args=[trip.pk, task.pk])
+            if can_edit
+            else reverse("trips:item_panel", args=[trip.pk, "task", task.pk])
+        )
     to_book["count"] = len(to_book["rows"])
     to_book["no_plan"] = [row for row in to_book["rows"] if row["no_plan"]]  # To do and Bookings
     return to_book
@@ -614,6 +640,7 @@ def item_no_booking(request, pk, kind, item_pk):
     """Mark a leg, stay or activity "No booking needed" (``undo=1``: needed again; editors; booking-todos
     K2): it leaves To book and Not booked yet. A history line, as any field change."""
     from .models import TASKABLE, item_trip_id
+
     model = TASKABLE.get(kind)
     if model is None:
         raise Http404
@@ -622,6 +649,7 @@ def item_no_booking(request, pk, kind, item_pk):
     if item_trip_id(item) != trip.pk:
         raise Http404
     from .booking_tasks import label
+
     item.no_booking = request.POST.get("undo") != "1"
     item.save(update_fields=["no_booking"])
     messages.success(request, f"{label(item)}: {'no booking needed' if item.no_booking else 'to book again'}.")
@@ -660,8 +688,11 @@ def _find_on_days(context, kind, item_pk):
     if kind in ("leg", "stay"):
         return None, None
     for day in days:
-        items = {"activity": getattr(day, "ordered_activities", []), "meal": getattr(day, "ordered_meals", []),
-                 "section": getattr(day, "ordered_sections", [])}[kind]
+        items = {
+            "activity": getattr(day, "ordered_activities", []),
+            "meal": getattr(day, "ordered_meals", []),
+            "section": getattr(day, "ordered_sections", []),
+        }[kind]
         for item in items:
             if item.pk == item_pk:
                 return item, day
@@ -683,10 +714,18 @@ def item_panel(request, pk, kind, item_pk):
     by_target = context["comments_by_target"]
     comments = by_target.get(kind, {}).get(item.pk, []) if kind in ("day", "section", "task") else None
     request.path = reverse("trips:trip_detail", args=[trip.pk])
-    return render(request, "trips/item_panel.html", {
-        **context, "kind": kind, "item": item, "day": day, "panel_comments": comments,
-        "can_edit": False,  # read-only, whoever opens it
-    })
+    return render(
+        request,
+        "trips/item_panel.html",
+        {
+            **context,
+            "kind": kind,
+            "item": item,
+            "day": day,
+            "panel_comments": comments,
+            "can_edit": False,  # read-only, whoever opens it
+        },
+    )
 
 
 @login_required
@@ -699,15 +738,18 @@ def trip_pdf(request, pk):
     the end, from ``budget_plan`` over this view's own prefetch plus one query for the expenses. The plain booklet
     runs none of it."""
     import logging
+
     from django.http import HttpResponse
     from django.template.loader import render_to_string
     from django.utils.text import slugify
+
     from . import booking_tasks
     from .pdf import PdfUnavailable, booklet_context, render_pdf
 
     trip = get_object_or_404(_trip_page_queryset(request.user), pk=pk)
     with_budget = request.GET.get("budget") == "1"
     from . import options as option_groups
+
     groups = option_groups.load(trip)
     option_groups.attach(trip, list(trip.days.all()), request.user, groups=groups)  # only what counts (P4)
     stray_legs = itinerary.place_legs(trip)
@@ -721,26 +763,45 @@ def trip_pdf(request, pk):
         expenses = list(trip.expenses.all())
         budget_plan.attach_to_pay(trip, expenses)
         budget_page = budget_plan.booklet(trip, list(trip.days.all()), groups, expenses)
-    html = render_to_string("trips/pdf/booklet.html", {
-        "trip": trip, "stray_legs": stray_legs, "confirmation_groups": confirmation_groups(trip),
-        "printed": django_timezone.localdate(), "checklists": checklists.attach(trip), **booklet_context(trip),
-        "budget": budget_page,
-    }, request=request)
+    html = render_to_string(
+        "trips/pdf/booklet.html",
+        {
+            "trip": trip,
+            "stray_legs": stray_legs,
+            "confirmation_groups": confirmation_groups(trip),
+            "printed": django_timezone.localdate(),
+            "checklists": checklists.attach(trip),
+            **booklet_context(trip),
+            "budget": budget_page,
+        },
+        request=request,
+    )
     try:
         pdf = render_pdf(html, base_url=request.build_absolute_uri("/"))
     except PdfUnavailable as exc:
         logging.getLogger(__name__).error("Trip PDF unavailable: %s", exc)
-        messages.error(request, "The PDF booklet can't be made on this server yet (its PDF libraries are "
-                                "missing). Use your browser's Print → Save as PDF for now.")
+        messages.error(
+            request,
+            "The PDF booklet can't be made on this server yet (its PDF libraries are "
+            "missing). Use your browser's Print → Save as PDF for now.",
+        )
         return redirect("trips:trip_detail", pk=trip.pk)
     response = HttpResponse(pdf, content_type="application/pdf")
-    filename = f"{slugify(trip.public_title or trip.name) or 'trip'}-{'booklet-budget' if with_budget else 'itinerary'}.pdf"
+    filename = (
+        f"{slugify(trip.public_title or trip.name) or 'trip'}-{'booklet-budget' if with_budget else 'itinerary'}.pdf"
+    )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 
-CONFIRMATION_GROUPS = (("flight", "Flights"), ("train", "Trains"), ("stay", "Stays"), ("activity", "Activities"),
-                       ("meal", "Meals"), ("other", "Other"))
+CONFIRMATION_GROUPS = (
+    ("flight", "Flights"),
+    ("train", "Trains"),
+    ("stay", "Stays"),
+    ("activity", "Activities"),
+    ("meal", "Meals"),
+    ("other", "Other"),
+)
 
 
 def _attach_confirmations(trip):
@@ -789,8 +850,10 @@ def confirmation_groups(trip):
         buckets[confirmation.kind].append(confirmation)
     groups = []
     for key, title in CONFIRMATION_GROUPS:
-        items = sorted(buckets[key], key=lambda c: (c.first_date is None, c.first_date or date.min,
-                                                    (c.label or c.confirmation_number).lower()))
+        items = sorted(
+            buckets[key],
+            key=lambda c: (c.first_date is None, c.first_date or date.min, (c.label or c.confirmation_number).lower()),
+        )
         if items:
             groups.append((title, items))
     return groups
@@ -876,9 +939,7 @@ def trip_create(request):
         # A creator who can make a trip but cannot edit the result would create
         # something they cannot finish, or that vanishes from their own list. Give
         # them an editor grant on what they just made.
-        TripGrant.objects.create(
-            trip=trip, user=request.user, granted_by=request.user, role=TripRole.EDITOR
-        )
+        TripGrant.objects.create(trip=trip, user=request.user, granted_by=request.user, role=TripRole.EDITOR)
         cover_form.trip = trip
         cover_form.save(request.user)  # a cover photo uploaded with the new trip
 
@@ -905,6 +966,7 @@ def trip_route(request, pk):
     one transaction under one history line. Editors only."""
     from . import route as route_module
     from .forms import RouteFormSet
+
     trip = _readable_trip(request, pk, "edit")
     days = list(trip.days.select_related("city"))
     options = {"replace": False, "legs": True, "stays": True, "extend": False}
@@ -914,12 +976,16 @@ def trip_route(request, pk):
         options = {name: request.POST.get(name) == "on" for name in options}
         if formset.is_valid():
             stops = [(row["city"], row["nights"]) for row in formset.cleaned_data if row.get("city")]
-            route = route_module.plan(trip, stops, days, list(trip.transport.all()), list(trip.lodging.all()),
-                                      extend=options["extend"])
+            route = route_module.plan(
+                trip, stops, days, list(trip.transport.all()), list(trip.lodging.all()), extend=options["extend"]
+            )
             if "save" in request.POST and stops:
-                counts = route_module.apply(trip, route, replace=options["replace"], make_legs=options["legs"],
-                                            make_stays=options["stays"])
-                parts = [f"{counts['days'] + counts['new_days']} day{'s' if counts['days'] + counts['new_days'] != 1 else ''}"]
+                counts = route_module.apply(
+                    trip, route, replace=options["replace"], make_legs=options["legs"], make_stays=options["stays"]
+                )
+                parts = [
+                    f"{counts['days'] + counts['new_days']} day{'s' if counts['days'] + counts['new_days'] != 1 else ''}"
+                ]
                 if counts["legs"]:
                     parts.append(f"{counts['legs']} planned leg{'s' if counts['legs'] != 1 else ''}")
                 if counts["stays"]:
@@ -927,13 +993,19 @@ def trip_route(request, pk):
                 messages.success(request, f"Route set: {route.summary}. Saved {', '.join(parts)}.")
                 return redirect(reverse("trips:trip_detail", args=[trip.pk]) + "#days")
             # Preview: the same rows again, with room for more stops.
-            formset = RouteFormSet(initial=[{"city": c, "nights": n} for c, n in stops],
-                                   form_kwargs={"trip": trip})
+            formset = RouteFormSet(initial=[{"city": c, "nights": n} for c, n in stops], form_kwargs={"trip": trip})
     else:
         formset = RouteFormSet(initial=route_module.initial_stops(days, trip.end_date), form_kwargs={"trip": trip})
-    return render(request, "trips/trip_route.html", {
-        "trip": trip, "formset": formset, "route": route, "options": options,
-    })
+    return render(
+        request,
+        "trips/trip_route.html",
+        {
+            "trip": trip,
+            "formset": formset,
+            "route": route,
+            "options": options,
+        },
+    )
 
 
 @login_required
@@ -967,6 +1039,7 @@ def trip_settings(request, pk):
         _warn_if_ready_with_open_tasks(request, trip)
         if (trip.start_date, trip.end_date) != before:
             from . import day_fit
+
             found = day_fit.plan(trip)
             if found["missing"] or found["outside"]:
                 url = reverse("trips:trip_days_fit", args=[trip.pk])
@@ -978,6 +1051,7 @@ def trip_settings(request, pk):
         return redirect("trips:trip_detail", pk=trip.pk)
 
     from .forms import share_choices
+
     share_choices(form)  # one query per select list (R23)
     return render(
         request,
@@ -1004,6 +1078,7 @@ def trip_days_fit(request, pk):
     """Fit the days to the trip's dates (editors; P7): after Settings moves them, add days for the
     new dates and remove ones now outside — each ticked or not; nothing changes until saved."""
     from . import day_fit
+
     trip = _readable_trip(request, pk, "edit")
     found = day_fit.plan(trip)
     settings_url = reverse("trips:trip_settings", args=[trip.pk])
@@ -1017,9 +1092,18 @@ def trip_days_fit(request, pk):
         remove = [int(v) for v in request.POST.getlist("remove") if v.isdigit()]
         made, removed = day_fit.apply(trip, add, remove)
         if made or removed:
-            messages.success(request, " and ".join(part for part in (
-                f"added {made} day{'s' if made != 1 else ''}" if made else "",
-                f"removed {removed}" if removed else "") if part).capitalize() + ".")
+            messages.success(
+                request,
+                " and ".join(
+                    part
+                    for part in (
+                        f"added {made} day{'s' if made != 1 else ''}" if made else "",
+                        f"removed {removed}" if removed else "",
+                    )
+                    if part
+                ).capitalize()
+                + ".",
+            )
         return redirect(settings_url + "#days")
     # The start date moved (Settings passes the old one): offer to move everything instead (DR1).
     # DR3: offered whenever the start moved and the days don't start on the new start yet (not only when some fall
@@ -1029,19 +1113,31 @@ def trip_days_fit(request, pk):
     moved_from = _date_param(request.GET.get("moved_from"))
     dated = sorted(day.date for day in trip.days.all() if day.date)
     if moved_from and trip.start_date and moved_from != trip.start_date and dated and dated[0] != trip.start_date:
-        from .reschedule import span, _d
+        from .reschedule import _d, span
+
         n = (trip.start_date - moved_from).days
         shift_url = reverse("trips:trip_shift", args=[trip.pk]) + f"?moved_from={moved_from:%Y-%m-%d}"
         shift_offer = {"url": shift_url, "days_span": span(dated[0], dated[-1]), "start": trip.start_date}
         if request.GET.get("start_only") == "1" and trip.end_date:
             new_end = trip.end_date + timedelta(days=n)  # the end moves with the start: the same length
             length = (new_end - trip.start_date).days + 1
-            shift_offer.update({
-                "start_only": True, "url": shift_url + "&keep_length=1", "length": length,
-                "new_end": new_end, "end": trip.end_date, "added": len(found["missing"]),
-                "removed": len(found["outside"]), "start_text": _d(trip.start_date)})
-    return render(request, "trips/trip_days_fit.html", {"trip": trip, **found, "settings_url": settings_url,
-                                                        "shift_offer": shift_offer})
+            shift_offer.update(
+                {
+                    "start_only": True,
+                    "url": shift_url + "&keep_length=1",
+                    "length": length,
+                    "new_end": new_end,
+                    "end": trip.end_date,
+                    "added": len(found["missing"]),
+                    "removed": len(found["outside"]),
+                    "start_text": _d(trip.start_date),
+                }
+            )
+    return render(
+        request,
+        "trips/trip_days_fit.html",
+        {"trip": trip, **found, "settings_url": settings_url, "shift_offer": shift_offer},
+    )
 
 
 @login_required
@@ -1050,6 +1146,7 @@ def trip_reorder(request, pk):
     and the days move between them. Rows are the days' folded lines (the trip page's context, so a fixed number of
     queries); ↑ / ↓ and drag move them, or a Position box each without JavaScript. Preview (nothing saved) → Apply."""
     from . import reschedule
+
     trip = _readable_trip(request, pk, "edit")
     page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
     context = _trip_page_context(request, page_trip)
@@ -1065,9 +1162,13 @@ def trip_reorder(request, pk):
         order = _posted_order(request.POST, order)
         try:
             if request.POST.get("action") == "apply":
-                done = reschedule.reorder(trip, order, request.user,
-                                          booking_todos=request.POST.get("booking_todos") == "1",
-                                          move_stays=[v for v in request.POST.getlist("move_stays") if v.isdigit()])
+                done = reschedule.reorder(
+                    trip,
+                    order,
+                    request.user,
+                    booking_todos=request.POST.get("booking_todos") == "1",
+                    move_stays=[v for v in request.POST.getlist("move_stays") if v.isdigit()],
+                )
                 text = "The days are in their new order."
                 if done["made"]:
                     count = len(done["made"])
@@ -1079,13 +1180,28 @@ def trip_reorder(request, pk):
             messages.error(request, str(reason))
     slots = sorted(day.date for day in days if day.date)
     focus = request.GET.get("day", "")
-    rows = [{"day": by_pk[pk], "slot": slots[i] if i < len(slots) else None, "position": i + 1,
-             "moved": bool(preview) and pk in preview["moved"], "focus": str(pk) == focus}
-            for i, pk in enumerate(order)]
-    return render(request, "trips/trip_reorder.html", {
-        "trip": trip, "rows": rows, "slots": [f"{when:%a %b} {when.day}" for when in slots], "preview": preview,
-        "problem": problem, "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
-    })
+    rows = [
+        {
+            "day": by_pk[pk],
+            "slot": slots[i] if i < len(slots) else None,
+            "position": i + 1,
+            "moved": bool(preview) and pk in preview["moved"],
+            "focus": str(pk) == focus,
+        }
+        for i, pk in enumerate(order)
+    ]
+    return render(
+        request,
+        "trips/trip_reorder.html",
+        {
+            "trip": trip,
+            "rows": rows,
+            "slots": [f"{when:%a %b} {when.day}" for when in slots],
+            "preview": preview,
+            "problem": problem,
+            "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
+        },
+    )
 
 
 def _posted_order(post, current):
@@ -1115,6 +1231,7 @@ def trip_shift(request, pk):
     date → Preview (nothing saved) → Apply. With ``?moved_from=`` (from the fit-the-days page, after Settings saved a
     new start date) only the contents move, by the difference."""
     from . import reschedule
+
     trip = _readable_trip(request, pk, "edit")
     data = request.POST if request.method == "POST" else request.GET
     moved_from = _date_param(data.get("moved_from"))
@@ -1125,13 +1242,22 @@ def trip_shift(request, pk):
     elif start and trip.start_date:
         n = (start - trip.start_date).days
     # Settings moved only the start and the fit page's "Move the whole trip" keeps the length: the end moves too (DR3).
-    new_end = trip.end_date + timedelta(days=n) if (moved_from and n and trip.end_date
-                                                    and data.get("keep_length") == "1") else None
+    new_end = (
+        trip.end_date + timedelta(days=n)
+        if (moved_from and n and trip.end_date and data.get("keep_length") == "1")
+        else None
+    )
     if request.method == "POST" and n:
         try:
-            done = reschedule.shift(trip, n, request.user, move_due=data.get("move_due") == "1",
-                                    booking_todos=data.get("booking_todos") == "1", move_trip=moved_from is None,
-                                    new_end=new_end)
+            done = reschedule.shift(
+                trip,
+                n,
+                request.user,
+                move_due=data.get("move_due") == "1",
+                booking_todos=data.get("booking_todos") == "1",
+                move_trip=moved_from is None,
+                new_end=new_end,
+            )
         except reschedule.CannotMove as reason:
             messages.error(request, str(reason))
             return redirect("trips:trip_shift", pk=trip.pk)
@@ -1143,6 +1269,7 @@ def trip_shift(request, pk):
         messages.success(request, text)
         if moved_from:
             from . import day_fit
+
             found = day_fit.plan(trip)
             if found["missing"] or found["outside"]:
                 return redirect("trips:trip_days_fit", pk=trip.pk)
@@ -1156,10 +1283,18 @@ def trip_shift(request, pk):
     elif start and start == trip.start_date:
         messages.info(request, "That's the trip's start date already.")
     length = (trip.end_date - trip.start_date).days if trip.start_date and trip.end_date else None
-    return render(request, "trips/trip_shift.html", {
-        "trip": trip, "preview": preview, "moved_from": moved_from, "start": start or trip.start_date,
-        "length": length, "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
-    })
+    return render(
+        request,
+        "trips/trip_shift.html",
+        {
+            "trip": trip,
+            "preview": preview,
+            "moved_from": moved_from,
+            "start": start or trip.start_date,
+            "length": length,
+            "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
+        },
+    )
 
 
 @login_required
@@ -1177,11 +1312,16 @@ def _edit_trip_stays_and_legs(trip):
     confirmation numbers and its day, flagged when no day of the trip has its date; and the loose
     confirmations (insurance, a rail pass). A fixed handful of queries, whatever the trip's size."""
     from django.contrib.contenttypes.models import ContentType
-    from .travel_tables import logistics_sections
+
     from apps.trips.logistics import proposed_legs
+
+    from .travel_tables import logistics_sections
+
     days_by_date = {day.date: day for day in trip.days.all() if day.date}
-    leg_type, stay_type = (ContentType.objects.get_for_model(TransportLeg).pk,
-                           ContentType.objects.get_for_model(Lodging).pk)
+    leg_type, stay_type = (
+        ContentType.objects.get_for_model(TransportLeg).pk,
+        ContentType.objects.get_for_model(Lodging).pk,
+    )
     attached, loose = {}, []
     for confirmation in trip.confirmations.prefetch_related("links"):
         if not confirmation.links.all():
@@ -1190,21 +1330,43 @@ def _edit_trip_stays_and_legs(trip):
             attached.setdefault((link.content_type_id, link.object_id), []).append(confirmation)
     rows = []
     for leg in trip.transport.all():
-        rows.append({"kind": "leg", "item": leg, "anchor": f"leg-{leg.pk}", "when": leg.date, "day": days_by_date.get(leg.date),
-                     "what": leg.get_mode_display(), "label": f"{leg.origin} → {leg.destination}",
-                     "detail": ("planned" + (f" · {leg.est_duration_str}" if leg.est_duration_str else ""))
-                     if leg.is_planned else leg.departure_local_str,
-                     "confirmations": attached.get((leg_type, leg.pk), [])})
+        rows.append(
+            {
+                "kind": "leg",
+                "item": leg,
+                "anchor": f"leg-{leg.pk}",
+                "when": leg.date,
+                "day": days_by_date.get(leg.date),
+                "what": leg.get_mode_display(),
+                "label": f"{leg.origin} → {leg.destination}",
+                "detail": ("planned" + (f" · {leg.est_duration_str}" if leg.est_duration_str else ""))
+                if leg.is_planned
+                else leg.departure_local_str,
+                "confirmations": attached.get((leg_type, leg.pk), []),
+            }
+        )
     for stay in trip.lodging.all():
-        rows.append({"kind": "stay", "item": stay, "anchor": f"stay-{stay.pk}", "when": stay.check_in,
-                     "day": days_by_date.get(stay.check_in),
-                     "what": "Stay", "label": stay.name,
-                     "detail": f"{stay.nights} night{'s' if stay.nights != 1 else ''}",
-                     "confirmations": attached.get((stay_type, stay.pk), [])})
+        rows.append(
+            {
+                "kind": "stay",
+                "item": stay,
+                "anchor": f"stay-{stay.pk}",
+                "when": stay.check_in,
+                "day": days_by_date.get(stay.check_in),
+                "what": "Stay",
+                "label": stay.name,
+                "detail": f"{stay.nights} night{'s' if stay.nights != 1 else ''}",
+                "confirmations": attached.get((stay_type, stay.pk), []),
+            }
+        )
     rows.sort(key=lambda r: (r["when"] is None, r["when"] or date.min, r["kind"] != "stay"))
-    pending = any(any(p["strength"] == "arrow" for p in proposed_legs((s.content or {}).get("columns"),
-                                                                        (s.content or {}).get("rows")))
-                  for s in logistics_sections(trip))
+    pending = any(
+        any(
+            p["strength"] == "arrow"
+            for p in proposed_legs((s.content or {}).get("columns"), (s.content or {}).get("rows"))
+        )
+        for s in logistics_sections(trip)
+    )
     return {"item_rows": rows, "loose_confirmations": loose, "travel_tables_pending": pending}
 
 
@@ -1221,8 +1383,7 @@ def trip_delete(request, pk):
         trip.soft_delete()
         messages.success(
             request,
-            f"Deleted “{trip.name}”. Nothing was removed — a staff member can "
-            "restore it from the admin.",
+            f"Deleted “{trip.name}”. Nothing was removed — a staff member can restore it from the admin.",
         )
         return redirect("trips:trip_list")
 
@@ -1236,7 +1397,9 @@ def trip_share(request, pk):
     link is kept, so pressing Share again never breaks one already sent."""
     trip = _readable_trip(request, pk, "edit")
     trip.enable_public()
-    messages.success(request, "Sharing is on. Anyone with the link sees the trip's name, dates and outline, nothing else.")
+    messages.success(
+        request, "Sharing is on. Anyone with the link sees the trip's name, dates and outline, nothing else."
+    )
     return redirect("trips:trip_detail", pk=trip.pk)
 
 
@@ -1248,9 +1411,13 @@ def trip_notify(request, pk):
     grant = get_object_or_404(TripGrant, trip=trip, user=request.user)
     grant.notify_changes = request.POST.get("on") == "1"
     grant.save(update_fields=["notify_changes"])
-    messages.success(request, "You'll get a daily email when this trip changes, and one straight away if a "
-                              "journey's time changes in the week before it." if grant.notify_changes
-                     else "No more emails about changes to this trip. You can turn them back on from the ⋯ menu.")
+    messages.success(
+        request,
+        "You'll get a daily email when this trip changes, and one straight away if a "
+        "journey's time changes in the week before it."
+        if grant.notify_changes
+        else "No more emails about changes to this trip. You can turn them back on from the ⋯ menu.",
+    )
     return redirect("trips:trip_detail", pk=trip.pk)
 
 
@@ -1338,6 +1505,7 @@ def day_create(request, trip_pk):
         form = DayForm(request.POST, trip=trip)
         if form.is_valid():
             from . import day_fit
+
             with transaction.atomic():
                 day = form.save(commit=False)
                 day.trip = trip
@@ -1348,9 +1516,7 @@ def day_create(request, trip_pk):
                 day_fit.renumber(trip)
             day.refresh_from_db(fields=["day_number"])
             messages.success(request, f"Added day {day.day_number}.")
-            return redirect(
-                reverse("trips:trip_settings", args=[trip.pk]) + f"#day-{day.pk}"
-            )
+            return redirect(reverse("trips:trip_settings", args=[trip.pk]) + f"#day-{day.pk}")
 
     return render(
         request,
@@ -1377,6 +1543,7 @@ def day_edit(request, trip_pk, pk):
         meals_ok = meal_formset.is_valid()
         if day_ok and meals_ok:
             from . import day_fit, reschedule
+
             old, new = form.old_date, form.cleaned_data.get("date")
             moved = None
             with transaction.atomic():
@@ -1428,10 +1595,13 @@ def day_edit(request, trip_pk, pk):
 
 
 def _moved_day_text(moved, new):
-    """" Moved it to Sep 12 with 2 journeys and its stay. 1 booking to change: see To book." (DR3)"""
+    """ " Moved it to Sep 12 with 2 journeys and its stay. 1 booking to change: see To book." (DR3)"""
     from .reschedule import _d
-    parts = [f"{len(moved['legs'])} journey{'s' if len(moved['legs']) != 1 else ''}" if moved["legs"] else "",
-             f"{len(moved['stays'])} stay{'s' if len(moved['stays']) != 1 else ''}" if moved["stays"] else ""]
+
+    parts = [
+        f"{len(moved['legs'])} journey{'s' if len(moved['legs']) != 1 else ''}" if moved["legs"] else "",
+        f"{len(moved['stays'])} stay{'s' if len(moved['stays']) != 1 else ''}" if moved["stays"] else "",
+    ]
     parts = [part for part in parts if part]
     text = f" Moved it to {_d(new)}" + (f" with {' and '.join(parts)}" if parts else "") + "."
     if moved["made"]:
@@ -1457,11 +1627,7 @@ def day_delete(request, trip_pk, pk):
         number = day.day_number
         linked_tasks = day.booking_tasks.count()
         day.delete()
-        note = (
-            f" {linked_tasks} booking task(s) that pointed at it were kept."
-            if linked_tasks
-            else ""
-        )
+        note = f" {linked_tasks} booking task(s) that pointed at it were kept." if linked_tasks else ""
         messages.success(
             request,
             f"Deleted day {number}, along with its meals and sections.{note}",
@@ -1532,9 +1698,7 @@ def section_edit(request, trip_pk, day_pk, pk):
     if request.method == "POST":
         return _save_section(request, trip, day, section, section.section_type)
 
-    payload_form = section_payload_form(
-        section.section_type, content=section.content
-    )
+    payload_form = section_payload_form(section.section_type, content=section.content)
     context = _section_context(trip, day, section, payload_form, is_create=False)
     if _is_panel(request):
         context["panel_comments"] = _target_comments(request.user, "section", section)
@@ -1572,9 +1736,12 @@ def _section_legs_context(section):
         return {"section_legs": list(section.legs.all()), "leg_modes": TransportLeg.Mode.choices}
     if section.section_type == Section.Type.LOGISTICS_TABLE:
         from .logistics import proposed_legs
+
         content = section.content or {}
-        return {"turn_into_legs": bool(proposed_legs(content.get("columns"), content.get("rows"))),
-                "is_logistics_table": True}
+        return {
+            "turn_into_legs": bool(proposed_legs(content.get("columns"), content.get("rows"))),
+            "is_logistics_table": True,
+        }
     return {}
 
 
@@ -1588,7 +1755,9 @@ def section_to_travel_notes(request, trip_pk, day_pk, pk):
     section = get_object_or_404(day.sections.filter(section_type=Section.Type.LOGISTICS_TABLE), pk=pk)
     section.section_type = Section.Type.TRAVEL
     section.save(update_fields=["section_type"])
-    messages.success(request, f"“{section.title or 'The table'}” is now travel notes; its rows are kept as reference rows.")
+    messages.success(
+        request, f"“{section.title or 'The table'}” is now travel notes; its rows are kept as reference rows."
+    )
     return redirect("trips:section_edit", trip_pk=trip.pk, day_pk=day.pk, pk=section.pk)
 
 
@@ -1609,9 +1778,7 @@ def _save_section(request, trip, day, section, section_type):
         section = Section(day=day, section_type=section_type)
 
     metadata_form = SectionForm(request.POST, instance=section, trip=trip)
-    payload_form = section_payload_form(
-        section_type, request.POST, content=section.content
-    )
+    payload_form = section_payload_form(section_type, request.POST, content=section.content)
 
     # A type this UI has no payload form for can still have its title and icon
     # changed. Refusing would contradict the page, which offers exactly that.
@@ -1637,9 +1804,7 @@ def _save_section(request, trip, day, section, section_type):
         request,
         "trips/section_form.html",
         {
-            **_section_context(
-                trip, day, section, payload_form, is_create=section.pk is None
-            ),
+            **_section_context(trip, day, section, payload_form, is_create=section.pk is None),
             "form": metadata_form,
         },
     )
@@ -1742,9 +1907,7 @@ def _comment_return_url(target):
     kind = comment_kind(target)
     if kind is None:
         return reverse("trips:trip_detail", args=[trip.pk])
-    return reverse("trips:trip_detail", args=[trip.pk]) + (
-        "#" + _comment_thread_anchor(kind, target.pk)
-    )
+    return reverse("trips:trip_detail", args=[trip.pk]) + ("#" + _comment_thread_anchor(kind, target.pk))
 
 
 @login_required
@@ -1863,7 +2026,8 @@ def public_trip_detail(request, token):
     trip = get_object_or_404(
         Trip.objects.public(token).prefetch_related(
             Prefetch("days__meals", queryset=Meal.objects.filter(counts_q())),
-            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())))
+            Prefetch("days__sections", queryset=Section.objects.filter(counts_q())),
+        )
     )
     return render(
         request,
@@ -1891,8 +2055,10 @@ def traveler_profile(request):
     # "Add to my travel profile" from a catalogue program page (?program=<id>) fills the blank row.
     program_id = request.GET.get("program", "")
     memberships = RewardsMembershipFormSet(
-        request.POST or None, instance=traveler, prefix="memberships",
-        initial=[{"catalogue_program": int(program_id)}] if program_id.isdigit() else None
+        request.POST or None,
+        instance=traveler,
+        prefix="memberships",
+        initial=[{"catalogue_program": int(program_id)}] if program_id.isdigit() else None,
     )
 
     if request.method == "POST":
@@ -1928,14 +2094,19 @@ def trip_budget(request, pk, rate_formset=None):
     """
     from .budget import summarize
     from .forms import TripRateFormSet
+
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
     if can_edit and rate_formset is None:
         rate_formset = TripRateFormSet(instance=trip, prefix="rates", form_kwargs={"trip": trip})
     form = None
     if can_edit:
-        form = TripExpenseForm(request.POST if request.method == "POST" else None, trip=trip,
-                               instance=TripExpense(trip=trip), initial={"spent_on": trip.start_date})
+        form = TripExpenseForm(
+            request.POST if request.method == "POST" else None,
+            trip=trip,
+            instance=TripExpense(trip=trip),
+            initial={"spent_on": trip.start_date},
+        )
         if request.method == "POST" and form.is_valid():
             expense = form.save(commit=False)
             expense.trip, expense.created_by = trip, request.user
@@ -1948,12 +2119,16 @@ def trip_budget(request, pk, rate_formset=None):
     own_rates = list(trip.rates.all())
     for rate in own_rates:
         rate.rate_text = f"{rate.rate.normalize():f}"  # 1.5 and 160, not 1.50000000 or 1.6E+2
-    expenses = list(trip.expenses.select_related("paid_by", "day").prefetch_related("shared_with", "paid_for")
-                    .order_by("spent_on", "created_at"))
+    expenses = list(
+        trip.expenses.select_related("paid_by", "day")
+        .prefetch_related("shared_with", "paid_for")
+        .order_by("spent_on", "created_at")
+    )
     everyone = list(trip.travelers.all())
     # Totals in one currency (site roadmap R10): ?in=USD (default: the reader's currency), and
     # ?settle=1 to settle up in it too. Each cost converts at its own date's rate.
     from .budget import in_one_currency, rates_for
+
     target = (request.GET.get("in") or _reader_currency(request)).upper()[:3]
     currencies = sorted({e.currency.upper() for e in expenses} | {target})
     one = None
@@ -1971,16 +2146,39 @@ def trip_budget(request, pk, rate_formset=None):
     if can_edit and pay and request.method != "POST":
         row = next((r for c in plan["categories"] for r in c["rows"] if r.get("pay") == pay), None)
         if row is not None:
-            form = TripExpenseForm(trip=trip, instance=TripExpense(trip=trip), initial={
-                "description": row["label"], "amount": row.get("booked_amount"), "currency": row.get("booked_currency"),
-                "category": row["expense_category"], "paid_for": pay, "spent_on": django_timezone.localdate()})
-    return render(request, "trips/trip_budget.html", {
-        "trip": trip, "expenses": expenses, "summary": summary, "form": form,
-        "target": target, "one": one,
-        "currencies": sorted(set(currencies) | {target, (trip.home_currency or "USD").upper(), _reader_currency(request)}),
-        "settle_in_one": settle_in_one and one, "can_edit": can_edit, "everyone": everyone,
-        "own_rates": own_rates, "rate_formset": rate_formset, "plan": plan,
-    })
+            form = TripExpenseForm(
+                trip=trip,
+                instance=TripExpense(trip=trip),
+                initial={
+                    "description": row["label"],
+                    "amount": row.get("booked_amount"),
+                    "currency": row.get("booked_currency"),
+                    "category": row["expense_category"],
+                    "paid_for": pay,
+                    "spent_on": django_timezone.localdate(),
+                },
+            )
+    return render(
+        request,
+        "trips/trip_budget.html",
+        {
+            "trip": trip,
+            "expenses": expenses,
+            "summary": summary,
+            "form": form,
+            "target": target,
+            "one": one,
+            "currencies": sorted(
+                set(currencies) | {target, (trip.home_currency or "USD").upper(), _reader_currency(request)}
+            ),
+            "settle_in_one": settle_in_one and one,
+            "can_edit": can_edit,
+            "everyone": everyone,
+            "own_rates": own_rates,
+            "rate_formset": rate_formset,
+            "plan": plan,
+        },
+    )
 
 
 @login_required
@@ -1989,6 +2187,7 @@ def trip_rates(request, pk):
     """Save the trip's own exchange rates from the Budget page (editors). Errors show on the
     Budget page with the rows as typed."""
     from .forms import TripRateFormSet
+
     trip = _readable_trip(request, pk, "edit")
     formset = TripRateFormSet(request.POST, instance=trip, prefix="rates", form_kwargs={"trip": trip})
     if formset.is_valid():
@@ -2021,11 +2220,15 @@ def expense_edit(request, pk, expense_pk):
 def trip_photos(request, pk):
     """The trip's shared photo album. Anyone who can see the trip sees it; commentors and
     editors add photos (POST). A separate page, so the detail page's query count holds."""
-    from apps.media_app.forms import MAX_PHOTOS, MultipleImageField
     from django import forms as dj_forms
 
+    from apps.media_app.forms import MAX_PHOTOS, MultipleImageField
+
     class PhotoForm(dj_forms.Form):
-        photos = MultipleImageField(label="Add photos", help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.")
+        photos = MultipleImageField(
+            label="Add photos",
+            help_text=f"Up to {MAX_PHOTOS} at a time; JPEG, PNG, WebP or iPhone HEIC. Large photos are scaled down.",
+        )
 
     trip = _readable_trip(request, pk, "view")
     can_add = trip.can(request.user, "comment")
@@ -2039,14 +2242,23 @@ def trip_photos(request, pk):
             messages.success(request, f"Added {len(added)} photo{'s' if len(added) != 1 else ''}.")
             return redirect("trips:trip_photos", pk=trip.pk)
     photos = list(trip.photos())
-    return render(request, "trips/trip_photos.html", {
-        "trip": trip, "photos": photos, "form": form, "can_add": can_add, "can_edit": can_edit,
-        "cover_id": trip.album.cover_image_id if trip.album_id else None,
-    })
+    return render(
+        request,
+        "trips/trip_photos.html",
+        {
+            "trip": trip,
+            "photos": photos,
+            "form": form,
+            "can_add": can_add,
+            "can_edit": can_edit,
+            "cover_id": trip.album.cover_image_id if trip.album_id else None,
+        },
+    )
 
 
 def _trip_photo(request, pk, media_pk):
     from apps.media_app.models import AlbumMedia
+
     trip = _readable_trip(request, pk, "view")
     item = get_object_or_404(AlbumMedia.objects.select_related("media"), album_id=trip.album_id, media_id=media_pk)
     return trip, item.media
@@ -2105,8 +2317,11 @@ def _trip_stops(trip):
             stops[-1]["days"] += 1
         else:
             stops.append({"city": day.city, "first": day, "last": day, "days": 1})
-    legs = list(trip.transport.filter(counts_q(), origin_city__isnull=False, destination_city__isnull=False)
-                .select_related("origin_city__country", "destination_city__country"))  # Meta order: date, then time
+    legs = list(
+        trip.transport.filter(counts_q(), origin_city__isnull=False, destination_city__isnull=False).select_related(
+            "origin_city__country", "destination_city__country"
+        )
+    )  # Meta order: date, then time
     shown = {s["city"].pk for s in stops}
     others = {}
     for city in trip.cities.select_related("country"):
@@ -2124,23 +2339,34 @@ def trip_map(request, pk):
     other cities. A separate page, so the printed detail page and its query count hold."""
     trip = _readable_trip(request, pk, "view")
     stops, others, legs = _trip_stops(trip)
-    return render(request, "trips/trip_map.html", {
-        "trip": trip, "stops": stops, "others": others, "legs": legs, "can_edit": trip.can(request.user, "edit"),
-        "stays": list(trip.lodging.select_related("city").order_by("check_in")),
-    })
+    return render(
+        request,
+        "trips/trip_map.html",
+        {
+            "trip": trip,
+            "stops": stops,
+            "others": others,
+            "legs": legs,
+            "can_edit": trip.can(request.user, "edit"),
+            "stays": list(trip.lodging.select_related("city").order_by("check_in")),
+        },
+    )
 
 
 @login_required
 def trip_map_data(request, pk):
     """GeoJSON for trip_map (provider-neutral). Never part of the public view."""
     from django.http import JsonResponse
+
     trip = _readable_trip(request, pk, "view")
     stops, others, legs = _trip_stops(trip)
 
     def feature(city, **props):
-        return {"type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [float(city.longitude), float(city.latitude)]},
-                "properties": {"name": city.name, "url": reverse("locations:city_detail", args=[city.slug]), **props}}
+        return {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(city.longitude), float(city.latitude)]},
+            "properties": {"name": city.name, "url": reverse("locations:city_detail", args=[city.slug]), **props},
+        }
 
     def when(stop):
         first, last = stop["first"].date, stop["last"].date
@@ -2156,38 +2382,66 @@ def trip_map_data(request, pk):
             continue
         nights = stay.nights
         dates = f"{stay.check_in:%b} {stay.check_in.day} – {stay.check_out:%b} {stay.check_out.day}"
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(position[1]), float(position[0])]},
-            "properties": {
-                "layer": "stays", "marker": "stay", "name": stay.name,
-                "subtitle": " · ".join(p for p in (
-                    f"{dates} ({nights} night{'s' if nights != 1 else ''})",
-                    stay.city.name if stay.city_id else "",
-                    "" if stay.latitude is not None else "pin on the city centre") if p),
-            },
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(position[1]), float(position[0])]},
+                "properties": {
+                    "layer": "stays",
+                    "marker": "stay",
+                    "name": stay.name,
+                    "subtitle": " · ".join(
+                        p
+                        for p in (
+                            f"{dates} ({nights} night{'s' if nights != 1 else ''})",
+                            stay.city.name if stay.city_id else "",
+                            "" if stay.latitude is not None else "pin on the city centre",
+                        )
+                        if p
+                    ),
+                },
+            }
+        )
     for leg in legs:  # Times through the leg's own local-time helpers (never |date on a converted time).
         what = " ".join(p for p in (leg.operator, leg.service_number) if p)
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "LineString", "coordinates": [
-                [float(leg.origin_city.longitude), float(leg.origin_city.latitude)],
-                [float(leg.destination_city.longitude), float(leg.destination_city.latitude)]]},
-            "properties": {
-                "layer": "legs",
-                "mode": leg.mode,
-                "planned": leg.is_planned,
-                "name": f"{leg.get_mode_display()}: {leg.origin_city.name} → {leg.destination_city.name}",
-                "subtitle": " · ".join(p for p in (what, (
-                    f"{leg.date:%a, %b} {leg.date.day} · planned, no times yet" if leg.is_planned and leg.date
-                    else "planned, no times yet" if leg.is_planned
-                    else f"{leg.departure_local_date} {leg.departure_local_str}"), leg.notes[:80] if leg.is_planned else "") if p),
-            },
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [float(leg.origin_city.longitude), float(leg.origin_city.latitude)],
+                        [float(leg.destination_city.longitude), float(leg.destination_city.latitude)],
+                    ],
+                },
+                "properties": {
+                    "layer": "legs",
+                    "mode": leg.mode,
+                    "planned": leg.is_planned,
+                    "name": f"{leg.get_mode_display()}: {leg.origin_city.name} → {leg.destination_city.name}",
+                    "subtitle": " · ".join(
+                        p
+                        for p in (
+                            what,
+                            (
+                                f"{leg.date:%a, %b} {leg.date.day} · planned, no times yet"
+                                if leg.is_planned and leg.date
+                                else "planned, no times yet"
+                                if leg.is_planned
+                                else f"{leg.departure_local_date} {leg.departure_local_str}"
+                            ),
+                            leg.notes[:80] if leg.is_planned else "",
+                        )
+                        if p
+                    ),
+                },
+            }
+        )
     from .ideas import map_features
+
     features += map_features(trip)  # the Ideas layer (P6): faint pins, off by default
     from .options import map_features as choice_features
+
     features += choice_features(trip)  # the Choices layer (typed-choices T3): faint pins, off by default
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
@@ -2199,12 +2453,17 @@ def section_to_legs(request, trip_pk, day_pk, pk):
     the day's existing leg or becomes a planned one, and the table becomes a travel section.
     Nothing is saved before confirming; times are never guessed."""
     trip, day = _editable_day(request, trip_pk, day_pk)
-    section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.LOGISTICS_TABLE)
-                                .select_related("day"), pk=pk)
+    section = get_object_or_404(
+        Section.objects.filter(day=day, section_type=Section.Type.LOGISTICS_TABLE).select_related("day"), pk=pk
+    )
     return _review_travel_tables(
-        request, trip, [section], back=f"{reverse('trips:trip_detail', args=[trip.pk])}#day-{day.day_number}",
+        request,
+        trip,
+        [section],
+        back=f"{reverse('trips:trip_detail', args=[trip.pk])}#day-{day.day_number}",
         heading="Turn these rows into legs",
-        subtitle=f"Day {day.day_number} · {day.date:%a, %b} {day.date.day} · “{section.title or 'Logistics'}”.")
+        subtitle=f"Day {day.day_number} · {day.date:%a, %b} {day.date.day} · “{section.title or 'Logistics'}”.",
+    )
 
 
 @login_required
@@ -2212,11 +2471,16 @@ def trip_travel_review(request, pk):
     """Every logistics table of the trip at once (editors only): one review instead of one
     per day. Same rules as ``section_to_legs``."""
     from . import travel_tables
+
     trip = _readable_trip(request, pk, "edit")
     return _review_travel_tables(
-        request, trip, travel_tables.logistics_sections(trip),
-        back=reverse("trips:trip_detail", args=[trip.pk]), heading="Turn travel tables into legs",
-        subtitle="Every table on this trip with “A → B” rows, by day.")
+        request,
+        trip,
+        travel_tables.logistics_sections(trip),
+        back=reverse("trips:trip_detail", args=[trip.pk]),
+        heading="Turn travel tables into legs",
+        subtitle="Every table on this trip with “A → B” rows, by day.",
+    )
 
 
 def _rough_text(value):
@@ -2229,28 +2493,41 @@ def _rough_text(value):
 
 def _review_travel_tables(request, trip, sections, back, heading, subtitle):
     from apps.locations.models import City
+
     from . import travel_tables
     from .forms import LegProposalFormSet
 
     city_for = travel_tables.city_finder(trip)
     plans = travel_tables.plan(trip, sections, city_for=city_for)
     pairs = [(section_plan, row) for section_plan in plans for row in section_plan.rows]
-    initial = [{
-        "include": row["include"], "section": section_plan.section.pk, "row": row["row"], "date": row["date"],
-        "mode": row["mode"], "origin": row["origin"], "destination": row["destination"],
-        "origin_city": row["origin_city"].pk if row["origin_city"] else None,
-        "destination_city": row["destination_city"].pk if row["destination_city"] else None,
-        "operator": row["operator"], "duration": _rough_text(row["duration"]), "notes": row["notes"],
-    } for section_plan, row in pairs]
+    initial = [
+        {
+            "include": row["include"],
+            "section": section_plan.section.pk,
+            "row": row["row"],
+            "date": row["date"],
+            "mode": row["mode"],
+            "origin": row["origin"],
+            "destination": row["destination"],
+            "origin_city": row["origin_city"].pk if row["origin_city"] else None,
+            "destination_city": row["destination_city"].pk if row["destination_city"] else None,
+            "operator": row["operator"],
+            "duration": _rough_text(row["duration"]),
+            "notes": row["notes"],
+        }
+        for section_plan, row in pairs
+    ]
     # The city choices are the trip's cities (all when it has none), plus any catalogue city a
     # row matched, which still has to be choosable.
     choices = None
     if city_for.trip_cities:
         extra = {i[k] for i in initial for k in ("origin_city", "destination_city") if i[k]}
-        choices = City.objects.filter(pk__in={c.pk for c in city_for.trip_cities} | extra) \
-            .select_related("country").order_by("name")
-    formset = LegProposalFormSet(request.POST or None, initial=initial, prefix="legs",
-                                 form_kwargs={"cities": choices})
+        choices = (
+            City.objects.filter(pk__in={c.pk for c in city_for.trip_cities} | extra)
+            .select_related("country")
+            .order_by("name")
+        )
+    formset = LegProposalFormSet(request.POST or None, initial=initial, prefix="legs", form_kwargs={"cities": choices})
 
     if request.method == "POST" and formset.is_valid():
         # Only rows the plan has (this trip's tables, as they are now) can be carried out.
@@ -2270,8 +2547,11 @@ def _review_travel_tables(request, trip, sections, back, heading, subtitle):
             if linked:
                 parts.append(f"linked {linked} existing leg{'s' if linked != 1 else ''}")
             tables = result["sections"]
-            messages.success(request, f"{' and '.join(parts).capitalize()}; {tables} table{'s' if tables != 1 else ''} "
-                                      "became travel sections. Add times once they're booked.")
+            messages.success(
+                request,
+                f"{' and '.join(parts).capitalize()}; {tables} table{'s' if tables != 1 else ''} "
+                "became travel sections. Add times once they're booked.",
+            )
         else:
             messages.info(request, "No legs made.")
         return redirect(back)
@@ -2279,21 +2559,32 @@ def _review_travel_tables(request, trip, sections, back, heading, subtitle):
     rows = [(form, row) for form, (_plan, row) in zip(formset.forms, pairs)]
     groups, start = [], 0
     for section_plan in plans:
-        groups.append((section_plan, rows[start:start + len(section_plan.rows)]))
+        groups.append((section_plan, rows[start : start + len(section_plan.rows)]))
         start += len(section_plan.rows)
-    return render(request, "trips/section_to_legs.html", {
-        "trip": trip, "formset": formset, "groups": groups, "rows": rows,
-        "back": back, "heading": heading, "subtitle": subtitle,
-    })
+    return render(
+        request,
+        "trips/section_to_legs.html",
+        {
+            "trip": trip,
+            "formset": formset,
+            "groups": groups,
+            "rows": rows,
+            "back": back,
+            "heading": heading,
+            "subtitle": subtitle,
+        },
+    )
 
 
 # ---- legs: edit in place, quick add from a day ------------------------------------------
 def _back(request, fallback):
     """The ``next`` page if it's on this site, else ``fallback``."""
     from django.utils.http import url_has_allowed_host_and_scheme
+
     target = request.POST.get("next") or request.GET.get("next")
-    if target and url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()},
-                                                  require_https=request.is_secure()):
+    if target and url_has_allowed_host_and_scheme(
+        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return target
     return fallback
 
@@ -2308,6 +2599,7 @@ def _leg_back(trip, leg):
 def leg_edit(request, pk, leg_pk):
     """One leg on its own page: route, schedule, details and where on its day it's shown."""
     from .forms import LegEditForm
+
     trip = _readable_trip(request, pk, "edit")
     leg = get_object_or_404(trip.transport.all(), pk=leg_pk)
     form = LegEditForm(request.POST or None, instance=leg)
@@ -2318,13 +2610,21 @@ def leg_edit(request, pk, leg_pk):
             messages.info(request, f"Added the return: {form.return_leg.origin} → {form.return_leg.destination}.")
         return redirect(_back(request, _leg_back(trip, leg)))
     from .forms import COMMON_ZONE_SUGGESTIONS
-    return render(request, "trips/leg_form.html", {
-        "trip": trip, "leg": leg, "form": form, "next": _back(request, _leg_back(trip, leg)),
-        "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
-        **_item_confirmations_context(request, trip, "leg", leg),
-        **_item_links_context(trip, "leg", leg),
-        "open_tasks": list(BookingTask.for_item(leg).filter(done=False)),
-    })
+
+    return render(
+        request,
+        "trips/leg_form.html",
+        {
+            "trip": trip,
+            "leg": leg,
+            "form": form,
+            "next": _back(request, _leg_back(trip, leg)),
+            "zone_suggestions": COMMON_ZONE_SUGGESTIONS,
+            **_item_confirmations_context(request, trip, "leg", leg),
+            **_item_links_context(trip, "leg", leg),
+            "open_tasks": list(BookingTask.for_item(leg).filter(done=False)),
+        },
+    )
 
 
 @login_required
@@ -2345,37 +2645,55 @@ def leg_delete(request, pk, leg_pk):
 def leg_quick_add(request, pk, day_pk):
     """A planned leg typed like a table row, on a day (and in one of its travel sections)."""
     from django.db.models import Max
+
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import City
+
     from .forms import LegQuickAddForm
     from .logistics import match_city
+
     trip, day = _editable_day(request, pk, day_pk)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     form = LegQuickAddForm(request.POST)
     if not form.is_valid():
-        errors = "; ".join(f"{form.fields[f].label}: {' '.join(e)}" if f in form.fields else " ".join(e)
-                           for f, e in form.errors.items())
+        errors = "; ".join(
+            f"{form.fields[f].label}: {' '.join(e)}" if f in form.fields else " ".join(e)
+            for f, e in form.errors.items()
+        )
         messages.error(request, f"The leg wasn't added. {errors}")
         return redirect(back)
     data = form.cleaned_data
     section = None
     if data.get("section"):
-        section = get_object_or_404(Section.objects.filter(day=day, section_type=Section.Type.TRAVEL),
-                                    pk=data["section"])
+        section = get_object_or_404(
+            Section.objects.filter(day=day, section_type=Section.Type.TRAVEL), pk=data["section"]
+        )
     own_cities = list(trip.cities.all())
     catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
     origin_city = match_city(data["origin"], own_cities) or match_city(data["origin"], catalogue)
     destination_city = match_city(data["destination"], own_cities) or match_city(data["destination"], catalogue)
     last = trip.transport.filter(date=day.date).aggregate(m=Max("order"))["m"]
     from . import currencies
+
     leg = TransportLeg.objects.create(
-        currency=currencies.default_for(trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]),
-        trip=trip, date=day.date, section=section, mode=data["mode"], origin=data["origin"],
-        destination=data["destination"], origin_city=origin_city, destination_city=destination_city,
+        currency=currencies.default_for(
+            trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]
+        ),
+        trip=trip,
+        date=day.date,
+        section=section,
+        mode=data["mode"],
+        origin=data["origin"],
+        destination=data["destination"],
+        origin_city=origin_city,
+        destination_city=destination_city,
         # Each end's zone from its matched city (E5), so adding times later needs no zones typed.
         origin_timezone=getattr(origin_city, "timezone", "") or "",
         destination_timezone=getattr(destination_city, "timezone", "") or "",
-        est_duration=data["est_duration"], notes=data["notes"], order=(last or 0) + 1)
+        est_duration=data["est_duration"],
+        notes=data["notes"],
+        order=(last or 0) + 1,
+    )
     trip_cities.sync(trip)
     messages.success(request, f"Added {leg.origin} → {leg.destination} (planned).")
     return redirect(back)
@@ -2386,10 +2704,12 @@ def leg_quick_add(request, pk, day_pk):
 def day_add_travel(request, pk, day_pk):
     """Give a day a travel section ("Getting around") to place its legs in."""
     from django.db.models import Max
+
     trip, day = _editable_day(request, pk, day_pk)
     last = day.sections.aggregate(m=Max("order"))["m"]
-    Section.objects.create(day=day, section_type=Section.Type.TRAVEL, title="Getting around",
-                           order=(last or 0) + 1, content={})
+    Section.objects.create(
+        day=day, section_type=Section.Type.TRAVEL, title="Getting around", order=(last or 0) + 1, content={}
+    )
     messages.success(request, f"Added a travel section to day {day.day_number}.")
     return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}"))
 
@@ -2400,12 +2720,12 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
     """Add or edit an activity on a day (editors). Its confirmations are added on the same
     page, like a leg's."""
     from .forms import TripActivityForm
+
     trip, day = _editable_day(request, pk, day_pk)
     activity = None
     if activity_pk is not None:
         activity = get_object_or_404(TripActivity.objects.filter(trip=trip, day=day), pk=activity_pk)
-    form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day),
-                            trip=trip)
+    form = TripActivityForm(request.POST or None, instance=activity or TripActivity(trip=trip, day=day), trip=trip)
     back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#activities")
     if request.method == "POST" and form.is_valid():
         saved = form.save()
@@ -2449,13 +2769,15 @@ def activity_delete(request, pk, day_pk, activity_pk):
         activity.delete()
         messages.success(request, f"Deleted {title}. Its confirmations are kept.")
         return redirect(back)
-    return render(request, "trips/activity_confirm_delete.html",
-                  {"trip": trip, "day": day, "activity": activity, "next": back})
+    return render(
+        request, "trips/activity_confirm_delete.html", {"trip": trip, "day": day, "activity": activity, "next": back}
+    )
 
 
 # ---- "choose one" groups and votes (day-first plan, P4) ----------------------------------------
 def _option_of(request, pk, option_pk, action):
     from .models import Option
+
     trip = _readable_trip(request, pk, action)
     option = get_object_or_404(Option.objects.filter(group__trip=trip).select_related("group__day"), pk=option_pk)
     return trip, option
@@ -2466,7 +2788,9 @@ def _option_of(request, pk, option_pk, action):
 def option_vote(request, pk, option_pk):
     """👍 an option, or take it back (anyone who may comment). 204 for a background ``fetch``."""
     from django.http import HttpResponse
+
     from .models import Vote
+
     trip, option = _option_of(request, pk, option_pk, "comment")
     vote, made = Vote.objects.get_or_create(user=request.user, option=option)
     if not made:
@@ -2484,7 +2808,9 @@ def option_pick(request, pk, option_pk):
     (``options.make_for``; picking it again reuses that item), and the trip page opens it in the panel
     (``?item=``) to add the address and confirmation — as JSON (``{"url", "anchor"}``) for a ``fetch``."""
     from django.http import JsonResponse
+
     from . import options as option_groups
+
     trip, option = _option_of(request, pk, option_pk, "edit")
     with transaction.atomic():
         option.group.pick(option, request.user)
@@ -2492,13 +2818,18 @@ def option_pick(request, pk, option_pk):
     if made:
         item = made[0]
         anchor = itinerary.anchor(item)
-        messages.success(request, f"Picked {option.title} for {option.group.prompt}: it's on Day "
-                                  f"{option.group.day.day_number} now. Add its details and confirmation.")
+        messages.success(
+            request,
+            f"Picked {option.title} for {option.group.prompt}: it's on Day "
+            f"{option.group.day.day_number} now. Add its details and confirmation.",
+        )
         if request.headers.get("X-Requested-With") == "fetch":
             return JsonResponse({"url": _item_page(trip, item), "anchor": anchor})
         return redirect(reverse("trips:trip_detail", args=[trip.pk]) + f"?item={anchor}#{anchor}")
     messages.success(request, f"Picked {option.title} for {option.group.prompt}.")
-    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{option.group.day.day_number}"))
+    return redirect(
+        _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{option.group.day.day_number}")
+    )
 
 
 def _item_page(trip, item):
@@ -2517,6 +2848,7 @@ def _item_page(trip, item):
 def group_reopen(request, pk, group_pk):
     """Undecide a group (editors): its options are open again, nothing is deleted."""
     from .models import OptionGroup
+
     trip = _readable_trip(request, pk, "edit")
     group = get_object_or_404(OptionGroup.objects.filter(trip=trip), pk=group_pk)
     group.reopen()
@@ -2530,6 +2862,7 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
     option lists the items in it (added to an option from the item's own page, "In option")."""
     from .forms import OptionFormSet, OptionGroupForm
     from .models import OptionGroup
+
     trip = _readable_trip(request, pk, "edit")
     if group_pk is not None:
         group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day"), pk=group_pk)
@@ -2537,6 +2870,7 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
     else:
         day = get_object_or_404(trip.days.all(), pk=day_pk)
         from .quick_add import CHOICE_KINDS, choice_kind
+
         prompt = request.GET.get("prompt", "")[:200]
         guess = choice_kind(prompt) if prompt else {}
         if request.GET.get("kind") in CHOICE_KINDS:
@@ -2545,8 +2879,12 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
     form = OptionGroupForm(request.POST or None, instance=group)
     # The options ask for what the choice's kind needs (typed-choices T1): the kind posted, else saved.
     kind = request.POST.get("kind") if request.method == "POST" and request.POST.get("kind") else group.kind
-    formset = OptionFormSet(request.POST or None, instance=group, prefix="options",
-                            form_kwargs={"trip": trip, "city_ids": [day.city_id], "kind": kind})
+    formset = OptionFormSet(
+        request.POST or None,
+        instance=group,
+        prefix="options",
+        form_kwargs={"trip": trip, "city_ids": [day.city_id], "kind": kind},
+    )
     for option_form in formset.forms:  # the one group object, so a row's cost preview reads no query (B1)
         option_form.instance.group = group
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
@@ -2561,13 +2899,16 @@ def group_edit(request, pk, group_pk=None, day_pk=None):
             return redirect(reverse("trips:group_edit", args=[trip.pk, group.pk]) + "?next=" + quote(back))
         return redirect(back)
     from .forms import share_choices
+
     share_choices(formset)  # the catalogue pickers load once for every option row
     options = []
     if group.pk:
         options = list(group.options.prefetch_related("legs", "stays", "activities", "meals", "sections"))
-    return render(request, "trips/group_form.html", {
-        "trip": trip, "day": day, "group": group, "form": form, "formset": formset, "next": back,
-        "options": options})
+    return render(
+        request,
+        "trips/group_form.html",
+        {"trip": trip, "day": day, "group": group, "form": form, "formset": formset, "next": back, "options": options},
+    )
 
 
 @login_required
@@ -2576,28 +2917,39 @@ def group_split(request, pk, group_pk):
     one option; every option someone takes counts, as a track of the day. Also changes a split."""
     from .forms import SplitForm
     from .models import OptionGroup
+
     trip = _readable_trip(request, pk, "edit")
-    group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day")
-                              .prefetch_related("options__travelers"), pk=group_pk)
+    group = get_object_or_404(
+        OptionGroup.objects.filter(trip=trip).select_related("day").prefetch_related("options__travelers"), pk=group_pk
+    )
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}")
     travelers = list(group.day.roster.order_by("name"))
     form = SplitForm(request.POST or None, group=group, travelers=travelers)
     if request.method == "POST" and form.is_valid():
         from . import options as option_groups
+
         with transaction.atomic():
             group.split(form.tracks(), request.user)
             option_groups.make_for(group)  # a typed choice: each taken option's item, on its track (T2)
-        messages.success(request, f"Split {group.prompt}: " + "; ".join(
-            f"{', '.join(t.name for t in people)} → {option.title}" for option, people in form.tracks().items()) + ".")
+        messages.success(
+            request,
+            f"Split {group.prompt}: "
+            + "; ".join(
+                f"{', '.join(t.name for t in people)} → {option.title}" for option, people in form.tracks().items()
+            )
+            + ".",
+        )
         return redirect(back)
-    return render(request, "trips/group_split.html", {"trip": trip, "group": group, "day": group.day, "form": form,
-                                                      "next": back})
+    return render(
+        request, "trips/group_split.html", {"trip": trip, "group": group, "day": group.day, "form": form, "next": back}
+    )
 
 
 @login_required
 def group_delete(request, pk, group_pk):
     """Delete a group and its options (editors). Items in its options stay, as plain items on the day."""
     from .models import OptionGroup
+
     trip = _readable_trip(request, pk, "edit")
     group = get_object_or_404(OptionGroup.objects.filter(trip=trip).select_related("day"), pk=group_pk)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{group.day.day_number}")
@@ -2614,9 +2966,12 @@ def _make_on_day(trip, day, found):
     """Make the item ``quick_add.parse`` found (``found``) on ``day``; returns (item, its page, its anchor
     on the trip page, a label). Shared by + Add (P3) and putting an idea on a day (P6)."""
     from datetime import timedelta
+
     from django.db.models import Max
+
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import City
+
     from . import currencies
     from .logistics import match_city
 
@@ -2628,38 +2983,74 @@ def _make_on_day(trip, day, found):
         catalogue = list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
         origin = found["origin"] or (day.city.name if day.city_id else "")
         origin_city = (match_city(origin, own) or match_city(origin, catalogue)) if origin else None
-        destination_city = ((match_city(found["destination"], own) or match_city(found["destination"], catalogue))
-                            if found["destination"] else None)
+        destination_city = (
+            (match_city(found["destination"], own) or match_city(found["destination"], catalogue))
+            if found["destination"]
+            else None
+        )
         item = TransportLeg.objects.create(
-            trip=trip, date=day.date, mode=found["mode"], origin=origin[:120], destination=found["destination"][:120],
-            origin_city=origin_city, destination_city=destination_city,
+            trip=trip,
+            date=day.date,
+            mode=found["mode"],
+            origin=origin[:120],
+            destination=found["destination"][:120],
+            origin_city=origin_city,
+            destination_city=destination_city,
             origin_timezone=getattr(origin_city, "timezone", "") or "",
             destination_timezone=getattr(destination_city, "timezone", "") or "",
-            est_duration=found["duration"], notes=found["notes"],
-            currency=currencies.default_for(trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]),
-            order=next_order(trip.transport.filter(date=day.date)))
+            est_duration=found["duration"],
+            notes=found["notes"],
+            currency=currencies.default_for(
+                trip, [getattr(origin_city, "pk", None), getattr(destination_city, "pk", None)]
+            ),
+            order=next_order(trip.transport.filter(date=day.date)),
+        )
         url, anchor = reverse("trips:leg_edit", args=[trip.pk, item.pk]), f"leg-{item.pk}"
         label = f"{item.origin} → {item.destination}".strip()
     elif found["kind"] == "stay":
         item = Lodging.objects.create(
-            trip=trip, name=found["name"][:200], check_in=day.date, check_out=day.date + timedelta(days=found["nights"]),
-            city=day.city, currency=currencies.default_for(trip, [day.city_id]))
+            trip=trip,
+            name=found["name"][:200],
+            check_in=day.date,
+            check_out=day.date + timedelta(days=found["nights"]),
+            city=day.city,
+            currency=currencies.default_for(trip, [day.city_id]),
+        )
         item.fill_day_cities()
         url, anchor, label = reverse("trips:stay_edit", args=[trip.pk, item.pk]), f"stay-{item.pk}", item.name
     elif found["kind"] == "eat":
-        item = Meal.objects.create(day=day, name=found["name"][:200], meal_type=found["meal_type"],
-                                   reserved_time=found["time"], order=next_order(day.meals.all()))
+        item = Meal.objects.create(
+            day=day,
+            name=found["name"][:200],
+            meal_type=found["meal_type"],
+            reserved_time=found["time"],
+            order=next_order(day.meals.all()),
+        )
         url, anchor, label = reverse("trips:meal_edit", args=[trip.pk, day.pk, item.pk]), f"meal-{item.pk}", item.name
     elif found["kind"] == "do":
         item = TripActivity.objects.create(
-            trip=trip, day=day, title=found["title"][:200], kind=found["activity_kind"], start_time=found["time"],
-            currency=currencies.default_for(trip, [day.city_id]), order=next_order(day.activities.all()))
+            trip=trip,
+            day=day,
+            title=found["title"][:200],
+            kind=found["activity_kind"],
+            start_time=found["time"],
+            currency=currencies.default_for(trip, [day.city_id]),
+            order=next_order(day.activities.all()),
+        )
         url, anchor = reverse("trips:activity_edit", args=[trip.pk, day.pk, item.pk]), f"activity-{item.pk}"
         label = item.title
     else:
-        item = Section.objects.create(day=day, section_type=Section.Type.NOTE, order=next_order(day.sections.all()),
-                                      content={"tone": "", "paragraphs": [found["text"]] if found["text"] else []})
-        url, anchor, label = reverse("trips:section_edit", args=[trip.pk, day.pk, item.pk]), f"section-{item.pk}", "a note"
+        item = Section.objects.create(
+            day=day,
+            section_type=Section.Type.NOTE,
+            order=next_order(day.sections.all()),
+            content={"tone": "", "paragraphs": [found["text"]] if found["text"] else []},
+        )
+        url, anchor, label = (
+            reverse("trips:section_edit", args=[trip.pk, day.pk, item.pk]),
+            f"section-{item.pk}",
+            "a note",
+        )
     return item, url, anchor, label
 
 
@@ -2670,23 +3061,34 @@ def quick_add(request, pk, day_pk):
     forces the kind), then send the editor to its page: as JSON for the trip page's panel (``{"url",
     "anchor"}``), else a redirect to the page, which comes back to the day."""
     from django.http import JsonResponse
+
     from . import quick_add as parser
+
     trip, day = _editable_day(request, pk, day_pk)
     # JSON for the trip page's + Add; from inside the panel (?panel=1) the usual redirects.
     wants_json = request.headers.get("X-Requested-With") == "fetch" and not _is_panel(request)
     from .models import Option
+
     in_option = None
     if request.POST.get("option", "").isdigit():  # added straight into an option (the group's page, P4)
-        in_option = get_object_or_404(Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"])
+        in_option = get_object_or_404(
+            Option.objects.filter(group__trip=trip, group__day=day), pk=request.POST["option"]
+        )
     text = " ".join(request.POST.get("text", "").split())[:300]
     kind = request.POST.get("kind", "")
     # Back to the day on the trip page, or to ``next`` (the day page's own + Add, P7).
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + f"#day-{day.day_number}")
     if kind == "options":  # a "choose one" on the day (P4): its page, to add the options
         from .models import OptionGroup
+
         # What it's about, guessed from the line (typed-choices T1); its page can change it.
-        group = OptionGroup.objects.create(trip=trip, day=day, prompt=(text or "Choose one")[:200],
-                                           order=day.option_groups.count(), **parser.choice_kind(text))
+        group = OptionGroup.objects.create(
+            trip=trip,
+            day=day,
+            prompt=(text or "Choose one")[:200],
+            order=day.option_groups.count(),
+            **parser.choice_kind(text),
+        )
         url = reverse("trips:group_edit", args=[trip.pk, group.pk])
         messages.success(request, f"Added “{group.prompt}” to Day {day.day_number}: add its options.")
         if wants_json:
@@ -2717,6 +3119,7 @@ def meal_edit(request, pk, day_pk, meal_pk):
     """One meal on its own page (editors): its details, confirmations and contacts & info. Meals
     are still also edited together in the day page's Meals form."""
     from .forms import MealPageForm
+
     trip, day = _editable_day(request, pk, day_pk)
     meal = get_object_or_404(Meal.objects.filter(day=day), pk=meal_pk)
     form = MealPageForm(request.POST or None, instance=meal, trip=trip)
@@ -2727,12 +3130,21 @@ def meal_edit(request, pk, day_pk, meal_pk):
         messages.success(request, f"Saved {meal.name}.")
         return redirect(back)
     from . import catalogue_links
+
     catalogue_links.attach_suggestions(trip, [meal], [])  # "Looks like the catalogue place …" (offered, never linked)
-    return render(request, "trips/meal_form.html", {
-        "trip": trip, "day": day, "meal": meal, "form": form, "next": back,
-        **_item_confirmations_context(request, trip, "meal", meal),
-        **_item_links_context(trip, "meal", meal),
-    })
+    return render(
+        request,
+        "trips/meal_form.html",
+        {
+            "trip": trip,
+            "day": day,
+            "meal": meal,
+            "form": form,
+            "next": back,
+            **_item_confirmations_context(request, trip, "meal", meal),
+            **_item_links_context(trip, "meal", meal),
+        },
+    )
 
 
 @login_required
@@ -2752,10 +3164,12 @@ def meal_delete(request, pk, day_pk, meal_pk):
 @login_required
 @require_POST
 def trip_note_hide(request, pk, note_pk):
-    """"Not for this trip" (editors): hide a catalogue note on this trip's page and booklet, or show it
+    """ "Not for this trip" (editors): hide a catalogue note on this trip's page and booklet, or show it
     again (``show=1``). The note stays in the catalogue and on other trips."""
     from apps.catalogue_notes.models import CatalogueNote
+
     from .models import TripHiddenNote
+
     trip = _readable_trip(request, pk, "edit")
     note = get_object_or_404(CatalogueNote, pk=note_pk)
     if request.POST.get("show"):
@@ -2778,8 +3192,11 @@ def _stay_back(trip, stay):
 
 def _days_filled_message(request, form):
     if form.days_filled:
-        messages.info(request, f"Filled in the city for {form.days_filled} day{'s' if form.days_filled != 1 else ''} "
-                               "from this stay; change any day trips by hand.")
+        messages.info(
+            request,
+            f"Filled in the city for {form.days_filled} day{'s' if form.days_filled != 1 else ''} "
+            "from this stay; change any day trips by hand.",
+        )
 
 
 @login_required
@@ -2788,10 +3205,15 @@ def stay_new(request, pk, day_pk):
     default. Once saved it lands on its own page, so the confirmation and the hotel's phone can be
     added at once, like an activity's."""
     from datetime import timedelta
+
     from .forms import LodgingForm
+
     trip, day = _editable_day(request, pk, day_pk)
-    initial = {"check_in": day.date, "check_out": day.date + timedelta(days=1) if day.date else None,
-               "city": day.city_id}
+    initial = {
+        "check_in": day.date,
+        "check_out": day.date + timedelta(days=1) if day.date else None,
+        "city": day.city_id,
+    }
     form = LodgingForm(request.POST or None, instance=Lodging(trip=trip), initial=initial)
     back = _back(request, reverse("trips:day_edit", args=[trip.pk, day.pk]) + "#on-this-day")
     if request.method == "POST" and form.is_valid():
@@ -2807,6 +3229,7 @@ def stay_edit(request, pk, stay_pk):
     """One stay on its own page (editors): its details, the pin, its confirmations and its
     contacts & info. Reached from its day's "On this day" and its card on the trip page."""
     from .forms import LodgingForm
+
     trip = _readable_trip(request, pk, "edit")
     stay = get_object_or_404(trip.lodging.all(), pk=stay_pk)
     form = LodgingForm(request.POST or None, instance=stay)
@@ -2815,13 +3238,20 @@ def stay_edit(request, pk, stay_pk):
         messages.success(request, f"Saved {stay.name}.")
         _days_filled_message(request, form)
         return redirect(_back(request, _stay_back(trip, stay)))
-    return render(request, "trips/stay_form.html", {
-        "trip": trip, "day": trip.days.filter(date=stay.check_in).first(), "stay": stay, "form": form,
-        "next": _back(request, _stay_back(trip, stay)),
-        **_item_confirmations_context(request, trip, "stay", stay),
-        **_item_links_context(trip, "stay", stay),
-        "open_tasks": list(BookingTask.for_item(stay).filter(done=False)),
-    })
+    return render(
+        request,
+        "trips/stay_form.html",
+        {
+            "trip": trip,
+            "day": trip.days.filter(date=stay.check_in).first(),
+            "stay": stay,
+            "form": form,
+            "next": _back(request, _stay_back(trip, stay)),
+            **_item_confirmations_context(request, trip, "stay", stay),
+            **_item_links_context(trip, "stay", stay),
+            "open_tasks": list(BookingTask.for_item(stay).filter(done=False)),
+        },
+    )
 
 
 @login_required
@@ -2843,6 +3273,7 @@ def trip_tidy(request, pk):
     """Suggestions for text that repeats something with a home elsewhere (editors). Nothing
     changes until an editor ticks suggestions and applies them; "Not this" dismisses one for good."""
     from . import tidying
+
     trip = _readable_trip(request, pk, "edit")
     found = tidying.suggestions(trip)
     if request.method == "POST":
@@ -2850,8 +3281,11 @@ def trip_tidy(request, pk):
             tidying.dismiss(trip, request.POST["dismiss"])
             messages.info(request, "That suggestion won't come back.")
             return redirect(reverse("trips:trip_tidy", args=[trip.pk]))
-        chosen = {key[len("pick-"):]: request.POST.get(f"act-{key[len('pick-'):]}", "")
-                  for key in request.POST if key.startswith("pick-")}
+        chosen = {
+            key[len("pick-") :]: request.POST.get(f"act-{key[len('pick-') :]}", "")
+            for key in request.POST
+            if key.startswith("pick-")
+        }
         applied, skipped = tidying.apply(trip, found, chosen, request.user)
         if applied:
             messages.success(request, f"Applied {len(applied)} suggestion{'s' if len(applied) != 1 else ''}.")
@@ -2879,25 +3313,44 @@ def trip_todo(request, pk):
     done ones folded away — then **No plan yet**, the To book rows no to-do covers, so nothing shows twice.
     Editors add, edit and tick off to-dos here (Mark done in place); the rest open on the trip page."""
     from django.db.models import prefetch_related_objects
+
     from . import booking_tasks
+
     trip = _readable_trip(request, pk, "view")
     can_edit = trip.can(request.user, "edit")
-    prefetch_related_objects([trip], Prefetch("booking_tasks", queryset=BookingTask.objects.select_related("day")
-                                              .prefetch_related("links")), "days")
+    prefetch_related_objects(
+        [trip],
+        Prefetch("booking_tasks", queryset=BookingTask.objects.select_related("day").prefetch_related("links")),
+        "days",
+    )
     booking_tasks.attach(trip)  # item / item_day / item_info; "Looks like" suggestions stay on the trip page
-    tasks = sorted(trip.booking_tasks.all(),
-                   key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk))
+    tasks = sorted(
+        trip.booking_tasks.all(), key=lambda t: (t.priority, t.due is None, t.due or date.max, t.order, t.pk)
+    )
     from .models import OptionGroup
-    open_groups = (OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN)
-                   .select_related("day").prefetch_related("options").order_by("day__date", "start_time", "order"))
+
+    open_groups = (
+        OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN)
+        .select_related("day")
+        .prefetch_related("options")
+        .order_by("day__date", "start_time", "order")
+    )
     # No plan yet (K2), worked out as on the trip page: only what counts, with its confirmations.
     page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
     to_book = _trip_page_context(request, page_trip)["to_book"]
-    return render(request, "trips/trip_todo.html", {
-        "trip": trip, "can_edit": can_edit, "open_groups": open_groups, "to_book": to_book,
-        "no_plan": to_book["no_plan"],
-        "open_tasks": [t for t in tasks if not t.done], "done_tasks": [t for t in tasks if t.done],
-    })
+    return render(
+        request,
+        "trips/trip_todo.html",
+        {
+            "trip": trip,
+            "can_edit": can_edit,
+            "open_groups": open_groups,
+            "to_book": to_book,
+            "no_plan": to_book["no_plan"],
+            "open_tasks": [t for t in tasks if not t.done],
+            "done_tasks": [t for t in tasks if t.done],
+        },
+    )
 
 
 @login_required
@@ -2907,14 +3360,19 @@ def task_edit(request, pk, task_pk=None):
     and named ("Also ticked: …"; booking-todos K1); the pickers only offer this trip's own things."""
     from . import booking_tasks
     from .forms import BookingTaskForm, cover_choices, cover_key
+
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk) if task_pk is not None else None
     initial = {"day": request.GET["day"]} if task is None and request.GET.get("day", "").isdigit() else {}
     also = []
     if task is None and request.method == "GET":
         _choices, items = cover_choices(trip)
-        asked = [items[f"{kind}-{value}"] for kind in ("leg", "stay", "activity")
-                 for value in request.GET.getlist(kind) if f"{kind}-{value}" in items]
+        asked = [
+            items[f"{kind}-{value}"]
+            for kind in ("leg", "stay", "activity")
+            for value in request.GET.getlist(kind)
+            if f"{kind}-{value}" in items
+        ]
         if asked:
             legs = [item for item in items.values() if booking_tasks.kind_of(item) == "leg"]
             ticked = {cover_key(item) for item in asked}
@@ -2926,9 +3384,13 @@ def task_edit(request, pk, task_pk=None):
             initial["covers"] = sorted(ticked)
     note = _note_for_todo(request) if task is None else None
     if note is not None:  # "Add as a to-do" from a catalogue note's lead time (catalogue-notes N3)
-        initial.update({"title": f"Book ahead: {note.target_name}",
-                        "priority": BookingTask.Priority.HIGH,
-                        "notes": "\n".join(part for part in (note.booking_url, note.text) if part)})
+        initial.update(
+            {
+                "title": f"Book ahead: {note.target_name}",
+                "priority": BookingTask.Priority.HIGH,
+                "notes": "\n".join(part for part in (note.booking_url, note.text) if part),
+            }
+        )
         try:
             initial["due"] = date.fromisoformat(request.GET.get("due", ""))
         except ValueError:
@@ -2943,19 +3405,26 @@ def task_edit(request, pk, task_pk=None):
             saved.save(update_fields=["notes"])
         messages.success(request, f"{'Saved' if task else 'Added'} “{saved.title}”.")
         return redirect(back)
-    return render(request, "trips/task_form.html", {"trip": trip, "task": task, "form": form, "next": back,
-                                                    "from_note": note, "also_ticked": also})
+    return render(
+        request,
+        "trips/task_form.html",
+        {"trip": trip, "task": task, "form": form, "next": back, "from_note": note, "also_ticked": also},
+    )
 
 
 def _note_for_todo(request):
     """The approved catalogue note a new to-do is being made from (``from_note``), else None."""
     from apps.approval_system.models import ApprovalStatus
     from apps.catalogue_notes.models import CatalogueNote
+
     pk = request.POST.get("from_note") or request.GET.get("from_note") or ""
     if not pk.isdigit():
         return None
-    return (CatalogueNote.objects.filter(pk=pk, approval_status=ApprovalStatus.APPROVED)
-            .select_related("poi", "activity", "event").first())
+    return (
+        CatalogueNote.objects.filter(pk=pk, approval_status=ApprovalStatus.APPROVED)
+        .select_related("poi", "activity", "event")
+        .first()
+    )
 
 
 @login_required
@@ -2988,9 +3457,11 @@ def task_done(request, pk, task_pk):
 # ---- contacts and info notes linked to items (trip-page UX plan, U4) -------------------------
 def _item_links_context(trip, kind, item):
     """What an item's Contacts & info block needs (leg / activity pages and ``item_links``)."""
-    from .forms import QuickContactForm, QuickInfoForm
-    from .models import ItemLink, LINK_SOURCES
     from django.contrib.contenttypes.models import ContentType
+
+    from .forms import QuickContactForm, QuickInfoForm
+    from .models import LINK_SOURCES, ItemLink
+
     links = ItemLink.objects.filter(target_type=ContentType.objects.get_for_model(type(item)), target_id=item.pk)
     by_type = {ContentType.objects.get_for_model(model).pk: (key, model) for key, model in LINK_SOURCES.items()}
     linked = []
@@ -3002,8 +3473,14 @@ def _item_links_context(trip, kind, item):
     linked_keys = {(entry["kind"], entry["obj"].pk) for entry in linked}
     choices = [("contact", c) for c in trip.contacts.all() if ("contact", c.pk) not in linked_keys]
     choices += [("info", i) for i in trip.infos.all() if ("info", i.pk) not in linked_keys]
-    return {"link_kind": kind, "link_item": item, "linked_refs": linked, "link_choices": choices,
-            "contact_form": QuickContactForm(prefix="contact"), "info_form": QuickInfoForm(prefix="info")}
+    return {
+        "link_kind": kind,
+        "link_item": item,
+        "linked_refs": linked,
+        "link_choices": choices,
+        "contact_form": QuickContactForm(prefix="contact"),
+        "info_form": QuickInfoForm(prefix="info"),
+    }
 
 
 @login_required
@@ -3012,6 +3489,7 @@ def item_links(request, pk, kind, item_pk):
     added and removed here like its confirmations (editors). Unlinking never deletes."""
     from .forms import QuickContactForm, QuickInfoForm
     from .models import LINK_SOURCES, LINKABLE, Contact, ItemLink, TripInfo, item_label, item_trip_id
+
     model = LINKABLE.get(kind)
     if model is None:
         raise Http404
@@ -3055,9 +3533,11 @@ def item_links(request, pk, kind, item_pk):
             ItemLink.link(info, item)
             messages.success(request, f"Added “{info.title}” to {item_label(item)}.")
         from django.utils.http import url_has_allowed_host_and_scheme
+
         return_to = request.POST.get("return_to") or ""
-        if not url_has_allowed_host_and_scheme(return_to, allowed_hosts={request.get_host()},
-                                               require_https=request.is_secure()):
+        if not url_has_allowed_host_and_scheme(
+            return_to, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
             return_to = here
         return redirect(return_to)
     return render(request, "trips/item_links.html", {**context, **_item_links_context(trip, kind, item)})
@@ -3074,8 +3554,7 @@ def _source_edit(request, pk, form_class, model, source_pk, template, label):
             form.save_links()
         messages.success(request, f"Saved {label} “{saved}”.")
         return redirect(back)
-    return render(request, template, {"trip": trip, "form": form, "obj": instance if source_pk else None,
-                                      "next": back})
+    return render(request, template, {"trip": trip, "form": form, "obj": instance if source_pk else None, "next": back})
 
 
 def _source_delete(request, pk, model, source_pk, label):
@@ -3087,8 +3566,7 @@ def _source_delete(request, pk, model, source_pk, label):
         obj.delete()  # its links go with it (GenericRelation); the items stay
         messages.success(request, f"Deleted {label} “{name}”. The items it was on are kept.")
         return redirect(back)
-    return render(request, "trips/source_confirm_delete.html", {"trip": trip, "obj": obj, "label": label,
-                                                                 "next": back})
+    return render(request, "trips/source_confirm_delete.html", {"trip": trip, "obj": obj, "label": label, "next": back})
 
 
 @login_required
@@ -3096,12 +3574,14 @@ def contact_edit(request, pk, contact_pk=None):
     """A contact's own page: its details and the items it's linked to (editors)."""
     from .forms import ContactEditForm
     from .models import Contact
+
     return _source_edit(request, pk, ContactEditForm, Contact, contact_pk, "trips/contact_form.html", "contact")
 
 
 @login_required
 def contact_delete(request, pk, contact_pk):
     from .models import Contact
+
     return _source_delete(request, pk, Contact, contact_pk, "contact")
 
 
@@ -3110,12 +3590,14 @@ def info_edit(request, pk, info_pk=None):
     """An info note's own page: title, body, link and the items it's linked to (editors)."""
     from .forms import TripInfoForm
     from .models import TripInfo
+
     return _source_edit(request, pk, TripInfoForm, TripInfo, info_pk, "trips/info_form.html", "info note")
 
 
 @login_required
 def info_delete(request, pk, info_pk):
     from .models import TripInfo
+
     return _source_delete(request, pk, TripInfo, info_pk, "info note")
 
 
@@ -3125,6 +3607,7 @@ def confirmation_edit(request, pk, confirmation_pk=None):
     """A booking reference's own details. ``confirmation_new`` is for a loose one (insurance,
     a rail pass); others are added from their item."""
     from .forms import ConfirmationEditForm
+
     trip = _readable_trip(request, pk, "edit")
     confirmation = None
     if confirmation_pk is not None:
@@ -3138,11 +3621,20 @@ def confirmation_edit(request, pk, confirmation_pk=None):
     covers = []
     if confirmation is not None:
         from .models import confirmable_kind, item_label
+
         for item in confirmation.covered_items():
             covers.append({"label": item_label(item), "kind": confirmable_kind(item), "item": item})
-    return render(request, "trips/confirmation_form.html", {
-        "trip": trip, "form": form, "confirmation": confirmation, "next": back, "covers": covers,
-    })
+    return render(
+        request,
+        "trips/confirmation_form.html",
+        {
+            "trip": trip,
+            "form": form,
+            "confirmation": confirmation,
+            "next": back,
+            "covers": covers,
+        },
+    )
 
 
 @login_required
@@ -3155,18 +3647,25 @@ def confirmation_delete(request, pk, confirmation_pk):
         confirmation.delete()
         messages.success(request, f"Deleted confirmation {number}. The legs and stays it covered are kept.")
         return redirect(back)
-    return render(request, "trips/confirmation_confirm_delete.html",
-                  {"trip": trip, "confirmation": confirmation, "next": back})
+    return render(
+        request, "trips/confirmation_confirm_delete.html", {"trip": trip, "confirmation": confirmation, "next": back}
+    )
 
 
 def _item_confirmations_context(request, trip, kind, item):
     """What the confirmations block needs (leg page and ``item_confirmations``): the item's
     confirmations, the trip's others it could join, and the add form."""
     from .forms import AddConfirmationForm
+
     attached = list(Confirmation.for_item(item).prefetch_related("links__content_type", "files__uploaded_by"))
     others = [c for c in trip.confirmations.prefetch_related("links__content_type") if c not in attached]
-    return {"confirm_kind": kind, "confirm_item": item, "attached": attached, "attachable": others,
-            "add_form": AddConfirmationForm()}
+    return {
+        "confirm_kind": kind,
+        "confirm_item": item,
+        "attached": attached,
+        "attachable": others,
+        "add_form": AddConfirmationForm(),
+    }
 
 
 @login_required
@@ -3177,6 +3676,7 @@ def item_confirmations(request, pk, kind, item_pk):
     from . import booking_tasks
     from .forms import AddConfirmationForm
     from .models import CONFIRMABLE, item_label, item_trip_id
+
     model = CONFIRMABLE.get(kind)
     if model is None:
         raise Http404
@@ -3193,7 +3693,9 @@ def item_confirmations(request, pk, kind, item_pk):
         if action == "detach":
             confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
             confirmation.unlink(item)
-            messages.success(request, f"Removed {confirmation.confirmation_number} from {item_label(item)} (it's kept).")
+            messages.success(
+                request, f"Removed {confirmation.confirmation_number} from {item_label(item)} (it's kept)."
+            )
         elif action == "attach":
             confirmation = get_object_or_404(trip.confirmations.all(), pk=request.POST.get("confirmation") or 0)
             confirmation.link(item)
@@ -3203,40 +3705,65 @@ def item_confirmations(request, pk, kind, item_pk):
             if not form.is_valid():
                 context = _item_confirmations_context(request, trip, kind, item)
                 context["add_form"] = form
-                return render(request, "trips/item_confirmations.html",
-                              {"trip": trip, "item_label": item_label(item), "next": back, **context})
+                return render(
+                    request,
+                    "trips/item_confirmations.html",
+                    {"trip": trip, "item_label": item_label(item), "next": back, **context},
+                )
             data = form.cleaned_data
             existed = Confirmation.find_number(trip, data["confirmation_number"]) is not None
-            confirmation = Confirmation.attach_number(trip, data["confirmation_number"], item,
-                                                      provider=data["provider"], label=data["label"])
-            messages.success(request, f"{'Linked' if existed else 'Added'} {confirmation.confirmation_number}"
-                                      f"{' (already on this trip)' if existed else ''} to {item_label(item)}.")
+            confirmation = Confirmation.attach_number(
+                trip, data["confirmation_number"], item, provider=data["provider"], label=data["label"]
+            )
+            messages.success(
+                request,
+                f"{'Linked' if existed else 'Added'} {confirmation.confirmation_number}"
+                f"{' (already on this trip)' if existed else ''} to {item_label(item)}.",
+            )
         # Back to the page the block was on (the leg page posts its own address), else here.
         from django.utils.http import url_has_allowed_host_and_scheme
+
         return_to = request.POST.get("return_to") or ""
-        if not url_has_allowed_host_and_scheme(return_to, allowed_hosts={request.get_host()},
-                                               require_https=request.is_secure()):
+        if not url_has_allowed_host_and_scheme(
+            return_to, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
             return_to = here
         newly = booking_tasks.confirmed_items(trip) - before
         if action != "detach" and confirmation is not None:
             others = _spread_candidates(item, confirmation)
             if others:  # the item's to-do covers others still unconfirmed: offer them this number too (K1)
                 from urllib.parse import urlencode
-                return redirect(reverse("trips:confirmation_spread", args=[trip.pk, confirmation.pk]) + "?" + urlencode({
-                    "items": ",".join(f"{booking_tasks.kind_of(o)}-{o.pk}" for o in others),
-                    "new": ",".join(f"{k}-{pk}" for k, pk in sorted(newly)), "next": return_to,
-                    **({"panel": "1"} if "panel=1" in return_to or request.GET.get("panel") else {})}))
+
+                return redirect(
+                    reverse("trips:confirmation_spread", args=[trip.pk, confirmation.pk])
+                    + "?"
+                    + urlencode(
+                        {
+                            "items": ",".join(f"{booking_tasks.kind_of(o)}-{o.pk}" for o in others),
+                            "new": ",".join(f"{k}-{pk}" for k, pk in sorted(newly)),
+                            "next": return_to,
+                            **({"panel": "1"} if "panel=1" in return_to or request.GET.get("panel") else {}),
+                        }
+                    )
+                )
         return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), return_to))
-    return render(request, "trips/item_confirmations.html", {
-        "trip": trip, "item_label": item_label(item), "next": back,
-        **_item_confirmations_context(request, trip, kind, item),
-    })
+    return render(
+        request,
+        "trips/item_confirmations.html",
+        {
+            "trip": trip,
+            "item_label": item_label(item),
+            "next": back,
+            **_item_confirmations_context(request, trip, kind, item),
+        },
+    )
 
 
 def _spread_candidates(item, confirmation):
     """Items an open to-do of ``item`` also covers that have no confirmation yet (booking-todos K1), for
     "Also attach <number> to …" — offered, never linked on its own."""
     from .models import TASKABLE, Confirmation
+
     if type(item) not in TASKABLE.values():
         return []
     found = []
@@ -3255,6 +3782,7 @@ def confirmation_spread(request, pk, confirmation_pk):
     items that have none yet (editors; booking-todos K1), each ticked; then the "mark these done?" offer."""
     from . import booking_tasks
     from .forms import cover_choices
+
     trip = _readable_trip(request, pk, "edit")
     confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
     source = request.POST if request.method == "POST" else request.GET
@@ -3276,15 +3804,26 @@ def confirmation_spread(request, pk, confirmation_pk):
                 added.append(item)
                 newly.add((booking_tasks.kind_of(item), item.pk))
         if added:
-            messages.success(request, f"Added {confirmation.confirmation_number} to "
-                                      f"{', '.join(booking_tasks.label(i) for i in added)}.")
+            messages.success(
+                request,
+                f"Added {confirmation.confirmation_number} to {', '.join(booking_tasks.label(i) for i in added)}.",
+            )
         return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), back))
     if not offered:
         return redirect(_task_offer_or(trip, booking_tasks.offer_after(trip, newly), back))
     rows = [(f"{booking_tasks.kind_of(item)}-{item.pk}", booking_tasks.label(item)) for item in offered]
-    return render(request, "trips/confirmation_spread.html", {
-        "trip": trip, "confirmation": confirmation, "rows": rows, "next": back,
-        "items": source.get("items", ""), "new": source.get("new", "")})
+    return render(
+        request,
+        "trips/confirmation_spread.html",
+        {
+            "trip": trip,
+            "confirmation": confirmation,
+            "rows": rows,
+            "next": back,
+            "items": source.get("items", ""),
+            "new": source.get("new", ""),
+        },
+    )
 
 
 def _task_offer_or(trip, tasks, back):
@@ -3293,8 +3832,12 @@ def _task_offer_or(trip, tasks, back):
     if not tasks:
         return back
     from urllib.parse import urlencode
-    return reverse("trips:task_offer", args=[trip.pk]) + "?" + urlencode(
-        {"tasks": ",".join(str(t.pk) for t in tasks), "next": back})
+
+    return (
+        reverse("trips:task_offer", args=[trip.pk])
+        + "?"
+        + urlencode({"tasks": ",".join(str(t.pk) for t in tasks), "next": back})
+    )
 
 
 @login_required
@@ -3317,10 +3860,14 @@ def task_offer(request, pk):
     if not tasks:
         return redirect(back)
     from . import booking_tasks
+
     for task in tasks:
         task.item_label = booking_tasks.cover_label(sorted(task.covered(), key=booking_tasks._when))
-    return render(request, "trips/task_offer.html", {"trip": trip, "tasks": tasks, "next": back,
-                                                      "ids": ",".join(str(t.pk) for t in tasks)})
+    return render(
+        request,
+        "trips/task_offer.html",
+        {"trip": trip, "tasks": tasks, "next": back, "ids": ",".join(str(t.pk) for t in tasks)},
+    )
 
 
 @login_required
@@ -3330,10 +3877,12 @@ def task_link(request, pk, task_pk):
     ``activity``; never replaces — booking-todos K1), or dismiss the suggestion (``dismiss`` = the
     suggested item's name, remembered in the task's notes)."""
     from . import booking_tasks
+
     trip = _readable_trip(request, pk, "edit")
     task = get_object_or_404(trip.booking_tasks.all(), pk=task_pk)
     back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#to-book")
     from .models import TASKABLE
+
     for kind, model in TASKABLE.items():
         if request.POST.get(kind):
             item = get_object_or_404(model.objects.all(), pk=request.POST[kind])

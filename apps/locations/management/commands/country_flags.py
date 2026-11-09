@@ -9,6 +9,7 @@ For each country whose two-letter ``iso_code`` has a committed PNG: make its fla
 its picture but is kept (its ``Media`` row and file stay); those countries are listed. Idempotent: a second run
 reuses everything. Run after ``populate_flag_emojis`` in the seed order.
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.locations import flags
@@ -24,6 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, dry_run=False, country=None, **options):
         from django.conf import settings
+
         if not getattr(settings, "COUNTRY_FLAGS_ENABLED", True):
             raise CommandError("COUNTRY_FLAGS_ENABLED is off in these settings.")
         countries = Country.objects.select_related("flag_media", "featured_media").order_by("name")
@@ -48,11 +50,14 @@ class Command(BaseCommand):
             if not dry_run:
                 flags.attach(row, replace=True)
         verb = "Would make" if dry_run else "Made"
-        self.stdout.write(f"{verb} {len(made)} flag picture{'s' if len(made) != 1 else ''}; "
-                          f"already set: {len(already)}.")
+        self.stdout.write(
+            f"{verb} {len(made)} flag picture{'s' if len(made) != 1 else ''}; already set: {len(already)}."
+        )
         if replaced:
-            self.stdout.write(f"{'Would replace' if dry_run else 'Replaced'} a photo with the flag for {len(replaced)} "
-                              "(the photos are kept, just no longer the picture):")
+            self.stdout.write(
+                f"{'Would replace' if dry_run else 'Replaced'} a photo with the flag for {len(replaced)} "
+                "(the photos are kept, just no longer the picture):"
+            )
             for row, title in replaced:
                 self.stdout.write(f"  {row.iso_code}  {row.name}  (photo: {title})")
         if missing:

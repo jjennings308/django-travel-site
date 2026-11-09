@@ -53,9 +53,7 @@ NAMED = {
     "times": "×",
 }
 
-ENTITY_RE = re.compile(
-    r"&(?:(" + "|".join(NAMED) + r")|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));"
-)
+ENTITY_RE = re.compile(r"&(?:(" + "|".join(NAMED) + r")|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));")
 
 TEXT_TYPES = {"CharField", "TextField"}
 
@@ -84,9 +82,7 @@ def has_entity(value):
 
 
 class Command(BaseCommand):
-    help = (
-        "Unescape text that was saved HTML-escaped (dry-run unless --apply)."
-    )
+    help = "Unescape text that was saved HTML-escaped (dry-run unless --apply)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -98,10 +94,7 @@ class Command(BaseCommand):
             "--table-prefix",
             action="append",
             default=None,
-            help=(
-                "Only inspect models whose database table starts with this. "
-                "Repeatable. Defaults to 'trips_'."
-            ),
+            help=("Only inspect models whose database table starts with this. Repeatable. Defaults to 'trips_'."),
         )
 
     def handle(self, *args, **options):
@@ -138,9 +131,7 @@ class Command(BaseCommand):
 
         for model, field, obj_pk, value, fixed in plan:
             self.stdout.write(
-                f"  {model._meta.label}.{field} [{obj_pk}]\n"
-                f"      - {str(value)[:100]}\n"
-                f"      + {str(fixed)[:100]}"
+                f"  {model._meta.label}.{field} [{obj_pk}]\n      - {str(value)[:100]}\n      + {str(fixed)[:100]}"
             )
 
         if apply:
@@ -151,18 +142,13 @@ class Command(BaseCommand):
                     model.objects.filter(pk=obj_pk).update(**{field: fixed})
             self.stdout.write(self.style.SUCCESS(f"\nFixed {len(plan)} value(s)."))
         else:
-            self.stdout.write(
-                f"\nWould fix {len(plan)} value(s) in "
-                f"{', '.join(prefixes)} tables. Nothing was written."
-            )
+            self.stdout.write(f"\nWould fix {len(plan)} value(s) in {', '.join(prefixes)} tables. Nothing was written.")
 
         # A value escaped twice only comes apart one level at a time. If a fixed
         # value still contains an entity, say so instead of leaving the
         # operator to assume it was fully repaired.
         partial = [
-            (model._meta.label, field, obj_pk)
-            for model, field, obj_pk, _value, fixed in plan
-            if has_entity(fixed)
+            (model._meta.label, field, obj_pk) for model, field, obj_pk, _value, fixed in plan if has_entity(fixed)
         ]
         if partial:
             self.stderr.write(
@@ -174,6 +160,4 @@ class Command(BaseCommand):
             )
 
         if not apply and plan:
-            self.stderr.write(
-                self.style.WARNING("This was a dry run. Re-run with --apply to save.")
-            )
+            self.stderr.write(self.style.WARNING("This was a dry run. Re-run with --apply to save."))

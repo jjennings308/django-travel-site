@@ -12,6 +12,7 @@ changed are listed. The actor is whoever is signed in (``apps.core.current``; No
 * A leg whose times or date change within ``URGENT_DAYS`` of departure tells everyone at once
   (after commit); everything else waits for ``manage.py send_trip_digests``.
 """
+
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import timedelta
@@ -25,8 +26,24 @@ from django.utils import dateformat, timezone
 from apps.core.current import get_user
 
 from .models import (
-    BookingTask, Confirmation, ConfirmationFile, ConfirmationLink, Day, ItemLink, Lodging, Meal, OptionGroup, Section,
-    TaskLink, TransportLeg, Trip, TripActivity, TripChange, TripGrant, TripIdea, item_label,
+    BookingTask,
+    Confirmation,
+    ConfirmationFile,
+    ConfirmationLink,
+    Day,
+    ItemLink,
+    Lodging,
+    Meal,
+    OptionGroup,
+    Section,
+    TaskLink,
+    TransportLeg,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripIdea,
+    item_label,
 )
 
 URGENT_DAYS = 7
@@ -56,8 +73,9 @@ def _city(obj):
 # model -> (item type, label(obj), trip_id(obj), [(field attname, label, format(obj) or None)])
 # A format of None means "say it changed" (long text, JSON).
 def _cost(o):
-    """"€95 per room per night × 3 rooms" (budget-estimates B1): the amount and what it means, no people lookup."""
-    from .costs import amount_of, basis_of, money, Basis
+    """ "€95 per room per night × 3 rooms" (budget-estimates B1): the amount and what it means, no people lookup."""
+    from .costs import Basis, amount_of, basis_of, money
+
     amount = amount_of(o)
     if amount is None:
         return "none"
@@ -71,90 +89,133 @@ def _cost(o):
 
 
 def _booking(o):
-    """"needed" / "not needed" (booking-todos K2: an item's No booking needed)."""
+    """ "needed" / "not needed" (booking-todos K2: an item's No booking needed)."""
     return "not needed" if o.no_booking else "needed"
 
 
 TRACKED = {
-    TransportLeg: ("leg", lambda o: f"{o.origin} → {o.destination}", lambda o: o.trip_id, [
-        ("mode", "mode", lambda o: o.get_mode_display()),
-        ("origin", "from", lambda o: _text(o.origin)),
-        ("destination", "to", lambda o: _text(o.destination)),
-        ("operator", "operator", lambda o: _text(o.operator)),
-        ("service_number", "service", lambda o: _text(o.service_number)),
-        ("date", "date", lambda o: _date(o.date)),
-        ("departure_at", "departs", lambda o: o.departure_local_str or "no time"),
-        ("arrival_at", "arrives", lambda o: o.arrival_local_str or "no time"),
-        ("notes", "notes", None),
-        ("cost_basis", "cost", _cost),
-        ("cost_people", "cost", _cost),
-        ("no_booking", "booking", _booking),
-    ]),
-    Lodging: ("stay", lambda o: f"stay {o.name}", lambda o: o.trip_id, [
-        ("name", "name", lambda o: _text(o.name)),
-        ("check_in", "check-in", lambda o: _date(o.check_in)),
-        ("check_out", "check-out", lambda o: _date(o.check_out)),
-        ("address", "address", None),
-        ("city_id", "city", _city),
-        ("cost_basis", "cost", _cost),
-        ("cost_people", "cost", _cost),
-        ("rooms", "cost", _cost),
-        ("no_booking", "booking", _booking),
-    ]),
-    TripActivity: ("activity", lambda o: f"“{o.title}”", lambda o: o.trip_id, [
-        ("title", "title", lambda o: _text(o.title)),
-        ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
-        ("start_time", "starts", lambda o: _time(o.start_time)),
-        ("end_time", "ends", lambda o: _time(o.end_time)),
-        ("provider", "provider", lambda o: _text(o.provider)),
-        ("place_text", "place", lambda o: _text(o.place_text)),
-        ("poi_id", "place", lambda o: _text(o.poi)),
-        ("notes", "notes", None),
-        ("cost_basis", "cost", _cost),
-        ("cost_people", "cost", _cost),
-        ("no_booking", "booking", _booking),
-    ]),
-    Meal: ("meal", lambda o: f"{o.get_meal_type_display().lower()} at {o.name}",
-           lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(), [
-        ("name", "name", lambda o: _text(o.name)),
-        ("meal_type", "meal", lambda o: o.get_meal_type_display()),
-        ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
-        ("reserved_time", "reservation", lambda o: _time(o.reserved_time)),
-        ("reservation_notes", "booking notes", None),
-        ("est_cost", "cost", _cost),
-        ("cost_basis", "cost", _cost),
-        ("cost_people", "cost", _cost),
-    ]),
-    Section: ("section", lambda o: f"“{o.title or o.get_section_type_display()}” on Day {_day_number(o.day_id)}",
-              lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(), [
-        ("title", "title", lambda o: _text(o.title)),
-        ("content", "text", None),
-        ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
-    ]),
-    Day: ("day", lambda o: f"Day {o.day_number}", lambda o: o.trip_id, [
-        ("date", "date", lambda o: _date(o.date)),
-        ("city_id", "city", _city),
-        ("theme", "theme", lambda o: _text(o.theme)),
-    ]),
+    TransportLeg: (
+        "leg",
+        lambda o: f"{o.origin} → {o.destination}",
+        lambda o: o.trip_id,
+        [
+            ("mode", "mode", lambda o: o.get_mode_display()),
+            ("origin", "from", lambda o: _text(o.origin)),
+            ("destination", "to", lambda o: _text(o.destination)),
+            ("operator", "operator", lambda o: _text(o.operator)),
+            ("service_number", "service", lambda o: _text(o.service_number)),
+            ("date", "date", lambda o: _date(o.date)),
+            ("departure_at", "departs", lambda o: o.departure_local_str or "no time"),
+            ("arrival_at", "arrives", lambda o: o.arrival_local_str or "no time"),
+            ("notes", "notes", None),
+            ("cost_basis", "cost", _cost),
+            ("cost_people", "cost", _cost),
+            ("no_booking", "booking", _booking),
+        ],
+    ),
+    Lodging: (
+        "stay",
+        lambda o: f"stay {o.name}",
+        lambda o: o.trip_id,
+        [
+            ("name", "name", lambda o: _text(o.name)),
+            ("check_in", "check-in", lambda o: _date(o.check_in)),
+            ("check_out", "check-out", lambda o: _date(o.check_out)),
+            ("address", "address", None),
+            ("city_id", "city", _city),
+            ("cost_basis", "cost", _cost),
+            ("cost_people", "cost", _cost),
+            ("rooms", "cost", _cost),
+            ("no_booking", "booking", _booking),
+        ],
+    ),
+    TripActivity: (
+        "activity",
+        lambda o: f"“{o.title}”",
+        lambda o: o.trip_id,
+        [
+            ("title", "title", lambda o: _text(o.title)),
+            ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
+            ("start_time", "starts", lambda o: _time(o.start_time)),
+            ("end_time", "ends", lambda o: _time(o.end_time)),
+            ("provider", "provider", lambda o: _text(o.provider)),
+            ("place_text", "place", lambda o: _text(o.place_text)),
+            ("poi_id", "place", lambda o: _text(o.poi)),
+            ("notes", "notes", None),
+            ("cost_basis", "cost", _cost),
+            ("cost_people", "cost", _cost),
+            ("no_booking", "booking", _booking),
+        ],
+    ),
+    Meal: (
+        "meal",
+        lambda o: f"{o.get_meal_type_display().lower()} at {o.name}",
+        lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(),
+        [
+            ("name", "name", lambda o: _text(o.name)),
+            ("meal_type", "meal", lambda o: o.get_meal_type_display()),
+            ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
+            ("reserved_time", "reservation", lambda o: _time(o.reserved_time)),
+            ("reservation_notes", "booking notes", None),
+            ("est_cost", "cost", _cost),
+            ("cost_basis", "cost", _cost),
+            ("cost_people", "cost", _cost),
+        ],
+    ),
+    Section: (
+        "section",
+        lambda o: f"“{o.title or o.get_section_type_display()}” on Day {_day_number(o.day_id)}",
+        lambda o: Day.objects.filter(pk=o.day_id).values_list("trip_id", flat=True).first(),
+        [
+            ("title", "title", lambda o: _text(o.title)),
+            ("content", "text", None),
+            ("day_id", "day", lambda o: f"Day {_day_number(o.day_id)}"),
+        ],
+    ),
+    Day: (
+        "day",
+        lambda o: f"Day {o.day_number}",
+        lambda o: o.trip_id,
+        [
+            ("date", "date", lambda o: _date(o.date)),
+            ("city_id", "city", _city),
+            ("theme", "theme", lambda o: _text(o.theme)),
+        ],
+    ),
     # A "choose one" (day-first plan P4): picking and reopening are recorded; undoing a pick reopens it.
-    OptionGroup: ("choice", lambda o: f"“{o.prompt}” on Day {_day_number(o.day_id)}", lambda o: o.trip_id, [
-        ("prompt", "question", lambda o: _text(o.prompt)),
-        ("state", "decision", lambda o: o.summary()),
-        ("start_time", "time", lambda o: _time(o.start_time)),
-    ]),
+    OptionGroup: (
+        "choice",
+        lambda o: f"“{o.prompt}” on Day {_day_number(o.day_id)}",
+        lambda o: o.trip_id,
+        [
+            ("prompt", "question", lambda o: _text(o.prompt)),
+            ("state", "decision", lambda o: o.summary()),
+            ("start_time", "time", lambda o: _time(o.start_time)),
+        ],
+    ),
     # An idea on the shelf (P6): added, renamed, removed. Putting it on a day records the item made.
-    TripIdea: ("idea", lambda o: f"idea “{o.title}”", lambda o: o.trip_id, [
-        ("title", "title", lambda o: _text(o.title)),
-        ("notes", "notes", None),
-    ]),
-    Confirmation: ("confirmation", lambda o: f"confirmation {o.confirmation_number}", lambda o: o.trip_id, [
-        ("confirmation_number", "number", lambda o: _text(o.confirmation_number)),
-        ("provider", "provider", lambda o: _text(o.provider)),
-        ("label", "label", lambda o: _text(o.label)),
-        ("url", "booking link", None),
-        ("cost", "cost", lambda o: _text(o.cost)),
-        ("notes", "notes", None),
-    ]),
+    TripIdea: (
+        "idea",
+        lambda o: f"idea “{o.title}”",
+        lambda o: o.trip_id,
+        [
+            ("title", "title", lambda o: _text(o.title)),
+            ("notes", "notes", None),
+        ],
+    ),
+    Confirmation: (
+        "confirmation",
+        lambda o: f"confirmation {o.confirmation_number}",
+        lambda o: o.trip_id,
+        [
+            ("confirmation_number", "number", lambda o: _text(o.confirmation_number)),
+            ("provider", "provider", lambda o: _text(o.provider)),
+            ("label", "label", lambda o: _text(o.label)),
+            ("url", "booking link", None),
+            ("cost", "cost", lambda o: _text(o.cost)),
+            ("notes", "notes", None),
+        ],
+    ),
 }
 
 
@@ -172,9 +233,15 @@ def record(trip_id, kind, summary, item=None, actor=None, day_id=None, before=No
         current["counts"][trip_id] = current["counts"].get(trip_id, 0) + 1
         return None
     return TripChange.objects.create(
-        trip_id=trip_id, actor=actor if actor is not None else get_user(), kind=kind,
-        item_type=type(item).__name__.lower() if item is not None else "", item_id=getattr(item, "pk", None),
-        summary=summary[:500], day_id=day_id, before=before)
+        trip_id=trip_id,
+        actor=actor if actor is not None else get_user(),
+        kind=kind,
+        item_type=type(item).__name__.lower() if item is not None else "",
+        item_id=getattr(item, "pk", None),
+        summary=summary[:500],
+        day_id=day_id,
+        before=before,
+    )
 
 
 @contextmanager
@@ -186,8 +253,7 @@ def batch(summary, trip=None, actor=None, item=None, no_urgent=False):
     the line is about, ``state["before"]`` (set inside) is stored on it, the line is written even when nothing
     tracked changed, and ``state["line"]`` is the line afterwards. ``no_urgent`` holds back the per-leg "time
     change" notices (the caller sends one of its own)."""
-    state = {"trip_id": getattr(trip, "pk", None), "counts": {}, "no_urgent": no_urgent, "before": None,
-             "line": None}
+    state = {"trip_id": getattr(trip, "pk", None), "counts": {}, "no_urgent": no_urgent, "before": None, "line": None}
     if item is not None and trip is not None:
         state["counts"][trip.pk] = 0
     token = _batch.set(state)
@@ -200,8 +266,14 @@ def batch(summary, trip=None, actor=None, item=None, no_urgent=False):
             noun = "change" if count == 1 else "changes"
             text = f"{summary} ({count} {noun})" if count else summary
             mine = trip_id == state["trip_id"]
-            line = record(trip_id, TripChange.Kind.CHANGED, text, item=item if mine else None, actor=actor,
-                          before=state["before"] if mine else None)
+            line = record(
+                trip_id,
+                TripChange.Kind.CHANGED,
+                text,
+                item=item if mine else None,
+                actor=actor,
+                before=state["before"] if mine else None,
+            )
             if mine:
                 state["line"] = line
 
@@ -238,6 +310,7 @@ def _deleted_on_purpose(instance, origin):
 
 # -------------------------------------------------------------------------- signals: items
 
+
 def _before(sender, instance, raw=False, **kwargs):
     if raw or not instance.pk:
         instance._change_old = None
@@ -251,8 +324,9 @@ def _after(sender, instance, created, raw=False, **kwargs):
     item_type, label, trip_of, _ = TRACKED[sender]
     old = getattr(instance, "_change_old", None)
     if created or old is None:
-        record(trip_of(instance), TripChange.Kind.ADDED, f"Added {label(instance)}", instance,
-               day_id=day_id_of(instance))
+        record(
+            trip_of(instance), TripChange.Kind.ADDED, f"Added {label(instance)}", instance, day_id=day_id_of(instance)
+        )
         return
     parts, changed, values = [], set(), {"before": {}, "after": {}}
     for attname, name, fmt in _fields(sender):
@@ -266,11 +340,20 @@ def _after(sender, instance, created, raw=False, **kwargs):
             parts.append(part)
     if not parts:
         return
-    record(trip_of(instance), TripChange.Kind.CHANGED, f"Changed {label(old)}: {'; '.join(parts)}", instance,
-           day_id=day_id_of(instance), before=values)
+    record(
+        trip_of(instance),
+        TripChange.Kind.CHANGED,
+        f"Changed {label(old)}: {'; '.join(parts)}",
+        instance,
+        day_id=day_id_of(instance),
+        before=values,
+    )
     current = _batch.get()
-    if sender is TransportLeg and changed & {"departure_at", "arrival_at", "date"} and not (
-            current and current.get("no_urgent")):
+    if (
+        sender is TransportLeg
+        and changed & {"departure_at", "arrival_at", "date"}
+        and not (current and current.get("no_urgent"))
+    ):
         _maybe_urgent(old, instance)
 
 
@@ -280,9 +363,14 @@ def _gone(sender, instance, origin=None, **kwargs):
     _, label, trip_of, _ = TRACKED[sender]
     trip_id = trip_of(instance)  # a meal's or section's day still exists: it wasn't deleted with it
     if trip_id and Trip.objects.filter(pk=trip_id).exists():
-        record(trip_id, TripChange.Kind.REMOVED, f"Removed {label(instance)}", instance,
-               day_id=None if sender is Day else day_id_of(instance),
-               before=getattr(instance, "_change_snapshot", None))
+        record(
+            trip_id,
+            TripChange.Kind.REMOVED,
+            f"Removed {label(instance)}",
+            instance,
+            day_id=None if sender is Day else day_id_of(instance),
+            before=getattr(instance, "_change_snapshot", None),
+        )
 
 
 def _snap(sender, instance, origin=None, **kwargs):
@@ -301,12 +389,17 @@ for _model in TRACKED:
 
 # --------------------------------------------------------- signals: links and ticket files
 
+
 @receiver(post_save, sender=ConfirmationLink, dispatch_uid="trip_change_link_added")
 def _link_added(sender, instance, created, raw=False, **kwargs):
     if created and not raw:
         number = instance.confirmation.confirmation_number
-        record(instance.confirmation.trip_id, TripChange.Kind.ADDED,
-               f"Added confirmation {number} to {_item_name(instance)}", instance.confirmation)
+        record(
+            instance.confirmation.trip_id,
+            TripChange.Kind.ADDED,
+            f"Added confirmation {number} to {_item_name(instance)}",
+            instance.confirmation,
+        )
 
 
 @receiver(post_delete, sender=ConfirmationLink, dispatch_uid="trip_change_link_removed")
@@ -314,17 +407,23 @@ def _link_removed(sender, instance, origin=None, **kwargs):
     if _deleted_on_purpose(instance, origin):
         confirmation = Confirmation.objects.filter(pk=instance.confirmation_id).first()
         if confirmation:
-            record(confirmation.trip_id, TripChange.Kind.REMOVED,
-                   f"Removed confirmation {confirmation.confirmation_number} from {_item_name(instance)}",
-                   confirmation)
+            record(
+                confirmation.trip_id,
+                TripChange.Kind.REMOVED,
+                f"Removed confirmation {confirmation.confirmation_number} from {_item_name(instance)}",
+                confirmation,
+            )
 
 
 @receiver(post_save, sender=ConfirmationFile, dispatch_uid="trip_change_file_added")
 def _file_added(sender, instance, created, raw=False, **kwargs):
     if created and not raw:
-        record(instance.confirmation.trip_id, TripChange.Kind.ADDED,
-               f"Added {instance.original_name} to confirmation {instance.confirmation.confirmation_number}",
-               instance.confirmation)
+        record(
+            instance.confirmation.trip_id,
+            TripChange.Kind.ADDED,
+            f"Added {instance.original_name} to confirmation {instance.confirmation.confirmation_number}",
+            instance.confirmation,
+        )
 
 
 @receiver(post_delete, sender=ConfirmationFile, dispatch_uid="trip_change_file_removed")
@@ -332,9 +431,12 @@ def _file_removed(sender, instance, origin=None, **kwargs):
     if _deleted_on_purpose(instance, origin):
         confirmation = Confirmation.objects.filter(pk=instance.confirmation_id).first()
         if confirmation:
-            record(confirmation.trip_id, TripChange.Kind.REMOVED,
-                   f"Removed {instance.original_name} from confirmation {confirmation.confirmation_number}",
-                   confirmation)
+            record(
+                confirmation.trip_id,
+                TripChange.Kind.REMOVED,
+                f"Removed {instance.original_name} from confirmation {confirmation.confirmation_number}",
+                confirmation,
+            )
 
 
 def _item_name(link):
@@ -344,10 +446,10 @@ def _item_name(link):
 
 # ------------------------------------------------------------------------- who is told
 
+
 def recipients(trip, exclude_user_id=None):
     """Active people with a grant on ``trip`` who want change emails, minus whoever made it."""
-    grants = (TripGrant.objects.filter(trip=trip, notify_changes=True, user__is_active=True)
-              .select_related("user"))
+    grants = TripGrant.objects.filter(trip=trip, notify_changes=True, user__is_active=True).select_related("user")
     return [grant.user for grant in grants if grant.user_id != exclude_user_id]
 
 
@@ -368,15 +470,18 @@ def _maybe_urgent(old, leg):
 
     def send():
         from apps.notifications.services import notify
+
         trip = Trip.objects.filter(pk=trip_id, deleted_at=None).first()
         if trip is None:
             return
         name = f"{leg.operator} {leg.service_number}".strip()
         what = f"{name + ' ' if name else ''}{leg.origin} → {leg.destination}"
-        now = (f"now departs {_date(departs(leg))} {leg.departure_local_str}" if leg.departure_at
-               else f"is now on {_date(leg.date)}, no times yet")
-        was = (f"was {_date(departs(old))} {old.departure_local_str}" if old.departure_at
-               else f"was {_date(old.date)}")
+        now = (
+            f"now departs {_date(departs(leg))} {leg.departure_local_str}"
+            if leg.departure_at
+            else f"is now on {_date(leg.date)}, no times yet"
+        )
+        was = f"was {_date(departs(old))} {old.departure_local_str}" if old.departure_at else f"was {_date(old.date)}"
         message = f"Time change on “{trip.name}”: {what} {now} ({was})."
         url = reverse("trips:trip_detail", args=[trip.pk]) + f"#leg-{leg.pk}"
         for user in recipients(trip, exclude_user_id=getattr(actor, "pk", None)):
@@ -402,16 +507,26 @@ def snapshot(instance):
     booking-todos K1)."""
     from django.contrib.contenttypes.models import ContentType
     from django.core import serializers
+
     content_type = ContentType.objects.get_for_model(instance)
     takes_tasks = RESTORABLE.get(type(instance)) is not None
     return {
         "object": serializers.serialize("python", [instance])[0],
-        "links": list(ConfirmationLink.objects.filter(content_type=content_type, object_id=instance.pk)
-                      .values_list("confirmation_id", flat=True)),
-        "refs": list(ItemLink.objects.filter(target_type=content_type, target_id=instance.pk)
-                     .values("source_type_id", "source_id")),
-        "task_links": list(TaskLink.objects.filter(content_type=content_type, object_id=instance.pk)
-                           .values_list("task_id", flat=True)) if takes_tasks else [],
+        "links": list(
+            ConfirmationLink.objects.filter(content_type=content_type, object_id=instance.pk).values_list(
+                "confirmation_id", flat=True
+            )
+        ),
+        "refs": list(
+            ItemLink.objects.filter(target_type=content_type, target_id=instance.pk).values(
+                "source_type_id", "source_id"
+            )
+        ),
+        "task_links": list(
+            TaskLink.objects.filter(content_type=content_type, object_id=instance.pk).values_list("task_id", flat=True)
+        )
+        if takes_tasks
+        else [],
     }
 
 
@@ -419,6 +534,7 @@ def latest_change_ids(trip):
     """{(item_type, item_id): id of its newest change} — only the newest can be undone. Under ``"newest"``: the
     trip's newest change of all (a move of the whole trip can be undone only while it is that, DR1)."""
     from django.db.models import Max
+
     rows = trip.changes.exclude(item_id=None).values("item_type", "item_id").annotate(last=Max("id"))
     found = {(row["item_type"], row["item_id"]): row["last"] for row in rows}
     found["newest"] = trip.changes.aggregate(newest=Max("id"))["newest"]
@@ -468,6 +584,7 @@ def restore(change, actor=None):
     retired since (a phase, callout, free text or choose your adventure) comes back as a note."""
     from django.contrib.contenttypes.models import ContentType
     from django.core import serializers
+
     snap = change.before or {}
     data = snap.get("object")
     model = MODELS.get(change.item_type)
@@ -480,8 +597,11 @@ def restore(change, actor=None):
     fields = dict(data["fields"])
     if model is Section:
         from .day_first import RETIRED, as_note
+
         if fields.get("section_type") in RETIRED:  # snapshotted before S2 retired its type: back as a note
-            fields["title"], fields["content"] = as_note(fields["section_type"], fields.get("title"), fields.get("content"))
+            fields["title"], fields["content"] = as_note(
+                fields["section_type"], fields.get("title"), fields.get("content")
+            )
             fields["section_type"] = Section.Type.NOTE
     for field in model._meta.concrete_fields:
         if not field.is_relation or field.name not in fields or fields[field.name] is None:
@@ -500,20 +620,24 @@ def restore(change, actor=None):
         item = loaded.object
         content_type = ContentType.objects.get_for_model(model)
         for confirmation in Confirmation.objects.filter(pk__in=snap.get("links", []), trip_id=change.trip_id):
-            ConfirmationLink.objects.get_or_create(confirmation=confirmation, content_type=content_type,
-                                                   object_id=item.pk)
+            ConfirmationLink.objects.get_or_create(
+                confirmation=confirmation, content_type=content_type, object_id=item.pk
+            )
         for ref in snap.get("refs", []):
             source = ContentType.objects.get_for_id(ref["source_type_id"]).model_class()
             if source.objects.filter(pk=ref["source_id"], trip_id=change.trip_id).exists():
-                ItemLink.objects.get_or_create(trip_id=change.trip_id, source_type_id=ref["source_type_id"],
-                                               source_id=ref["source_id"], target_type=content_type,
-                                               target_id=item.pk)
+                ItemLink.objects.get_or_create(
+                    trip_id=change.trip_id,
+                    source_type_id=ref["source_type_id"],
+                    source_id=ref["source_id"],
+                    target_type=content_type,
+                    target_id=item.pk,
+                )
         # The to-dos that covered it, if they still exist (a pre-K1 snapshot keeps them as "tasks").
         task_ids = snap.get("task_links") or snap.get("tasks") or []
         if RESTORABLE.get(model) and task_ids:
             for task in BookingTask.objects.filter(pk__in=task_ids, trip_id=change.trip_id):
                 task.link(item)
     _, label, trip_of, _ = TRACKED[model]
-    record(change.trip_id, TripChange.Kind.ADDED, f"Restored {label(item)}", item, actor=actor,
-           day_id=day_id_of(item))
+    record(change.trip_id, TripChange.Kind.ADDED, f"Restored {label(item)}", item, actor=actor, day_id=day_id_of(item))
     return item

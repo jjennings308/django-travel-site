@@ -8,6 +8,7 @@ only Safari shows it). At most ``MAX_FILE_MB`` each and ``MAX_TRIP_MB`` for all 
 ``trips:confirmation_file`` (the download) for anyone who can see the trip. Files are served inline
 under their original name, with nosniff, no caching and a sandbox CSP.
 """
+
 import os
 
 from django.contrib import messages
@@ -68,6 +69,7 @@ def add(confirmation, upload, user):
     if upload.size > MAX_FILE_MB * MB:
         raise Refused(f"{upload.name}: over {MAX_FILE_MB} MB.")
     from apps.media_app.quota import QuotaExceeded, check
+
     try:
         check(user, upload.size)  # the account's storage limit (R15)
     except QuotaExceeded as exc:
@@ -76,8 +78,9 @@ def add(confirmation, upload, user):
     size = content.size
     if trip_total(confirmation.trip) + size > MAX_TRIP_MB * MB:
         raise Refused(f"{upload.name}: this trip's files would go over {MAX_TRIP_MB} MB. Remove some first.")
-    record = ConfirmationFile(confirmation=confirmation, original_name=name, content_type=content_type, size=size,
-                              uploaded_by=user)
+    record = ConfirmationFile(
+        confirmation=confirmation, original_name=name, content_type=content_type, size=size, uploaded_by=user
+    )
     record.file.save(name, content, save=False)
     record.save()
     return record
@@ -85,6 +88,7 @@ def add(confirmation, upload, user):
 
 def _back(request, trip, confirmation):
     from .views import _back as back
+
     return back(request, reverse("trips:confirmation_edit", args=[trip.pk, confirmation.pk]) + "#files")
 
 
@@ -92,6 +96,7 @@ def _back(request, trip, confirmation):
 @require_POST
 def confirmation_file_add(request, pk, confirmation_pk):
     from .views import _readable_trip
+
     trip = _readable_trip(request, pk, "edit")
     confirmation = get_object_or_404(trip.confirmations.all(), pk=confirmation_pk)
     uploads = request.FILES.getlist("files")
@@ -112,9 +117,11 @@ def confirmation_file_add(request, pk, confirmation_pk):
 @require_POST
 def confirmation_file_delete(request, pk, file_pk):
     from .views import _readable_trip
+
     trip = _readable_trip(request, pk, "edit")
-    record = get_object_or_404(ConfirmationFile.objects.select_related("confirmation"), pk=file_pk,
-                               confirmation__trip=trip)
+    record = get_object_or_404(
+        ConfirmationFile.objects.select_related("confirmation"), pk=file_pk, confirmation__trip=trip
+    )
     name, confirmation = record.original_name, record.confirmation
     record.delete()
     messages.success(request, f"Removed {name} from {confirmation.confirmation_number}.")
@@ -124,10 +131,12 @@ def confirmation_file_delete(request, pk, file_pk):
 @login_required
 def confirmation_file(request, pk, file_pk):
     from .views import _readable_trip
+
     trip = _readable_trip(request, pk, "view")
     record = get_object_or_404(ConfirmationFile, pk=file_pk, confirmation__trip=trip)
-    response = FileResponse(record.file.open("rb"), as_attachment=False, filename=record.original_name,
-                            content_type=record.content_type)
+    response = FileResponse(
+        record.file.open("rb"), as_attachment=False, filename=record.original_name, content_type=record.content_type
+    )
     response["X-Content-Type-Options"] = "nosniff"
     response["Cache-Control"] = "private, no-store"
     response["Content-Security-Policy"] = "sandbox"

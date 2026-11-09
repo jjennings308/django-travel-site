@@ -1,5 +1,7 @@
 """'Also add the return trip' on a transport leg: a second leg back the other way."""
-from datetime import date, datetime, timezone as dt_timezone
+
+from datetime import date, datetime
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -17,27 +19,63 @@ UTC = dt_timezone.utc
 class RoundTripTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=ApprovalStatus.APPROVED)
-        uk = Country.objects.create(name="United Kingdom", slug="uk", iso_code="GB", iso3_code="GBR",
-                                    continent="Europe", approval_status=ApprovalStatus.APPROVED)
-        self.munich = City.objects.create(name="Munich", slug="munich", country=de, latitude=48.14, longitude=11.58,
-                                          approval_status=ApprovalStatus.APPROVED)
-        self.london = City.objects.create(name="London", slug="london", country=uk, latitude=51.5, longitude=-0.12,
-                                          approval_status=ApprovalStatus.APPROVED)
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 7, 1), end_date=date(2027, 7, 10),
-                                        created_by=self.user)
+        de = Country.objects.create(
+            name="Germany",
+            slug="de",
+            iso_code="DE",
+            iso3_code="DEU",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        uk = Country.objects.create(
+            name="United Kingdom",
+            slug="uk",
+            iso_code="GB",
+            iso3_code="GBR",
+            continent="Europe",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.munich = City.objects.create(
+            name="Munich",
+            slug="munich",
+            country=de,
+            latitude=48.14,
+            longitude=11.58,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.london = City.objects.create(
+            name="London",
+            slug="london",
+            country=uk,
+            latitude=51.5,
+            longitude=-0.12,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 7, 1), end_date=date(2027, 7, 10), created_by=self.user
+        )
         TripGrant.objects.create(trip=self.trip, user=self.user, role=TripRole.EDITOR)
         self.trip.cities.set([self.munich, self.london])
 
     def data(self, **over):
         values = {
-            "mode": "plane", "origin": "MUC", "origin_city": self.munich.pk, "origin_timezone": "Europe/Berlin",
-            "departure_local": "2027-07-02 09:00", "destination": "LHR", "destination_city": self.london.pk,
-            "destination_timezone": "Europe/London", "arrival_local": "2027-07-02 10:00", "operator": "Lufthansa",
-            "service_number": "LH2470", "cost": "199", "currency": "EUR",
-            "notes": "Window seat", "add_return": "on",
-            "return_departure_local": "2027-07-05 18:00", "return_arrival_local": "2027-07-05 21:00",
+            "mode": "plane",
+            "origin": "MUC",
+            "origin_city": self.munich.pk,
+            "origin_timezone": "Europe/Berlin",
+            "departure_local": "2027-07-02 09:00",
+            "destination": "LHR",
+            "destination_city": self.london.pk,
+            "destination_timezone": "Europe/London",
+            "arrival_local": "2027-07-02 10:00",
+            "operator": "Lufthansa",
+            "service_number": "LH2470",
+            "cost": "199",
+            "currency": "EUR",
+            "notes": "Window seat",
+            "add_return": "on",
+            "return_departure_local": "2027-07-05 18:00",
+            "return_arrival_local": "2027-07-05 21:00",
         }
         values.update(over)
         return values
@@ -51,8 +89,10 @@ class RoundTripTests(TestCase):
         outbound = form.save()
         back = form.return_leg
         self.assertEqual(TransportLeg.objects.count(), 2)
-        self.assertEqual((back.origin, back.destination, back.origin_city, back.destination_city),
-                         ("LHR", "MUC", self.london, self.munich))
+        self.assertEqual(
+            (back.origin, back.destination, back.origin_city, back.destination_city),
+            ("LHR", "MUC", self.london, self.munich),
+        )
         self.assertEqual((back.origin_timezone, back.destination_timezone), ("Europe/London", "Europe/Berlin"))
         self.assertEqual((back.mode, back.operator, back.currency), ("plane", "Lufthansa", "EUR"))
         self.assertEqual((back.service_number, back.cost, back.notes), ("", None, ""))

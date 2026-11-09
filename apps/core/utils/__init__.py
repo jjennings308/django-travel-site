@@ -1,4 +1,3 @@
-# core/utils/__init__.py
 """
 Core utility functions organized by category.
 
@@ -10,29 +9,24 @@ Usage:
     from apps.core.utils.currency import convert_currency
     from apps.core.utils.breadcrumbs import build_breadcrumbs, BreadcrumbPatterns
     from apps.core.utils.helpers import convert_distance_by_preference
-    
+
     # Or import commonly used functions directly from core.utils
     from apps.core.utils import generate_unique_slug, calculate_age
 """
 
 # Commonly used functions available directly from core.utils
-from .slug import generate_unique_slug
-from .age import calculate_age
-
 # Make submodules easily importable
-from . import imperial_metric
-from . import currency
-from . import breadcrumbs
-from . import helpers
+from . import breadcrumbs, currency, helpers, imperial_metric
+from .age import calculate_age
+from .slug import generate_unique_slug
 
 __all__ = [
     # Direct exports
-    'generate_unique_slug',
-    'calculate_age',
-    
+    "generate_unique_slug",
+    "calculate_age",
     # Submodules
-    'imperial_metric',
-    'currency',
-    'breadcrumbs',
-    'helpers',
+    "imperial_metric",
+    "currency",
+    "breadcrumbs",
+    "helpers",
 ]

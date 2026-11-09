@@ -1,4 +1,5 @@
 """City admin: the Region select is limited to the chosen country."""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -10,16 +11,38 @@ from apps.locations.models import City, Country, Region
 
 class CityAdminRegionTests(TestCase):
     def setUp(self):
-        self.austria = Country.objects.create(name="Austria", slug="austria", iso_code="AT", iso3_code="AUT", continent="Europe")
-        self.italy = Country.objects.create(name="Italy", slug="italy", iso_code="IT", iso3_code="ITA", continent="Europe")
+        self.austria = Country.objects.create(
+            name="Austria", slug="austria", iso_code="AT", iso3_code="AUT", continent="Europe"
+        )
+        self.italy = Country.objects.create(
+            name="Italy", slug="italy", iso_code="IT", iso3_code="ITA", continent="Europe"
+        )
         self.tyrol = Region.objects.create(country=self.austria, name="Tyrol", slug="tyrol")
         self.tuscany = Region.objects.create(country=self.italy, name="Tuscany", slug="tuscany")
-        self.city = City.objects.create(name="Innsbruck", slug="innsbruck", country=self.austria, region=self.tyrol,
-                                        latitude=47, longitude=11, approval_status=ApprovalStatus.APPROVED)
+        self.city = City.objects.create(
+            name="Innsbruck",
+            slug="innsbruck",
+            country=self.austria,
+            region=self.tyrol,
+            latitude=47,
+            longitude=11,
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def form(self, region):
-        data = {f: getattr(self.city, f) for f in ("name", "slug", "latitude", "longitude", "visitor_count",
-                                                     "average_rating", "review_count", "featured_order")}
+        data = {
+            f: getattr(self.city, f)
+            for f in (
+                "name",
+                "slug",
+                "latitude",
+                "longitude",
+                "visitor_count",
+                "average_rating",
+                "review_count",
+                "featured_order",
+            )
+        }
         data.update(country=self.austria.pk, region=region.pk)
         return CityAdminForm(data, instance=self.city)
 

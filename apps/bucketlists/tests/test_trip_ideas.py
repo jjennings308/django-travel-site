@@ -2,6 +2,7 @@
 an idea there, whose owner's goal shows on the shelf and counts as their vote; a finished trip offers
 "tick it off" only for goals whose idea made it onto the trip; Save for someday adds a goal from an idea
 or a considered option."""
+
 from datetime import date, timedelta
 
 from django.db import connection
@@ -19,8 +20,9 @@ class TripFixture(BucketFixture):
     def setUp(self):
         super().setUp()
         start = date.today() + timedelta(days=30)
-        self.trip = Trip.objects.create(name="Testville weekend", start_date=start, end_date=start + timedelta(days=3),
-                                        created_by=self.bob)
+        self.trip = Trip.objects.create(
+            name="Testville weekend", start_date=start, end_date=start + timedelta(days=3), created_by=self.bob
+        )
         TripGrant.objects.create(trip=self.trip, user=self.bob, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.alice, role=TripRole.COMMENTOR)
         self.day = self.trip.days.create(day_number=1, date=start)
@@ -31,13 +33,14 @@ class TripFixture(BucketFixture):
 
 class GoalToIdeaTests(TripFixture):
     def test_a_goal_on_a_trip_is_an_idea_there(self):
-        item = BucketListItem.objects.create(user=self.alice, activity=self.activity,
-                                             personal_notes="Private reasons")
+        item = BucketListItem.objects.create(user=self.alice, activity=self.activity, personal_notes="Private reasons")
         self.add(item)
         item.refresh_from_db()
         idea = item.trip_idea
-        self.assertEqual((idea.trip, idea.activity, idea.title, idea.notes, idea.added_by),
-                         (self.trip, self.activity, "Ridge Walk", "", self.alice))  # never the personal notes
+        self.assertEqual(
+            (idea.trip, idea.activity, idea.title, idea.notes, idea.added_by),
+            (self.trip, self.activity, "Ridge Walk", "", self.alice),
+        )  # never the personal notes
         self.assertEqual(item.trip, self.trip)
         self.assertTrue(Vote.objects.filter(user=self.alice, idea=idea).exists())  # a goal counts as a vote
 
@@ -69,9 +72,14 @@ class GoalToIdeaTests(TripFixture):
 
     def test_plan_a_trip_makes_the_idea(self):
         item = BucketListItem.objects.create(user=self.alice, city=self.city)
-        self.client.post(reverse("bucketlists:plan_trip", args=[item.pk]), {
-            "name": "Testville", "start_date": str(date.today() + timedelta(days=60)),
-            "end_date": str(date.today() + timedelta(days=63))})
+        self.client.post(
+            reverse("bucketlists:plan_trip", args=[item.pk]),
+            {
+                "name": "Testville",
+                "start_date": str(date.today() + timedelta(days=60)),
+                "end_date": str(date.today() + timedelta(days=63)),
+            },
+        )
         trip = Trip.objects.get(name="Testville")
         self.assertEqual(TripIdea.objects.get(trip=trip).city, self.city)
         self.assertEqual(list(trip.cities.all()), [self.city])  # through the idea
@@ -153,8 +161,9 @@ class SaveForSomedayTests(TripFixture):
         self.assertIn(f'name="option" value="{jazz.pk}"', page)
         self.client.post(reverse("bucketlists:save_idea"), {"option": jazz.pk})
         self.client.post(reverse("bucketlists:save_idea"), {"option": typed.pk})
-        self.assertEqual(sorted(i.title for i in BucketListItem.objects.filter(user=self.alice)),
-                         ["Jazz Night", "Karaoke"])
+        self.assertEqual(
+            sorted(i.title for i in BucketListItem.objects.filter(user=self.alice)), ["Jazz Night", "Karaoke"]
+        )
         self.assertEqual(BucketListItem.objects.get(user=self.alice, event=self.event).activity, None)
 
     def test_only_trips_you_can_see(self):
@@ -187,7 +196,9 @@ class GoalsToIdeasMigrationTests(RestoringTransactionTestCase):
         Item = apps.get_model("bucketlists", "BucketListItem")
         alice = User.objects.create(username="alice-m", email="alice-m@example.com")
         bob = User.objects.create(username="bob-m", email="bob-m@example.com")
-        country = Country.objects.create(name="Migland", slug="migland", iso_code="MG", iso3_code="MGL", continent="Europe")
+        country = Country.objects.create(
+            name="Migland", slug="migland", iso_code="MG", iso3_code="MGL", continent="Europe"
+        )
         city = City.objects.create(name="Migtown", slug="migtown", country=country, latitude=1, longitude=1)
         trip = Trip.objects.create(name="Mig trip", start_date=date(2027, 1, 1), end_date=date(2027, 1, 3))
         a = Item.objects.create(user=alice, city=city, trip=trip, personal_notes="private")

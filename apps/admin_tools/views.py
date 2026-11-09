@@ -1,5 +1,5 @@
-# admin_tools/views.py
 """Staff CSV import (upload -> preview -> confirm) and export of activities, events and locations."""
+
 from functools import wraps
 
 from django.contrib import messages
@@ -13,7 +13,8 @@ from django.views.decorators.http import require_POST
 
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 
-from .importers import IMPORT_ORDER, KINDS as SPECS, MAX_ROWS, Importer, export_csv, template_csv
+from .importers import IMPORT_ORDER, MAX_ROWS, Importer, export_csv, template_csv
+from .importers import KINDS as SPECS
 
 SESSION_KEY = "csv_import"
 MAX_BYTES = 5 * 1024 * 1024
@@ -22,6 +23,7 @@ KINDS = {kind: SPECS[kind].label for kind in IMPORT_ORDER}
 
 def staff_only(view):
     """Signed in and ``User.can_access_staff``; 403 otherwise."""
+
     @wraps(view)
     def wrapped(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -29,11 +31,14 @@ def staff_only(view):
         if not request.user.can_access_staff:
             raise PermissionDenied
         return view(request, *args, **kwargs)
+
     return wrapped
 
 
 def _crumbs(*tail):
-    return build_breadcrumbs([("Staff", "pages:staff_dashboard"), ("Import", "admin_tools:import" if tail else None), *tail])
+    return build_breadcrumbs(
+        [("Staff", "pages:staff_dashboard"), ("Import", "admin_tools:import" if tail else None), *tail]
+    )
 
 
 @staff_only
@@ -54,11 +59,20 @@ def import_start(request):
                 text = raw.decode("cp1252", errors="replace")  # Excel's default on Windows
             request.session[SESSION_KEY] = {"kind": kind, "text": text, "name": upload.name}
             return redirect("admin_tools:import_preview")
-    help_columns = {kind: [(c, c in SPECS[kind].required, SPECS[kind].example.get(c, "")) for c in SPECS[kind].columns] for kind in KINDS}
-    return render(request, "admin_tools/import_start.html", {
-        "kinds": KINDS, "help_columns": help_columns, "max_rows": MAX_ROWS,
-        "breadcrumb_list": _crumbs(),
-    })
+    help_columns = {
+        kind: [(c, c in SPECS[kind].required, SPECS[kind].example.get(c, "")) for c in SPECS[kind].columns]
+        for kind in KINDS
+    }
+    return render(
+        request,
+        "admin_tools/import_start.html",
+        {
+            "kinds": KINDS,
+            "help_columns": help_columns,
+            "max_rows": MAX_ROWS,
+            "breadcrumb_list": _crumbs(),
+        },
+    )
 
 
 @staff_only
@@ -74,18 +88,32 @@ def import_preview(request):
         created = sum(r.action == "create" for r, _ in done)
         updated = len(done) - created
         skipped = importer.counts["error"]
-        messages.success(request, f"Imported {KINDS[pending['kind']].lower()}: {created} created, {updated} updated"
-                                  + (f", {skipped} row(s) with errors skipped." if skipped else "."))
+        messages.success(
+            request,
+            f"Imported {KINDS[pending['kind']].lower()}: {created} created, {updated} updated"
+            + (f", {skipped} row(s) with errors skipped." if skipped else "."),
+        )
         url_name = SPECS[pending["kind"]].url_name
-        return render(request, "admin_tools/import_done.html", {
+        return render(
+            request,
+            "admin_tools/import_done.html",
+            {
+                "kind_label": KINDS[pending["kind"]],
+                "done": [(row, obj, reverse(url_name, args=[obj.slug])) for row, obj in done],
+                "breadcrumb_list": _crumbs(("Done", None)),
+            },
+        )
+    return render(
+        request,
+        "admin_tools/import_preview.html",
+        {
+            "importer": importer,
+            "counts": importer.counts,
             "kind_label": KINDS[pending["kind"]],
-            "done": [(row, obj, reverse(url_name, args=[obj.slug])) for row, obj in done],
-            "breadcrumb_list": _crumbs(("Done", None)),
-        })
-    return render(request, "admin_tools/import_preview.html", {
-        "importer": importer, "counts": importer.counts, "kind_label": KINDS[pending["kind"]],
-        "file_name": pending["name"], "breadcrumb_list": _crumbs(("Preview", None)),
-    })
+            "file_name": pending["name"],
+            "breadcrumb_list": _crumbs(("Preview", None)),
+        },
+    )
 
 
 @staff_only

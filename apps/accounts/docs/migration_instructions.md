@@ -29,8 +29,8 @@ Add to your `settings.py`:
 ```python
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.EmailOrUsernameBackend',  # NEW - allows email or username login
-    'django.contrib.auth.backends.ModelBackend',  # Keep as fallback
+    "accounts.backends.EmailOrUsernameBackend",  # NEW - allows email or username login
+    "django.contrib.auth.backends.ModelBackend",  # Keep as fallback
 ]
 ```
 
@@ -63,8 +63,8 @@ python manage.py shell
 from django.contrib.auth.models import Group
 
 # Create the role groups
-Group.objects.get_or_create(name='Vendors')
-Group.objects.get_or_create(name='Content Providers')
+Group.objects.get_or_create(name="Vendors")
+Group.objects.get_or_create(name="Content Providers")
 
 print("Groups created successfully!")
 ```

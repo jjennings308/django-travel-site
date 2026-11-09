@@ -1,4 +1,5 @@
 """Logistics tables give way to travel notes (docs/plans/edit-by-day.md, E6)."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -14,14 +15,18 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 20),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 20), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 17))
         self.table = Section.objects.create(
-            day=self.day, section_type=Section.Type.LOGISTICS_TABLE, title="Getting to the fair",
-            content={"columns": ["What", "Cost"], "rows": [["Bayern Ticket", "€29"], ["Seat reservation", "€5"]]})
+            day=self.day,
+            section_type=Section.Type.LOGISTICS_TABLE,
+            title="Getting to the fair",
+            content={"columns": ["What", "Cost"], "rows": [["Bayern Ticket", "€29"], ["Seat reservation", "€5"]]},
+        )
         self.edit_url = reverse("trips:section_edit", args=[self.trip.pk, self.day.pk, self.table.pk])
         self.convert_url = reverse("trips:section_to_travel_notes", args=[self.trip.pk, self.day.pk, self.table.pk])
 
@@ -30,9 +35,12 @@ class DayPageTests(Fixture):
     def test_add_to_this_day_offers_travel_notes_and_no_logistics_table(self):
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:day_edit", args=[self.trip.pk, self.day.pk])).content.decode()
-        add = html[html.index('id="add"'):html.index('id="on-this-day"')]
-        labels = [label for label in ("+ Note<", "+ Phase", "+ Callout", "+ Free text", "+ Travel notes",
-                                      "+ Choose your adventure") if label in add]
+        add = html[html.index('id="add"') : html.index('id="on-this-day"')]
+        labels = [
+            label
+            for label in ("+ Note<", "+ Phase", "+ Callout", "+ Free text", "+ Travel notes", "+ Choose your adventure")
+            if label in add
+        ]
         # Phases, callouts and free text are notes now (day-first plan P3); a choice is + Choose one (P4), and
         # Choose your adventure left with the retired types (retire-old-section-types S2).
         self.assertEqual(labels, ["+ Note<", "+ Travel notes"])

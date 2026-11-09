@@ -1,5 +1,6 @@
 """Turns a refused upload (``quota.QuotaExceeded``, site roadmap R15) into a message and a trip back
 to the page, so no view needs its own handling."""
+
 from django.contrib import messages
 from django.shortcuts import redirect
 

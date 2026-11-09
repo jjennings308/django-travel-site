@@ -7,6 +7,7 @@ Lists every leg, stay, activity, meal, choice option and confirmation with an am
 the code it would set — the item's place's, as the site already reads it (``currencies.currency_of``):
 "Neuschwanstein Castle (Day 15): EUR, from Schwangau". Items with no amount stay blank.
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.trips import currencies

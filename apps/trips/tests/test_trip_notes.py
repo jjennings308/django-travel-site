@@ -1,4 +1,5 @@
 """Catalogue notes on a trip's linked items, and "Not for this trip" (docs/plans/catalogue-notes.md, N2)."""
+
 from datetime import date, time
 from unittest import mock
 
@@ -9,7 +10,7 @@ from django.urls import reverse
 from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
 from apps.catalogue_notes.models import CatalogueNote
-from apps.locations.models import City, Country, POI
+from apps.locations.models import POI, City, Country
 from apps.trips.models import Day, Meal, Section, Trip, TripActivity, TripGrant, TripHiddenNote, TripRole
 
 User = get_user_model()
@@ -20,28 +21,48 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 20),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 20), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
-        de = Country.objects.create(name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe",
-                                    approval_status=APPROVED)
-        city = City.objects.create(name="Marburg", slug="marburg", country=de, latitude=0, longitude=0,
-                                   approval_status=APPROVED)
-        self.castle = POI.objects.create(name="Marburg Castle", slug="marburg-castle", city=city, latitude=0,
-                                         longitude=0, approval_status=APPROVED)
-        self.franco = POI.objects.create(name="Da Franco", slug="da-franco", city=city, latitude=0, longitude=0,
-                                         approval_status=APPROVED)
+        de = Country.objects.create(
+            name="Germany", slug="de", iso_code="DE", iso3_code="DEU", continent="Europe", approval_status=APPROVED
+        )
+        city = City.objects.create(
+            name="Marburg", slug="marburg", country=de, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.castle = POI.objects.create(
+            name="Marburg Castle", slug="marburg-castle", city=city, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.franco = POI.objects.create(
+            name="Da Franco", slug="da-franco", city=city, latitude=0, longitude=0, approval_status=APPROVED
+        )
         category, _ = ActivityCategory.objects.get_or_create(name="Sightseeing", defaults={"slug": "sightseeing"})
-        self.walk = Activity.objects.create(name="Castle walk", slug="castle-walk", category=category, description="x",
-                                            venue=self.castle, visibility="public", approval_status=APPROVED)
+        self.walk = Activity.objects.create(
+            name="Castle walk",
+            slug="castle-walk",
+            category=category,
+            description="x",
+            venue=self.castle,
+            visibility="public",
+            approval_status=APPROVED,
+        )
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 18))
-        self.meal = Meal.objects.create(day=self.day, name="Da Franco", meal_type="dinner", poi=self.franco,
-                                        reserved_time=time(19, 30))
-        self.tour = TripActivity.objects.create(trip=self.trip, day=self.day, kind="entry", title="Castle museum",
-                                                poi=self.castle)
-        self.section = Section.objects.create(day=self.day, section_type="note", title="The walk", order=1,
-                                              activity=self.walk, content={"paragraphs": ["Up the hill."]})
+        self.meal = Meal.objects.create(
+            day=self.day, name="Da Franco", meal_type="dinner", poi=self.franco, reserved_time=time(19, 30)
+        )
+        self.tour = TripActivity.objects.create(
+            trip=self.trip, day=self.day, kind="entry", title="Castle museum", poi=self.castle
+        )
+        self.section = Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="The walk",
+            order=1,
+            activity=self.walk,
+            content={"paragraphs": ["Up the hill."]},
+        )
 
     def note(self, **values):
         values.setdefault("approval_status", APPROVED)
@@ -55,7 +76,7 @@ class Fixture(TestCase):
     @staticmethod
     def block(html, anchor):
         start = html.index(anchor)
-        return html[start:start + 4000]
+        return html[start : start + 4000]
 
 
 class ShownTests(Fixture):
@@ -71,11 +92,13 @@ class ShownTests(Fixture):
         self.assertIn("From Da Franco", meal)
         self.assertNotIn("Still waiting for review", html)  # approved only
         self.assertIn("Museum: cash only", self.block(html, f'id="activity-{self.tour.pk}"'))
-        walk = html[html.index("The walk"):]
+        walk = html[html.index("The walk") :]
         self.assertIn("Steep cobbles; good shoes", walk[:4000])
         self.assertIn("Book 2 weeks ahead", walk[:4000])
         self.assertIn("callout-warning", self.block(html, f'id="activity-{self.tour.pk}"'))
-        self.assertLess(walk.index("Steep cobbles"), walk.index("Museum: cash only"))  # the activity's, then its venue's
+        self.assertLess(
+            walk.index("Steep cobbles"), walk.index("Museum: cash only")
+        )  # the activity's, then its venue's
         self.assertNotIn("data-hide-note", html)  # viewers can't hide
 
 
@@ -92,7 +115,7 @@ class HidingTests(Fixture):
         self.assertTrue(TripHiddenNote.objects.filter(trip=self.trip, note=note).exists())
         html = self.page(self.editor)
         meal = self.block(html, f'id="meal-{self.meal.pk}"')
-        self.assertNotIn('data-trip-note="', meal[:meal.find("data-hidden-notes")])
+        self.assertNotIn('data-trip-note="', meal[: meal.find("data-hidden-notes")])
         self.assertIn("data-hidden-notes", meal)  # editors can show it again
         self.assertNotIn("Closed early on Sundays", self.page(self.viewer))
         self.client.force_login(self.editor)
@@ -102,7 +125,9 @@ class HidingTests(Fixture):
     def test_only_editors_may_hide(self):
         note = self.note(poi=self.franco, text="x")
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(reverse("trips:trip_note_hide", args=[self.trip.pk, note.pk])).status_code, 403)
+        self.assertEqual(
+            self.client.post(reverse("trips:trip_note_hide", args=[self.trip.pk, note.pk])).status_code, 403
+        )
         self.assertFalse(TripHiddenNote.objects.exists())
 
     def test_the_booklet_skips_hidden_notes(self):
@@ -131,7 +156,7 @@ class CityNotesTests(Fixture):
         self.note(city=self.marburg, text="Old town is car-free")
         html = self.page(self.viewer)
         self.assertEqual(html.count("Old town is car-free"), 1)
-        day1 = html[html.index('id="day-1"'):html.index('id="day-2"')]
+        day1 = html[html.index('id="day-1"') : html.index('id="day-2"')]
         self.assertIn("Old town is car-free", day1)
         self.assertIn("From Marburg", day1)
 
@@ -144,6 +169,7 @@ class CityNotesTests(Fixture):
 
     def test_stay_option_shows_its_citys_notes(self):
         from apps.trips.models import Option, OptionGroup
+
         group = OptionGroup.objects.create(trip=self.trip, day=self.day3, prompt="Where to sleep?", kind="stay")
         Option.objects.create(group=group, title="Stay in Marburg", city=self.marburg)
         Option.objects.create(group=group, title="Somewhere else")
@@ -157,6 +183,7 @@ class CityNotesTests(Fixture):
 
     def test_booklet_prints_it(self):
         from apps.trips import pdf
+
         self.note(city=self.marburg, text="Old town is car-free")
         self.client.force_login(self.viewer)
         with mock.patch.object(pdf, "render_pdf", side_effect=lambda html, **kw: html.encode()) as render:

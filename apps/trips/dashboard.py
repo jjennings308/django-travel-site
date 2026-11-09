@@ -42,10 +42,7 @@ User = get_user_model()
 
 def _grouped(queryset, field):
     """``{value: count}`` for one grouped count, in one query."""
-    return {
-        row[field]: row["n"]
-        for row in queryset.values(field).annotate(n=Count("id"))
-    }
+    return {row[field]: row["n"] for row in queryset.values(field).annotate(n=Count("id"))}
 
 
 def _breakdown(choices, counts):
@@ -58,10 +55,7 @@ def _breakdown(choices, counts):
     The percentages are computed here rather than in the template because the
     template has no arithmetic and the max would have to be found there anyway.
     """
-    rows = [
-        {"value": value, "label": label, "count": counts.get(value, 0)}
-        for value, label in choices
-    ]
+    rows = [{"value": value, "label": label, "count": counts.get(value, 0)} for value, label in choices]
     largest = max((row["count"] for row in rows), default=0)
     total = sum(row["count"] for row in rows)
     for row in rows:
@@ -93,9 +87,7 @@ def build_dashboard():
     )
     # Trip access by role: one count per grant on a live trip. A person with
     # grants on three trips is counted three times, once per trip.
-    roles = _breakdown(
-        TripRole.choices, _grouped(TripGrant.objects.filter(trip__in=live), "role")
-    )
+    roles = _breakdown(TripRole.choices, _grouped(TripGrant.objects.filter(trip__in=live), "role"))
     creators = UserRole.objects.filter(role=Role.CREATOR).count()
     # Staff need no grants, so this is "accounts that can reach no trip unless
     # they are staff" rather than "unconfigured".
@@ -126,18 +118,14 @@ def build_dashboard():
             outstanding=Count("id", filter=Q(done=False)),
             overdue=Count("id", filter=Q(done=False, due__lt=today)),
         ),
-        "trips_with_outstanding": live.filter(booking_tasks__done=False)
-        .distinct()
-        .count(),
+        "trips_with_outstanding": live.filter(booking_tasks__done=False).distinct().count(),
         "by_priority": _breakdown(
             BookingTask.Priority.choices,
             _grouped(BookingTask.objects.filter(done=False), "priority"),
         ),
     }
 
-    tasks["done_pct"] = (
-        round(tasks["completed"] * 100 / tasks["total"]) if tasks["total"] else 0
-    )
+    tasks["done_pct"] = round(tasks["completed"] * 100 / tasks["total"]) if tasks["total"] else 0
 
     # -- content ----------------------------------------------------------
     content = {
@@ -151,9 +139,7 @@ def build_dashboard():
         "comments": Comment.objects.count(),
         "comments_recent": Comment.objects.filter(created_at__gte=week_ago).count(),
     }
-    sections_by_type = _breakdown(
-        Section.Type.choices, _grouped(Section.objects, "section_type")
-    )
+    sections_by_type = _breakdown(Section.Type.choices, _grouped(Section.objects, "section_type"))
 
     # -- access -----------------------------------------------------------
     access = {

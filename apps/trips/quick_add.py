@@ -15,6 +15,7 @@ guessed from the first word and the shape of the line unless a kind button force
 
 Nothing is guessed that the line doesn't say.
 """
+
 import re
 from datetime import time
 
@@ -22,27 +23,74 @@ from .logistics import ARROW, DRAWN_ARROW, LEADING_VERB, ROUGH_TIME, _mode, roug
 
 KINDS = ("travel", "stay", "do", "eat", "note")
 
-MEAL_WORDS = {"breakfast": "breakfast", "brunch": "breakfast", "lunch": "lunch", "dinner": "dinner",
-              "supper": "dinner", "snack": "snack", "coffee": "snack", "drinks": "drinks",
-              "cocktails": "drinks"}
-STAY_WORDS = ("hotel", "stay", "hostel", "inn", "apartment", "flat", "airbnb", "b&b", "bnb", "campsite",
-              "camping", "guesthouse", "lodge", "motel", "resort", "villa", "cabin", "chalet")
-TRAVEL_WORDS = ("train", "flight", "fly", "plane", "bus", "coach", "drive", "car", "ferry", "boat", "walk",
-                "taxi", "uber", "tram", "metro", "subway", "rental", "transfer", "shuttle")
+MEAL_WORDS = {
+    "breakfast": "breakfast",
+    "brunch": "breakfast",
+    "lunch": "lunch",
+    "dinner": "dinner",
+    "supper": "dinner",
+    "snack": "snack",
+    "coffee": "snack",
+    "drinks": "drinks",
+    "cocktails": "drinks",
+}
+STAY_WORDS = (
+    "hotel",
+    "stay",
+    "hostel",
+    "inn",
+    "apartment",
+    "flat",
+    "airbnb",
+    "b&b",
+    "bnb",
+    "campsite",
+    "camping",
+    "guesthouse",
+    "lodge",
+    "motel",
+    "resort",
+    "villa",
+    "cabin",
+    "chalet",
+)
+TRAVEL_WORDS = (
+    "train",
+    "flight",
+    "fly",
+    "plane",
+    "bus",
+    "coach",
+    "drive",
+    "car",
+    "ferry",
+    "boat",
+    "walk",
+    "taxi",
+    "uber",
+    "tram",
+    "metro",
+    "subway",
+    "rental",
+    "transfer",
+    "shuttle",
+)
 # (activity kind, first words)
-DO_WORDS = (("tour", ("tour", "walking", "guided", "excursion", "cruise", "hike", "trip")),
-            ("ticket", ("tickets", "ticket", "pass", "concert", "show", "game", "match", "opera", "theatre",
-                        "theater")),
-            ("entry", ("museum", "entry", "visit", "gallery", "castle", "palace", "cathedral", "tower", "exhibition")),
-            ("table", ("table", "reservation")),
-            ("car_hire", ("car hire", "hire car", "rent a car")))
+DO_WORDS = (
+    ("tour", ("tour", "walking", "guided", "excursion", "cruise", "hike", "trip")),
+    ("ticket", ("tickets", "ticket", "pass", "concert", "show", "game", "match", "opera", "theatre", "theater")),
+    ("entry", ("museum", "entry", "visit", "gallery", "castle", "palace", "cathedral", "tower", "exhibition")),
+    ("table", ("table", "reservation")),
+    ("car_hire", ("car hire", "hire car", "rent a car")),
+)
 
 NIGHTS = re.compile(r"\b(\d{1,2})\s*nights?\b", re.IGNORECASE)
 CLOCK = re.compile(
     r"(?:\s*(?:\bat\b|@)\s*)?"
     r"(?<![\d:.])(?:(?P<h>\d{1,2})(?:[:.](?P<m>\d{2}))?\s*(?P<ap>[ap])\.?m\.?\b"  # 7pm, 7:30 pm, 7.30am
     r"|(?P<h24>\d{1,2})[:h](?P<m24>\d{2})\b)",  # 19:30, 9:15, 9h15
-    re.IGNORECASE)
+    re.IGNORECASE,
+)
 
 
 def find_time(text):
@@ -57,7 +105,7 @@ def find_time(text):
             hour, minute = int(match.group("h24")), int(match.group("m24"))
         if hour > 23 or minute > 59:
             continue
-        rest = (text[:match.start()] + " " + text[match.end():]).strip()
+        rest = (text[: match.start()] + " " + text[match.end() :]).strip()
         return time(hour, minute), _tidy(rest)
     return None, text
 
@@ -73,7 +121,9 @@ def _first_word(text):
 
 def _drop_first(text, words):
     """``text`` without a leading word from ``words`` (and an "at" / "of" after it)."""
-    pattern = r"^\s*(?:" + "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True)) + r")\b\s*(?:at|of|in|:)?\s*"
+    pattern = (
+        r"^\s*(?:" + "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True)) + r")\b\s*(?:at|of|in|:)?\s*"
+    )
     return _tidy(re.sub(pattern, "", text, count=1, flags=re.IGNORECASE))
 
 
@@ -125,8 +175,14 @@ def parse(text, kind=None):
         else:
             origin, destination = route, ""
         notes = f"Around {clock.strftime('%H:%M')}" if clock else ""
-        return {"kind": "travel", "mode": mode, "origin": _tidy(origin), "destination": _tidy(destination),
-                "duration": duration, "notes": notes}
+        return {
+            "kind": "travel",
+            "mode": mode,
+            "origin": _tidy(origin),
+            "destination": _tidy(destination),
+            "duration": duration,
+            "notes": notes,
+        }
     if kind == "do":
         low = without_time.lower()
         activity_kind = next((k for k, words in DO_WORDS if any(low.startswith(w) for w in words)), "other")
@@ -160,7 +216,9 @@ def choice_kind(text):
         return {"kind": "stay"}
     if meal:
         return {"kind": "eat", "meal_type": meal}
-    if _has(text, [w for w in TRAVEL_WORDS if w != "walk"]) or re.search(r"\bget(ting)? to\b|\bhow to get\b", text, re.IGNORECASE):
+    if _has(text, [w for w in TRAVEL_WORDS if w != "walk"]) or re.search(
+        r"\bget(ting)? to\b|\bhow to get\b", text, re.IGNORECASE
+    ):
         mode = _mode(text)
         return {"kind": "travel", **({"mode": mode} if mode != "other" else {})}
     return {"kind": "do"}

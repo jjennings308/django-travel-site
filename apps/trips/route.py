@@ -13,6 +13,7 @@ cut at its end unless ``extend`` moves the end date; a shorter one leaves the la
 ``runs(days)`` is the other direction, for the trip page's strip and the builder's first rows: the days'
 cities as consecutive runs.
 """
+
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -61,17 +62,17 @@ def initial_stops(days, end_date):
 
 @dataclass
 class Plan:
-    stops: list                                   # [(city, nights)]
-    dates: list                                   # every date the route covers, with its city
+    stops: list  # [(city, nights)]
+    dates: list  # every date the route covers, with its city
     days_set: list = field(default_factory=list)  # (date, day or None, city): blank days to fill / days to make
-    conflicts: list = field(default_factory=list) # (date, day, its city, route city): kept unless replace
-    legs: list = field(default_factory=list)      # (date, from city, to city, already there)
-    stays: list = field(default_factory=list)     # (city, check_in, check_out, already covered by)
+    conflicts: list = field(default_factory=list)  # (date, day, its city, route city): kept unless replace
+    legs: list = field(default_factory=list)  # (date, from city, to city, already there)
+    stays: list = field(default_factory=list)  # (city, check_in, check_out, already covered by)
     route_nights: int = 0
     trip_nights: int = 0
-    new_end: object = None                        # the end date when extending
-    cut: bool = False                             # longer than the trip, not extended
-    blank_from: object = None                     # shorter: days from here on stay blank
+    new_end: object = None  # the end date when extending
+    cut: bool = False  # longer than the trip, not extended
+    blank_from: object = None  # shorter: days from here on stay blank
 
     @property
     def summary(self):
@@ -119,8 +120,10 @@ def plan(trip, stops, days, legs, stays, extend=False):
     for (city_a, _, _), (city_b, changeover, _) in zip(starts, starts[1:]):
         if city_a.pk == city_b.pk:
             continue
-        there = any(leg.date == changeover and leg.origin_city_id == city_a.pk
-                    and leg.destination_city_id == city_b.pk for leg in legs)
+        there = any(
+            leg.date == changeover and leg.origin_city_id == city_a.pk and leg.destination_city_id == city_b.pk
+            for leg in legs
+        )
         result.legs.append((changeover, city_a, city_b, there))
     for city, check_in, nights in starts:
         check_out = min(check_in + timedelta(days=nights), last_date)
@@ -136,13 +139,15 @@ def apply(trip, route, replace=False, make_legs=True, make_stays=True):
     from . import currencies, trip_cities
     from .changes import batch
     from .models import Day, Lodging, TransportLeg
+
     counts = {"days": 0, "new_days": 0, "legs": 0, "stays": 0}
     with transaction.atomic(), batch(f"Route set: {route.summary}", trip=trip):
         if route.new_end and route.new_end != trip.end_date:
             trip.end_date = route.new_end
             trip.save(update_fields=["end_date"])
-        targets = list(route.days_set) + ([(date, day, city) for date, day, _, city in route.conflicts]
-                                          if replace else [])
+        targets = list(route.days_set) + (
+            [(date, day, city) for date, day, _, city in route.conflicts] if replace else []
+        )
         taken = set(trip.days.values_list("day_number", flat=True))
         for date, day, city in sorted(targets, key=lambda t: t[0]):
             if day is None:
@@ -161,17 +166,30 @@ def apply(trip, route, replace=False, make_legs=True, make_stays=True):
                 if there:
                     continue
                 TransportLeg.objects.create(
-                    trip=trip, date=date, mode=TransportLeg.Mode.OTHER, origin=city_a.name, destination=city_b.name,
-                    origin_city=city_a, destination_city=city_b, origin_timezone=city_a.timezone or "",
+                    trip=trip,
+                    date=date,
+                    mode=TransportLeg.Mode.OTHER,
+                    origin=city_a.name,
+                    destination=city_b.name,
+                    origin_city=city_a,
+                    destination_city=city_b,
+                    origin_timezone=city_a.timezone or "",
                     destination_timezone=city_b.timezone or "",
-                    currency=currencies.default_for(trip, [city_a.pk, city_b.pk]))
+                    currency=currencies.default_for(trip, [city_a.pk, city_b.pk]),
+                )
                 counts["legs"] += 1
         if make_stays:
             for city, check_in, check_out, covered in route.stays:
                 if covered is not None:
                     continue
-                Lodging.objects.create(trip=trip, name=f"Stay in {city.name}", city=city, check_in=check_in,
-                                       check_out=check_out, currency=currencies.default_for(trip, [city.pk]))
+                Lodging.objects.create(
+                    trip=trip,
+                    name=f"Stay in {city.name}",
+                    city=city,
+                    check_in=check_in,
+                    check_out=check_out,
+                    currency=currencies.default_for(trip, [city.pk]),
+                )
                 counts["stays"] += 1
         trip_cities.sync(trip)
     return counts

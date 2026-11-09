@@ -1,4 +1,3 @@
-# admin_tools/importers.py
 """CSV import and export for staff: activities, events, countries, regions,
 cities and places (POIs).
 
@@ -15,6 +14,7 @@ value; ``parse()`` validates without saving and ``apply()`` saves the valid
 rows (published). Export writes the published items in the same columns, so a
 file can be exported, edited and imported again.
 """
+
 import csv
 import io
 from dataclasses import dataclass, field
@@ -49,8 +49,22 @@ APPROVED = ApprovalStatus.APPROVED
 class CountryImportForm(forms.ModelForm):
     class Meta:
         model = Country
-        fields = ["name", "iso_code", "iso3_code", "continent", "latitude", "longitude", "currency_code",
-                  "currency_name", "phone_code", "flag_emoji", "description", "travel_tips", "visa_required", "visa_info"]
+        fields = [
+            "name",
+            "iso_code",
+            "iso3_code",
+            "continent",
+            "latitude",
+            "longitude",
+            "currency_code",
+            "currency_name",
+            "phone_code",
+            "flag_emoji",
+            "description",
+            "travel_tips",
+            "visa_required",
+            "visa_info",
+        ]
 
 
 class RegionImportForm(forms.ModelForm):
@@ -62,8 +76,20 @@ class RegionImportForm(forms.ModelForm):
 class CityImportForm(forms.ModelForm):
     class Meta:
         model = City
-        fields = ["country", "region", "name", "latitude", "longitude", "timezone", "elevation_m", "population",
-                  "capital_type", "best_time_to_visit", "average_daily_budget", "description"]
+        fields = [
+            "country",
+            "region",
+            "name",
+            "latitude",
+            "longitude",
+            "timezone",
+            "elevation_m",
+            "population",
+            "capital_type",
+            "best_time_to_visit",
+            "average_daily_budget",
+            "description",
+        ]
 
     def clean(self):
         cleaned = super().clean()
@@ -76,9 +102,23 @@ class CityImportForm(forms.ModelForm):
 class POIImportForm(forms.ModelForm):
     class Meta:
         model = POI
-        fields = ["city", "name", "poi_type", "latitude", "longitude", "elevation_m", "address", "description",
-                  "website", "phone", "entry_fee", "entry_fee_currency", "typical_duration",
-                  "wheelchair_accessible", "parking_available"]
+        fields = [
+            "city",
+            "name",
+            "poi_type",
+            "latitude",
+            "longitude",
+            "elevation_m",
+            "address",
+            "description",
+            "website",
+            "phone",
+            "entry_fee",
+            "entry_fee_currency",
+            "typical_duration",
+            "wheelchair_accessible",
+            "parking_available",
+        ]
 
 
 # ---- the kinds ------------------------------------------------------------
@@ -97,85 +137,219 @@ class Kind:
 
 KINDS = {
     "country": Kind(
-        "Countries", Country, CountryImportForm,
-        {"name": ("name", "text"), "iso_code": ("iso_code", "text"), "iso3_code": ("iso3_code", "text"),
-         "continent": ("continent", "choice"), "latitude": ("latitude", "number"), "longitude": ("longitude", "number"),
-         "currency_code": ("currency_code", "text"), "currency_name": ("currency_name", "text"),
-         "phone_code": ("phone_code", "text"), "flag_emoji": ("flag_emoji", "text"),
-         "description": ("description", "text"), "travel_tips": ("travel_tips", "text"),
-         "visa_required": ("visa_required", "bool"), "visa_info": ("visa_info", "text")},
+        "Countries",
+        Country,
+        CountryImportForm,
+        {
+            "name": ("name", "text"),
+            "iso_code": ("iso_code", "text"),
+            "iso3_code": ("iso3_code", "text"),
+            "continent": ("continent", "choice"),
+            "latitude": ("latitude", "number"),
+            "longitude": ("longitude", "number"),
+            "currency_code": ("currency_code", "text"),
+            "currency_name": ("currency_name", "text"),
+            "phone_code": ("phone_code", "text"),
+            "flag_emoji": ("flag_emoji", "text"),
+            "description": ("description", "text"),
+            "travel_tips": ("travel_tips", "text"),
+            "visa_required": ("visa_required", "bool"),
+            "visa_info": ("visa_info", "text"),
+        },
         ("name", "iso_code", "iso3_code", "continent"),
-        {"name": "Iceland", "iso_code": "IS", "iso3_code": "ISL", "continent": "Europe", "latitude": "64.9631",
-         "longitude": "-19.0208", "currency_code": "ISK", "currency_name": "Icelandic króna", "visa_required": "no"},
-        "locations:country_detail", ("name",)),
+        {
+            "name": "Iceland",
+            "iso_code": "IS",
+            "iso3_code": "ISL",
+            "continent": "Europe",
+            "latitude": "64.9631",
+            "longitude": "-19.0208",
+            "currency_code": "ISK",
+            "currency_name": "Icelandic króna",
+            "visa_required": "no",
+        },
+        "locations:country_detail",
+        ("name",),
+    ),
     "region": Kind(
-        "Regions", Region, RegionImportForm,
-        {"name": ("name", "text"), "country": ("country", "country"), "code": ("code", "text"),
-         "latitude": ("latitude", "number"), "longitude": ("longitude", "number"),
-         "description": ("description", "text")},
+        "Regions",
+        Region,
+        RegionImportForm,
+        {
+            "name": ("name", "text"),
+            "country": ("country", "country"),
+            "code": ("code", "text"),
+            "latitude": ("latitude", "number"),
+            "longitude": ("longitude", "number"),
+            "description": ("description", "text"),
+        },
         ("name", "country"),
         {"name": "Bavaria", "country": "Germany", "code": "BY", "latitude": "48.7904", "longitude": "11.4979"},
-        "locations:region_detail", ("country__name", "name")),
+        "locations:region_detail",
+        ("country__name", "name"),
+    ),
     "city": Kind(
-        "Cities", City, CityImportForm,
-        {"name": ("name", "text"), "country": ("country", "country"), "region": ("region", "region"),
-         "latitude": ("latitude", "number"), "longitude": ("longitude", "number"), "timezone": ("timezone", "text"),
-         "elevation_m": ("elevation_m", "number"), "population": ("population", "number"),
-         "capital": ("capital_type", "choice"), "best_time_to_visit": ("best_time_to_visit", "text"),
-         "average_daily_budget": ("average_daily_budget", "number"), "description": ("description", "text")},
+        "Cities",
+        City,
+        CityImportForm,
+        {
+            "name": ("name", "text"),
+            "country": ("country", "country"),
+            "region": ("region", "region"),
+            "latitude": ("latitude", "number"),
+            "longitude": ("longitude", "number"),
+            "timezone": ("timezone", "text"),
+            "elevation_m": ("elevation_m", "number"),
+            "population": ("population", "number"),
+            "capital": ("capital_type", "choice"),
+            "best_time_to_visit": ("best_time_to_visit", "text"),
+            "average_daily_budget": ("average_daily_budget", "number"),
+            "description": ("description", "text"),
+        },
         ("name", "country", "latitude", "longitude"),
-        {"name": "Munich", "country": "Germany", "region": "Bavaria", "latitude": "48.1351", "longitude": "11.5820",
-         "timezone": "Europe/Berlin", "population": "1512491", "capital": "region"},
-        "locations:city_detail", ("country__name", "name")),
+        {
+            "name": "Munich",
+            "country": "Germany",
+            "region": "Bavaria",
+            "latitude": "48.1351",
+            "longitude": "11.5820",
+            "timezone": "Europe/Berlin",
+            "population": "1512491",
+            "capital": "region",
+        },
+        "locations:city_detail",
+        ("country__name", "name"),
+    ),
     "poi": Kind(
-        "Places (POIs)", POI, POIImportForm,
-        {"name": ("name", "text"), "city": ("city", "city_required"), "region": (None, "context"),
-         "country": (None, "context"), "type": ("poi_type", "choice"), "latitude": ("latitude", "number"),
-         "longitude": ("longitude", "number"), "elevation_m": ("elevation_m", "number"),
-         "address": ("address", "text"), "description": ("description", "text"), "website": ("website", "text"),
-         "phone": ("phone", "text"), "entry_fee": ("entry_fee", "number"),
-         "entry_fee_currency": ("entry_fee_currency", "text"), "typical_duration": ("typical_duration", "number"),
-         "wheelchair_accessible": ("wheelchair_accessible", "bool"), "parking_available": ("parking_available", "bool")},
+        "Places (POIs)",
+        POI,
+        POIImportForm,
+        {
+            "name": ("name", "text"),
+            "city": ("city", "city_required"),
+            "region": (None, "context"),
+            "country": (None, "context"),
+            "type": ("poi_type", "choice"),
+            "latitude": ("latitude", "number"),
+            "longitude": ("longitude", "number"),
+            "elevation_m": ("elevation_m", "number"),
+            "address": ("address", "text"),
+            "description": ("description", "text"),
+            "website": ("website", "text"),
+            "phone": ("phone", "text"),
+            "entry_fee": ("entry_fee", "number"),
+            "entry_fee_currency": ("entry_fee_currency", "text"),
+            "typical_duration": ("typical_duration", "number"),
+            "wheelchair_accessible": ("wheelchair_accessible", "bool"),
+            "parking_available": ("parking_available", "bool"),
+        },
         ("name", "city", "latitude", "longitude"),
-        {"name": "Theresienwiese", "city": "Munich", "region": "Bavaria", "country": "Germany", "type": "entertainment",
-         "latitude": "48.1316", "longitude": "11.5498", "wheelchair_accessible": "yes"},
-        "locations:poi_detail", ("city__country__name", "city__name", "name")),
+        {
+            "name": "Theresienwiese",
+            "city": "Munich",
+            "region": "Bavaria",
+            "country": "Germany",
+            "type": "entertainment",
+            "latitude": "48.1316",
+            "longitude": "11.5498",
+            "wheelchair_accessible": "yes",
+        },
+        "locations:poi_detail",
+        ("city__country__name", "city__name", "name"),
+    ),
     "activity": Kind(
-        "Activities", Activity, ActivityEditForm,
-        {"name": ("name", "text"), "category": ("category", "category"), "description": ("description", "text"),
-         "short_description": ("short_description", "text"), "country": ("country", "country"),
-         "region": ("region", "region"), "city": ("city", "city"), "place": ("suggested_location", "text"),
-         "venue": ("venue", "poi"), "recurrence": ("recurrence", "choice"), "usual_months": ("usual_months", "months"),
-         "timing_notes": ("suggested_timeframe", "text"), "skill_level": ("skill_level", "choice"),
-         "fitness": ("fitness_required", "number"), "duration": ("duration_category", "choice"),
-         "cost_level": ("cost_level", "choice"), "best_for": ("best_for", "choice"),
-         "indoor_outdoor": ("indoor_outdoor", "choice"), "booking_required": ("booking_required", "bool"),
-         "suitable_for_children": ("suitable_for_children", "bool"),
-         "wheelchair_accessible": ("wheelchair_accessible", "bool"), "equipment_needed": ("equipment_needed", "text"),
-         "safety_notes": ("safety_notes", "text"), "tags": (None, "tags")},
+        "Activities",
+        Activity,
+        ActivityEditForm,
+        {
+            "name": ("name", "text"),
+            "category": ("category", "category"),
+            "description": ("description", "text"),
+            "short_description": ("short_description", "text"),
+            "country": ("country", "country"),
+            "region": ("region", "region"),
+            "city": ("city", "city"),
+            "place": ("suggested_location", "text"),
+            "venue": ("venue", "poi"),
+            "recurrence": ("recurrence", "choice"),
+            "usual_months": ("usual_months", "months"),
+            "timing_notes": ("suggested_timeframe", "text"),
+            "skill_level": ("skill_level", "choice"),
+            "fitness": ("fitness_required", "number"),
+            "duration": ("duration_category", "choice"),
+            "cost_level": ("cost_level", "choice"),
+            "best_for": ("best_for", "choice"),
+            "indoor_outdoor": ("indoor_outdoor", "choice"),
+            "booking_required": ("booking_required", "bool"),
+            "suitable_for_children": ("suitable_for_children", "bool"),
+            "wheelchair_accessible": ("wheelchair_accessible", "bool"),
+            "equipment_needed": ("equipment_needed", "text"),
+            "safety_notes": ("safety_notes", "text"),
+            "tags": (None, "tags"),
+        },
         ("name", "category", "description"),
-        {"name": "Oktoberfest", "category": "Festival", "description": "The world's largest beer festival.",
-         "country": "Germany", "city": "Munich", "recurrence": "yearly", "usual_months": "Sep;Oct",
-         "timing_notes": "Mid September to the first Sunday in October", "cost_level": "moderate",
-         "booking_required": "no", "tags": "Food; Music"},
-        "activities:activity_detail", ("name",)),
+        {
+            "name": "Oktoberfest",
+            "category": "Festival",
+            "description": "The world's largest beer festival.",
+            "country": "Germany",
+            "city": "Munich",
+            "recurrence": "yearly",
+            "usual_months": "Sep;Oct",
+            "timing_notes": "Mid September to the first Sunday in October",
+            "cost_level": "moderate",
+            "booking_required": "no",
+            "tags": "Food; Music",
+        },
+        "activities:activity_detail",
+        ("name",),
+    ),
     "event": Kind(
-        "Events", Event, EventForm,
-        {"name": ("name", "text"), "start_date": ("start_date", "date"), "end_date": ("end_date", "date"),
-         "start_time": ("start_time", "time"), "end_time": ("end_time", "time"), "all_day": ("is_all_day", "bool"),
-         "activity": ("related_activity", "activity"), "category": ("category", "category"),
-         "description": ("description", "text"), "short_description": ("short_description", "text"),
-         "country": ("country", "country"), "city": ("city", "city"), "town": ("location_text", "text"),
-         "place": ("poi", "poi"), "venue": ("venue_name", "text"), "venue_address": ("venue_address", "text"), "organizer": ("organizer", "text"),
-         "event_type": ("event_type", "choice"), "free": ("is_free", "bool"),
-         "ticket_price_min": ("ticket_price_min", "number"), "ticket_price_max": ("ticket_price_max", "number"),
-         "currency": ("currency", "text"), "ticket_url": ("ticket_url", "text"), "website": ("website", "text"),
-         "what_to_bring": ("what_to_bring", "text")},
+        "Events",
+        Event,
+        EventForm,
+        {
+            "name": ("name", "text"),
+            "start_date": ("start_date", "date"),
+            "end_date": ("end_date", "date"),
+            "start_time": ("start_time", "time"),
+            "end_time": ("end_time", "time"),
+            "all_day": ("is_all_day", "bool"),
+            "activity": ("related_activity", "activity"),
+            "category": ("category", "category"),
+            "description": ("description", "text"),
+            "short_description": ("short_description", "text"),
+            "country": ("country", "country"),
+            "city": ("city", "city"),
+            "town": ("location_text", "text"),
+            "place": ("poi", "poi"),
+            "venue": ("venue_name", "text"),
+            "venue_address": ("venue_address", "text"),
+            "organizer": ("organizer", "text"),
+            "event_type": ("event_type", "choice"),
+            "free": ("is_free", "bool"),
+            "ticket_price_min": ("ticket_price_min", "number"),
+            "ticket_price_max": ("ticket_price_max", "number"),
+            "currency": ("currency", "text"),
+            "ticket_url": ("ticket_url", "text"),
+            "website": ("website", "text"),
+            "what_to_bring": ("what_to_bring", "text"),
+        },
         ("name", "start_date", "description"),
-        {"name": "Oktoberfest 2027", "start_date": "9/18/2027", "end_date": "10/3/2027", "activity": "Oktoberfest",
-         "description": "Oktoberfest 2027 on the Theresienwiese.", "country": "Germany", "city": "Munich",
-         "venue": "Theresienwiese", "free": "yes"},
-        "events:event_detail", ("start_date", "name")),
+        {
+            "name": "Oktoberfest 2027",
+            "start_date": "9/18/2027",
+            "end_date": "10/3/2027",
+            "activity": "Oktoberfest",
+            "description": "Oktoberfest 2027 on the Theresienwiese.",
+            "country": "Germany",
+            "city": "Munich",
+            "venue": "Theresienwiese",
+            "free": "yes",
+        },
+        "events:event_detail",
+        ("start_date", "name"),
+    ),
 }
 # The order to import a full set in (each kind looks up the ones before it).
 IMPORT_ORDER = ("country", "region", "city", "poi", "activity", "event")
@@ -222,7 +396,11 @@ def export_queryset(kind):
     spec = KINDS[kind]
     qs = spec.model.objects.filter(approval_status=APPROVED)
     if kind == "activity":
-        qs = qs.filter(visibility="public").select_related("category", "country", "region", "city", "venue").prefetch_related("tags")
+        qs = (
+            qs.filter(visibility="public")
+            .select_related("category", "country", "region", "city", "venue")
+            .prefetch_related("tags")
+        )
     elif kind == "event":
         qs = qs.select_related("category", "country", "city__country", "related_activity", "poi")
     elif kind == "region":
@@ -279,7 +457,9 @@ class Importer:
         raise ValueError(f"isn't one of: {', '.join(str(k) for k, _ in form_field.choices if k != '')}")
 
     def _country(self, value):
-        country = Country.objects.filter(Q(name__iexact=value) | Q(iso_code__iexact=value) | Q(iso3_code__iexact=value)).first()
+        country = Country.objects.filter(
+            Q(name__iexact=value) | Q(iso_code__iexact=value) | Q(iso3_code__iexact=value)
+        ).first()
         if country is None:
             raise ValueError("isn't a country in the catalogue")
         return country
@@ -345,7 +525,9 @@ class Importer:
             if cells.get("country"):
                 regions = regions.filter(country=self._country(cells["country"]))
             if regions.count() != 1:
-                raise ValueError("isn't a region in the catalogue" if not regions else "matches several regions; add the country")
+                raise ValueError(
+                    "isn't a region in the catalogue" if not regions else "matches several regions; add the country"
+                )
             return regions.get().pk
         if how == "city":
             city = self._city(value, cells)
@@ -362,8 +544,11 @@ class Importer:
             if cells.get("country"):
                 places = places.filter(city__country=self._country(cells["country"]))
             if places.count() != 1:
-                raise ValueError("isn't a place in the catalogue (import the places first)" if not places
-                                 else "matches several places; add the city")
+                raise ValueError(
+                    "isn't a place in the catalogue (import the places first)"
+                    if not places
+                    else "matches several places; add the city"
+                )
             return places.get().pk
         if how == "activity":
             matches = Activity.get_public_activities().filter(name__iexact=value)
@@ -392,8 +577,11 @@ class Importer:
     def _existing(self, cells, data):
         model = self.spec.model
         if self.kind == "country":
-            matches = model.objects.filter(iso_code__iexact=cells["iso_code"]) if cells.get("iso_code") \
+            matches = (
+                model.objects.filter(iso_code__iexact=cells["iso_code"])
+                if cells.get("iso_code")
                 else model.objects.filter(name__iexact=cells["name"])
+            )
         elif self.kind == "city":
             # Cities are unique per region (Kansas City MO / KS), so the region decides
             # when one is given; a same-named city with no region yet is taken to be it.
@@ -407,7 +595,9 @@ class Importer:
             else:
                 matches = same_name
                 if matches.count() > 1:
-                    raise ValueError(f"several cities are called {cells['name']} in {cells.get('country')}; add the region")
+                    raise ValueError(
+                        f"several cities are called {cells['name']} in {cells.get('country')}; add the region"
+                    )
         elif self.kind == "region":
             if not data.get("country"):
                 return None
@@ -446,7 +636,9 @@ class Importer:
         form = form_class(instance=instance) if instance else form_class()
         if instance is not None:
             # Not tags: the importer sets them itself (the form only offers tags members may add).
-            data = model_to_dict(instance, fields=[f for f in form.fields if f not in ("picture", "remove_picture", "tags")])
+            data = model_to_dict(
+                instance, fields=[f for f in form.fields if f not in ("picture", "remove_picture", "tags")]
+            )
         else:
             data = {}
             for name in form.fields:
@@ -538,8 +730,11 @@ class Importer:
             row.form, row.instance = form, instance
             if instance is not None:
                 row.action = "update"
-                row.changes = [form.fields[n].label or n for n in form.changed_data
-                               if n not in ("picture", "remove_picture", "tags")]
+                row.changes = [
+                    form.fields[n].label or n
+                    for n in form.changed_data
+                    if n not in ("picture", "remove_picture", "tags")
+                ]
                 if row.tags is not None and {t.pk for t in row.tags} != {t.pk for t in instance.tags.all()}:
                     row.changes.append("tags")
         return self
@@ -572,6 +767,7 @@ class Importer:
                     obj.tags.set(row.tags)
                 if row.instance is None and self.spec.model is Country:
                     from apps.locations import flags
+
                     flags.attach(obj)  # a new country's flag as its picture (country-flags plan C1)
                 done.append((row, obj))
         return done

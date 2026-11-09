@@ -14,6 +14,7 @@ A city's notes ("Most shops close on Sundays") come through where the trip is in
 run of days spent there (``route.runs``: Munich Days 3–5 shows them on Day 3, under the stay) and a stay option
 whose city it is. Same query, same "Not for this trip".
 """
+
 from django.db.models import Exists, OuterRef, Q
 
 from apps.approval_system.models import ApprovalStatus
@@ -63,16 +64,23 @@ def attach(trip, days):
         day.trip_notes, day.hidden_trip_notes = [], []
     items = [*items_of(days), *first_days]
     wanted = {item: _sources(item) for item in items}
-    ids = {field: {pk for found in wanted.values() for name, pk, _ in found if name == field}
-           for field in ("poi_id", "activity_id", "event_id", "city_id")}
+    ids = {
+        field: {pk for found in wanted.values() for name, pk, _ in found if name == field}
+        for field in ("poi_id", "activity_id", "event_id", "city_id")
+    }
     notes = []
     if any(ids.values()):
         notes = list(
-            CatalogueNote.objects.filter(Q(poi_id__in=ids["poi_id"]) | Q(activity_id__in=ids["activity_id"])
-                                         | Q(event_id__in=ids["event_id"]) | Q(city_id__in=ids["city_id"]),
-                                         approval_status=ApprovalStatus.APPROVED)
+            CatalogueNote.objects.filter(
+                Q(poi_id__in=ids["poi_id"])
+                | Q(activity_id__in=ids["activity_id"])
+                | Q(event_id__in=ids["event_id"])
+                | Q(city_id__in=ids["city_id"]),
+                approval_status=ApprovalStatus.APPROVED,
+            )
             .select_related("poi")
-            .annotate(hidden=Exists(TripHiddenNote.objects.filter(trip=trip, note=OuterRef("pk")))))
+            .annotate(hidden=Exists(TripHiddenNote.objects.filter(trip=trip, note=OuterRef("pk"))))
+        )
     for item, found in wanted.items():
         shown, hidden, seen = [], [], set()
         for field, pk, name in found:

@@ -32,6 +32,7 @@ no queries; each sets attributes the templates read. (docs/plans/trip-page-ux.md
   "split", at its time or its earliest item's), and each track has its own ``track_timeline``,
   ``track_any`` and ``track_food``; a split with no time at all is in ``day.untimed_splits``.
 """
+
 from datetime import timedelta
 
 from .models import Contact, Day, Lodging, Meal, Section, TransportLeg, TripActivity, item_label
@@ -207,7 +208,8 @@ def tracks(group):
     for option in group.tracks:
         items = option.items
         option.track_timeline, option.track_any, option.track_food = _entries(
-            items["legs"], items["activities"], items["meals"])
+            items["legs"], items["activities"], items["meals"]
+        )
         option.track_timeline.sort(key=lambda e: (e["time"], RANK[e["kind"]]))
         times += [e["time"] for e in option.track_timeline]
     return group.start_time or (min(times) if times else None)
@@ -218,14 +220,18 @@ def timeline(days):
     its local departure where it leaves (never converted to the reader's zone); activities and
     meals are wall-clock times on the day."""
     for day in days:
-        timed, any_time, day.food_ideas = _entries(_shared(getattr(day, "day_legs", [])),
-                                                   _shared(getattr(day, "ordered_activities", [])),
-                                                   _shared(getattr(day, "ordered_meals", [])))
+        timed, any_time, day.food_ideas = _entries(
+            _shared(getattr(day, "day_legs", [])),
+            _shared(getattr(day, "ordered_activities", [])),
+            _shared(getattr(day, "ordered_meals", [])),
+        )
         # Undecided "choose one" groups (day-first plan P4) with a time sit in the timeline as a box;
         # the others are shown after it (``day.open_groups``, set by ``options.attach``).
         for group in getattr(day, "open_groups", []):
             if group.start_time:
-                timed.append({"kind": "group", "item": group, "time": group.start_time, "label": _fmt(group.start_time)})
+                timed.append(
+                    {"kind": "group", "item": group, "time": group.start_time, "label": _fmt(group.start_time)}
+                )
         day.untimed_groups = [g for g in getattr(day, "open_groups", []) if not g.start_time]
         # A split group (P5) is one entry holding its tracks, each a small timeline of its own.
         day.untimed_splits = []
@@ -294,9 +300,13 @@ def attach_links(trip, days):
             continue
         target.refs.append(source)
         day = _day_of(target, days_by_date)
-        source.on.append({"label": "whole day" if isinstance(target, Day) else item_label(target),
-                          "anchor": anchor(target),
-                          "day_number": day.day_number if day is not None else None})
+        source.on.append(
+            {
+                "label": "whole day" if isinstance(target, Day) else item_label(target),
+                "anchor": anchor(target),
+                "day_number": day.day_number if day is not None else None,
+            }
+        )
         if isinstance(target, (Day, Section)) and day is not None and source not in day.good_to_know:
             day.good_to_know.append(source)
     for source in sources.values():
@@ -309,6 +319,7 @@ WEEKDAY_NAMES = ("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "S
 
 def _book_by(day_date, note):
     from dateutil.relativedelta import relativedelta
+
     unit = note.book_ahead_unit or "months"
     return day_date - relativedelta(**{unit: note.book_ahead})
 
@@ -322,8 +333,11 @@ def note_warnings(days, tasks, today):
     for day in days:
         if not day.date:
             continue
-        items = [*getattr(day, "ordered_meals", []), *getattr(day, "ordered_activities", []),
-                 *getattr(day, "ordered_sections", [])]
+        items = [
+            *getattr(day, "ordered_meals", []),
+            *getattr(day, "ordered_activities", []),
+            *getattr(day, "ordered_sections", []),
+        ]
         for item in items:
             item.closed_warning, item.book_ahead = "", []
             for note in getattr(item, "trip_notes", []):
@@ -331,10 +345,15 @@ def note_warnings(days, tasks, today):
                     item.closed_warning = f"{note.from_name or 'It'} is closed on {WEEKDAY_NAMES[day.date.weekday()]}"
                 if note.book_ahead:
                     book_by = _book_by(day.date, note)
-                    entry = {"note": note, "by": book_by, "overdue": book_by < today,
-                             "soon": book_by <= today + timedelta(days=BOOK_AHEAD_SOON_DAYS),
-                             "covered": note.pk in covered, "day": day,
-                             "activity_pk": item.pk if isinstance(item, TripActivity) else None}
+                    entry = {
+                        "note": note,
+                        "by": book_by,
+                        "overdue": book_by < today,
+                        "soon": book_by <= today + timedelta(days=BOOK_AHEAD_SOON_DAYS),
+                        "covered": note.pk in covered,
+                        "day": day,
+                        "activity_pk": item.pk if isinstance(item, TripActivity) else None,
+                    }
                     item.book_ahead.append(entry)
             pressing = [e for e in item.book_ahead if e["soon"] and not e["covered"]]
             if item.closed_warning:

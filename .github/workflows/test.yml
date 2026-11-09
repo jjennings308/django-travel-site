@@ -59,6 +59,11 @@ jobs:
           ignores=$(grep -oE '^[A-Za-z0-9-]+' .pip-audit-ignore | sed 's/^/--ignore-vuln /' | tr '\n' ' ' || true)
           pip-audit -r requirements.txt --progress-spinner off $ignores
 
+      - name: Lint and formatting (Ruff)
+        run: |
+          ruff check
+          ruff format --check
+
       - name: Layer check
         run: python scripts/check_layers.py
 

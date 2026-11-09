@@ -1,6 +1,6 @@
-# core/storage.py
 """Private file storage: files kept outside MEDIA_ROOT, so nginx's /media/ never
 serves them. They have no public URL; a view checks who may download each one."""
+
 import os
 
 from django.conf import settings

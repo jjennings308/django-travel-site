@@ -10,6 +10,7 @@ repeats only reach the journal (the console handler next to this one), and the n
 that error says how many there were. The count lives in the ``alerts`` cache, a small file cache
 in prod.py so both gunicorn workers share it (the default cache is per process).
 """
+
 import hashlib
 import logging
 import traceback
@@ -35,8 +36,10 @@ def signature(exc_type, tb):
     frames = traceback.extract_tb(tb) if tb else []
     if frames:
         last = frames[-1]
-        where = f"{last.filename.split('/apps/', 1)[-1] if '/apps/' in last.filename else last.filename}" \
-                f":{last.lineno} ({last.name})"
+        where = (
+            f"{last.filename.split('/apps/', 1)[-1] if '/apps/' in last.filename else last.filename}"
+            f":{last.lineno} ({last.name})"
+        )
     else:
         where = "unknown"
     name = exc_type.__name__ if exc_type else "Error"
@@ -70,8 +73,11 @@ def body(record, request, repeats=0):
         lines.append(f"Repeats: +{repeats} more since the last email about this error")
     if record.exc_info:
         lines += ["", "".join(traceback.format_exception(*record.exc_info))]  # no frame locals
-    lines += ["", "POST data, the query string, cookies, headers and local variables are left out on purpose.",
-              "More in the journal: journalctl -u travel_site"]
+    lines += [
+        "",
+        "POST data, the query string, cookies, headers and local variables are left out on purpose.",
+        "More in the journal: journalctl -u travel_site",
+    ]
     return "\n".join(lines)
 
 

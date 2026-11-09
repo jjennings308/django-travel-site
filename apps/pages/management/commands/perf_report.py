@@ -6,6 +6,7 @@ Renders through Django's test client as a staff user inside a transaction that i
 nothing is saved (not even the session). Meant for dev's nightly copy of production: run it before and
 after a change and compare. The trip is the one given, else the biggest (most days + legs + sections).
 """
+
 import statistics
 import time
 from unittest import mock
@@ -30,9 +31,16 @@ class Rollback(Exception):
 
 
 def biggest_trip():
-    return (Trip.objects.live().annotate(size=Count("days", distinct=True) + Count("transport", distinct=True)
-                                         + Count("days__sections", distinct=True))
-            .order_by("-size", "pk").first())
+    return (
+        Trip.objects.live()
+        .annotate(
+            size=Count("days", distinct=True)
+            + Count("transport", distinct=True)
+            + Count("days__sections", distinct=True)
+        )
+        .order_by("-size", "pk")
+        .first()
+    )
 
 
 def measure(fn, runs):
@@ -75,11 +83,17 @@ class Command(BaseCommand):
     def _measure(self, trip, runs):
         User = get_user_model()
         staff = User.objects.filter(is_superuser=True, is_active=True).first() or User.objects.create_superuser(
-            "perf-report", "perf-report@example.invalid", None)
+            "perf-report", "perf-report@example.invalid", None
+        )
         staff.accept_legal()  # else every page is the "accept the new terms" redirect (rolled back anyway)
         client = Client(HTTP_HOST="localhost")
         client.force_login(staff)
-        city = City.objects.filter(approval_status=ApprovalStatus.APPROVED).annotate(n=Count("pois")).order_by("-n").first()
+        city = (
+            City.objects.filter(approval_status=ApprovalStatus.APPROVED)
+            .annotate(n=Count("pois"))
+            .order_by("-n")
+            .first()
+        )
         today = timezone.localdate()
         pages = [
             ("trip page", reverse("trips:trip_detail", args=[trip.pk])),
@@ -93,8 +107,10 @@ class Command(BaseCommand):
             ("sitemap.xml", reverse("sitemap")),
         ]
         if city is not None:
-            pages += [("city page", reverse("locations:city_detail", args=[city.slug])),
-                      ("city What's on", reverse("events:whats_on", args=["city", city.slug]))]
+            pages += [
+                ("city page", reverse("locations:city_detail", args=[city.slug])),
+                ("city What's on", reverse("events:whats_on", args=["city", city.slug])),
+            ]
         rows = []
         for name, target in pages:
             responses = []

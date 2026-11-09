@@ -17,10 +17,18 @@ counted item its ``to_pay`` line (``to_pay``: in the item's own currency, never 
 What one item costs (its basis, people and nights) is ``costs``; the expense arithmetic (shares, settle-up) is
 ``budget``.
 """
+
 from decimal import Decimal
 
 from .costs import (
-    _cents, _days_by, _money, day_of, estimate, kind_of, money, planned_items,
+    _cents,
+    _days_by,
+    _money,
+    day_of,
+    estimate,
+    kind_of,
+    money,
+    planned_items,
 )
 from .currencies import currency_of
 
@@ -35,26 +43,49 @@ def planned_total(context, target):
     if not any(row["planned"] is not None for row in rows):
         return None
     totals = found["totals"]
-    return {"total": totals["planned"], "booked": totals["booked"], "currency": target.upper(),
-            "approx": found["approx"], "bookings": sum(1 for r in rows if r["status"] == "booked"),
-            "estimates": sum(1 for r in rows if r["planned"] is not None and r["status"] != "booked"),
-            "unpriced": found["unpriced"], "missing": found["missing"]}
+    return {
+        "total": totals["planned"],
+        "booked": totals["booked"],
+        "currency": target.upper(),
+        "approx": found["approx"],
+        "bookings": sum(1 for r in rows if r["status"] == "booked"),
+        "estimates": sum(1 for r in rows if r["planned"] is not None and r["status"] != "booked"),
+        "unpriced": found["unpriced"],
+        "missing": found["missing"],
+    }
 
 
 #: The plan's categories, in order (key, label); a group's kind and an expense's category map onto them.
-CATEGORIES = (("travel", "Travel"), ("stays", "Stays"), ("activities", "Activities & tickets"), ("food", "Food"),
-              ("other", "Other"))
+CATEGORIES = (
+    ("travel", "Travel"),
+    ("stays", "Stays"),
+    ("activities", "Activities & tickets"),
+    ("food", "Food"),
+    ("other", "Other"),
+)
 _ITEM_CATEGORY = {"leg": "travel", "stay": "stays", "activity": "activities", "meal": "food"}
 _GROUP_CATEGORY = {"travel": "travel", "stay": "stays", "do": "activities", "eat": "food", "any": "other"}
 #: Where a recorded expense (``TripExpense.Category``) is paid against.
-EXPENSE_CATEGORY = {"flights": "travel", "transport": "travel", "lodging": "stays", "food": "food",
-                    "activities": "activities", "other": "other"}
-_KIND_WORDS = {"leg": ("journey", "journeys"), "stay": ("stay", "stays"), "activity": ("activity", "activities"),
-               "meal": ("meal", "meals"), "section": ("item", "items")}
+EXPENSE_CATEGORY = {
+    "flights": "travel",
+    "transport": "travel",
+    "lodging": "stays",
+    "food": "food",
+    "activities": "activities",
+    "other": "other",
+}
+_KIND_WORDS = {
+    "leg": ("journey", "journeys"),
+    "stay": ("stay", "stays"),
+    "activity": ("activity", "activities"),
+    "meal": ("meal", "meals"),
+    "section": ("item", "items"),
+}
 
 
 def _label(item):
     from .booking_tasks import label
+
     kind = kind_of(item) if type(item).__name__ != "Section" else "section"
     if kind == "meal":
         return item.name
@@ -65,8 +96,13 @@ def _label(item):
 
 def _anchor(item):
     name = type(item).__name__
-    return {"TransportLeg": "leg", "Lodging": "stay", "TripActivity": "activity", "Meal": "meal",
-            "Section": "section"}.get(name, "item") + f"-{item.pk}"
+    return {
+        "TransportLeg": "leg",
+        "Lodging": "stay",
+        "TripActivity": "activity",
+        "Meal": "meal",
+        "Section": "section",
+    }.get(name, "item") + f"-{item.pk}"
 
 
 class _Money:
@@ -75,6 +111,7 @@ class _Money:
 
     def __init__(self, trip, target, currencies):
         from .budget import rates_for
+
         self.target = target.upper()
         foreign = {c.upper() for c in currencies if c} - {self.target}
         self.rates = rates_for(trip, foreign | {self.target}) if foreign else None
@@ -164,13 +201,25 @@ def plan(context, target, expenses=()):
         else:
             label, category, day, anchor = confirmation.label or confirmation.confirmation_number, "other", None, ""
         pay = f"confirmation-{confirmation.pk}"
-        add(category, label=label, anchor=anchor, day=day, estimated=None, booked=booked, planned=booked,
-            keys=[pay] + [_key(i) for i in its], pay=pay,
-            expense_category=_expense_category(its[0]) if its else "other", booked_amount=confirmation.cost,
+        add(
+            category,
+            label=label,
+            anchor=anchor,
+            day=day,
+            estimated=None,
+            booked=booked,
+            planned=booked,
+            keys=[pay] + [_key(i) for i in its],
+            pay=pay,
+            expense_category=_expense_category(its[0]) if its else "other",
+            booked_amount=confirmation.cost,
             booked_currency=its_currency,
             per_person=(booked / len(names)).quantize(Decimal("0.01")) if booked is not None and names else None,
-            people=len(names), people_names=names, status="booked",
-            line=f"Booked {money(confirmation.cost, its_currency)} · {confirmation.confirmation_number}")
+            people=len(names),
+            people_names=names,
+            status="booked",
+            line=f"Booked {money(confirmation.cost, its_currency)} · {confirmation.confirmation_number}",
+        )
 
     # Each counted item that isn't booked.
     for item in items:
@@ -182,30 +231,68 @@ def plan(context, target, expenses=()):
             if kind == "meal":
                 continue  # a meal without an estimate isn't a budget line (the allowance covers it)
             status = "no booking needed" if getattr(item, "no_booking", False) else "no plan"
-            add(_ITEM_CATEGORY[kind], label=_label(item), anchor=_anchor(item), day=day_of(item, by_pk, by_date),
-                estimated=None, booked=None, planned=None, per_person=None, people=0, status=status, line="",
-                keys=[_key(item)])
+            add(
+                _ITEM_CATEGORY[kind],
+                label=_label(item),
+                anchor=_anchor(item),
+                day=day_of(item, by_pk, by_date),
+                estimated=None,
+                booked=None,
+                planned=None,
+                per_person=None,
+                people=0,
+                status=status,
+                line="",
+                keys=[_key(item)],
+            )
             continue
         estimated = cash.convert(cost.total, cost.currency, _label(item)) if cost.total is not None else None
         day = day_of(item, by_pk, by_date)
         names = _names_for(item, day, trip, cost)
-        add(_ITEM_CATEGORY[kind], label=_label(item), anchor=_anchor(item), day=day, estimated=estimated,
-            booked=None, planned=estimated, keys=[_key(item)], people=cost.people if cost.people_known else 0, people_names=names,
-            per_person=cash.convert(cost.per_person, cost.currency, note=False) if cost.per_person is not None else None,
-            status="no booking needed" if getattr(item, "no_booking", False) else "estimated", line=cost.line)
+        add(
+            _ITEM_CATEGORY[kind],
+            label=_label(item),
+            anchor=_anchor(item),
+            day=day,
+            estimated=estimated,
+            booked=None,
+            planned=estimated,
+            keys=[_key(item)],
+            people=cost.people if cost.people_known else 0,
+            people_names=names,
+            per_person=cash.convert(cost.per_person, cost.currency, note=False)
+            if cost.per_person is not None
+            else None,
+            status="no booking needed" if getattr(item, "no_booking", False) else "estimated",
+            line=cost.line,
+        )
 
     # Choices: a chosen / split-taken option's own cost counts; an undecided one is a range, outside the totals.
     for group in context.get("option_groups", []):
         category = _GROUP_CATEGORY.get(group.kind, "other")
         day = by_pk.get(group.day_id)
         if group.is_open:
-            totals = [cash.convert(o.cost["total"], o.cost["currency"], f"{group.prompt}: {o.title}")
-                      for o in group.options.all() if getattr(o, "cost", None)]
+            totals = [
+                cash.convert(o.cost["total"], o.cost["currency"], f"{group.prompt}: {o.title}")
+                for o in group.options.all()
+                if getattr(o, "cost", None)
+            ]
             totals = [t for t in totals if t is not None]
             if totals:
-                add(category, label=f"Undecided: {group.prompt}", anchor=f"group-{group.pk}", day=day,
-                    estimated=None, booked=None, planned=None, per_person=None, people=0, status="undecided",
-                    line="", range=(min(totals), max(totals)))
+                add(
+                    category,
+                    label=f"Undecided: {group.prompt}",
+                    anchor=f"group-{group.pk}",
+                    day=day,
+                    estimated=None,
+                    booked=None,
+                    planned=None,
+                    per_person=None,
+                    people=0,
+                    status="undecided",
+                    line="",
+                    range=(min(totals), max(totals)),
+                )
             continue
         for option in ([group.chosen] if getattr(group, "chosen", None) else []) + list(getattr(group, "tracks", [])):
             cost = option.cost_estimate()
@@ -214,10 +301,22 @@ def plan(context, target, expenses=()):
             total = Decimal(option.own_cost)
             estimated = cash.convert(total, cost.currency, option.title)
             names = list(option.travelers.all()) or (list(day.roster) if day is not None else everyone)
-            add(category, label=f"{group.prompt}: {option.title}", anchor=f"group-{group.pk}", day=day,
-                estimated=estimated, booked=None, planned=estimated, people=len(names), people_names=names,
-                per_person=(estimated / len(names)).quantize(Decimal("0.01")) if estimated is not None and names
-                else None, status="estimated", line=cost.line)
+            add(
+                category,
+                label=f"{group.prompt}: {option.title}",
+                anchor=f"group-{group.pk}",
+                day=day,
+                estimated=estimated,
+                booked=None,
+                planned=estimated,
+                people=len(names),
+                people_names=names,
+                per_person=(estimated / len(names)).quantize(Decimal("0.01"))
+                if estimated is not None and names
+                else None,
+                status="estimated",
+                line=cost.line,
+            )
 
     # The daily food allowance, for the food no meal prices.
     allowance = allowance_row(trip, context["days"], cash)
@@ -254,7 +353,7 @@ def _names_for(item, day, trip, cost):
 
 
 def allowance_row(trip, days, cash):
-    """"€45 per person per day × 11 days × 6 = €2,970": ``Trip.food_allowance`` on each day not marked
+    """ "€45 per person per day × 11 days × 6 = €2,970": ``Trip.food_allowance`` on each day not marked
     ``meals_included``, for the people on it (its roster). None when the trip has no allowance."""
     amount = getattr(trip, "food_allowance", None)
     if not amount:
@@ -266,18 +365,29 @@ def allowance_row(trip, days, cash):
     total = Decimal(amount) * person_days
     skipped = len(days) - len(counted)
     if heads and len(set(heads)) == 1:
-        line = (f"{money(amount, currency)} per person per day × {len(counted)} day{'s' if len(counted) != 1 else ''}"
-                f" × {heads[0]} = {money(total, currency)}")
+        line = (
+            f"{money(amount, currency)} per person per day × {len(counted)} day{'s' if len(counted) != 1 else ''}"
+            f" × {heads[0]} = {money(total, currency)}"
+        )
     else:
         line = f"{money(amount, currency)} per person per day × {person_days} person-days = {money(total, currency)}"
     if skipped:
         line += f" · {skipped} day{'s' if skipped != 1 else ''} with meals included skipped"
     estimated = cash.convert(total, currency, "Daily food")
     names = list(trip.travelers.all())
-    return {"label": "Daily food allowance", "anchor": "", "day": None, "estimated": estimated, "booked": None,
-            "planned": estimated, "people": len(names), "people_names": names,
-            "per_person": (estimated / len(names)).quantize(Decimal("0.01")) if estimated is not None and names else None,
-            "status": "estimated", "line": line}
+    return {
+        "label": "Daily food allowance",
+        "anchor": "",
+        "day": None,
+        "estimated": estimated,
+        "booked": None,
+        "planned": estimated,
+        "people": len(names),
+        "people_names": names,
+        "per_person": (estimated / len(names)).quantize(Decimal("0.01")) if estimated is not None and names else None,
+        "status": "estimated",
+        "line": line,
+    }
 
 
 def _totals(rows, expenses, cash, everyone, target):
@@ -317,33 +427,55 @@ def _totals(rows, expenses, cash, everyone, target):
             unassigned += planned
     overall = {"planned": zero, "booked": zero, "paid": zero, "left": zero}
     for key, name in CATEGORIES:
-        mine = sorted((r for r in rows if r["category"] == key),
-                      key=lambda r: (r["day"].date if r["day"] is not None and r["day"].date else date_max(), r["label"]))
+        mine = sorted(
+            (r for r in rows if r["category"] == key),
+            key=lambda r: (r["day"].date if r["day"] is not None and r["day"].date else date_max(), r["label"]),
+        )
         planned = sum((r["planned"] for r in mine if r["planned"] is not None and not r["range"]), zero)
         booked = sum((r["booked"] for r in mine if r["booked"] is not None), zero)
         paid = paid_by_category[key]
         left = max(planned - paid, zero)
         if not mine and not paid:
             continue
-        categories.append({"key": key, "name": name, "rows": mine, "planned": planned, "booked": booked,
-                           "paid": paid, "left": left})
+        categories.append(
+            {"key": key, "name": name, "rows": mine, "planned": planned, "booked": booked, "paid": paid, "left": left}
+        )
         for field, value in (("planned", planned), ("booked", booked), ("paid", paid), ("left", left)):
             overall[field] += value
     people = [{"person": p, "share": share[p.pk], "paid": paid_by_person[p.pk]} for p in everyone]
-    unpriced = sum(1 for r in rows if r["status"] in ("estimated", "no booking needed") and r["line"]
-                   and r["planned"] is None and not r["range"])
-    return {"target": target, "categories": categories, "totals": overall, "people": people,
-            "unassigned": unassigned, "missing": cash.missing, "approx": cash.rates is not None, "unpriced": unpriced,
-            "used": cash.used}
+    unpriced = sum(
+        1
+        for r in rows
+        if r["status"] in ("estimated", "no booking needed") and r["line"] and r["planned"] is None and not r["range"]
+    )
+    return {
+        "target": target,
+        "categories": categories,
+        "totals": overall,
+        "people": people,
+        "unassigned": unassigned,
+        "missing": cash.missing,
+        "approx": cash.rates is not None,
+        "unpriced": unpriced,
+        "used": cash.used,
+    }
 
 
 def payments_by_key(expenses):
     """{For key: [(amount, currency)]}: each expense recorded against a booking or an item (B3), by the key the Plan's
     rows carry (``confirmation-4``, ``leg-12``, …), in its own currency."""
     from django.contrib.contenttypes.models import ContentType
-    kinds = {ContentType.objects.get_by_natural_key("trips", model).pk: name
-             for name, model in (("leg", "transportleg"), ("stay", "lodging"), ("activity", "tripactivity"),
-                                 ("meal", "meal"), ("confirmation", "confirmation"))}
+
+    kinds = {
+        ContentType.objects.get_by_natural_key("trips", model).pk: name
+        for name, model in (
+            ("leg", "transportleg"),
+            ("stay", "lodging"),
+            ("activity", "tripactivity"),
+            ("meal", "meal"),
+            ("confirmation", "confirmation"),
+        )
+    }
     found = {}
     for expense in expenses:
         if expense.for_type_id in kinds and expense.for_id:
@@ -353,6 +485,7 @@ def payments_by_key(expenses):
 
 
 # ---- the booklet's budget version (booklet-budget BB1) ---------------------------------------------------------
+
 
 def _owed(amount, currency, payments, keys, booked, covers=None):
     """The "to pay" text for ``amount`` in ``currency``, less what's recorded as paid against ``keys`` in that
@@ -423,19 +556,31 @@ def booklet(trip, days, groups, expenses):
     m = lambda value: money(value, target)  # noqa: E731
 
     def line(name, values):
-        return {"name": name, "planned": m(values["planned"]), "booked": m(values["booked"]),
-                "paid": m(values["paid"]), "left": m(values["left"])}
+        return {
+            "name": name,
+            "planned": m(values["planned"]),
+            "booked": m(values["booked"]),
+            "paid": m(values["paid"]),
+            "left": m(values["left"]),
+        }
+
     ranges = [row["range"] for category in found["categories"] for row in category["rows"] if row["range"]]
     undecided = None
     if ranges:
         low, high = sum(r[0] for r in ranges), sum(r[1] for r in ranges)
         span = m(low) if low == high else f"{m(low)}–{m(high)}"
         undecided = f"{len(ranges)} choice{'s' if len(ranges) != 1 else ''}, {span}"
-    return {"currency": target, "categories": [line(c["name"], c) for c in found["categories"]],
-            "total": line("Total", found["totals"]), "used": found["used"], "missing": found["missing"],
-            "undecided": undecided}
+    return {
+        "currency": target,
+        "categories": [line(c["name"], c) for c in found["categories"]],
+        "total": line("Total", found["totals"]),
+        "used": found["used"],
+        "missing": found["missing"],
+        "undecided": undecided,
+    }
 
 
 def date_max():
     from datetime import date
+
     return date.max

@@ -4,6 +4,7 @@
 each line linking to its item on the trip page. ``trips:change_undo`` — editors: undo a change
 (only the item's newest, and only if it hasn't been edited since) or restore a removed item.
 """
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -14,8 +15,14 @@ from django.views.decorators.http import require_POST
 from . import changes
 from .models import Trip, TripChange
 
-ANCHORS = {"transportleg": "leg", "lodging": "stay", "tripactivity": "activity", "meal": "meal",
-           "confirmation": "confirmation", "tripidea": "idea"}
+ANCHORS = {
+    "transportleg": "leg",
+    "lodging": "stay",
+    "tripactivity": "activity",
+    "meal": "meal",
+    "confirmation": "confirmation",
+    "tripidea": "idea",
+}
 
 
 def _anchor(change):
@@ -48,14 +55,29 @@ def trip_history(request, pk):
     for change in page:
         change.anchor = _anchor(change)
         change.undoable = can_edit and changes.can_undo(change, latest)
-    people = (trip.changes.exclude(actor=None).values_list("actor_id", "actor__first_name", "actor__last_name",
-                                                           "actor__username").distinct())
-    return render(request, "trips/trip_history.html", {
-        "trip": trip, "page_obj": page, "can_edit": can_edit, "days": trip.days.order_by("day_number"),
-        "people": sorted({(pk, f"{first} {last}".strip() or username) for pk, first, last, username in people},
-                         key=lambda p: p[1].lower()),
-        "kinds": TripChange.Kind.choices, "day": day, "person": person, "kind": kind,
-    })
+    people = (
+        trip.changes.exclude(actor=None)
+        .values_list("actor_id", "actor__first_name", "actor__last_name", "actor__username")
+        .distinct()
+    )
+    return render(
+        request,
+        "trips/trip_history.html",
+        {
+            "trip": trip,
+            "page_obj": page,
+            "can_edit": can_edit,
+            "days": trip.days.order_by("day_number"),
+            "people": sorted(
+                {(pk, f"{first} {last}".strip() or username) for pk, first, last, username in people},
+                key=lambda p: p[1].lower(),
+            ),
+            "kinds": TripChange.Kind.choices,
+            "day": day,
+            "person": person,
+            "kind": kind,
+        },
+    )
 
 
 @login_required
@@ -66,17 +88,24 @@ def change_undo(request, pk, change_pk):
         raise PermissionDenied
     change = get_object_or_404(TripChange, pk=change_pk, trip=trip)
     from . import reschedule
+
     if reschedule.is_move(change):  # the whole trip moved, or its days were reordered (shift-and-reorder DR1, DR2)
         try:
             kept = reschedule.undo_move(change, request.user)
         except reschedule.CannotMove as reason:
             messages.error(request, f"Couldn't undo: {reason}")
         else:
-            text = ("Undone: the days are back in their old order." if "reorder" in change.before
-                    else "Undone: the trip is back on its old dates.")
+            text = (
+                "Undone: the days are back in their old order."
+                if "reorder" in change.before
+                else "Undone: the trip is back on its old dates."
+            )
             if kept:
-                text += (" Kept the booking to-dos edited or done since: "
-                         + ", ".join(f"“{task.title}”" for task in kept) + ".")
+                text += (
+                    " Kept the booking to-dos edited or done since: "
+                    + ", ".join(f"“{task.title}”" for task in kept)
+                    + "."
+                )
             messages.success(request, text)
         return redirect("trips:trip_history", pk=trip.pk)
     try:

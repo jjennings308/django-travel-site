@@ -11,7 +11,6 @@ The section payloads are built by hand rather than imported, so a change to
 ``docx_import`` cannot quietly move these expectations.
 """
 
-
 import re
 from datetime import date, timedelta
 from unittest import mock
@@ -20,8 +19,6 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.trips.tests.helpers import make_task
-from apps.trips.models import TripRole
 from apps.trips.models import (
     BookingTask,
     Confirmation,
@@ -35,9 +32,11 @@ from apps.trips.models import (
     Traveler,
     Trip,
     TripActivity,
-    TripInfo,
     TripGrant,
+    TripInfo,
+    TripRole,
 )
+from apps.trips.tests.helpers import make_task
 
 User = get_user_model()
 
@@ -63,9 +62,7 @@ def section(day, section_type, content, **kwargs):
 class DetailFixture(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.admin = User.objects.create_user(
-            "staffy", "staffy@example.com", "pw-1234-abcd", is_staff=True
-        )
+        cls.admin = User.objects.create_user("staffy", "staffy@example.com", "pw-1234-abcd", is_staff=True)
         cls.reader = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
 
         cls.trip = Trip.objects.create(
@@ -94,8 +91,12 @@ class DetailFixture(TestCase):
 class SectionLayoutTests(DetailFixture):
     def test_a_note_renders_its_heading_and_bullets(self):
         """What a phase became (retire-old-section-types S2): the heading, then "• " paragraphs."""
-        section(self.day, Section.Type.NOTE, {"tone": "", "paragraphs": ["We start early.", "• Hike up", "• Swim"]},
-                title="Morning")
+        section(
+            self.day,
+            Section.Type.NOTE,
+            {"tone": "", "paragraphs": ["We start early.", "• Hike up", "• Swim"]},
+            title="Morning",
+        )
         html = self.get().content.decode()
         for text in ("Morning", "We start early.", "• Hike up", "• Swim"):
             self.assertIn(text, html)
@@ -168,7 +169,7 @@ class MissingKeyToleranceTests(DetailFixture):
         self.assertEqual(self.get().status_code, 200)
 
     def test_a_day_with_no_sections_still_renders(self):
-        other = Day.objects.create(trip=self.trip, day_number=2, date=date(2026, 9, 13))
+        Day.objects.create(trip=self.trip, day_number=2, date=date(2026, 9, 13))
         self.assertEqual(self.get().status_code, 200)
         self.assertIn("Day 2", self.get().content.decode())
 
@@ -375,12 +376,16 @@ class QueryCountTests(DetailFixture):
         # R18: every meal and section linked to a catalogue place (and activity) — no extra query.
         from apps.activities.models import Activity, ActivityCategory
         from apps.locations.models import POI, City, Country
+
         country = Country.objects.create(name="Testland", slug="tl", iso_code="TL", iso3_code="TLD", continent="Europe")
         city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=1)
         place = POI.objects.create(name="Old Bakery", slug="old-bakery", city=city, latitude=1, longitude=1)
         catalogue_activity = Activity.objects.create(
-            name="Bread tour", slug="bread-tour", description="x",
-            category=ActivityCategory.objects.create(name="Food", slug="food-cat"))
+            name="Bread tour",
+            slug="bread-tour",
+            description="x",
+            category=ActivityCategory.objects.create(name="Food", slug="food-cat"),
+        )
         for offset in range(1, 16):
             day = Day.objects.create(
                 trip=self.trip,
@@ -398,30 +403,47 @@ class QueryCountTests(DetailFixture):
             day.travelers.add(ada)
             # Phase A: legs shown on their day cost nothing either — one placed in a travel
             # section, one in the day's automatic block, both from the one transport prefetch.
-            travel = section(day, Section.Type.TRAVEL, {"rows": [["Ticket", "Bayern Ticket"]],
-                                                       "columns": ["What", "Info"]}, order=offset + 100)
-            TransportLeg.objects.create(trip=self.trip, date=day.date, origin="A", destination="B",
-                                        section=travel, est_duration=timedelta(minutes=45))
+            travel = section(
+                day,
+                Section.Type.TRAVEL,
+                {"rows": [["Ticket", "Bayern Ticket"]], "columns": ["What", "Info"]},
+                order=offset + 100,
+            )
+            TransportLeg.objects.create(
+                trip=self.trip,
+                date=day.date,
+                origin="A",
+                destination="B",
+                section=travel,
+                est_duration=timedelta(minutes=45),
+            )
             TransportLeg.objects.create(trip=self.trip, date=day.date, origin="B", destination="C", order=2)
             # Phase B: a confirmation per day covering its legs and meal, one more for a stay.
-            confirmation = Confirmation.objects.create(trip=self.trip, confirmation_number=f"PNR{offset}",
-                                                       provider="Delta")
-            for item in [*TransportLeg.objects.filter(trip=self.trip, date=day.date), *day.meals.all(),
-                         *day.sections.all()]:
+            confirmation = Confirmation.objects.create(
+                trip=self.trip, confirmation_number=f"PNR{offset}", provider="Delta"
+            )
+            for item in [
+                *TransportLeg.objects.filter(trip=self.trip, date=day.date),
+                *day.meals.all(),
+                *day.sections.all(),
+            ]:
                 confirmation.link(item)
             confirmation.travelers.add(ada)
             # Activities (TripActivity): two per day, with their place, travellers and a
             # confirmation each — still two fixed queries for the lot.
             for n in range(2):
-                activity = TripActivity.objects.create(trip=self.trip, day=day, title=f"Tour {offset}-{n}",
-                                                       place_text="Ghost Ranch", order=n)
+                activity = TripActivity.objects.create(
+                    trip=self.trip, day=day, title=f"Tour {offset}-{n}", place_text="Ghost Ranch", order=n
+                )
                 activity.travelers.add(ada)
                 confirmation.link(activity)
             # Phase E: a booking task about the day's leg, and a not-yet-booked flight.
-            make_task(self.trip, f"Seats A to B {offset}",
-                      TransportLeg.objects.filter(trip=self.trip, date=day.date).first())
-            TransportLeg.objects.create(trip=self.trip, date=day.date, origin="X", destination="Y", mode="plane",
-                                        order=3)
+            make_task(
+                self.trip, f"Seats A to B {offset}", TransportLeg.objects.filter(trip=self.trip, date=day.date).first()
+            )
+            TransportLeg.objects.create(
+                trip=self.trip, date=day.date, origin="X", destination="Y", mode="plane", order=3
+            )
 
         # The comment threads add a few fixed queries:
         #
@@ -461,16 +483,25 @@ class QueryCountTests(DetailFixture):
         #   fixed however many links. Raised deliberately from 24 to 26.
         # * 1 for the booking tasks' options (decisions, U6), however many tasks and options.
         #   Raised deliberately from 26 to 27.
-        stay = Lodging.objects.create(trip=self.trip, name="Hotel", check_in=self.trip.start_date,
-                                      check_out=self.trip.start_date + timedelta(days=2))
+        stay = Lodging.objects.create(
+            trip=self.trip,
+            name="Hotel",
+            check_in=self.trip.start_date,
+            check_out=self.trip.start_date + timedelta(days=2),
+        )
         Confirmation.objects.create(trip=self.trip, confirmation_number="HOTEL1").link(stay)
         # Tickets and documents (R5): files on several confirmations, still one query.
         from apps.trips.models import ConfirmationFile
+
         for confirmation in Confirmation.objects.filter(trip=self.trip)[:4]:
             for n in range(2):
-                ConfirmationFile.objects.create(confirmation=confirmation, file=f"trips/x/{confirmation.pk}-{n}.pdf",
-                                                original_name=f"ticket-{n}.pdf", content_type="application/pdf",
-                                                size=1000)
+                ConfirmationFile.objects.create(
+                    confirmation=confirmation,
+                    file=f"trips/x/{confirmation.pk}-{n}.pdf",
+                    original_name=f"ticket-{n}.pdf",
+                    content_type="application/pdf",
+                    size=1000,
+                )
         # Phase E: tasks on items, a suggestion and the "Not booked yet" list are worked out in
         # Python from the rows above (apps/trips/booking_tasks.py): no query of their own.
         make_task(self.trip, "Hotel deposit", stay)
@@ -482,12 +513,18 @@ class QueryCountTests(DetailFixture):
             for leg in TransportLeg.objects.filter(trip=self.trip, date=day.date):
                 ItemLink.link(desk, leg)
         BookingTask.objects.create(trip=self.trip, title="Pay the Hotel balance")  # suggests the stay
-        Lodging.objects.create(trip=self.trip, name="Inn", check_in=self.trip.start_date,
-                               check_out=self.trip.start_date + timedelta(days=1))  # not booked yet
+        Lodging.objects.create(
+            trip=self.trip,
+            name="Inn",
+            check_in=self.trip.start_date,
+            check_out=self.trip.start_date + timedelta(days=1),
+        )  # not booked yet
         from django.contrib.contenttypes.models import ContentType
+
         ContentType.objects.get_for_models(Trip, Day, Section, BookingTask)  # the comments' kinds, as in a warm process
         # Checklists (R9) on several lists, with per-person ticks: still three queries.
         from apps.trips.models import Checklist, ChecklistItem, ChecklistTick
+
         self.trip.travelers.add(ada)
         for n in range(3):
             checklist = Checklist.objects.create(trip=self.trip, title=f"List {n}", kind="documents")
@@ -498,10 +535,10 @@ class QueryCountTests(DetailFixture):
         # Costs in other currencies (R10): the Overview's estimate converts them — two queries
         # (the ECB rates and the trip's own rates), however many costs there are.
         for n, currency in enumerate(["EUR", "GBP", "EUR"]):
-            Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n,
-                                        currency=currency)
+            Confirmation.objects.create(trip=self.trip, confirmation_number=f"COST{n}", cost=100 + n, currency=currency)
         # "Choose one" groups (day-first plan P4) on several days, with items in their options and votes.
         from apps.trips.models import Option, OptionGroup, Vote
+
         for day in list(self.trip.days.all())[:4]:
             group = OptionGroup.objects.create(trip=self.trip, day=day, prompt="Afternoon")
             for n in range(2):
@@ -510,9 +547,11 @@ class QueryCountTests(DetailFixture):
                 Vote.objects.create(user=self.reader, option=option)
         # Ideas on the shelf (P6), typed and from the catalogue, with votes.
         from apps.trips.models import TripIdea
+
         for n in range(5):
-            idea = TripIdea.objects.create(trip=self.trip, title=f"Idea {n}", added_by=self.reader,
-                                           city=self.trip.days.first().city)
+            idea = TripIdea.objects.create(
+                trip=self.trip, title=f"Idea {n}", added_by=self.reader, city=self.trip.days.first().city
+            )
             Vote.objects.create(user=self.reader, idea=idea)
 
 
@@ -531,7 +570,6 @@ class DayFragmentQueryTests(QueryCountTests):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="day-5" open')
         self.assertNotContains(response, "<html")
-
 
 
 class CompletedTripTests(DetailFixture):
@@ -577,8 +615,10 @@ class HeaderActionTests(DetailFixture):
 
     def actions(self):
         html = self.get().content.decode()
-        return (reverse("trips:trip_settings", args=[self.trip.pk]) in html,
-                reverse("trips:trip_delete", args=[self.trip.pk]) in html)
+        return (
+            reverse("trips:trip_settings", args=[self.trip.pk]) in html,
+            reverse("trips:trip_delete", args=[self.trip.pk]) in html,
+        )
 
     def test_viewer_and_commentor_get_neither(self):
         self.assertEqual(self.actions(), (False, False))
@@ -642,6 +682,7 @@ class ShareTripTests(DetailFixture):
     def _baseline_queries(self):
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
+
         self.trip.revoke_public()
         with CaptureQueriesContext(connection) as ctx:
             self.get()

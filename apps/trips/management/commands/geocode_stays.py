@@ -4,6 +4,7 @@
 One request a second, as OpenStreetMap's Nominatim usage policy asks. Run once after
 deploying the stay locations, and any time later to fill in stays added through
 imports (forms look addresses up as they're saved)."""
+
 import time
 
 from django.core.management.base import BaseCommand
@@ -17,8 +18,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--trip", type=int, help="Only this trip's stays")
         parser.add_argument("--retry", action="store_true", help="Also retry addresses that weren't found before")
-        parser.add_argument("--fill-days", action="store_true",
-                            help="Also set the city on days a stay covers that have none (no lookups needed)")
+        parser.add_argument(
+            "--fill-days",
+            action="store_true",
+            help="Also set the city on days a stay covers that have none (no lookups needed)",
+        )
 
     def handle(self, *args, trip=None, retry=False, fill_days=False, **options):
         stays = Lodging.objects.filter(latitude__isnull=True).exclude(address="")

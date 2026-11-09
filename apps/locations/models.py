@@ -1,10 +1,9 @@
-# locations/models.py - Updated with review system and featured media
-
-from django.db import models
 from django.conf import settings
-from apps.core.models import TimeStampedModel, SlugMixin, FeaturedContentMixin
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
 from apps.approval_system.models import Approvable
+from apps.core.models import FeaturedContentMixin, SlugMixin, TimeStampedModel
 
 # "On trips · N" shows only from this many trips (site roadmap R18): one trip could point at one family.
 TRIP_COUNT_MIN = 2
@@ -12,59 +11,50 @@ TRIP_COUNT_MIN = 2
 
 class LocationStatus(models.TextChoices):
     """Status choices for location review workflow"""
-    PENDING = 'pending', 'Pending Review'
-    APPROVED = 'approved', 'Approved'
-    REJECTED = 'rejected', 'Rejected'
-    NEEDS_CHANGES = 'needs_changes', 'Needs Changes'
+
+    PENDING = "pending", "Pending Review"
+    APPROVED = "approved", "Approved"
+    REJECTED = "rejected", "Rejected"
+    NEEDS_CHANGES = "needs_changes", "Needs Changes"
 
 
 class ReviewableMixin(models.Model):
     """Mixin for locations that can be reviewed"""
-    
+
     status = models.CharField(
         max_length=20,
         choices=LocationStatus.choices,
         default=LocationStatus.APPROVED,
-        help_text='Review status of this location'
+        help_text="Review status of this location",
     )
-    
+
     # Submission tracking
     submitted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='submitted_%(class)ss'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="submitted_%(class)ss"
     )
-    
+
     # Review tracking
     reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='reviewed_%(class)ss'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_%(class)ss"
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    review_notes = models.TextField(
-        blank=True,
-        help_text='Notes from reviewer'
-    )
-    
+    review_notes = models.TextField(blank=True, help_text="Notes from reviewer")
+
     class Meta:
         abstract = True
-    
+
     def is_public(self):
         """Check if location is visible to public"""
         return self.status == LocationStatus.APPROVED
-    
+
     def is_pending(self):
         """Check if location is pending review"""
         return self.status == LocationStatus.PENDING
-    
-    def approve(self, reviewer, notes=''):
+
+    def approve(self, reviewer, notes=""):
         """Approve this location"""
         from django.utils import timezone
+
         self.status = LocationStatus.APPROVED
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
@@ -72,10 +62,11 @@ class ReviewableMixin(models.Model):
         # Approvable (later in the MRO) owns approval_status and the ApprovalLog;
         # without this, approving a location never left the 'pending' queue.
         super().approve(reviewer, notes)
-    
-    def reject(self, reviewer, notes=''):
+
+    def reject(self, reviewer, notes=""):
         """Reject this location"""
         from django.utils import timezone
+
         self.status = LocationStatus.REJECTED
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
@@ -83,10 +74,11 @@ class ReviewableMixin(models.Model):
         # Approvable (later in the MRO) owns approval_status and the ApprovalLog;
         # without this, approving a location never left the 'pending' queue.
         super().reject(reviewer, notes)
-    
-    def request_changes(self, reviewer, notes=''):
+
+    def request_changes(self, reviewer, notes=""):
         """Request changes to this location"""
         from django.utils import timezone
+
         self.status = LocationStatus.NEEDS_CHANGES
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
@@ -98,25 +90,25 @@ class ReviewableMixin(models.Model):
 
 class FeaturedMediaMixin(models.Model):
     """Mixin for locations that can have featured media"""
-    
+
     featured_media = models.ForeignKey(
-        'media_app.Media',
+        "media_app.Media",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='featured_for_%(class)s',
-        help_text='Featured image or video for this location'
+        related_name="featured_for_%(class)s",
+        help_text="Featured image or video for this location",
     )
-    
+
     class Meta:
         abstract = True
-    
+
     def get_featured_media_url(self):
         """Get URL of featured media if available"""
         if self.featured_media:
             return self.featured_media.file.url
         return None
-    
+
     def has_featured_media(self):
         """Check if location has featured media"""
         return self.featured_media is not None
@@ -124,218 +116,170 @@ class FeaturedMediaMixin(models.Model):
 
 class Country(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Countries"""
-    
+
     name = models.CharField(max_length=100, unique=True)
-    iso_code = models.CharField(
-        max_length=2,
-        unique=True,
-        help_text="ISO 3166-1 alpha-2 code"
-    )
-    iso3_code = models.CharField(
-        max_length=3,
-        unique=True,
-        help_text="ISO 3166-1 alpha-3 code"
-    )
-    
+    iso_code = models.CharField(max_length=2, unique=True, help_text="ISO 3166-1 alpha-2 code")
+    iso3_code = models.CharField(max_length=3, unique=True, help_text="ISO 3166-1 alpha-3 code")
+
     # Geographic data
     continent = models.CharField(
         max_length=50,
         choices=[
-            ('Africa', 'Africa'),
-            ('Antarctica', 'Antarctica'),
-            ('Asia', 'Asia'),
-            ('Europe', 'Europe'),
-            ('North America', 'North America'),
-            ('Oceania', 'Oceania'),
-            ('South America', 'South America')
-        ]
+            ("Africa", "Africa"),
+            ("Antarctica", "Antarctica"),
+            ("Asia", "Asia"),
+            ("Europe", "Europe"),
+            ("North America", "North America"),
+            ("Oceania", "Oceania"),
+            ("South America", "South America"),
+        ],
     )
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True
-    )
-    
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
     # Travel information
     currency_code = models.CharField(max_length=3, blank=True)
     currency_name = models.CharField(max_length=50, blank=True)
     phone_code = models.CharField(max_length=10, blank=True)
-    
+
     # Metadata
     # The country's flag as a picture (country-flags plan C1; ``locations.flags``): normally also its
     # ``featured_media``; a photo uploaded instead replaces it as the picture and leaves this set.
-    flag_media = models.ForeignKey('media_app.Media', on_delete=models.SET_NULL, null=True, blank=True,
-                                   related_name='+', help_text="The country's flag picture (made from flag-icons)")
-    flag_emoji = models.CharField(
-        max_length=10, 
+    flag_media = models.ForeignKey(
+        "media_app.Media",
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        help_text="Unicode flag emoji (e.g., 🇺🇸)"
+        related_name="+",
+        help_text="The country's flag picture (made from flag-icons)",
     )
+    flag_emoji = models.CharField(max_length=10, blank=True, help_text="Unicode flag emoji (e.g., 🇺🇸)")
     description = models.TextField(blank=True)
-    travel_tips = models.TextField(
-        blank=True,
-        help_text="General travel tips for this country"
-    )
-    
+    travel_tips = models.TextField(blank=True, help_text="General travel tips for this country")
+
     # Visa information
-    visa_required = models.BooleanField(
-        default=True,
-        help_text="General visa requirement info"
-    )
-    visa_info = models.TextField(
-        blank=True,
-        help_text="Visa requirements details"
-    )
-    
+    visa_required = models.BooleanField(default=True, help_text="General visa requirement info")
+    visa_info = models.TextField(blank=True, help_text="Visa requirements details")
+
     # Stats (denormalized)
     visitor_count = models.IntegerField(
-        default=0,
-        help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
     )
-    
+
     class Meta:
-        db_table = 'locations_countries'
-        verbose_name_plural = 'Countries'
-        ordering = ['name']
+        db_table = "locations_countries"
+        verbose_name_plural = "Countries"
+        ordering = ["name"]
         indexes = [
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=["status", "-created_at"]),
         ]
-    
+
     def __str__(self):
         """Return country with flag emoji if available"""
         if self.flag_emoji:
             return f"{self.flag_emoji} {self.name}"
         return self.name
-    
+
     @property
     def display_name(self):
         """Alternative property for getting name with flag"""
         return str(self)
-    
+
     @property
     def flag(self):
         """Get flag emoji, generating from ISO code if needed"""
         if self.flag_emoji:
             return self.flag_emoji
-        
+
         # Generate from ISO code if flag_emoji is empty
         if self.iso_code and len(self.iso_code) == 2:
-            return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in self.iso_code.upper())
-        
-        return ''
-    
+            return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in self.iso_code.upper())
+
+        return ""
+
     @property
     def city_count(self):
         """Return count of approved cities in this country"""
         # Check if we have an annotated count (for performance)
-        if hasattr(self, '_city_count'):
+        if hasattr(self, "_city_count"):
             return self._city_count
-        
+
         # Otherwise calculate it
         from apps.approval_system.models import ApprovalStatus
+
         return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
-    
+
     @property
     def poi_count(self):
         """Return count of approved POIs in this country"""
         # Check if we have an annotated count (for performance)
-        if hasattr(self, '_poi_count'):
+        if hasattr(self, "_poi_count"):
             return self._poi_count
-        
+
         # Otherwise calculate it
         from apps.approval_system.models import ApprovalStatus
-        return POI.objects.filter(
-            city__country=self,
-            approval_status=ApprovalStatus.APPROVED
-        ).count()
-    
+
+        return POI.objects.filter(city__country=self, approval_status=ApprovalStatus.APPROVED).count()
+
     def save(self, *args, **kwargs):
         # Auto-generate flag emoji from ISO code if not set
         if not self.flag_emoji and self.iso_code and len(self.iso_code) == 2:
-            self.flag_emoji = ''.join(
-                chr(0x1F1E6 + ord(c) - ord('A')) 
-                for c in self.iso_code.upper()
-            )
-        
+            self.flag_emoji = "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in self.iso_code.upper())
+
         if not self.slug:
             from apps.core.utils import generate_unique_slug
+
             self.slug = generate_unique_slug(Country, self.name, self.id)
-        
+
         super().save(*args, **kwargs)
 
 
 class Region(TimeStampedModel, SlugMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """States/Provinces/Regions within countries"""
-    
-    country = models.ForeignKey(
-        Country,
-        on_delete=models.CASCADE,
-        related_name='regions'
-    )
-    
+
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="regions")
+
     name = models.CharField(max_length=100)
-    code = models.CharField(
-        max_length=10,
-        blank=True,
-        help_text="State/Province code (e.g., CA for California)"
-    )
-    
+    code = models.CharField(max_length=10, blank=True, help_text="State/Province code (e.g., CA for California)")
+
     # Geographic data
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True
-    )
-    
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
     description = models.TextField(blank=True)
 
     visitor_count = models.IntegerField(
-        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
-    
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
+    )
+
     class Meta:
-        db_table = 'locations_regions'
-        unique_together = [['country', 'name']]
-        ordering = ['country', 'name']
+        db_table = "locations_regions"
+        unique_together = [["country", "name"]]
+        ordering = ["country", "name"]
         indexes = [
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=["status", "-created_at"]),
         ]
-    
+
     def __str__(self):
         return f"{self.name}, {self.country.name}"
-    
+
     @property
     def city_count(self):
         """Return count of approved cities in this region"""
         # Check if we have an annotated count (for performance)
-        if hasattr(self, '_city_count'):
+        if hasattr(self, "_city_count"):
             return self._city_count
-        
+
         # Otherwise calculate it (for admin and other views)
         from apps.approval_system.models import ApprovalStatus
+
         return self.cities.filter(approval_status=ApprovalStatus.APPROVED).count()
-    
+
     def save(self, *args, **kwargs):
         if not self.slug:
             from apps.core.utils import generate_unique_slug
-            self.slug = generate_unique_slug(
-                Region,
-                f"{self.name}-{self.country.iso_code}",
-                self.id
-            )
+
+            self.slug = generate_unique_slug(Region, f"{self.name}-{self.country.iso_code}", self.id)
         super().save(*args, **kwargs)
 
 
@@ -347,120 +291,82 @@ class CapitalType(models.TextChoices):
 
 class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Cities within regions/countries"""
-    
-    country = models.ForeignKey(
-        Country,
-        on_delete=models.CASCADE,
-        related_name='cities'
-    )
-    region = models.ForeignKey(
-        Region,
-        on_delete=models.SET_NULL,
-        related_name='cities',
-        null=True,
-        blank=True
-    )
-    
+
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="cities")
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, related_name="cities", null=True, blank=True)
+
     name = models.CharField(max_length=100)
-    
+
     # Geographic data
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        help_text="City center coordinates"
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        help_text="City center coordinates"
-    )
-    timezone = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="IANA timezone (e.g., America/New_York)"
-    )
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, help_text="City center coordinates")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, help_text="City center coordinates")
+    timezone = models.CharField(max_length=50, blank=True, help_text="IANA timezone (e.g., America/New_York)")
     elevation_m = models.DecimalField(
-        max_digits=9,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        default=0,
-        help_text="Elevation of the City in meters"
+        max_digits=9, decimal_places=2, null=True, blank=True, default=0, help_text="Elevation of the City in meters"
     )
-    
+
     # Information
     description = models.TextField(blank=True)
     population = models.IntegerField(null=True, blank=True)
-    
+
     # Travel information
     best_time_to_visit = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="E.g., 'Spring (March-May) and Fall (Sept-Nov)'"
+        max_length=200, blank=True, help_text="E.g., 'Spring (March-May) and Fall (Sept-Nov)'"
     )
     average_daily_budget = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Average daily budget in USD"
+        max_digits=8, decimal_places=2, null=True, blank=True, help_text="Average daily budget in USD"
     )
     capital_type = models.CharField(
-        max_length=10,
-        choices=CapitalType.choices,
-        blank=True,
-        null=True,
-        help_text="Capital level for this city"
+        max_length=10, choices=CapitalType.choices, blank=True, null=True, help_text="Capital level for this city"
     )
     is_capital = models.BooleanField(
         null=True,
         blank=True,
         default=False,
-        help_text="Is this a capital city.  It can be the capital of the country or region/state"    
+        help_text="Is this a capital city.  It can be the capital of the country or region/state",
     )
-    
+
     # Stats
     visitor_count = models.IntegerField(
-        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
+    )
     average_rating = models.DecimalField(
-        max_digits=3,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(5)]
+        max_digits=3, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     review_count = models.IntegerField(default=0)
-    
+
     class Meta:
-        db_table = 'locations_cities'
-        verbose_name_plural = 'Cities'
+        db_table = "locations_cities"
+        verbose_name_plural = "Cities"
         # Unique per region, not per country: Kansas City MO and KS, Springfield IL/MO/MA.
         # nulls_distinct=False: two region-less cities of one name in a country still clash.
         constraints = [
-            models.UniqueConstraint(fields=['country', 'region', 'name'], nulls_distinct=False,
-                                    name='city_unique_name_region_country'),
+            models.UniqueConstraint(
+                fields=["country", "region", "name"], nulls_distinct=False, name="city_unique_name_region_country"
+            ),
         ]
-        ordering = ['country', 'name']
+        ordering = ["country", "name"]
         indexes = [
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=["status", "-created_at"]),
         ]
-    
+
     def __str__(self):
         if self.region:
             return f"{self.name}, {self.region.code}, {self.country.iso_code}"
         return f"{self.name}, {self.country.iso_code}"
-    
+
     @property
     def poi_count(self):
         """Return count of approved POIs in this city"""
         # Check if we have an annotated count (for performance)
-        if hasattr(self, '_poi_count'):
+        if hasattr(self, "_poi_count"):
             return self._poi_count
-        
+
         # Otherwise calculate it
         from apps.approval_system.models import ApprovalStatus
+
         return self.pois.filter(approval_status=ApprovalStatus.APPROVED).count()
-    
+
     def save(self, *args, **kwargs):
         # Derive is_capital from capital_type
         self.is_capital = self.capital_type in {
@@ -471,6 +377,7 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
 
         if not self.slug:
             from apps.core.utils import generate_unique_slug
+
             # kansas-city-ks-us: the region code tells same-named cities apart.
             parts = [self.name, self.region.code if self.region_id and self.region.code else "", self.country.iso_code]
             self.slug = generate_unique_slug(City, "-".join(p for p in parts if p), self.id)
@@ -479,20 +386,20 @@ class City(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, F
 
 # The place types a site starts with (seeded by locations 0012); staff manage the list in the admin.
 DEFAULT_PLACE_TYPES = [
-    ('landmark', 'Landmark'),
-    ('museum', 'Museum'),
-    ('park', 'Park/Garden'),
-    ('beach', 'Beach'),
-    ('mountain', 'Mountain'),
-    ('temple', 'Temple/Religious Site'),
-    ('historical', 'Historical Site'),
-    ('viewpoint', 'Viewpoint'),
-    ('entertainment', 'Entertainment'),
-    ('shopping', 'Shopping'),
-    ('nightlife', 'Nightlife'),
-    ('nature', 'Nature Reserve'),
-    ('sports', 'Sports Venues'),
-    ('other', 'Other'),
+    ("landmark", "Landmark"),
+    ("museum", "Museum"),
+    ("park", "Park/Garden"),
+    ("beach", "Beach"),
+    ("mountain", "Mountain"),
+    ("temple", "Temple/Religious Site"),
+    ("historical", "Historical Site"),
+    ("viewpoint", "Viewpoint"),
+    ("entertainment", "Entertainment"),
+    ("shopping", "Shopping"),
+    ("nightlife", "Nightlife"),
+    ("nature", "Nature Reserve"),
+    ("sports", "Sports Venues"),
+    ("other", "Other"),
 ]
 
 
@@ -503,15 +410,18 @@ class PlaceType(TimeStampedModel):
     a category what kind of experience something is. POI.poi_type stores the ``code``,
     so the code never changes once a type exists (read-only in the admin).
     """
-    code = models.SlugField(max_length=20, unique=True, help_text="Short key stored on each place; can't be changed later")
+
+    code = models.SlugField(
+        max_length=20, unique=True, help_text="Short key stored on each place; can't be changed later"
+    )
     name = models.CharField(max_length=60)
     icon = models.CharField(max_length=50, blank=True, help_text="Optional Bootstrap icon class, e.g. bi-bank")
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True, help_text="Untick to stop offering it; places keep it")
 
     class Meta:
-        db_table = 'locations_place_types'
-        ordering = ['sort_order', 'name']
+        db_table = "locations_place_types"
+        ordering = ["sort_order", "name"]
 
     def __str__(self):
         return self.name
@@ -519,90 +429,60 @@ class PlaceType(TimeStampedModel):
     @classmethod
     def choices(cls):
         """(code, name) of the active types, for hand-written selects."""
-        return list(cls.objects.filter(is_active=True).values_list('code', 'name'))
+        return list(cls.objects.filter(is_active=True).values_list("code", "name"))
 
 
 class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, FeaturedMediaMixin, Approvable):
     """Points of Interest (attractions, landmarks, etc.)"""
-    
-    city = models.ForeignKey(
-        City,
-        on_delete=models.CASCADE,
-        related_name='pois'
-    )
-    
+
+    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="pois")
+
     name = models.CharField(max_length=200)
-    
+
     # Stores the PlaceType code in the original "poi_type" column (locations 0013), so the
     # values from the old fixed list carried over untouched.
     poi_type = models.ForeignKey(
         PlaceType,
-        to_field='code',
-        db_column='poi_type',
+        to_field="code",
+        db_column="poi_type",
         db_index=False,  # Meta.indexes already has one on this column
         on_delete=models.PROTECT,
-        default='landmark',
-        related_name='places',
-        verbose_name='type',
+        default="landmark",
+        related_name="places",
+        verbose_name="type",
     )
-    
+
     # Geographic data
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6
-    )
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
     elevation_m = models.DecimalField(
-        max_digits=9,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        default=0,
-        help_text="Elevation of the POI in meters"
+        max_digits=9, decimal_places=2, null=True, blank=True, default=0, help_text="Elevation of the POI in meters"
     )
     address = models.CharField(max_length=300, blank=True)
-    
+
     # Information
     description = models.TextField(blank=True)
     website = models.URLField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
-    
+
     # Visiting information
     entry_fee = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Entry fee in local currency"
+        max_digits=8, decimal_places=2, null=True, blank=True, help_text="Entry fee in local currency"
     )
     entry_fee_currency = models.CharField(max_length=3, blank=True)
-    opening_hours = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Opening hours by day of week"
-    )
-    typical_duration = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="Typical visit duration in minutes"
-    )
-    
+    opening_hours = models.JSONField(default=dict, blank=True, help_text="Opening hours by day of week")
+    typical_duration = models.IntegerField(null=True, blank=True, help_text="Typical visit duration in minutes")
+
     # Accessibility
     wheelchair_accessible = models.BooleanField(default=False)
     parking_available = models.BooleanField(default=False)
-    
+
     # Stats
     visitor_count = models.IntegerField(
-        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)")
+        default=0, help_text="Members who ticked off a goal or finished a trip here (recounted automatically)"
+    )
     average_rating = models.DecimalField(
-        max_digits=3,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(5)]
+        max_digits=3, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     review_count = models.IntegerField(default=0)
     # Live trips with a meal, section or day activity here (site roadmap R18); recounted nightly
@@ -610,16 +490,16 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     trip_count = models.IntegerField(default=0, help_text="Live trips that include this place (recounted nightly)")
 
     class Meta:
-        db_table = 'locations_pois'
-        verbose_name = 'POI'
-        verbose_name_plural = 'POIs'
-        ordering = ['city', 'name']
+        db_table = "locations_pois"
+        verbose_name = "POI"
+        verbose_name_plural = "POIs"
+        ordering = ["city", "name"]
         indexes = [
-            models.Index(fields=['poi_type']),
-            models.Index(fields=['latitude', 'longitude']),
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=["poi_type"]),
+            models.Index(fields=["latitude", "longitude"]),
+            models.Index(fields=["status", "-created_at"]),
         ]
-    
+
     def __str__(self):
         return f"{self.name} ({self.city.name})"
 
@@ -631,9 +511,6 @@ class POI(TimeStampedModel, SlugMixin, FeaturedContentMixin, ReviewableMixin, Fe
     def save(self, *args, **kwargs):
         if not self.slug:
             from apps.core.utils import generate_unique_slug
-            self.slug = generate_unique_slug(
-                POI,
-                f"{self.name}-{self.city.slug}",
-                self.id
-            )
+
+            self.slug = generate_unique_slug(POI, f"{self.name}-{self.city.slug}", self.id)
         super().save(*args, **kwargs)

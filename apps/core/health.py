@@ -5,6 +5,7 @@ stylesheet (a deploy whose collectstatic never ran fails here); 503 "unavailable
 login, no details in the body (they go to the log), never cached, and plain text so no page
 template (or analytics script) loads.
 """
+
 import logging
 
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -36,5 +37,6 @@ def checks():
 @never_cache
 def healthz(request):
     failed = checks()
-    return HttpResponse("ok" if failed is None else "unavailable", status=200 if failed is None else 503,
-                        content_type="text/plain")
+    return HttpResponse(
+        "ok" if failed is None else "unavailable", status=200 if failed is None else 503, content_type="text/plain"
+    )

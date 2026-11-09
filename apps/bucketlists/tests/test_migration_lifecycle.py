@@ -1,11 +1,13 @@
 """bucketlists.0003–0005 on old-style data: each item's single POI moves into
 `pois`, and an event-only item whose event is a date of an activity becomes an
 activity item carrying that event."""
-from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
+
 from datetime import date
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+
+from apps.core.testing import RestoringTransactionTestCase  # leaves seeded rows in place (--keepdb)
 
 BEFORE = [("bucketlists", "0002_poi_categories_private_default")]
 AFTER = [("bucketlists", "0005_lifecycle_drop_poi")]
@@ -37,17 +39,29 @@ class LifecycleMigrationTests(RestoringTransactionTestCase):
         Event = apps.get_model("events", "Event")
 
         user = User.objects.create(username="u", email="u@example.com")
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
+        )
         city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2)
         # TransactionTestCase empties every table, including the place types locations 0012 seeded.
         apps.get_model("locations", "PlaceType").objects.get_or_create(code="landmark", defaults={"name": "Landmark"})
         poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=city, latitude=1, longitude=2)
         festival, _ = ActivityCategory.objects.get_or_create(name="Festival", defaults={"slug": "festival"})
-        okto = Activity.objects.create(category=festival, name="Oktoberfest", slug="okto", description="d", created_by=user)
-        dated = Event.objects.create(name="Okto 2027", slug="okto-2027", category=festival, related_activity=okto,
-                                     description="d", city=city, start_date=date(2027, 9, 18))
-        loose = Event.objects.create(name="Gig", slug="gig", category=festival, description="d", city=city,
-                                     start_date=date(2027, 1, 1))
+        okto = Activity.objects.create(
+            category=festival, name="Oktoberfest", slug="okto", description="d", created_by=user
+        )
+        dated = Event.objects.create(
+            name="Okto 2027",
+            slug="okto-2027",
+            category=festival,
+            related_activity=okto,
+            description="d",
+            city=city,
+            start_date=date(2027, 9, 18),
+        )
+        loose = Event.objects.create(
+            name="Gig", slug="gig", category=festival, description="d", city=city, start_date=date(2027, 1, 1)
+        )
         poi_item = Item.objects.create(user=user, poi=poi)
         dated_item = Item.objects.create(user=user, event=dated)
         loose_item = Item.objects.create(user=user, event=loose)

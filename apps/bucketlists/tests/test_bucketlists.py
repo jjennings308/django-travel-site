@@ -18,24 +18,51 @@ class BucketFixture(TestCase):
     def setUp(self):
         self.alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
         self.bob = User.objects.create_user("bob", "bob@example.com", "pw-1234-abcd")
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe")
-        self.city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2,
-                                        approval_status=ApprovalStatus.APPROVED)
-        self.poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=self.city, latitude=1, longitude=2,
-                                      approval_status=ApprovalStatus.APPROVED)
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", continent="Europe"
+        )
+        self.city = City.objects.create(
+            name="Testville",
+            slug="testville",
+            country=country,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.poi = POI.objects.create(
+            name="Old Bridge",
+            slug="old-bridge",
+            city=self.city,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         cat = ActivityCategory.objects.create(name="Hiking", slug="hiking")
-        self.activity = Activity.objects.create(category=cat, name="Ridge Walk", description="d", created_by=self.bob,
-                                                visibility="public", approval_status=ApprovalStatus.APPROVED)
-        self.event = Event.objects.create(name="Jazz Night", category=ActivityCategory.objects.get(name="Music"),
-                                          description="d", city=self.city, start_date=date.today() + timedelta(days=9),
-                                          approval_status=ApprovalStatus.APPROVED)
+        self.activity = Activity.objects.create(
+            category=cat,
+            name="Ridge Walk",
+            description="d",
+            created_by=self.bob,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.event = Event.objects.create(
+            name="Jazz Night",
+            category=ActivityCategory.objects.get(name="Music"),
+            description="d",
+            city=self.city,
+            start_date=date.today() + timedelta(days=9),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.client.force_login(self.alice)
 
 
 class AddTests(BucketFixture):
     def test_custom_goal(self):
-        response = self.client.post(reverse("bucketlists:item_add"), {
-            "custom_title": "See the northern lights", "status": "wishlist", "priority": 5})
+        response = self.client.post(
+            reverse("bucketlists:item_add"),
+            {"custom_title": "See the northern lights", "status": "wishlist", "priority": 5},
+        )
         self.assertRedirects(response, reverse("bucketlists:dashboard"))
         item = BucketListItem.objects.get(user=self.alice)
         self.assertEqual((item.title, item.kind, item.is_public), ("See the northern lights", "custom", False))
@@ -59,11 +86,15 @@ class AddTests(BucketFixture):
     def test_cannot_add_hidden_things(self):
         self.event.approval_status = ApprovalStatus.PENDING
         self.event.save()
-        self.assertEqual(self.client.post(reverse("bucketlists:quick_add", args=["event", self.event.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.post(reverse("bucketlists:quick_add", args=["event", self.event.pk])).status_code, 404
+        )
         self.assertEqual(self.client.post(reverse("bucketlists:quick_add", args=["nonsense", 1])).status_code, 404)
 
     def test_quick_add_is_post_only(self):
-        self.assertEqual(self.client.get(reverse("bucketlists:quick_add", args=["city", self.city.pk])).status_code, 405)
+        self.assertEqual(
+            self.client.get(reverse("bucketlists:quick_add", args=["city", self.city.pk])).status_code, 405
+        )
 
     def test_bucket_list_count_kept_in_step(self):
         self.client.post(reverse("bucketlists:quick_add", args=["activity", self.activity.pk]))
@@ -80,7 +111,9 @@ class ItemTests(BucketFixture):
         self.item = BucketListItem.objects.create(user=self.alice, custom_title="Learn to surf")
 
     def test_dashboard_lists_own_items_with_progress(self):
-        BucketListItem.objects.create(user=self.alice, custom_title="Done thing", status="completed", completed_date=date.today())
+        BucketListItem.objects.create(
+            user=self.alice, custom_title="Done thing", status="completed", completed_date=date.today()
+        )
         BucketListItem.objects.create(user=self.bob, custom_title="Bob's secret")
         response = self.client.get(reverse("bucketlists:dashboard"))
         self.assertContains(response, "Learn to surf")
@@ -93,23 +126,39 @@ class ItemTests(BucketFixture):
             self.assertEqual(self.client.get(reverse(f"bucketlists:{name}", args=[self.item.pk])).status_code, 404)
 
     def test_complete(self):
-        self.client.post(reverse("bucketlists:item_complete", args=[self.item.pk]),
-                         {"completed_date": "2026-09-01", "user_rating": "5", "completion_notes": "Cold but great"})
+        self.client.post(
+            reverse("bucketlists:item_complete", args=[self.item.pk]),
+            {"completed_date": "2026-09-01", "user_rating": "5", "completion_notes": "Cold but great"},
+        )
         self.item.refresh_from_db()
-        self.assertEqual((self.item.status, str(self.item.completed_date), self.item.user_rating), ("completed", "2026-09-01", 5))
+        self.assertEqual(
+            (self.item.status, str(self.item.completed_date), self.item.user_rating), ("completed", "2026-09-01", 5)
+        )
 
     def test_edit_and_categories(self):
         cat = BucketListCategory.objects.create(user=self.alice, name="Ocean")
-        self.client.post(reverse("bucketlists:item_edit", args=[self.item.pk]), {
-            "custom_title": "Learn to surf", "status": "planning", "priority": 4, "categories": [cat.pk], "is_public": "on"})
+        self.client.post(
+            reverse("bucketlists:item_edit", args=[self.item.pk]),
+            {
+                "custom_title": "Learn to surf",
+                "status": "planning",
+                "priority": 4,
+                "categories": [cat.pk],
+                "is_public": "on",
+            },
+        )
         self.item.refresh_from_db()
-        self.assertEqual((self.item.status, self.item.is_public, list(self.item.categories.all())), ("planning", True, [cat]))
+        self.assertEqual(
+            (self.item.status, self.item.is_public, list(self.item.categories.all())), ("planning", True, [cat])
+        )
         self.assertContains(self.client.get(reverse("bucketlists:dashboard") + f"?category={cat.pk}"), "Learn to surf")
 
     def test_cannot_use_someone_elses_category(self):
         bobs = BucketListCategory.objects.create(user=self.bob, name="Bob's")
-        self.client.post(reverse("bucketlists:item_edit", args=[self.item.pk]), {
-            "custom_title": "Learn to surf", "status": "wishlist", "priority": 3, "categories": [bobs.pk]})
+        self.client.post(
+            reverse("bucketlists:item_edit", args=[self.item.pk]),
+            {"custom_title": "Learn to surf", "status": "wishlist", "priority": 3, "categories": [bobs.pk]},
+        )
         self.assertEqual(self.item.categories.count(), 0)
 
     def test_delete(self):
@@ -121,7 +170,9 @@ class CategoryTests(BucketFixture):
     def test_create_rename_delete(self):
         self.client.post(reverse("bucketlists:categories"), {"name": "Europe", "color": "#123456"})
         cat = BucketListCategory.objects.get(user=self.alice)
-        self.client.post(reverse("bucketlists:category_edit", args=[cat.pk]), {"name": "Europe 2027", "color": "#123456"})
+        self.client.post(
+            reverse("bucketlists:category_edit", args=[cat.pk]), {"name": "Europe 2027", "color": "#123456"}
+        )
         cat.refresh_from_db()
         self.assertEqual(cat.name, "Europe 2027")
         self.client.post(reverse("bucketlists:category_edit", args=[cat.pk]), {"delete": "1"})
@@ -159,17 +210,21 @@ class PublicPageTests(BucketFixture):
 
 class ButtonTests(BucketFixture):
     def test_detail_pages_offer_the_button(self):
-        pages = [(reverse("activities:activity_detail", args=[self.activity.slug]), "activity", self.activity),
-                 (reverse("events:event_detail", args=[self.event.slug]), "event", self.event),
-                 (reverse("locations:city_detail", args=[self.city.slug]), "city", self.city),
-                 (reverse("locations:poi_detail", args=[self.poi.slug]), "poi", self.poi)]
+        pages = [
+            (reverse("activities:activity_detail", args=[self.activity.slug]), "activity", self.activity),
+            (reverse("events:event_detail", args=[self.event.slug]), "event", self.event),
+            (reverse("locations:city_detail", args=[self.city.slug]), "city", self.city),
+            (reverse("locations:poi_detail", args=[self.poi.slug]), "poi", self.poi),
+        ]
         for url, kind, obj in pages:
             with self.subTest(kind=kind):
                 self.assertContains(self.client.get(url), reverse("bucketlists:quick_add", args=[kind, obj.pk]))
 
     def test_no_button_when_signed_out(self):
         self.client.logout()
-        self.assertNotContains(self.client.get(reverse("events:event_detail", args=[self.event.slug])), "Add to bucket list")
+        self.assertNotContains(
+            self.client.get(reverse("events:event_detail", args=[self.event.slug])), "Add to bucket list"
+        )
 
 
 class LifecycleTests(BucketFixture):
@@ -177,15 +232,32 @@ class LifecycleTests(BucketFixture):
 
     def setUp(self):
         super().setUp()
-        self.okto = Activity.objects.create(category=ActivityCategory.objects.get(name="Festival"), name="Oktoberfest",
-                                            description="d", created_by=self.bob, visibility="public",
-                                            approval_status=ApprovalStatus.APPROVED)
+        self.okto = Activity.objects.create(
+            category=ActivityCategory.objects.get(name="Festival"),
+            name="Oktoberfest",
+            description="d",
+            created_by=self.bob,
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.okto_2027 = Event.objects.create(
-            name="Oktoberfest 2027", category=self.okto.category, related_activity=self.okto, description="d",
-            city=self.city, start_date=date(2027, 9, 18), end_date=date(2027, 10, 3),
-            approval_status=ApprovalStatus.APPROVED)
-        self.fountain = POI.objects.create(name="Fountain", slug="fountain", city=self.city, latitude=1, longitude=2,
-                                           approval_status=ApprovalStatus.APPROVED)
+            name="Oktoberfest 2027",
+            category=self.okto.category,
+            related_activity=self.okto,
+            description="d",
+            city=self.city,
+            start_date=date(2027, 9, 18),
+            end_date=date(2027, 10, 3),
+            approval_status=ApprovalStatus.APPROVED,
+        )
+        self.fountain = POI.objects.create(
+            name="Fountain",
+            slug="fountain",
+            city=self.city,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
 
     def edit(self, item, **data):
         base = {"status": item.status, "priority": item.priority}
@@ -220,14 +292,21 @@ class LifecycleTests(BucketFixture):
     def test_adding_an_event_of_an_activity_starts_an_activity_item(self):
         self.client.post(reverse("bucketlists:quick_add", args=["event", self.okto_2027.pk]))
         item = BucketListItem.objects.get(user=self.alice)
-        self.assertEqual((item.activity, item.event, item.kind, item.title), (self.okto, self.okto_2027, "activity", "Oktoberfest"))
+        self.assertEqual(
+            (item.activity, item.event, item.kind, item.title), (self.okto, self.okto_2027, "activity", "Oktoberfest")
+        )
 
     def test_poi_item_holds_several_pois_and_target_dates(self):
         self.client.post(reverse("bucketlists:quick_add", args=["poi", self.poi.pk]))
         item = BucketListItem.objects.get(user=self.alice)
         self.assertContains(self.client.get(reverse("bucketlists:item_edit", args=[item.pk])), "Fountain")
-        self.edit(item, pois=[self.poi.pk, self.fountain.pk], custom_title="", target_date="2027-06-01",
-                  target_end_date="2027-06-05")
+        self.edit(
+            item,
+            pois=[self.poi.pk, self.fountain.pk],
+            custom_title="",
+            target_date="2027-06-01",
+            target_end_date="2027-06-05",
+        )
         item = BucketListItem.objects.get(pk=item.pk)
         self.assertEqual(set(item.pois.all()), {self.poi, self.fountain})
         self.assertEqual((item.kind, item.stage, item.place), ("poi", "dated", "Testville"))
@@ -256,8 +335,15 @@ class LifecycleTests(BucketFixture):
         self.assertContains(page, 'value="2027-09-18"')
         self.assertContains(page, 'value="2027-10-03"')
         self.assertContains(page, "Testville, Testland")
-        response = self.client.post(url, {"name": "Oktoberfest 2027", "destination": "Testville, Testland",
-                                          "start_date": "2027-09-18", "end_date": "2027-10-03"})
+        response = self.client.post(
+            url,
+            {
+                "name": "Oktoberfest 2027",
+                "destination": "Testville, Testland",
+                "start_date": "2027-09-18",
+                "end_date": "2027-10-03",
+            },
+        )
         trip = Trip.objects.get()
         self.assertRedirects(response, reverse("trips:trip_settings", args=[trip.pk]))
         self.assertEqual((trip.created_by, trip.start_date), (self.alice, date(2027, 9, 18)))
@@ -286,12 +372,16 @@ class LifecycleTests(BucketFixture):
 
     def test_deleted_trip_falls_back_a_stage(self):
         trip = Trip.objects.create(name="T", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
-        item = BucketListItem.objects.create(user=self.alice, custom_title="Surf", target_date=date(2027, 1, 1), trip=trip)
+        item = BucketListItem.objects.create(
+            user=self.alice, custom_title="Surf", target_date=date(2027, 1, 1), trip=trip
+        )
         self.assertEqual(item.stage, "trip")
         trip.soft_delete()
         item = BucketListItem.objects.get(pk=item.pk)
         self.assertEqual(item.stage, "dated")
-        self.assertContains(self.client.get(reverse("bucketlists:dashboard")), reverse("bucketlists:plan_trip", args=[item.pk]))
+        self.assertContains(
+            self.client.get(reverse("bucketlists:dashboard")), reverse("bucketlists:plan_trip", args=[item.pk])
+        )
 
     def test_dashboard_shows_stage_and_trip_link(self):
         trip = Trip.objects.create(name="Surf trip", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
@@ -308,8 +398,13 @@ class GoalCatalogueTests(BucketFixture):
     def setUp(self):
         super().setUp()
         self.goal = BucketListItem.objects.create(
-            user=self.alice, custom_title="Walk the ridge", custom_description="With the dog",
-            personal_notes="Spring", target_date=date(2027, 4, 1), status="researching")
+            user=self.alice,
+            custom_title="Walk the ridge",
+            custom_description="With the dog",
+            personal_notes="Spring",
+            target_date=date(2027, 4, 1),
+            status="researching",
+        )
         cat = BucketListCategory.objects.create(user=self.alice, name="Outdoors")
         self.goal.categories.add(cat)
 
@@ -334,17 +429,28 @@ class GoalCatalogueTests(BucketFixture):
 
     def test_add_page_offers_suggestions_and_edit_page_the_link_box(self):
         self.assertContains(self.client.get(reverse("bucketlists:item_add")), reverse("bucketlists:suggest"))
-        self.assertContains(self.client.get(reverse("bucketlists:item_edit", args=[self.goal.pk])), "Link to the catalogue")
+        self.assertContains(
+            self.client.get(reverse("bucketlists:item_edit", args=[self.goal.pk])), "Link to the catalogue"
+        )
 
     def test_link_goal_to_activity_keeps_everything(self):
-        self.client.post(reverse("bucketlists:link_item", args=[self.goal.pk]), {"target": f"activity:{self.activity.pk}"})
+        self.client.post(
+            reverse("bucketlists:link_item", args=[self.goal.pk]), {"target": f"activity:{self.activity.pk}"}
+        )
         item = BucketListItem.objects.get(pk=self.goal.pk)
-        self.assertEqual((item.kind, item.title, item.custom_title, item.custom_description), ("activity", "Ridge Walk", "", ""))
-        self.assertEqual((item.personal_notes, item.target_date, item.status), ("Spring\n\nWith the dog", date(2027, 4, 1), "researching"))
+        self.assertEqual(
+            (item.kind, item.title, item.custom_title, item.custom_description), ("activity", "Ridge Walk", "", "")
+        )
+        self.assertEqual(
+            (item.personal_notes, item.target_date, item.status),
+            ("Spring\n\nWith the dog", date(2027, 4, 1), "researching"),
+        )
         self.assertEqual(item.categories.count(), 1)
         self.activity.refresh_from_db()
         self.assertEqual(self.activity.bucket_list_count, 1)
-        self.assertNotContains(self.client.get(reverse("bucketlists:item_edit", args=[item.pk])), "Link to the catalogue")
+        self.assertNotContains(
+            self.client.get(reverse("bucketlists:item_edit", args=[item.pk])), "Link to the catalogue"
+        )
         item.delete()
         self.activity.refresh_from_db()
         self.assertEqual(self.activity.bucket_list_count, 0)
@@ -376,16 +482,28 @@ class MyDatesTests(BucketFixture):
 
     def setUp(self):
         super().setUp()
-        self.later = Event.objects.create(name="Ridge Walk Day", category=self.activity.category, description="d",
-                                          related_activity=self.activity, city=self.city,
-                                          start_date=date.today() + timedelta(days=40), approval_status=ApprovalStatus.APPROVED)
+        self.later = Event.objects.create(
+            name="Ridge Walk Day",
+            category=self.activity.category,
+            description="d",
+            related_activity=self.activity,
+            city=self.city,
+            start_date=date.today() + timedelta(days=40),
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.url = reverse("bucketlists:dates")
 
     def test_sections(self):
-        soon = BucketListItem.objects.create(user=self.alice, custom_title="Surf", target_date=date.today() + timedelta(days=3))
-        BucketListItem.objects.create(user=self.alice, custom_title="Old goal", target_date=date.today() - timedelta(days=30))
+        soon = BucketListItem.objects.create(
+            user=self.alice, custom_title="Surf", target_date=date.today() + timedelta(days=3)
+        )
+        BucketListItem.objects.create(
+            user=self.alice, custom_title="Old goal", target_date=date.today() - timedelta(days=30)
+        )
         BucketListItem.objects.create(user=self.alice, activity=self.activity)
-        BucketListItem.objects.create(user=self.alice, custom_title="Done goal", status="completed", target_date=date.today())
+        BucketListItem.objects.create(
+            user=self.alice, custom_title="Done goal", status="completed", target_date=date.today()
+        )
         BucketListItem.objects.create(user=self.bob, custom_title="Bob goal", target_date=date.today())
         page = self.client.get(self.url)
         self.assertEqual([i.title for i in page.context["dated"]], ["Surf"])
@@ -416,18 +534,23 @@ class TripDoneTests(BucketFixture):
 
     def setUp(self):
         super().setUp()
-        self.trip = Trip.objects.create(name="Surf week", start_date=date.today() - timedelta(days=10),
-                                        end_date=date.today() - timedelta(days=3))
+        self.trip = Trip.objects.create(
+            name="Surf week", start_date=date.today() - timedelta(days=10), end_date=date.today() - timedelta(days=3)
+        )
         TripGrant.objects.create(trip=self.trip, user=self.alice, role=TripRole.EDITOR)
         self.url = reverse("bucketlists:trip_done", args=[self.trip.pk])
 
     def test_linked_goal_goes_to_its_done_page(self):
-        item = BucketListItem.objects.create(user=self.alice, custom_title="Learn to surf", trip=self.trip, status="planning")
+        item = BucketListItem.objects.create(
+            user=self.alice, custom_title="Learn to surf", trip=self.trip, status="planning"
+        )
         self.assertTrue(item.trip_finished)
         self.assertRedirects(self.client.post(self.url), reverse("bucketlists:item_complete", args=[item.pk]))
         page = self.client.get(reverse("bucketlists:dashboard"))
         self.assertContains(page, "Trip over: tick it off")
-        self.assertEqual([i.title for i in self.client.get(reverse("bucketlists:dates")).context["past"]], ["Learn to surf"])
+        self.assertEqual(
+            [i.title for i in self.client.get(reverse("bucketlists:dates")).context["past"]], ["Learn to surf"]
+        )
 
     def test_unlinked_trip_creates_a_goal(self):
         response = self.client.post(self.url)
@@ -467,16 +590,27 @@ class SeveralGoalsOneTripTests(BucketFixture):
         url = reverse("bucketlists:trip_goals", args=[self.trip.pk])
         self.assertContains(self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])), url)
         page = self.client.get(url)
-        self.assertEqual([i.title for i in page.context["available"]], ["See a concert", "Visit the museum"])  # same dates first
+        self.assertEqual(
+            [i.title for i in page.context["available"]], ["See a concert", "Visit the museum"]
+        )  # same dates first
         self.client.post(url, {"items": [self.concert.pk, self.museum.pk]})
-        self.assertEqual(set(self.trip.bucket_list_items.values_list("custom_title", flat=True)), {"See a concert", "Visit the museum"})
-        self.assertEqual([i.title for i in self.client.get(url).context["on_trip"]], ["See a concert", "Visit the museum"])
+        self.assertEqual(
+            set(self.trip.bucket_list_items.values_list("custom_title", flat=True)),
+            {"See a concert", "Visit the museum"},
+        )
+        self.assertEqual(
+            [i.title for i in self.client.get(url).context["on_trip"]], ["See a concert", "Visit the museum"]
+        )
 
     def test_remove_and_move(self):
-        other = Trip.objects.create(name="Other", start_date=date.today() + timedelta(days=90), end_date=date.today() + timedelta(days=95))
+        other = Trip.objects.create(
+            name="Other", start_date=date.today() + timedelta(days=90), end_date=date.today() + timedelta(days=95)
+        )
         TripGrant.objects.create(trip=other, user=self.alice, role=TripRole.EDITOR)
         self.client.post(reverse("bucketlists:add_to_trip", args=[self.museum.pk]), {"trip": other.pk})
-        self.client.post(reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [self.museum.pk]})  # moves it
+        self.client.post(
+            reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [self.museum.pk]}
+        )  # moves it
         self.museum.refresh_from_db()
         self.assertEqual(self.museum.trip, self.trip)
         self.client.post(reverse("bucketlists:remove_from_trip", args=[self.museum.pk]))
@@ -486,7 +620,12 @@ class SeveralGoalsOneTripTests(BucketFixture):
 
     def test_only_your_goals_and_visible_trips(self):
         hidden = Trip.objects.create(name="Secret", start_date=date.today(), end_date=date.today() + timedelta(days=1))
-        self.assertEqual(self.client.post(reverse("bucketlists:add_to_trip", args=[self.concert.pk]), {"trip": hidden.pk}).status_code, 404)
+        self.assertEqual(
+            self.client.post(
+                reverse("bucketlists:add_to_trip", args=[self.concert.pk]), {"trip": hidden.pk}
+            ).status_code,
+            404,
+        )
         self.assertEqual(self.client.get(reverse("bucketlists:trip_goals", args=[hidden.pk])).status_code, 404)
         bobs = BucketListItem.objects.create(user=self.bob, custom_title="Bob's goal")
         self.client.post(reverse("bucketlists:trip_goals", args=[self.trip.pk]), {"items": [bobs.pk]})
@@ -500,21 +639,27 @@ class AdventuresTests(BucketFixture):
     def setUp(self):
         super().setUp()
         import tempfile
+
         self.media_root = tempfile.mkdtemp(prefix="sbl-test-adventures-")
         self.settings_override = self.settings(MEDIA_ROOT=self.media_root)
         self.settings_override.enable()
-        self.item = BucketListItem.objects.create(user=self.alice, custom_title="See the northern lights", is_public=True)
+        self.item = BucketListItem.objects.create(
+            user=self.alice, custom_title="See the northern lights", is_public=True
+        )
 
     def tearDown(self):
         import shutil
+
         self.settings_override.disable()
         shutil.rmtree(self.media_root, ignore_errors=True)
         super().tearDown()
 
     def photo(self, name):
         import io
+
         from django.core.files.uploadedfile import SimpleUploadedFile
         from PIL import Image
+
         buf = io.BytesIO()
         Image.new("RGB", (30, 20), "green").save(buf, format="JPEG")
         return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
@@ -540,14 +685,18 @@ class AdventuresTests(BucketFixture):
 
     def test_not_an_image_is_refused(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         response = self.complete(photos=[SimpleUploadedFile("x.jpg", b"nope", content_type="image/jpeg")])
         self.assertEqual(response.status_code, 200)
         self.item.refresh_from_db()
         self.assertNotEqual(self.item.status, "completed")
 
     def test_adventures_is_private_and_lists_unlinked_finished_trips(self):
-        trip = Trip.objects.create(name="Iceland week", start_date=date.today() - timedelta(days=30),
-                                   end_date=date.today() - timedelta(days=23))
+        trip = Trip.objects.create(
+            name="Iceland week",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today() - timedelta(days=23),
+        )
         TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.VIEWER)
         self.complete()
         page = self.client.get(reverse("bucketlists:adventures"))
@@ -569,14 +718,23 @@ class AdventuresTests(BucketFixture):
 
 class TripCitiesFromGoalsTests(BucketFixture):
     def test_plan_a_trip_takes_the_goals_cities(self):
-        item = BucketListItem.objects.create(user=self.alice, city=self.city, target_date=date.today() + timedelta(days=60))
-        self.client.post(reverse("bucketlists:plan_trip", args=[item.pk]), {
-            "name": "Testville", "start_date": str(date.today() + timedelta(days=60)),
-            "end_date": str(date.today() + timedelta(days=63))})
+        item = BucketListItem.objects.create(
+            user=self.alice, city=self.city, target_date=date.today() + timedelta(days=60)
+        )
+        self.client.post(
+            reverse("bucketlists:plan_trip", args=[item.pk]),
+            {
+                "name": "Testville",
+                "start_date": str(date.today() + timedelta(days=60)),
+                "end_date": str(date.today() + timedelta(days=63)),
+            },
+        )
         self.assertEqual(list(Trip.objects.get(name="Testville").cities.all()), [self.city])
 
     def test_a_viewer_attaching_a_goal_does_not_change_the_trip(self):
-        trip = Trip.objects.create(name="Family", start_date=date.today() + timedelta(days=5), end_date=date.today() + timedelta(days=9))
+        trip = Trip.objects.create(
+            name="Family", start_date=date.today() + timedelta(days=5), end_date=date.today() + timedelta(days=9)
+        )
         TripGrant.objects.create(trip=trip, user=self.alice, role=TripRole.VIEWER)
         item = BucketListItem.objects.create(user=self.alice, city=self.city)
         self.client.post(reverse("bucketlists:add_to_trip", args=[item.pk]), {"trip": trip.pk})
@@ -590,20 +748,34 @@ class BadgeTests(BucketFixture):
     def test_first_goal_and_first_adventure(self):
         from apps.bucketlists.models import BucketListMilestone
         from apps.notifications.models import Notification
+
         item = BucketListItem.objects.create(user=self.alice, custom_title="Surf")
-        self.assertEqual(list(BucketListMilestone.objects.filter(user=self.alice).values_list("code", flat=True)), ["first_goal"])
+        self.assertEqual(
+            list(BucketListMilestone.objects.filter(user=self.alice).values_list("code", flat=True)), ["first_goal"]
+        )
         item.complete()
         codes = set(BucketListMilestone.objects.filter(user=self.alice).values_list("code", flat=True))
         self.assertEqual(codes, {"first_goal", "first_done"})
         item.save()  # nothing new: no duplicate rows or notifications
         self.assertEqual(BucketListMilestone.objects.filter(user=self.alice).count(), 2)
-        self.assertEqual(Notification.objects.filter(user=self.alice, notification_type__name="badge_earned").count(), 2)
+        self.assertEqual(
+            Notification.objects.filter(user=self.alice, notification_type__name="badge_earned").count(), 2
+        )
 
     def test_countries_and_events(self):
         from apps.bucketlists.badges import award_badges, progress
-        other = Country.objects.create(name="Otherland", slug="otherland", iso_code="OL", iso3_code="OTL", continent="Asia")
-        far = City.objects.create(name="Faraway", slug="faraway", country=other, latitude=1, longitude=2,
-                                  approval_status=ApprovalStatus.APPROVED)
+
+        other = Country.objects.create(
+            name="Otherland", slug="otherland", iso_code="OL", iso3_code="OTL", continent="Asia"
+        )
+        far = City.objects.create(
+            name="Faraway",
+            slug="faraway",
+            country=other,
+            latitude=1,
+            longitude=2,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         BucketListItem.objects.create(user=self.alice, city=self.city).complete()
         BucketListItem.objects.create(user=self.alice, city=far).complete()
         BucketListItem.objects.create(user=self.alice, event=self.event).complete()
@@ -615,9 +787,12 @@ class BadgeTests(BucketFixture):
 
     def test_backfill_command_is_silent(self):
         from io import StringIO
+
         from django.core.management import call_command
+
         from apps.bucketlists.models import BucketListMilestone
         from apps.notifications.models import Notification
+
         BucketListItem.objects.create(user=self.alice, custom_title="Surf")
         BucketListMilestone.objects.all().delete()
         Notification.objects.all().delete()
@@ -650,14 +825,19 @@ class VisitorCountTests(BucketFixture):
         self.city.save()
 
     def counts(self):
-        from django.db import connection
         for model, obj in ((City, self.city), (POI, self.poi), (Region, self.region), (Country, self.city.country)):
             obj.refresh_from_db()
-        return (self.city.visitor_count, self.poi.visitor_count, self.region.visitor_count, self.city.country.visitor_count)
+        return (
+            self.city.visitor_count,
+            self.poi.visitor_count,
+            self.region.visitor_count,
+            self.city.country.visitor_count,
+        )
 
     def commit(self):
         """Signals recount on transaction commit; TestCase never commits, so run the hooks."""
         from django.db import connection
+
         callbacks = list(connection.run_on_commit)
         connection.run_on_commit.clear()
         for _, func, *_ in callbacks:
@@ -687,14 +867,19 @@ class VisitorCountTests(BucketFixture):
 
     def test_finished_trips_count_their_travellers_not_other_grant_holders(self):
         from apps.trips.models import Traveler
-        trip = Trip.objects.create(name="Done", start_date=date.today() - timedelta(days=10), end_date=date.today() - timedelta(days=3))
+
+        trip = Trip.objects.create(
+            name="Done", start_date=date.today() - timedelta(days=10), end_date=date.today() - timedelta(days=3)
+        )
         traveller = Traveler.objects.get(user=self.alice)  # every account is a traveller
         trip.travelers.add(traveller)
         TripGrant.objects.create(trip=trip, user=self.bob, role=TripRole.VIEWER)  # can see it, didn't go
         trip.cities.add(self.city)
         self.commit()
         self.assertEqual(self.counts()[0], 1)
-        future = Trip.objects.create(name="Soon", start_date=date.today() + timedelta(days=3), end_date=date.today() + timedelta(days=5))
+        future = Trip.objects.create(
+            name="Soon", start_date=date.today() + timedelta(days=3), end_date=date.today() + timedelta(days=5)
+        )
         future.travelers.add(Traveler.objects.get(user=self.bob))
         future.cities.add(self.city)
         self.commit()
@@ -702,7 +887,9 @@ class VisitorCountTests(BucketFixture):
 
     def test_command_recounts_from_scratch(self):
         from io import StringIO
+
         from django.core.management import call_command
+
         BucketListItem.objects.create(user=self.alice, city=self.city).complete()
         City.objects.update(visitor_count=0)
         call_command("recount_visitors", stdout=StringIO())
@@ -711,25 +898,31 @@ class VisitorCountTests(BucketFixture):
     def test_profile_stats_follow_goals_and_finished_trips(self):
         from apps.accounts.models import Profile
         from apps.trips.models import Traveler, Trip
-        other = Country.objects.create(name="Elsewhere", slug="elsewhere", iso_code="EW", iso3_code="EWX",
-                                       continent="Europe")
+
+        other = Country.objects.create(
+            name="Elsewhere", slug="elsewhere", iso_code="EW", iso3_code="EWX", continent="Europe"
+        )
         abroad = City.objects.create(name="Far", slug="far", country=other, latitude=1, longitude=1)
         BucketListItem.objects.create(user=self.alice, city=self.city).complete()
         BucketListItem.objects.create(user=self.alice, custom_title="Not yet")
-        trip = Trip.objects.create(name="Done", start_date=date.today() - timedelta(days=10),
-                                   end_date=date.today() - timedelta(days=3))
+        trip = Trip.objects.create(
+            name="Done", start_date=date.today() - timedelta(days=10), end_date=date.today() - timedelta(days=3)
+        )
         trip.travelers.add(Traveler.objects.get(user=self.alice))
         trip.cities.add(abroad)
         self.commit()
         profile = Profile.objects.get(user=self.alice)  # made by the recount: alice never opened her profile
-        self.assertEqual((profile.countries_visited_count, profile.trips_completed_count,
-                          profile.bucket_list_completed_count), (2, 1, 1))
+        self.assertEqual(
+            (profile.countries_visited_count, profile.trips_completed_count, profile.bucket_list_completed_count),
+            (2, 1, 1),
+        )
         self.client.force_login(self.alice)
         page = self.client.get(reverse("profile"))
         self.assertContains(page, "<strong>Countries Visited:</strong> 2")
         self.assertContains(page, "<strong>Goals ticked off:</strong> 1")
         Trip.objects.filter(pk=trip.pk).update(end_date=date.today() + timedelta(days=1))  # not finished after all
         from apps.bucketlists.visitors import recount
+
         recount()
         profile.refresh_from_db()
         self.assertEqual((profile.countries_visited_count, profile.trips_completed_count), (1, 0))
@@ -751,12 +944,17 @@ class ShareReviewTests(BucketFixture):
 
     def test_sharing_creates_a_been_there_review_and_updates_it(self):
         from apps.reviews.models import Review
+
         item = BucketListItem.objects.create(user=self.alice, activity=self.activity)
-        self.assertContains(self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review")
+        self.assertContains(
+            self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review"
+        )
         self.complete(item, share_review="on")
         review = Review.objects.get(user=self.alice, activity=self.activity)
-        self.assertEqual((review.rating, review.comment, review.is_verified_visit, review.visit_date),
-                         (4, "Worth the climb", True, date(2026, 9, 1)))
+        self.assertEqual(
+            (review.rating, review.comment, review.is_verified_visit, review.visit_date),
+            (4, "Worth the climb", True, date(2026, 9, 1)),
+        )
         self.complete(item, share_review="on", user_rating="5")
         self.assertEqual(Review.objects.get(pk=review.pk).rating, 5)
         self.activity.refresh_from_db()
@@ -764,12 +962,14 @@ class ShareReviewTests(BucketFixture):
 
     def test_not_shared_unless_ticked(self):
         from apps.reviews.models import Review
+
         item = BucketListItem.objects.create(user=self.alice, city=self.city)
         self.complete(item)
         self.assertFalse(Review.objects.exists())
 
     def test_sharing_needs_a_rating(self):
         from apps.reviews.models import Review
+
         item = BucketListItem.objects.create(user=self.alice, city=self.city)
         response = self.complete(item, share_review="on", user_rating="")
         self.assertEqual(response.status_code, 200)
@@ -777,10 +977,13 @@ class ShareReviewTests(BucketFixture):
 
     def test_custom_goals_are_not_reviewable(self):
         item = BucketListItem.objects.create(user=self.alice, custom_title="Learn to surf")
-        self.assertNotContains(self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review")
+        self.assertNotContains(
+            self.client.get(reverse("bucketlists:item_complete", args=[item.pk])), "Share as a public review"
+        )
 
     def test_review_from_the_page_is_been_there_after_ticking_off(self):
         from apps.reviews.models import Review
+
         item = BucketListItem.objects.create(user=self.alice, custom_title="Bridge")
         item.pois.add(self.poi)
         item.complete(date(2026, 9, 1))
@@ -796,30 +999,47 @@ class TripMapPlacesTests(BucketFixture):
 
     def setUp(self):
         super().setUp()
-        self.trip = Trip.objects.create(name="Testland week", start_date=date(2027, 5, 1), end_date=date(2027, 5, 7),
-                                        created_by=self.alice)
+        self.trip = Trip.objects.create(
+            name="Testland week", start_date=date(2027, 5, 1), end_date=date(2027, 5, 7), created_by=self.alice
+        )
         for user in (self.alice, self.bob):
             TripGrant.objects.create(trip=self.trip, user=user, role=TripRole.VIEWER)
-        self.hall = POI.objects.create(name="Music Hall", slug="music-hall", city=self.city, latitude=3, longitude=4,
-                                       approval_status=ApprovalStatus.APPROVED)
+        self.hall = POI.objects.create(
+            name="Music Hall",
+            slug="music-hall",
+            city=self.city,
+            latitude=3,
+            longitude=4,
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.activity.venue = self.hall
         self.activity.save()
         poi_goal = BucketListItem.objects.create(user=self.alice, custom_title="Bridges", trip=self.trip)
         poi_goal.pois.add(self.poi)
         BucketListItem.objects.create(user=self.alice, activity=self.activity, trip=self.trip)
-        hidden = POI.objects.create(name="Unapproved", slug="unapproved", city=self.city, latitude=5, longitude=6,
-                                    approval_status=ApprovalStatus.PENDING)
+        hidden = POI.objects.create(
+            name="Unapproved",
+            slug="unapproved",
+            city=self.city,
+            latitude=5,
+            longitude=6,
+            approval_status=ApprovalStatus.PENDING,
+        )
         BucketListItem.objects.create(user=self.alice, custom_title="Secret", trip=self.trip).pois.add(hidden)
         BucketListItem.objects.create(user=self.bob, custom_title="Bob's", trip=self.trip).pois.add(self.hall)
         self.url = reverse("bucketlists:trip_map_places", args=[self.trip.pk])
 
     def test_own_goals_places_only(self):
         data = self.client.get(self.url).json()
-        names = [(f["properties"]["name"], f["properties"]["layer"], f["properties"]["marker"]) for f in data["features"]]
+        names = [
+            (f["properties"]["name"], f["properties"]["layer"], f["properties"]["marker"]) for f in data["features"]
+        ]
         self.assertEqual(names, [("Music Hall", "pois", "poi"), ("Old Bridge", "pois", "poi")])
         self.assertIn("for Ridge Walk", data["features"][0]["properties"]["subtitle"])
         self.client.force_login(self.bob)
-        self.assertEqual([f["properties"]["name"] for f in self.client.get(self.url).json()["features"]], ["Music Hall"])
+        self.assertEqual(
+            [f["properties"]["name"] for f in self.client.get(self.url).json()["features"]], ["Music Hall"]
+        )
 
     def test_no_grant_is_404(self):
         stranger = User.objects.create_user("carol", "carol@example.com", "pw-1234-abcd")

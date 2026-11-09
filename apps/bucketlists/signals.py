@@ -1,6 +1,6 @@
-# bucketlists/signals.py
 """Keep Activity.bucket_list_count and Event.bucket_list_count in step with the
 bucket-list items that point at them (recounted, so they can't drift)."""
+
 from django.db import transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -8,7 +8,6 @@ from django.dispatch import receiver
 from apps.trips.models import Day, Trip
 
 from .models import BucketListItem
-
 
 KINDS = ("activity", "event")
 
@@ -47,6 +46,7 @@ def award_badges_after_save(sender, instance, raw=False, **kwargs):
     """Goals added, ticked off, dated or put on a trip can earn badges."""
     if not raw:
         from .badges import award_badges
+
         award_badges(instance.user)
 
 
@@ -59,6 +59,7 @@ def item_deleted(sender, instance, **kwargs):
 # ---- visitor counts on places (see visitors.py) ------------------------------------
 def _run_recount():
     from .visitors import recount
+
     recount()
 
 
@@ -97,8 +98,10 @@ def _finished(trip):
     if trip is None or trip.end_date is None:
         return False
     from datetime import date
+
     from django.utils import timezone
     from django.utils.dateparse import parse_date
+
     end = trip.end_date if isinstance(trip.end_date, date) else parse_date(str(trip.end_date))
     return end is not None and end < timezone.localdate()
 

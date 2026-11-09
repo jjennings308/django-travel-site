@@ -1,4 +1,5 @@
 """Warnings from catalogue notes: closed days and book-ahead dates (docs/plans/catalogue-notes.md, N3)."""
+
 import re
 from datetime import date, time
 from unittest import mock
@@ -9,7 +10,7 @@ from django.urls import reverse
 
 from apps.approval_system.models import ApprovalStatus
 from apps.catalogue_notes.models import CatalogueNote
-from apps.locations.models import City, Country, POI
+from apps.locations.models import POI, City, Country
 from apps.trips.models import BookingTask, Day, Meal, Trip, TripActivity, TripGrant, TripHiddenNote, TripRole
 
 User = get_user_model()
@@ -20,25 +21,44 @@ TODAY = "apps.trips.views.django_timezone.localdate"
 class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Utah", start_date=date(2027, 9, 20), end_date=date(2027, 9, 22),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Utah", start_date=date(2027, 9, 20), end_date=date(2027, 9, 22), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
-        us = Country.objects.create(name="United States", slug="us", iso_code="US", iso3_code="USA",
-                                    continent="North America", approval_status=APPROVED)
-        moab = City.objects.create(name="Moab", slug="moab", country=us, latitude=0, longitude=0, approval_status=APPROVED)
-        self.diner = POI.objects.create(name="Moab Diner", slug="moab-diner", city=moab, latitude=0, longitude=0,
-                                        approval_status=APPROVED)
-        self.arches = POI.objects.create(name="Arches", slug="arches", city=moab, latitude=0, longitude=0,
-                                         approval_status=APPROVED)
+        us = Country.objects.create(
+            name="United States",
+            slug="us",
+            iso_code="US",
+            iso3_code="USA",
+            continent="North America",
+            approval_status=APPROVED,
+        )
+        moab = City.objects.create(
+            name="Moab", slug="moab", country=us, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.diner = POI.objects.create(
+            name="Moab Diner", slug="moab-diner", city=moab, latitude=0, longitude=0, approval_status=APPROVED
+        )
+        self.arches = POI.objects.create(
+            name="Arches", slug="arches", city=moab, latitude=0, longitude=0, approval_status=APPROVED
+        )
         self.monday = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 20))  # a Monday
         self.wednesday = Day.objects.create(trip=self.trip, day_number=3, date=date(2027, 9, 22))
-        self.closed = CatalogueNote.objects.create(poi=self.diner, text="Family-run.", closed_weekdays=[0, 1],
-                                                   approval_status=APPROVED)
-        self.entry = CatalogueNote.objects.create(poi=self.arches, tone="critical", text="Timed entry needed.",
-                                                  book_ahead=3, book_ahead_unit="months",
-                                                  booking_url="https://www.recreation.gov/", approval_status=APPROVED)
-        self.visit = TripActivity.objects.create(trip=self.trip, day=self.monday, kind="entry", title="Arches",
-                                                 poi=self.arches, start_time=time(8))
+        self.closed = CatalogueNote.objects.create(
+            poi=self.diner, text="Family-run.", closed_weekdays=[0, 1], approval_status=APPROVED
+        )
+        self.entry = CatalogueNote.objects.create(
+            poi=self.arches,
+            tone="critical",
+            text="Timed entry needed.",
+            book_ahead=3,
+            book_ahead_unit="months",
+            booking_url="https://www.recreation.gov/",
+            approval_status=APPROVED,
+        )
+        self.visit = TripActivity.objects.create(
+            trip=self.trip, day=self.monday, kind="entry", title="Arches", poi=self.arches, start_time=time(8)
+        )
 
     def page(self, today):
         self.client.force_login(self.editor)
@@ -90,10 +110,23 @@ class BookAheadTests(Fixture):
         form = self.client.get(link).context["form"]
         self.assertEqual((form.initial["title"], form.initial["due"]), ("Book ahead: Arches", date(2027, 6, 20)))
         self.assertIn("recreation.gov", form.initial["notes"])
-        self.client.post(reverse("trips:task_new", args=[self.trip.pk]), {
-            "title": "Book ahead: Arches", "priority": "2", "due": "2027-06-20", "due_note": "",
-            "day": self.monday.pk, "leg": "", "stay": "", "activity": self.visit.pk, "confirmation": "", "order": "",
-            "notes": "https://www.recreation.gov/", "from_note": self.entry.pk})
+        self.client.post(
+            reverse("trips:task_new", args=[self.trip.pk]),
+            {
+                "title": "Book ahead: Arches",
+                "priority": "2",
+                "due": "2027-06-20",
+                "due_note": "",
+                "day": self.monday.pk,
+                "leg": "",
+                "stay": "",
+                "activity": self.visit.pk,
+                "confirmation": "",
+                "order": "",
+                "notes": "https://www.recreation.gov/",
+                "from_note": self.entry.pk,
+            },
+        )
         task = BookingTask.objects.get()
         self.assertEqual(task.note_ids(), {self.entry.pk})
         self.assertNotIn("Catalogue note", task.visible_notes)
@@ -104,8 +137,10 @@ class BookAheadTests(Fixture):
     def test_the_booklet_prints_the_warnings(self):
         Meal.objects.create(day=self.monday, name="Diner dinner", meal_type="dinner", poi=self.diner)
         self.client.force_login(self.editor)
-        with mock.patch(TODAY, return_value=date(2027, 6, 1)), \
-                mock.patch("apps.trips.pdf.render_pdf", side_effect=lambda html, base_url: html.encode()):
+        with (
+            mock.patch(TODAY, return_value=date(2027, 6, 1)),
+            mock.patch("apps.trips.pdf.render_pdf", side_effect=lambda html, base_url: html.encode()),
+        ):
             body = self.client.get(reverse("trips:trip_pdf", args=[self.trip.pk])).content.decode()
         self.assertIn("Moab Diner is closed on Mondays.", body)
         self.assertIn("Book by Sun Jun 20, 2027", body)

@@ -1,4 +1,5 @@
 """Storage limit, unsubscribe, reports and suspension (site roadmap R15)."""
+
 import shutil
 import tempfile
 from datetime import date
@@ -27,7 +28,9 @@ User = get_user_model()
 
 def png():
     from io import BytesIO
+
     from PIL import Image
+
     out = BytesIO()
     Image.new("RGB", (10, 10), "red").save(out, format="PNG")
     return out.getvalue()
@@ -38,8 +41,11 @@ class FilesFixture(TestCase):
         roots = tempfile.mkdtemp(), tempfile.mkdtemp()
         for folder in roots:
             self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
-        override = override_settings(MEDIA_ROOT=roots[0], PRIVATE_MEDIA_ROOT=roots[1],
-                                     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+        override = override_settings(
+            MEDIA_ROOT=roots[0],
+            PRIVATE_MEDIA_ROOT=roots[1],
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        )
         override.enable()
         self.addCleanup(override.disable)
         self.ada = User.objects.create_user("ada", "ada@example.com", "pw-1234-abcd")
@@ -61,7 +67,9 @@ class QuotaTests(FilesFixture):
         self.assertEqual(Media.objects.filter(uploaded_by=self.ada).count(), 1)
 
     def test_tickets_count_towards_it_and_are_refused(self):
-        trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 2), created_by=self.ada)
+        trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 2), created_by=self.ada
+        )
         TripGrant.objects.create(trip=trip, user=self.ada, role="editor")
         stay = Lodging.objects.create(trip=trip, name="Inn", check_in=date(2027, 5, 1), check_out=date(2027, 5, 2))
         confirmation = Confirmation.attach_number(trip, "R1", stay)
@@ -72,7 +80,7 @@ class QuotaTests(FilesFixture):
 
     def test_staff_unlimited(self):
         staff = User.objects.create_superuser("root", "root@example.com", "pw-1234-abcd")
-        quota.check(staff, 10 ** 12)  # no error
+        quota.check(staff, 10**12)  # no error
 
 
 class UnsubscribeTests(FilesFixture):
@@ -87,8 +95,11 @@ class UnsubscribeTests(FilesFixture):
         self.assertContains(page, "Stop these emails")
         response = self.client.post("/" + path, {"List-Unsubscribe": "One-Click"})
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(UserNotificationPreference.objects.filter(user=self.ada, email_enabled=False,
-                                                                  notification_type__name="trip_changed").exists())
+        self.assertTrue(
+            UserNotificationPreference.objects.filter(
+                user=self.ada, email_enabled=False, notification_type__name="trip_changed"
+            ).exists()
+        )
         mail.outbox = []
         notify(self.ada, "trip_changed", "More", "m")
         self.assertEqual(mail.outbox, [])  # that kind is off
@@ -102,7 +113,9 @@ class UnsubscribeTests(FilesFixture):
         self.client.post(url)
         self.client.post(url, {"undo": "1"})
         self.assertTrue(UserNotificationPreference.objects.get(user=self.ada).email_enabled)
-        self.assertEqual(self.client.get(reverse("notifications:unsubscribe", args=[token[:-2] + "xx"])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("notifications:unsubscribe", args=[token[:-2] + "xx"])).status_code, 404
+        )
 
 
 class ReportTests(FilesFixture):
@@ -110,9 +123,15 @@ class ReportTests(FilesFixture):
         super().setUp()
         category, _ = ActivityCategory.objects.get_or_create(name="Tours", defaults={"slug": "tours"})
         self.member = User.objects.create_user("mem", "mem@example.com", "pw-1234-abcd")
-        self.activity = Activity.objects.create(name="Fake tour", category=category, created_by=self.member,
-                                                submitted_by=self.member, description="x", visibility="public",
-                                                approval_status=ApprovalStatus.APPROVED)
+        self.activity = Activity.objects.create(
+            name="Fake tour",
+            category=category,
+            created_by=self.member,
+            submitted_by=self.member,
+            description="x",
+            visibility="public",
+            approval_status=ApprovalStatus.APPROVED,
+        )
         self.staff = User.objects.create_superuser("root", "root@example.com", "pw-1234-abcd")
 
     def report(self, user, kind="activity", obj=None):
@@ -131,12 +150,16 @@ class ReportTests(FilesFixture):
         self.report(reporters[2])
         self.activity.refresh_from_db()
         self.assertEqual(self.activity.approval_status, ApprovalStatus.PENDING)
-        self.assertTrue(Notification.objects.filter(user=self.staff, notification_type__name="content_reported").exists())
+        self.assertTrue(
+            Notification.objects.filter(user=self.staff, notification_type__name="content_reported").exists()
+        )
 
     def test_places_only_notify(self):
         from apps.locations.models import City, Country
-        country = Country.objects.create(name="Testland", slug="testland", iso_code="TL", iso3_code="TST",
-                                         continent="EU")
+
+        country = Country.objects.create(
+            name="Testland", slug="testland", iso_code="TL", iso3_code="TST", continent="EU"
+        )
         city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=1)
         poi = POI.objects.create(name="Old bridge", slug="old-bridge", city=city, latitude=1, longitude=1)
         for n in range(3):
@@ -151,7 +174,9 @@ class ReportTests(FilesFixture):
         page = self.client.get(reverse("activities:activity_detail", args=[self.activity.slug]))
         self.assertContains(page, reverse("reports:report", args=["activity", self.activity.pk]))
         self.client.logout()
-        self.assertEqual(self.client.get(reverse("reports:report", args=["activity", self.activity.pk])).status_code, 302)
+        self.assertEqual(
+            self.client.get(reverse("reports:report", args=["activity", self.activity.pk])).status_code, 302
+        )
 
 
 class SuspendTests(FilesFixture):
@@ -160,17 +185,20 @@ class SuspendTests(FilesFixture):
         trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 2))
         TripGrant.objects.create(trip=trip, user=self.ada, role="viewer")
         self.client.force_login(staff)
-        self.client.post(reverse("admin:accounts_user_changelist"),
-                         {"action": "suspend_accounts", "_selected_action": [self.ada.pk]})
+        self.client.post(
+            reverse("admin:accounts_user_changelist"), {"action": "suspend_accounts", "_selected_action": [self.ada.pk]}
+        )
         self.ada.refresh_from_db()
         self.assertFalse(self.ada.is_active)
         self.assertIsNotNone(self.ada.suspended_at)
         self.client.logout()
-        response = self.client.post(reverse("login"), {"username": "ada@example.com", "password": "pw-1234-abcd"})
+        self.client.post(reverse("login"), {"username": "ada@example.com", "password": "pw-1234-abcd"})
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertFalse(trip.can(self.ada, "view"))
         self.client.force_login(staff)
-        self.client.post(reverse("admin:accounts_user_changelist"),
-                         {"action": "unsuspend_accounts", "_selected_action": [self.ada.pk]})
+        self.client.post(
+            reverse("admin:accounts_user_changelist"),
+            {"action": "unsuspend_accounts", "_selected_action": [self.ada.pk]},
+        )
         self.ada.refresh_from_db()
         self.assertTrue(self.ada.is_active)

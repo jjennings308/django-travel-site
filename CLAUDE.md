@@ -47,10 +47,13 @@ python manage.py makemigrations <label> && python manage.py migrate   # label, e
 python manage.py test                   # all apps
 python manage.py test apps.locations    # one app (test labels are module paths)
 python manage.py test apps.locations.tests.SomeTestCase.test_method   # single test
+
+ruff check                              # lint (CI runs this)
+ruff check --fix                        # apply the safe fixes
+ruff format                            # format (CI runs --check)
 ```
 
-`trips` (from the itinerary merge), `core` (layer check), `accounts` and `pages` have tests, each as a `tests/` package; the other apps' `tests.py` files are empty stubs. New tests should follow the `trips` pattern — a `tests/` package per
-app, Django's built-in runner, no pytest. When patching, mock the full module path
+Apps with tests use a `tests/` package, Django's built-in runner, no pytest. When patching, mock the full module path
 (`mock.patch("apps.trips.views.something")`).
 
 **Adding a new app:**
@@ -91,9 +94,12 @@ shows nothing on the site (else they ask for a credit).
 - `manage.py test` uses `config/settings/test.py` (when `DJANGO_SETTINGS_MODULE` isn't set): MD5 password
   hashing (the real hasher made each test that creates accounts take seconds), locmem email, geocoding off,
   no dev-only apps. The full parallel run takes about 70 seconds (was ~11½ minutes before R12).
+- **Lint and format:** `ruff check` and `ruff format --check` (config in `ruff.toml`; `ruff` is pinned in
+  `requirements-dev.txt`). `ruff check --fix` applies the safe fixes; `ruff format` reformats. Run both before
+  finishing a change — CI fails otherwise.
 - **CI** (`.github/workflows/test.yml`, site roadmap R12) runs on every push to `main` and on pull requests into
   it (R23, for Dependabot): `pip-audit -r requirements.txt` (fails on any known vulnerability; an unfixable one
-  goes in `.pip-audit-ignore`, one ID per line with a `#` reason), layer check, `makemigrations --check`,
+  goes in `.pip-audit-ignore`, one ID per line with a `#` reason), Ruff (lint and format check), layer check, `makemigrations --check`,
   `check --deploy` with dummy production env, the full suite on a fresh Postgres 17, and a check that the
   committed Tailwind CSS matches a fresh `tailwind build`. A failure emails the pusher; `gh run list` /
   `gh run watch` show it from here. **Dependabot** (`.github/dependabot.yml`) opens one grouped PR a month for
@@ -1601,13 +1607,6 @@ done on branch `b3-costs-in-place`. Complete.
   totals still count every expense by category), and a booked row has **Record a payment** for editors
   (`?pay=confirmation-<pk>#add-cost` pre-fills description, amount, currency, category — `budget_plan._expense_category` —
   and For). Your data's trips gain `costs` (each expense, people by name, `for`).
-
-### Booklet budget
-
-Plan: `docs/plans/booklet-budget.md` (an optional "PDF with budget": one page of totals per category in the trip's
-home currency with an as-of date and the rates used, no per-person table, and a "To pay" line on items where money
-still changes hands; the plain booklet and its snapshot unchanged). Decided 2026-10-31. One phase, BB1. Status: not
-started.
 
 ### Booklet budget
 

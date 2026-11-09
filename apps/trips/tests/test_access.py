@@ -15,9 +15,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Role, UserRole
-from apps.trips.models import TripRole
-from apps.trips.models import Day, Section, Traveler, Trip, TripGrant, can_create_trip
-
+from apps.trips.models import Day, Section, Traveler, Trip, TripGrant, TripRole, can_create_trip
 from apps.trips.tests.helpers import give
 
 User = get_user_model()
@@ -66,9 +64,7 @@ class GrantRoleTests(AccessFixture):
         # Changing what someone may do is changing the role, not adding a row.
         self.give(self.alice, TripRole.VIEWER, trip=self.europe)
         with self.assertRaises(Exception):
-            TripGrant.objects.create(
-                trip=self.europe, user=self.alice, role=TripRole.EDITOR, granted_by=self.admin
-            )
+            TripGrant.objects.create(trip=self.europe, user=self.alice, role=TripRole.EDITOR, granted_by=self.admin)
 
     def test_changing_the_role_changes_the_capabilities(self):
         self.give(self.alice, TripRole.VIEWER, trip=self.europe)
@@ -102,9 +98,7 @@ class CapabilityTests(AccessFixture):
         # the People page instead. See the docstring. Being a creator adds nothing
         # on an existing trip beyond its grant.
         self.give(self.alice, Role.CREATOR, trip=self.europe)
-        self.assertEqual(
-            self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"}
-        )
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
 
     def test_superuser_bypasses_grant_and_role(self):
         self.assertEqual(
@@ -147,9 +141,7 @@ class CapabilityTests(AccessFixture):
         self.europe.status = Trip.Status.STARTING
         self.europe.save()
         self.give(self.alice, TripRole.EDITOR, trip=self.europe)
-        self.assertEqual(
-            self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"}
-        )
+        self.assertEqual(self.europe.capabilities_for(self.alice), {"view", "comment", "edit", "invite"})
 
     def test_access_is_independent_of_the_traveler_roster(self):
         # "Regan is on the trip" and "Regan can read the trip" are different
@@ -419,12 +411,8 @@ class OwnershipDeleteTests(AccessFixture):
 
 class SoftDeleteTests(AccessFixture):
     def test_soft_delete_hides_the_trip_but_keeps_the_row(self):
-        day = Day.objects.create(
-            trip=self.taos, day_number=1, date=date(2026, 9, 12)
-        )
-        Section.objects.create(
-            day=day, section_type=Section.Type.NOTE, content={}
-        )
+        day = Day.objects.create(trip=self.taos, day_number=1, date=date(2026, 9, 12))
+        Section.objects.create(day=day, section_type=Section.Type.NOTE, content={})
         pk = self.taos.pk
 
         self.taos.soft_delete()
@@ -465,9 +453,7 @@ class SoftDeleteTests(AccessFixture):
     def test_a_deleted_trip_detail_page_is_404(self):
         self.taos.soft_delete()
         self.client.force_login(self.admin)
-        self.assertEqual(
-            self.client.get(self.url(self.taos)).status_code, 404
-        )
+        self.assertEqual(self.client.get(self.url(self.taos)).status_code, 404)
 
     def test_a_deleted_trip_leaves_the_list(self):
         self.taos.soft_delete()

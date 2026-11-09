@@ -1,5 +1,5 @@
-# reviews/signals.py
 """Keep the reviewed item's average_rating / review_count in step with its visible reviews."""
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -28,5 +28,6 @@ from apps.trips.signals import daily_run  # noqa: E402
 def ask_trip_ratings(sender, **kwargs):
     """The daily run (send_trip_digests): "How was your trip?" for trips that just ended (R17)."""
     from .trip_ratings import ask
+
     sent = ask()
     return f"Sent {sent} trip rating prompt(s)." if sent else ""

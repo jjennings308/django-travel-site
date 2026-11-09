@@ -1,4 +1,3 @@
-# bucketlists/views.py
 from datetime import date
 
 from django.contrib import messages
@@ -17,15 +16,20 @@ from apps.approval_system.models import ApprovalStatus
 from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.events.models import Event
 from apps.locations.models import POI, City
-from apps.trips import ideas as trip_ideas, trip_cities
+from apps.trips import ideas as trip_ideas
+from apps.trips import trip_cities
 from apps.trips.models import Option, Traveler, Trip, TripGrant, TripIdea, TripRole, Vote
 
 from .forms import BucketListItemForm, CategoryForm, CompleteItemForm, PlanTripForm
 from .models import BucketListCategory, BucketListItem
 
 ACTIVE_STATUSES = ("researching", "planning", "booked", "in_progress")
-SORTS = {"priority": ("-priority", "display_order", "-created_at"), "newest": ("-created_at",),
-         "target": ("target_date", "-priority"), "title": ("custom_title",)}
+SORTS = {
+    "priority": ("-priority", "display_order", "-created_at"),
+    "newest": ("-created_at",),
+    "target": ("target_date", "-priority"),
+    "title": ("custom_title",),
+}
 
 
 def _target_for(kind, pk, user):
@@ -48,12 +52,15 @@ def _target_for(kind, pk, user):
 
 def _items():
     """Bucket items with everything the cards and titles touch."""
-    return (
-        BucketListItem.objects
-        .select_related("activity__city", "activity__region", "activity__country", "city__country",
-                        "event__city__country", "event__country", "trip")
-        .prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city").order_by("name")))
-    )
+    return BucketListItem.objects.select_related(
+        "activity__city",
+        "activity__region",
+        "activity__country",
+        "city__country",
+        "event__city__country",
+        "event__country",
+        "trip",
+    ).prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city").order_by("name")))
 
 
 def _own_item(request, pk):
@@ -87,10 +94,15 @@ def _attach_first_photos(items):
     items = list(items)
     if items:
         from django.contrib.contenttypes.models import ContentType
+
         from apps.media_app.models import Media
+
         by_pk = {i.pk: i for i in items}
-        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
-                                           object_id__in=list(by_pk), media_type="image").order_by("-created_at")):
+        for media in Media.objects.filter(
+            content_type=ContentType.objects.get_for_model(BucketListItem),
+            object_id__in=list(by_pk),
+            media_type="image",
+        ).order_by("-created_at"):
             by_pk[media.object_id].first_photo = media
     return items
 
@@ -113,8 +125,12 @@ def dashboard(request):
     q = request.GET.get("q", "").strip()
     if q:
         items = items.filter(
-            Q(custom_title__icontains=q) | Q(activity__name__icontains=q) | Q(city__name__icontains=q)
-            | Q(pois__name__icontains=q) | Q(event__name__icontains=q) | Q(personal_notes__icontains=q)
+            Q(custom_title__icontains=q)
+            | Q(activity__name__icontains=q)
+            | Q(city__name__icontains=q)
+            | Q(pois__name__icontains=q)
+            | Q(event__name__icontains=q)
+            | Q(personal_notes__icontains=q)
         )
     sort = request.GET.get("sort", "priority")
     items = items.order_by(*SORTS.get(sort, SORTS["priority"])).distinct()
@@ -125,14 +141,18 @@ def dashboard(request):
         active=Count("id", filter=Q(status__in=ACTIVE_STATUSES)),
     )
     counts["percent"] = round(100 * counts["completed"] / counts["total"]) if counts["total"] else 0
-    return render(request, "bucketlists/dashboard.html", {
-        "items": _attach_first_photos(items),
-        "counts": counts,
-        "categories": BucketListCategory.objects.filter(user=request.user).annotate(n=Count("items")),
-        "status_choices": BucketListItem.STATUS_CHOICES,
-        "filters": {"status": status, "category": category, "q": q, "sort": sort},
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/dashboard.html",
+        {
+            "items": _attach_first_photos(items),
+            "counts": counts,
+            "categories": BucketListCategory.objects.filter(user=request.user).annotate(n=Count("items")),
+            "status_choices": BucketListItem.STATUS_CHOICES,
+            "filters": {"status": status, "category": category, "q": q, "sort": sort},
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", None)]),
+        },
+    )
 
 
 def _kind_of(item, pois):
@@ -155,16 +175,24 @@ def item_add(request):
             messages.success(request, f"“{item.title}” now has a date: {target}.")
             return redirect("bucketlists:item_edit", pk=item.pk)
         pois = [target] if kind == "poi" else []
-    form = BucketListItemForm(request.POST or None, instance=item, user=request.user,
-                              kind=_kind_of(item, pois), pois=pois)
+    form = BucketListItemForm(
+        request.POST or None, instance=item, user=request.user, kind=_kind_of(item, pois), pois=pois
+    )
     if request.method == "POST" and form.is_valid():
         item = form.save()
         messages.success(request, f"Added “{item.title}” to your bucket list.")
         return redirect("bucketlists:dashboard")
-    return render(request, "bucketlists/item_form.html", {
-        "form": form, "target": target, "kind": kind, "title": "Add to your bucket list",
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("Add", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/item_form.html",
+        {
+            "form": form,
+            "target": target,
+            "kind": kind,
+            "title": "Add to your bucket list",
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("Add", None)]),
+        },
+    )
 
 
 @login_required
@@ -195,10 +223,18 @@ def item_edit(request, pk):
         form.save()
         messages.success(request, "Saved.")
         return redirect("bucketlists:dashboard")
-    return render(request, "bucketlists/item_form.html", {
-        "form": form, "item": item, "target": item.target, "kind": item.kind, "title": item.title,
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), (item.title, None)]),
-    })
+    return render(
+        request,
+        "bucketlists/item_form.html",
+        {
+            "form": form,
+            "item": item,
+            "target": item.target,
+            "kind": item.kind,
+            "title": item.title,
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), (item.title, None)]),
+        },
+    )
 
 
 def _idea_for(item, trip, user):
@@ -207,8 +243,9 @@ def _idea_for(item, trip, user):
     field, target = item.idea_target()
     idea = TripIdea.objects.filter(trip=trip, **{field: target}).first() if field else None
     if idea is None:
-        idea = TripIdea.objects.create(trip=trip, title=item.title[:200], added_by=user,
-                                       **({field: target} if field else {}))
+        idea = TripIdea.objects.create(
+            trip=trip, title=item.title[:200], added_by=user, **({field: target} if field else {})
+        )
     return idea
 
 
@@ -252,9 +289,15 @@ def plan_trip(request, pk):
         return redirect("trips:trip_detail", pk=item.trip_id)
     start, end = item.dates
     title = item.title if not start or str(start.year) in item.title else f"{item.title} {start.year}"
-    form = PlanTripForm(request.POST or None, initial={
-        "name": title, "destination": item.place, "start_date": start, "end_date": end,
-    })
+    form = PlanTripForm(
+        request.POST or None,
+        initial={
+            "name": title,
+            "destination": item.place,
+            "start_date": start,
+            "end_date": end,
+        },
+    )
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             trip = Trip.objects.create(created_by=request.user, **form.cleaned_data)
@@ -265,11 +308,22 @@ def plan_trip(request, pk):
             _attach(item, trip, request.user)
         messages.success(request, f"Started “{trip.name}”. Add flights, lodging and the rest here.")
         return redirect("trips:trip_settings", pk=trip.pk)
-    return render(request, "bucketlists/plan_trip.html", {
-        "form": form, "item": item, "open_trips": _open_trips(request.user, item),
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"),
-                                              (item.title, reverse("bucketlists:item_edit", args=[item.pk])), ("Plan a trip", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/plan_trip.html",
+        {
+            "form": form,
+            "item": item,
+            "open_trips": _open_trips(request.user, item),
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("Bucket list", "bucketlists:dashboard"),
+                    (item.title, reverse("bucketlists:item_edit", args=[item.pk])),
+                    ("Plan a trip", None),
+                ]
+            ),
+        },
+    )
 
 
 @login_required
@@ -293,8 +347,11 @@ def remove_from_trip(request, pk):
         item.trip, item.trip_idea = None, None
         item.save(update_fields=["trip", "trip_idea", "updated_at"])
         messages.success(request, f"“{item.title}” is no longer part of “{name}”. Its idea stays on the trip's shelf.")
-    return redirect(request.POST.get("next") if request.POST.get("next", "").startswith("/bucketlists/") else
-                    reverse("bucketlists:item_edit", args=[item.pk]))
+    return redirect(
+        request.POST.get("next")
+        if request.POST.get("next", "").startswith("/bucketlists/")
+        else reverse("bucketlists:item_edit", args=[item.pk])
+    )
 
 
 @login_required
@@ -315,20 +372,32 @@ def trip_goals(request, trip_pk):
         if added:
             messages.success(request, f"Added {added} goal{'s' if added != 1 else ''} to “{trip.name}”.")
         return redirect(shelf)
-    available = [i for i in mine.exclude(trip=trip).exclude(status__in=OPEN_STATUSES_EXCLUDED)
-                 .order_by("-priority", "created_at")]
+    available = [
+        i
+        for i in mine.exclude(trip=trip).exclude(status__in=OPEN_STATUSES_EXCLUDED).order_by("-priority", "created_at")
+    ]
     for item in available:
         start, end = item.dates
         item.overlaps = bool(start) and start <= trip.end_date and end >= trip.start_date
         item.elsewhere = item.live_trip
     available.sort(key=lambda i: (not i.overlaps, i.elsewhere is not None))
-    return render(request, "bucketlists/trip_goals.html", {
-        "trip": trip, "available": available, "shelf": shelf,
-        "on_trip": list(mine.filter(trip=trip).order_by("status", "-priority", "created_at")),
-        "breadcrumb_list": build_breadcrumbs([("Trips", "trips:trip_list"),
-                                              (trip.name, reverse("trips:trip_detail", args=[trip.pk])),
-                                              ("Your goals", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/trip_goals.html",
+        {
+            "trip": trip,
+            "available": available,
+            "shelf": shelf,
+            "on_trip": list(mine.filter(trip=trip).order_by("status", "-priority", "created_at")),
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("Trips", "trips:trip_list"),
+                    (trip.name, reverse("trips:trip_detail", args=[trip.pk])),
+                    ("Your goals", None),
+                ]
+            ),
+        },
+    )
 
 
 @login_required
@@ -337,9 +406,11 @@ def idea_goals(request, trip_pk):
     P6). Anyone who can see the trip; goals are private, so this says only whose they are."""
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
     owners = {}
-    for idea_id, first, username in (BucketListItem.objects.filter(trip_idea__trip=trip)
-                                     .values_list("trip_idea_id", "user__first_name", "user__username")
-                                     .order_by("user__first_name", "user__username")):
+    for idea_id, first, username in (
+        BucketListItem.objects.filter(trip_idea__trip=trip)
+        .values_list("trip_idea_id", "user__first_name", "user__username")
+        .order_by("user__first_name", "user__username")
+    ):
         name = "your" if username == request.user.username else f"{first or username}'s"
         names = owners.setdefault(idea_id, [])
         if name not in names:
@@ -349,6 +420,7 @@ def idea_goals(request, trip_pk):
         names = sorted(names, key=lambda n: n == "your")
         text = f"{names[0]} goal" if len(names) == 1 else ", ".join(names[:-1]) + f" and {names[-1]} goals"
         return text[0].upper() + text[1:]
+
     return JsonResponse({"ideas": {str(idea_id): phrase(names) for idea_id, names in owners.items()}})
 
 
@@ -356,13 +428,22 @@ def _saved_target(idea=None, option=None):
     """(kind, catalogue object, title) to save for later from a trip's idea or a considered option."""
     if option is not None:
         from django.contrib.contenttypes.models import ContentType
-        idea = TripIdea.objects.filter(placed_type=ContentType.objects.get_for_model(Option),
-                                       placed_id=option.pk).first()
+
+        idea = TripIdea.objects.filter(
+            placed_type=ContentType.objects.get_for_model(Option), placed_id=option.pk
+        ).first()
         if idea is None:
-            activity = option.activities.select_related("event", "poi").filter(
-                Q(event__isnull=False) | Q(poi__isnull=False)).first()
+            activity = (
+                option.activities.select_related("event", "poi")
+                .filter(Q(event__isnull=False) | Q(poi__isnull=False))
+                .first()
+            )
             if activity is not None:
-                return ("event", activity.event, option.title) if activity.event_id else ("poi", activity.poi, option.title)
+                return (
+                    ("event", activity.event, option.title)
+                    if activity.event_id
+                    else ("poi", activity.poi, option.title)
+                )
             return None, None, option.title
     if idea.target is not None:
         return idea.target_kind, idea.target, idea.title
@@ -372,9 +453,10 @@ def _saved_target(idea=None, option=None):
 @login_required
 @require_POST
 def save_idea(request):
-    """"Save for someday" on a trip's idea or on an option not chosen (P6): a goal on the reader's own
+    """ "Save for someday" on a trip's idea or on an option not chosen (P6): a goal on the reader's own
     bucket list — the catalogue item it's about, else its title. Refused when it's already there."""
     from django.utils.http import url_has_allowed_host_and_scheme
+
     visible = Trip.objects.visible_to(request.user)
     if request.POST.get("idea"):
         idea = get_object_or_404(TripIdea.objects.filter(trip__in=visible), pk=request.POST["idea"])
@@ -398,7 +480,9 @@ def save_idea(request):
             item.pois.add(target)
         messages.success(request, f"Saved “{item.title}” to your bucket list for someday.")
     back = request.POST.get("next", "")
-    if back and url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+    if back and url_has_allowed_host_and_scheme(
+        back, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return redirect(back)
     return redirect("bucketlists:item_edit", pk=item.pk)
 
@@ -416,13 +500,28 @@ def suggest(request):
         return JsonResponse({"results": []})
     add = reverse("bucketlists:item_add")
     results = []
-    for a in Activity.get_public_activities().filter(name__icontains=q).select_related("category").order_by("name")[:SUGGEST_LIMIT]:
+    for a in (
+        Activity.get_public_activities()
+        .filter(name__icontains=q)
+        .select_related("category")
+        .order_by("name")[:SUGGEST_LIMIT]
+    ):
         results.append({"kind": "activity", "pk": a.pk, "name": a.name, "detail": f"Activity · {a.category.name}"})
-    events = (Event.objects.visible_to(request.user).filter(name__icontains=q, start_date__gte=timezone.now().date())
-              .select_related("city__country", "country").order_by("start_date")[:SUGGEST_LIMIT])
+    events = (
+        Event.objects.visible_to(request.user)
+        .filter(name__icontains=q, start_date__gte=timezone.now().date())
+        .select_related("city__country", "country")
+        .order_by("start_date")[:SUGGEST_LIMIT]
+    )
     for e in events:
-        results.append({"kind": "event", "pk": e.pk, "name": e.name,
-                        "detail": f"Event · {e.start_date:%b} {e.start_date.day}, {e.start_date.year} · {e.place_name}"})
+        results.append(
+            {
+                "kind": "event",
+                "pk": e.pk,
+                "name": e.name,
+                "detail": f"Event · {e.start_date:%b} {e.start_date.day}, {e.start_date.year} · {e.place_name}",
+            }
+        )
     approved = {"approval_status": ApprovalStatus.APPROVED, "name__icontains": q}
     for c in City.objects.filter(**approved).select_related("country").order_by("name")[:SUGGEST_LIMIT]:
         results.append({"kind": "city", "pk": c.pk, "name": c.name, "detail": f"City · {c.country.name}"})
@@ -506,17 +605,27 @@ def my_dates(request):
 
     activity_ids = {i.activity_id for i in undated if i.activity_id}
     options = {}
-    for event in (Event.objects.visible_to(request.user)
-                  .filter(related_activity_id__in=activity_ids, start_date__gte=today)
-                  .select_related("city__country", "country").order_by("start_date")):
+    for event in (
+        Event.objects.visible_to(request.user)
+        .filter(related_activity_id__in=activity_ids, start_date__gte=today)
+        .select_related("city__country", "country")
+        .order_by("start_date")
+    ):
         options.setdefault(event.related_activity_id, []).append(event)
     for item in undated:
         item.date_options = options.get(item.activity_id, [])[:3] if item.activity_id else []
 
-    return render(request, "bucketlists/my_dates.html", {
-        "dated": dated, "past": past, "undated": undated, "today": today,
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My dates", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/my_dates.html",
+        {
+            "dated": dated,
+            "past": past,
+            "undated": undated,
+            "today": today,
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My dates", None)]),
+        },
+    )
 
 
 @login_required
@@ -533,8 +642,11 @@ def trip_done(request, trip_pk):
     # Only goals whose idea made it onto the trip (P6): placed on something that counted. A goal
     # linked before ideas, with none, still counts; one left on the shelf or in an option not taken doesn't.
     counted = trip_ideas.counted(trip)
-    open_items = [item for item in linked.exclude(status__in=OPEN_STATUSES_EXCLUDED)
-                  if item.trip_idea_id is None or item.trip_idea_id in counted]
+    open_items = [
+        item
+        for item in linked.exclude(status__in=OPEN_STATUSES_EXCLUDED)
+        if item.trip_idea_id is None or item.trip_idea_id in counted
+    ]
     if len(open_items) == 1:
         return redirect("bucketlists:item_complete", pk=open_items[0].pk)
     if open_items:
@@ -544,8 +656,12 @@ def trip_done(request, trip_pk):
         messages.info(request, f"“{trip.name}” is already ticked off your bucket list.")
         return redirect(reverse("bucketlists:dashboard") + "?status=completed")
     item = BucketListItem.objects.create(
-        user=request.user, custom_title=trip.name, trip=trip, status="in_progress",
-        target_date=trip.start_date, target_end_date=trip.end_date,
+        user=request.user,
+        custom_title=trip.name,
+        trip=trip,
+        status="in_progress",
+        target_date=trip.start_date,
+        target_end_date=trip.end_date,
     )
     messages.info(request, f"Added “{trip.name}” to your bucket list. Add your rating and notes to tick it off.")
     return redirect("bucketlists:item_complete", pk=item.pk)
@@ -561,7 +677,10 @@ def pick_date(request, pk):
         raise Http404
     item.event = event
     item.save()
-    messages.success(request, f"“{item.title}” is set for {event.name}, {event.start_date:%b} {event.start_date.day}, {event.start_date.year}.")
+    messages.success(
+        request,
+        f"“{item.title}” is set for {event.name}, {event.start_date:%b} {event.start_date.day}, {event.start_date.year}.",
+    )
     return redirect("bucketlists:dates")
 
 
@@ -572,28 +691,50 @@ def item_complete(request, pk):
     item = _own_item(request, pk)
     review_target = _review_target(item)
     review = reviews.review_by(request.user, review_target) if review_target else None
-    form = CompleteItemForm(request.POST or None, request.FILES or None, review_target=review_target, initial={
-        "completed_date": item.completed_date or timezone.now().date(),
-        "user_rating": item.user_rating, "completion_notes": item.completion_notes, "share_review": review is not None,
-    })
+    form = CompleteItemForm(
+        request.POST or None,
+        request.FILES or None,
+        review_target=review_target,
+        initial={
+            "completed_date": item.completed_date or timezone.now().date(),
+            "user_rating": item.user_rating,
+            "completion_notes": item.completion_notes,
+            "share_review": review is not None,
+        },
+    )
     already_done = item.status == "completed"
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         item.complete(data["completed_date"], data["completion_notes"], data["user_rating"])
         item.add_photos(data["photos"], request.user)
         if data.get("share_review"):
-            reviews.upsert_review(request.user, review_target, data["user_rating"], data["completion_notes"].strip(),
-                                  title=review.title if review else "", visit_date=data["completed_date"], verified=True)
+            reviews.upsert_review(
+                request.user,
+                review_target,
+                data["user_rating"],
+                data["completion_notes"].strip(),
+                title=review.title if review else "",
+                visit_date=data["completed_date"],
+                verified=True,
+            )
         messages.success(request, "Saved." if already_done else f"🎉 Ticked off “{item.title}”!")
         return redirect("bucketlists:adventures")
-    return render(request, "bucketlists/item_complete.html", {
-        "form": form, "item": item, "photos": item.photos(), "already_done": already_done,
-    })
+    return render(
+        request,
+        "bucketlists/item_complete.html",
+        {
+            "form": form,
+            "item": item,
+            "photos": item.photos(),
+            "already_done": already_done,
+        },
+    )
 
 
 def _review_target(item):
     """The published activity, event, city or single place this goal can be reviewed on, or None."""
     from apps.reviews import services as reviews
+
     kind = item.kind
     if kind == "custom" or (kind == "poi" and len(item._poi_list()) != 1):
         return None
@@ -606,21 +747,33 @@ def adventures(request):
     """My adventures: the user's completed goals (with photos) and finished trips
     they were on that aren't tied to a goal, newest first, grouped by year."""
     from django.contrib.contenttypes.models import ContentType
+
     from apps.media_app.models import Media
 
-    done = list(_items().select_related("trip__album__cover_image")
-                .filter(user=request.user, status="completed").order_by("-completed_date", "-updated_at"))
+    done = list(
+        _items()
+        .select_related("trip__album__cover_image")
+        .filter(user=request.user, status="completed")
+        .order_by("-completed_date", "-updated_at")
+    )
     photos = {}
     if done:
-        for media in (Media.objects.filter(content_type=ContentType.objects.get_for_model(BucketListItem),
-                                           object_id__in=[i.pk for i in done], media_type="image")
-                      .order_by("created_at")):
+        for media in Media.objects.filter(
+            content_type=ContentType.objects.get_for_model(BucketListItem),
+            object_id__in=[i.pk for i in done],
+            media_type="image",
+        ).order_by("created_at"):
             photos.setdefault(media.object_id, []).append(media)
     entries = [{"kind": "goal", "date": i.completed_date, "item": i, "photos": photos.get(i.pk, [])} for i in done]
 
     today = timezone.now().date()
-    trips = (Trip.objects.live().filter(grants__user=request.user, end_date__lt=today)
-             .exclude(bucket_list_items__user=request.user).select_related("album__cover_image").distinct())
+    trips = (
+        Trip.objects.live()
+        .filter(grants__user=request.user, end_date__lt=today)
+        .exclude(bucket_list_items__user=request.user)
+        .select_related("album__cover_image")
+        .distinct()
+    )
     entries += [{"kind": "trip", "date": t.end_date, "trip": t} for t in trips]
     entries.sort(key=lambda e: e["date"] or date.min, reverse=True)
 
@@ -631,10 +784,18 @@ def adventures(request):
             years.append((year, []))
         years[-1][1].append(entry)
     from .badges import progress
-    return render(request, "bucketlists/adventures.html", {
-        "years": years, "goal_count": len(done), "trip_count": len(entries) - len(done), "badges": progress(request.user),
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My adventures", None)]),
-    })
+
+    return render(
+        request,
+        "bucketlists/adventures.html",
+        {
+            "years": years,
+            "goal_count": len(done),
+            "trip_count": len(entries) - len(done),
+            "badges": progress(request.user),
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("My adventures", None)]),
+        },
+    )
 
 
 @login_required
@@ -658,11 +819,15 @@ def categories(request):
         category.save()
         messages.success(request, f"Added category “{category.name}”.")
         return redirect("bucketlists:categories")
-    return render(request, "bucketlists/categories.html", {
-        "form": form,
-        "categories": BucketListCategory.objects.filter(user=request.user).annotate(n=Count("items")),
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("Categories", None)]),
-    })
+    return render(
+        request,
+        "bucketlists/categories.html",
+        {
+            "form": form,
+            "categories": BucketListCategory.objects.filter(user=request.user).annotate(n=Count("items")),
+            "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("Categories", None)]),
+        },
+    )
 
 
 @login_required
@@ -679,10 +844,21 @@ def category_edit(request, pk):
             form.save()
             messages.success(request, "Saved.")
             return redirect("bucketlists:categories")
-    return render(request, "bucketlists/category_form.html", {
-        "form": form, "category": category,
-        "breadcrumb_list": build_breadcrumbs([("Bucket list", "bucketlists:dashboard"), ("Categories", "bucketlists:categories"), (category.name, None)]),
-    })
+    return render(
+        request,
+        "bucketlists/category_form.html",
+        {
+            "form": form,
+            "category": category,
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("Bucket list", "bucketlists:dashboard"),
+                    ("Categories", "bucketlists:categories"),
+                    (category.name, None),
+                ]
+            ),
+        },
+    )
 
 
 def public_list(request, username):
@@ -692,19 +868,35 @@ def public_list(request, username):
     if not is_owner and (owner.profile_visibility != "public" or owner.deletion_requested_at):
         raise Http404  # a profile waiting to be deleted is hidden (site roadmap R13)
     items = (
-        _items().filter(user=owner, is_public=True).exclude(status="abandoned")
+        _items()
+        .filter(user=owner, is_public=True)
+        .exclude(status="abandoned")
         .order_by("status", "-priority", "-completed_date")
     )
     items = _attach_first_photos(items)
     done = [i for i in items if i.status == "completed"]
     todo = [i for i in items if i.status != "completed"]
     from apps.media_app.models import MediaAlbum
-    albums = (MediaAlbum.objects.filter(user=owner, trip__isnull=True, privacy="public")
-              .select_related("cover_image").order_by("-updated_at"))
+
+    albums = (
+        MediaAlbum.objects.filter(user=owner, trip__isnull=True, privacy="public")
+        .select_related("cover_image")
+        .order_by("-updated_at")
+    )
     from .badges import progress
-    return render(request, "bucketlists/public_list.html", {
-        "owner": owner, "todo": todo, "done": done, "is_owner": is_owner, "badges": progress(owner), "albums": albums,
-    })
+
+    return render(
+        request,
+        "bucketlists/public_list.html",
+        {
+            "owner": owner,
+            "todo": todo,
+            "done": done,
+            "is_owner": is_owner,
+            "badges": progress(owner),
+            "albums": albums,
+        },
+    )
 
 
 @login_required
@@ -714,10 +906,21 @@ def trip_map_places(request, trip_pk):
     trip map's "Places of interest" layer; lives here because trips may not read bucket
     lists. Goals are private, so on a shared trip each person sees only their own."""
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=trip_pk)
-    items = (BucketListItem.objects.filter(user=request.user, trip=trip)
-             .select_related("city", "activity__venue__city__country", "activity__venue__poi_type", "activity__venue__featured_media",
-                             "event__poi__city__country", "event__poi__poi_type", "event__poi__featured_media")
-             .prefetch_related(Prefetch("pois", queryset=POI.objects.select_related("city__country", "poi_type", "featured_media"))))
+    items = (
+        BucketListItem.objects.filter(user=request.user, trip=trip)
+        .select_related(
+            "city",
+            "activity__venue__city__country",
+            "activity__venue__poi_type",
+            "activity__venue__featured_media",
+            "event__poi__city__country",
+            "event__poi__poi_type",
+            "event__poi__featured_media",
+        )
+        .prefetch_related(
+            Prefetch("pois", queryset=POI.objects.select_related("city__country", "poi_type", "featured_media"))
+        )
+    )
     places = {}  # poi pk -> (poi, [goal titles])
     for item in items:
         candidates = list(item.pois.all())
@@ -731,14 +934,18 @@ def trip_map_places(request, trip_pk):
     features = []
     for poi, goals in sorted(places.values(), key=lambda pg: pg[0].name):
         media = poi.featured_media
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(poi.longitude), float(poi.latitude)]},
-            "properties": {
-                "layer": "pois", "marker": "poi", "name": poi.name,
-                "subtitle": f"{poi.poi_type.name} · {poi.city.name} · for " + ", ".join(sorted(set(goals))),
-                "url": reverse("locations:poi_detail", args=[poi.slug]),
-                "image": media.file.url if media and media.media_type == "image" else "",
-            },
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(poi.longitude), float(poi.latitude)]},
+                "properties": {
+                    "layer": "pois",
+                    "marker": "poi",
+                    "name": poi.name,
+                    "subtitle": f"{poi.poi_type.name} · {poi.city.name} · for " + ", ".join(sorted(set(goals))),
+                    "url": reverse("locations:poi_detail", args=[poi.slug]),
+                    "image": media.file.url if media and media.media_type == "image" else "",
+                },
+            }
+        )
     return JsonResponse({"type": "FeatureCollection", "features": features})

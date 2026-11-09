@@ -1,4 +1,5 @@
 """Accepting changed Terms / Privacy (site roadmap R16)."""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -31,8 +32,14 @@ class LegalVersionTests(TestCase):
             self.assertContains(self.client.get(page.url), "We've updated our terms")
 
     def test_never_blocks_reading_leaving_or_posting(self):
-        for url in (reverse("pages:terms"), reverse("pages:privacy"), reverse("pages:help"), "/healthz/",
-                    reverse("pages:my_data"), reverse("notifications:unread_count")):
+        for url in (
+            reverse("pages:terms"),
+            reverse("pages:privacy"),
+            reverse("pages:help"),
+            "/healthz/",
+            reverse("pages:my_data"),
+            reverse("notifications:unread_count"),
+        ):
             with self.subTest(url=url):
                 self.assertNotEqual(self.client.get(url).status_code, 302, url)
         self.assertNotEqual(self.client.post(reverse("pages:welcome_dismiss")).url, None)  # a POST isn't intercepted
@@ -40,9 +47,18 @@ class LegalVersionTests(TestCase):
     def test_sign_up_records_the_versions(self):
         self.client.logout()
         with override_settings(SIGNUP_MODE="open"):
-            self.client.post(reverse("register"), {
-                "username": "newbie", "email": "newbie@example.com", "first_name": "N", "last_name": "B",
-                "password1": "a-Long-pass-9876", "password2": "a-Long-pass-9876", "terms_accepted": "on"})
+            self.client.post(
+                reverse("register"),
+                {
+                    "username": "newbie",
+                    "email": "newbie@example.com",
+                    "first_name": "N",
+                    "last_name": "B",
+                    "password1": "a-Long-pass-9876",
+                    "password2": "a-Long-pass-9876",
+                    "terms_accepted": "on",
+                },
+            )
         user = User.objects.get(username="newbie")
         self.assertFalse(user.needs_legal_acceptance)
 

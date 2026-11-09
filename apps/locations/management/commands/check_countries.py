@@ -16,6 +16,7 @@ differences to ``DJANGO_ADMINS`` (``core.job_mail``; script-emails plan M1) and 
 mail them a second time; an API error still exits 2, which the wrapper reports. Stores nothing: their terms allow keeping their data for at most three
 days, so it stays in memory for the run; James edits a country by hand (or by CSV import) if he agrees.
 """
+
 import sys
 
 from django.conf import settings
@@ -38,8 +39,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--country", help="One country's two-letter code.")
-        parser.add_argument("--email", action="store_true",
-                            help="Also email the differences to DJANGO_ADMINS (then exit 0).")
+        parser.add_argument(
+            "--email", action="store_true", help="Also email the differences to DJANGO_ADMINS (then exit 0)."
+        )
 
     def handle(self, *args, country=None, email=False, **options):
         try:
@@ -75,9 +77,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING(f"{count} to look at."))
         if email:
             from apps.core import job_mail
-            sent = job_mail.report(f"check_countries: {count} to look at", "\n".join(
-                report + ["", "Edit a country by hand (or by CSV import) where you agree. Nothing was changed."]))
-            self.stdout.write("Emailed to DJANGO_ADMINS." if sent else "Not emailed (DJANGO_ADMINS empty or mail failed).")
+
+            sent = job_mail.report(
+                f"check_countries: {count} to look at",
+                "\n".join(
+                    report + ["", "Edit a country by hand (or by CSV import) where you agree. Nothing was changed."]
+                ),
+            )
+            self.stdout.write(
+                "Emailed to DJANGO_ADMINS." if sent else "Not emailed (DJANGO_ADMINS empty or mail failed)."
+            )
             if sent:
                 return
         sys.exit(1)

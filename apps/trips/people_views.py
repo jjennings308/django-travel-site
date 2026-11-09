@@ -5,6 +5,7 @@ invite, change roles, remove, and resend or cancel open invites. Anyone but the 
 ``trips:invite_accept`` — the link in an invite email: signed out, log in or create an account and
 come back; signed in, **Join trip**. Expired, cancelled or used links say so and grant nothing.
 """
+
 from urllib.parse import urlencode
 
 from django import forms
@@ -46,8 +47,13 @@ def _people_context(request, trip, actor_role, can_invite, form=None):
         for invite in invites:
             invite.link = people.invite_url(invite)
     return {
-        "trip": trip, "grants": grants, "invites": invites, "roles": roles, "can_invite": can_invite,
-        "form": form or InviteForm(roles=roles), "limit": people.INVITES_PER_DAY,
+        "trip": trip,
+        "grants": grants,
+        "invites": invites,
+        "roles": roles,
+        "can_invite": can_invite,
+        "form": form or InviteForm(roles=roles),
+        "limit": people.INVITES_PER_DAY,
     }
 
 
@@ -83,11 +89,16 @@ def trip_people(request, pk):
         roles = people.roles_up_to(actor_role)
         form = InviteForm(request.POST, roles=roles)
         if not form.is_valid():
-            return render(request, "trips/trip_people.html",
-                          _people_context(request, trip, actor_role, can_invite, form), status=400)
+            return render(
+                request,
+                "trips/trip_people.html",
+                _people_context(request, trip, actor_role, can_invite, form),
+                status=400,
+            )
         if people.sent_today(trip) >= people.INVITES_PER_DAY:
-            messages.error(request, f"This trip has sent {people.INVITES_PER_DAY} invitations in the last day. "
-                                    "Try again tomorrow.")
+            messages.error(
+                request, f"This trip has sent {people.INVITES_PER_DAY} invitations in the last day. Try again tomorrow."
+            )
             return back
         email, role = form.cleaned_data["email"], form.cleaned_data["role"]
         people.invite(trip, email, role, request.user)
@@ -106,8 +117,9 @@ def trip_people(request, pk):
             messages.success(request, f"{name} is now {TripRole(role).label.lower()}.")
         return back
     if action in ("resend", "cancel"):
-        invite = get_object_or_404(TripInvite, trip=trip, pk=request.POST.get("invite"),
-                                   accepted_at=None, revoked_at=None)
+        invite = get_object_or_404(
+            TripInvite, trip=trip, pk=request.POST.get("invite"), accepted_at=None, revoked_at=None
+        )
         if people.rank(invite.role) > people.rank(actor_role):
             raise PermissionDenied
         if action == "cancel":
@@ -116,8 +128,9 @@ def trip_people(request, pk):
             messages.success(request, f"Cancelled the invitation to {invite.email}. Its link no longer works.")
             return back
         if people.sent_today(trip) >= people.INVITES_PER_DAY:
-            messages.error(request, f"This trip has sent {people.INVITES_PER_DAY} invitations in the last day. "
-                                    "Try again tomorrow.")
+            messages.error(
+                request, f"This trip has sent {people.INVITES_PER_DAY} invitations in the last day. Try again tomorrow."
+            )
             return back
         invite.renew()
         invite.invited_by = request.user
@@ -131,20 +144,29 @@ def trip_people(request, pk):
 @limit("invite_accept", 60, 3600, methods=("GET", "POST"))
 def invite_accept(request, token):
     """The link in an invite email. Never says whether an address has an account."""
-    invite = (TripInvite.objects.select_related("trip", "invited_by")
-              .filter(token=token).filter(Q(trip__deleted_at__isnull=True)).first())
+    invite = (
+        TripInvite.objects.select_related("trip", "invited_by")
+        .filter(token=token)
+        .filter(Q(trip__deleted_at__isnull=True))
+        .first()
+    )
     if invite is None:
         return render(request, "trips/invite_accept.html", {"state": "missing"}, status=404)
     trip = invite.trip
     inviter = invite.invited_by
-    context = {"invite": invite, "trip": trip, "state": invite.state,
-               "inviter": (inviter.get_full_name() or inviter.username) if inviter else "Someone"}
+    context = {
+        "invite": invite,
+        "trip": trip,
+        "state": invite.state,
+        "inviter": (inviter.get_full_name() or inviter.username) if inviter else "Someone",
+    }
     if not invite.is_open:
         return render(request, "trips/invite_accept.html", context, status=410)
     if not request.user.is_authenticated:
         # While sign-up is invite-only, holding an open invite lets this visitor register for a
         # day (accounts reads the same session key; site roadmap R14).
         import time
+
         request.session["signup_allowed_until"] = time.time() + 86400
         here = request.get_full_path()
         context["login_url"] = f"{reverse('login')}?{urlencode({'next': here})}"

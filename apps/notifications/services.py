@@ -1,10 +1,10 @@
-# notifications/services.py
 """Create notifications: one row per person (the header bell / Notifications page)
 plus an email, unless the person turned off "Email notifications" in Settings.
 
 Callers name a *kind* (a NotificationType.name). Sending mail never raises: a
 reviewer's approval must not fail because the SMTP server did.
 """
+
 import logging
 
 from django.conf import settings
@@ -36,7 +36,8 @@ def notification_type(kind):
     """The NotificationType for ``kind`` (seeded by migration 0002; created if missing)."""
     category, _ = NotificationCategory.objects.get_or_create(name=CATEGORY)
     ntype, _ = NotificationType.objects.get_or_create(
-        name=kind, defaults={"category": category, "display_name": KINDS.get(kind, kind), "default_email": True})
+        name=kind, defaults={"category": category, "display_name": KINDS.get(kind, kind), "default_email": True}
+    )
     return ntype
 
 
@@ -46,6 +47,7 @@ UNSUBSCRIBE_SALT = "notifications.unsubscribe"
 def unsubscribe_token(user, kind):
     """A signed token for "stop emailing me this kind" (site roadmap R15); works signed out."""
     from django.core import signing
+
     return signing.dumps({"u": user.pk, "k": kind}, salt=UNSUBSCRIBE_SALT, compress=True)
 
 
@@ -53,6 +55,7 @@ def read_unsubscribe_token(token):
     """(user id, kind) from a token, or None if it was tampered with. Tokens don't expire: an old
     email's link should still work."""
     from django.core import signing
+
     try:
         data = signing.loads(token, salt=UNSUBSCRIBE_SALT)
         return int(data["u"]), str(data["k"])
@@ -62,8 +65,10 @@ def read_unsubscribe_token(token):
 
 def kind_emails_off(user, kind):
     from .models import UserNotificationPreference
-    return UserNotificationPreference.objects.filter(user=user, notification_type__name=kind,
-                                                     email_enabled=False).exists()
+
+    return UserNotificationPreference.objects.filter(
+        user=user, notification_type__name=kind, email_enabled=False
+    ).exists()
 
 
 def wants_email(user, kind=None):
@@ -81,25 +86,37 @@ def notify(user, kind, title, message, url="", obj=None):
     """Create one notification for ``user`` and email it when they want email. Returns it."""
     if user is None or not user.is_active:
         return None
-    note = Notification(user=user, notification_type=notification_type(kind), title=title[:200], message=message,
-                        action_url=url, channels=["in_app"])
+    note = Notification(
+        user=user,
+        notification_type=notification_type(kind),
+        title=title[:200],
+        message=message,
+        action_url=url,
+        channels=["in_app"],
+    )
     if obj is not None and obj.pk is not None:
         note.content_object = obj
     note.save()
     if wants_email(user, kind):
         from django.urls import reverse
-        base = settings.SITE_URL.rstrip('/')
+
+        base = settings.SITE_URL.rstrip("/")
         link = f"{base}{url}" if url.startswith("/") else url
         off = f"{base}{reverse('notifications:unsubscribe', args=[unsubscribe_token(user, kind)])}"
         body = f"{message}\n\n{link}\n" if link else f"{message}\n"
-        body += (f"\n— {settings.SITE_NAME}\nStop emails like this: {off}\n"
-                 "Or turn all emails off under Settings → Email notifications.")
+        body += (
+            f"\n— {settings.SITE_NAME}\nStop emails like this: {off}\n"
+            "Or turn all emails off under Settings → Email notifications."
+        )
         try:
             # One-click unsubscribe (RFC 8058) for mail apps that show their own button.
-            EmailMessage(subject=f"[{settings.SITE_NAME}] {title}", body=body,
-                         from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email],
-                         headers={"List-Unsubscribe": f"<{off}>",
-                                  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}).send()
+            EmailMessage(
+                subject=f"[{settings.SITE_NAME}] {title}",
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+                headers={"List-Unsubscribe": f"<{off}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+            ).send()
             note.channels = ["in_app", "email"]
             note.email_sent, note.email_sent_at = True, timezone.now()
             note.save(update_fields=["channels", "email_sent", "email_sent_at"])
@@ -111,11 +128,16 @@ def notify(user, kind, title, message, url="", obj=None):
 def staff_recipients(exclude=None):
     """Active users who can reach the staff dashboard (User.can_access_staff)."""
     codename = "can_access_staff_dashboard"
-    users = get_user_model().objects.filter(is_active=True).filter(
-        Q(is_superuser=True)
-        | Q(user_permissions__codename=codename, user_permissions__content_type__app_label="accounts")
-        | Q(groups__permissions__codename=codename, groups__permissions__content_type__app_label="accounts")
-    ).distinct()
+    users = (
+        get_user_model()
+        .objects.filter(is_active=True)
+        .filter(
+            Q(is_superuser=True)
+            | Q(user_permissions__codename=codename, user_permissions__content_type__app_label="accounts")
+            | Q(groups__permissions__codename=codename, groups__permissions__content_type__app_label="accounts")
+        )
+        .distinct()
+    )
     if exclude is not None:
         users = users.exclude(pk=exclude.pk)
     return users

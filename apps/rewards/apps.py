@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class RewardsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.rewards'
-    label = 'rewards'
-    verbose_name = 'Travel Rewards Programs'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.rewards"
+    label = "rewards"
+    verbose_name = "Travel Rewards Programs"

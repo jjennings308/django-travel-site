@@ -8,6 +8,7 @@ through ``trips.signals.daily_run``.
 ``save(trip, user, answers)`` — upserts their reviews (``reviews.services``); "Been there" only for
 people on the trip's traveller roster.
 """
+
 from datetime import timedelta
 
 from django.urls import reverse
@@ -35,9 +36,11 @@ def targets(trip):
 def ask(today=None):
     """Send the rating prompts that are due. Returns how many were sent."""
     from apps.notifications.services import notify
+
     today = today or timezone.localdate()
-    trips = Trip.objects.filter(deleted_at=None, end_date__lt=today,
-                                end_date__gte=today - timedelta(days=ASK_WITHIN_DAYS))
+    trips = Trip.objects.filter(
+        deleted_at=None, end_date__lt=today, end_date__gte=today - timedelta(days=ASK_WITHIN_DAYS)
+    )
     sent = 0
     for trip in trips:
         if not targets(trip):
@@ -47,9 +50,15 @@ def ask(today=None):
             if grant.user_id in asked:
                 continue
             TripRatingPrompt.objects.create(trip=trip, user=grant.user)
-            notify(grant.user, "trip_rating", f"How was “{trip.name}”?",
-                   f"“{trip.name}” has finished. Rate the places you went, in a minute: your ratings help "
-                   "other members, and you can skip it.", reverse("reviews:trip_rate", args=[trip.pk]), obj=trip)
+            notify(
+                grant.user,
+                "trip_rating",
+                f"How was “{trip.name}”?",
+                f"“{trip.name}” has finished. Rate the places you went, in a minute: your ratings help "
+                "other members, and you can skip it.",
+                reverse("reviews:trip_rate", args=[trip.pk]),
+                obj=trip,
+            )
             sent += 1
     return sent
 

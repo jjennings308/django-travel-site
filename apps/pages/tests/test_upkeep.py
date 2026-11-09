@@ -1,4 +1,5 @@
 """Performance and dependency upkeep (site roadmap R23)."""
+
 import re
 from datetime import date, timedelta
 from io import StringIO
@@ -30,7 +31,7 @@ class CdnTests(TestCase):
             text = path.read_text()
             for tag in re.findall(r"<(?:script|link)\b[^>]*>", text):
                 url = re.search(r'(?:src|href)="(https?://[^"]+)"', tag)
-                if not url or (tag.startswith("<link") and 'stylesheet' not in tag):
+                if not url or (tag.startswith("<link") and "stylesheet" not in tag):
                     continue
                 if "{%" in url.group(1):
                     continue
@@ -59,7 +60,10 @@ class CiTests(TestCase):
     def test_dependabot_monthly_for_pip_and_actions(self):
         config = (ROOT / ".github/dependabot.yml").read_text()
         for ecosystem in ("pip", "github-actions"):
-            self.assertRegex(config, rf"package-ecosystem: {ecosystem}\s*\n\s*directory: \"/\"\s*\n\s*schedule:\s*\n\s*interval: monthly")
+            self.assertRegex(
+                config,
+                rf"package-ecosystem: {ecosystem}\s*\n\s*directory: \"/\"\s*\n\s*schedule:\s*\n\s*interval: monthly",
+            )
 
 
 class PerfReportTests(TestCase):
@@ -70,7 +74,15 @@ class PerfReportTests(TestCase):
         out = StringIO()
         call_command("perf_report", trip=trip.pk, runs=1, stdout=out)
         report = out.getvalue()
-        for name in ("trip page", "settings", "bookings", "booklet (HTML only)", "calendar feed", "search", "sitemap.xml"):
+        for name in (
+            "trip page",
+            "settings",
+            "bookings",
+            "booklet (HTML only)",
+            "calendar feed",
+            "search",
+            "sitemap.xml",
+        ):
             self.assertIn(name, report)
         # No redirect was timed: a 3xx in the status column (not, say, "Trip 331" in the heading).
         self.assertNotRegex(report, r"(?m)\s3\d\d\s+\d+\s+\d+\s*$")
@@ -83,8 +95,9 @@ class EditTripQueryTests(TestCase):
 
     def setUp(self):
         self.editor = get_user_model().objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Big", start_date=date(2027, 5, 1), end_date=date(2027, 5, 20),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Big", start_date=date(2027, 5, 1), end_date=date(2027, 5, 20), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role="editor")
         self.client.force_login(self.editor)
         self.add(1)
@@ -94,8 +107,9 @@ class EditTripQueryTests(TestCase):
         for i in range(start, start + n):
             day = Day.objects.create(trip=self.trip, day_number=i + 1, date=date(2027, 5, 1) + timedelta(days=i))
             TransportLeg.objects.create(trip=self.trip, date=day.date, origin=f"A{i}", destination=f"B{i}")
-            Lodging.objects.create(trip=self.trip, name=f"Inn {i}", check_in=day.date,
-                                   check_out=day.date + timedelta(days=1))
+            Lodging.objects.create(
+                trip=self.trip, name=f"Inn {i}", check_in=day.date, check_out=day.date + timedelta(days=1)
+            )
             BookingTask.objects.create(trip=self.trip, title=f"Book {i}", day=day)
             Contact.objects.create(trip=self.trip, name=f"Guide {i}")
 

@@ -1,6 +1,7 @@
 """Content clean-up review (docs/plans/trip-page-ux.md, U7): the pure detector (tidy.py) on
 Europe-style text, applying ticked suggestions (tidying.py), the page and the command."""
-from datetime import date, timedelta
+
+from datetime import date
 from io import StringIO
 from unittest import mock
 
@@ -10,16 +11,37 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from apps.trips import day_first, tidy, tidying
+from apps.trips.models import (
+    BookingTask,
+    Contact,
+    Day,
+    ItemLink,
+    Lodging,
+    Meal,
+    Section,
+    TidyDismissal,
+    TransportLeg,
+    Trip,
+    TripGrant,
+    TripInfo,
+    TripRole,
+)
 from apps.trips.tests.helpers import make_task
-from apps.trips.models import (BookingTask, Contact, Day, ItemLink, Lodging, Meal, Section,
-                               TidyDismissal, TransportLeg, Trip, TripActivity, TripGrant, TripInfo, TripRole)
 
 User = get_user_model()
 
 
 def plain_day(number, **parts):
-    day = {"id": number, "number": number, "date": None, "sections": [], "legs": [], "stays": [], "meals": [],
-           "activities": []}
+    day = {
+        "id": number,
+        "number": number,
+        "date": None,
+        "sections": [],
+        "legs": [],
+        "stays": [],
+        "meals": [],
+        "activities": [],
+    }
     day.update(parts)
     return day
 
@@ -37,63 +59,114 @@ def section(pk, type_, title="", **content):
 
 class DetectorTests(SimpleTestCase):
     def run_on(self, days, **extra):
-        snap = {"notes": "", "days": days, "trip_legs": [], "trip_stays": [], "tasks": [], "known_numbers": [],
-                "contact_phones": []}
+        snap = {
+            "notes": "",
+            "days": days,
+            "trip_legs": [],
+            "trip_stays": [],
+            "tasks": [],
+            "known_numbers": [],
+            "contact_phones": [],
+        }
         snap.update(extra)
         return tidy.suggest(snap)
 
     def test_lines_repeating_legs_stays_and_meals(self):
-        day = plain_day(4, legs=[{"id": 1, "origin": "Butzbach Hof", "destination": "Frankfurt Hof"}],
-                        stays=[{"id": 2, "name": "Hotel Hessischer Hof"}],
-                        meals=[{"id": 3, "name": "Lebkuchen Schmidt", "notes": ""},
-                               {"id": 4, "name": "Borough Market", "notes": ""}],
-                        sections=[section(10, "phase", "Morning", summary="Check out Hotel Hessischer Hof after breakfast",
-                                          highlights=["Train Butzbach → Frankfurt Hbf (~45 min on RE30)",
-                                                      "Lebkuchen Schmidt — Nuremberg gingerbread, pick up tins",
-                                                      "Thames walk: Borough Market → Tate Modern → Tower Bridge",
-                                                      "A quiet afternoon"])])
+        day = plain_day(
+            4,
+            legs=[{"id": 1, "origin": "Butzbach Hof", "destination": "Frankfurt Hof"}],
+            stays=[{"id": 2, "name": "Hotel Hessischer Hof"}],
+            meals=[
+                {"id": 3, "name": "Lebkuchen Schmidt", "notes": ""},
+                {"id": 4, "name": "Borough Market", "notes": ""},
+            ],
+            sections=[
+                section(
+                    10,
+                    "phase",
+                    "Morning",
+                    summary="Check out Hotel Hessischer Hof after breakfast",
+                    highlights=[
+                        "Train Butzbach → Frankfurt Hbf (~45 min on RE30)",
+                        "Lebkuchen Schmidt — Nuremberg gingerbread, pick up tins",
+                        "Thames walk: Borough Market → Tate Modern → Tower Bridge",
+                        "A quiet afternoon",
+                    ],
+                )
+            ],
+        )
         found = {s.before: s for s in self.run_on([day]) if s.kind == "repeats_item"}
         self.assertEqual(found["Check out Hotel Hessischer Hof after breakfast"].confidence, "high")
-        self.assertEqual(found["• Train Butzbach → Frankfurt Hbf (~45 min on RE30)"].change["item"], {"kind": "leg", "id": 1})
+        self.assertEqual(
+            found["• Train Butzbach → Frankfurt Hbf (~45 min on RE30)"].change["item"], {"kind": "leg", "id": 1}
+        )
         lebkuchen = found["• Lebkuchen Schmidt — Nuremberg gingerbread, pick up tins"]
-        self.assertEqual((lebkuchen.confidence, lebkuchen.change["extra"]),
-                         ("high", "Nuremberg gingerbread, pick up tins"))
+        self.assertEqual(
+            (lebkuchen.confidence, lebkuchen.change["extra"]), ("high", "Nuremberg gingerbread, pick up tins")
+        )
         self.assertEqual(found["• Thames walk: Borough Market → Tate Modern → Tower Bridge"].confidence, "low")
         self.assertNotIn("• A quiet afternoon", found)
 
     def test_callout_repeating_a_task(self):
-        day = plain_day(4, sections=[
-            section(20, "callout", "📅 Book", text="ICE Frankfurt → Augsburg: book seat reservations for 6 people"),
-            section(21, "callout", "💡 Tip", text="Keep the Augsburg afternoon genuinely easy")])
-        tasks = [{"id": 7, "title": "ICE train seats Frankfurt→Augsburg (6 people)",
-                  "item": {"kind": "leg", "id": 1, "label": "Frankfurt Hbf → Augsburg Hbf"}}]
+        day = plain_day(
+            4,
+            sections=[
+                section(20, "callout", "📅 Book", text="ICE Frankfurt → Augsburg: book seat reservations for 6 people"),
+                section(21, "callout", "💡 Tip", text="Keep the Augsburg afternoon genuinely easy"),
+            ],
+        )
+        tasks = [
+            {
+                "id": 7,
+                "title": "ICE train seats Frankfurt→Augsburg (6 people)",
+                "item": {"kind": "leg", "id": 1, "label": "Frankfurt Hbf → Augsburg Hbf"},
+            }
+        ]
         found = [s for s in self.run_on([day], tasks=tasks) if s.kind == "callout_task"]
         self.assertEqual(len(found), 1)
         self.assertEqual((found[0].confidence, [a for a, _ in found[0].actions]), ("high", ["delete", "to_info"]))
 
     def test_phone_numbers_become_contacts_on_the_named_meal(self):
-        day = plain_day(2, meals=[{"id": 3, "name": "Ristorante Da Franco", "notes": "Call ahead: 06033 65147"}],
-                        sections=[section(30, "free_text", "Evening", paragraphs=["Prices €38 and 2027–2028 times 9–11"])])
+        day = plain_day(
+            2,
+            meals=[{"id": 3, "name": "Ristorante Da Franco", "notes": "Call ahead: 06033 65147"}],
+            sections=[section(30, "free_text", "Evening", paragraphs=["Prices €38 and 2027–2028 times 9–11"])],
+        )
         found = [s for s in self.run_on([day], known_numbers=["5305434791"]) if s.kind == "phone"]
         self.assertEqual(len(found), 1)  # no price, year range or time mistaken for a phone
-        self.assertEqual((found[0].change["number"], found[0].change["link"]), ("06033 65147", {"kind": "meal", "id": 3}))
+        self.assertEqual(
+            (found[0].change["number"], found[0].change["link"]), ("06033 65147", {"kind": "meal", "id": 3})
+        )
         self.assertEqual(found[0].after, "Call ahead")
 
     def test_trip_notes_repeats_options_and_contact_blocks(self):
-        notes = ("Hotels: Hotel Hessischer Hof, Butzbach (2 nights)\n\nAugsburg options:\n1. Hotel Augusta, Ludwigstr. 2\n"
-                 "2. Steigenberger Drei Mohren\n3. Airbnb Altstadt\n\nTaxi Augsburg eG\nLocal taxi dispatch\n"
-                 "Phone: +49 821 35025")
-        found = {s.kind: s for s in self.run_on([], notes=notes, trip_stays=[{"id": 2, "name": "Hotel Hessischer Hof"}])}
+        notes = (
+            "Hotels: Hotel Hessischer Hof, Butzbach (2 nights)\n\nAugsburg options:\n1. Hotel Augusta, Ludwigstr. 2\n"
+            "2. Steigenberger Drei Mohren\n3. Airbnb Altstadt\n\nTaxi Augsburg eG\nLocal taxi dispatch\n"
+            "Phone: +49 821 35025"
+        )
+        found = {
+            s.kind: s for s in self.run_on([], notes=notes, trip_stays=[{"id": 2, "name": "Hotel Hessischer Hof"}])
+        }
         self.assertEqual(found["notes_repeat"].before, "Hotels: Hotel Hessischer Hof, Butzbach (2 nights)")
-        self.assertEqual((found["notes_options"].change["title"], len(found["notes_options"].change["options"])),
-                         ("Augsburg options", 3))
+        self.assertEqual(
+            (found["notes_options"].change["title"], len(found["notes_options"].change["options"])),
+            ("Augsburg options", 3),
+        )
         phone = found["phone"]
         self.assertEqual((phone.change["name"], phone.change["notes"]), ("Taxi Augsburg eG", "Local taxi dispatch"))
 
     def test_table_describing_an_activity_and_day_slips(self):
-        day = plain_day(7, activities=[{"id": 5, "title": "Nightwatchman tour"}], sections=[
-            section(40, "logistics_table", "Nightwatchman Tour", columns=["When", "Where"], rows=[["8pm", "Marktplatz"]]),
-            section(41, "callout", "💡 Tip", text="Day 3 is a travel day by design.")])
+        day = plain_day(
+            7,
+            activities=[{"id": 5, "title": "Nightwatchman tour"}],
+            sections=[
+                section(
+                    40, "logistics_table", "Nightwatchman Tour", columns=["When", "Where"], rows=[["8pm", "Marktplatz"]]
+                ),
+                section(41, "callout", "💡 Tip", text="Day 3 is a travel day by design."),
+            ],
+        )
         kinds = {s.kind: s for s in self.run_on([day])}
         self.assertEqual(kinds["table_activity"].change["activity"], 5)
         self.assertTrue(kinds["day_slip"].flag_only)
@@ -110,20 +183,31 @@ class MealPhaseDetectorTests(SimpleTestCase):
 
     def found(self, heading, meals, **content):
         day = plain_day(7, meals=meals, sections=[section(20, "phase", heading, heading=heading, **content)])
-        snap = {"notes": "", "days": [day], "trip_legs": [], "trip_stays": [], "tasks": [], "known_numbers": [],
-                "contact_phones": []}
+        snap = {
+            "notes": "",
+            "days": [day],
+            "trip_legs": [],
+            "trip_stays": [],
+            "tasks": [],
+            "known_numbers": [],
+            "contact_phones": [],
+        }
         return [s for s in tidy.suggest(snap) if s.kind == "meal_phase"]
 
     def test_untimed_dinner_gets_the_phase_time(self):
         dinner = {"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": None}
         lunch = {"id": 6, "name": "Gasthof", "notes": "", "type": "lunch", "time": None}
         [s] = self.found("~7pm — Dinner", [dinner, lunch])
-        self.assertEqual((s.after, s.actions[0][0], s.change["time"]), ("Zur Höll at 19:00, in the day's timeline",
-                                                                         "time_remove", "19:00"))
+        self.assertEqual(
+            (s.after, s.actions[0][0], s.change["time"]),
+            ("Zur Höll at 19:00, in the day's timeline", "time_remove", "19:00"),
+        )
         self.assertEqual(self.found("7:30 Dinner", [dinner])[0].change["time"], "19:30")  # no am/pm: evening
 
     def test_timed_meal_just_drops_the_phase(self):
-        [s] = self.found("~7pm — Dinner", [{"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": "19:30"}])
+        [s] = self.found(
+            "~7pm — Dinner", [{"id": 5, "name": "Zur Höll", "notes": "", "type": "dinner", "time": "19:30"}]
+        )
         self.assertEqual(s.actions, [("remove", "Remove the phase (the meal is in the timeline)")])
 
     def test_left_alone(self):
@@ -139,20 +223,45 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 19), end_date=date(2027, 9, 21),
-                                        created_by=self.editor, notes="Taxi Augsburg eG\nLocal dispatch\nPhone: +49 821 35025")
+        self.trip = Trip.objects.create(
+            name="Europe",
+            start_date=date(2027, 9, 19),
+            end_date=date(2027, 9, 21),
+            created_by=self.editor,
+            notes="Taxi Augsburg eG\nLocal dispatch\nPhone: +49 821 35025",
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=4, date=date(2027, 9, 20))
-        self.leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Frankfurt Hbf",
-                                               destination="Augsburg Hbf", date=self.day.date)
-        Lodging.objects.create(trip=self.trip, name="Hotel Hessischer Hof", check_in=date(2027, 9, 18),
-                               check_out=self.day.date)
-        self.phase = Section.objects.create(day=self.day, section_type="note", title="Morning", content={
-            "tone": "", "paragraphs": ["Check out Hotel Hessischer Hof after breakfast",
-                                       "ICE Frankfurt Hbf → Augsburg (~2.5 hrs) — book 6 seats together", "Coffee first"]})
-        self.callout = Section.objects.create(day=self.day, section_type="note", title="📅 Book", order=1, content={
-            "tone": "tip", "paragraphs": ["ICE Frankfurt → Augsburg: book seat reservations for 6 people together"]})
+        self.leg = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Frankfurt Hbf", destination="Augsburg Hbf", date=self.day.date
+        )
+        Lodging.objects.create(
+            trip=self.trip, name="Hotel Hessischer Hof", check_in=date(2027, 9, 18), check_out=self.day.date
+        )
+        self.phase = Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="Morning",
+            content={
+                "tone": "",
+                "paragraphs": [
+                    "Check out Hotel Hessischer Hof after breakfast",
+                    "ICE Frankfurt Hbf → Augsburg (~2.5 hrs) — book 6 seats together",
+                    "Coffee first",
+                ],
+            },
+        )
+        self.callout = Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="📅 Book",
+            order=1,
+            content={
+                "tone": "tip",
+                "paragraphs": ["ICE Frankfurt → Augsburg: book seat reservations for 6 people together"],
+            },
+        )
         self.task = make_task(self.trip, "ICE train seats Frankfurt→Augsburg (6 people)", self.leg)
         self.url = reverse("trips:trip_tidy", args=[self.trip.pk])
 
@@ -169,12 +278,14 @@ class ApplyTests(Fixture):
         ice = next(s for s in found if s.kind == "repeats_item" and s.before.startswith("ICE"))
         callout = next(s for s in found if s.kind == "callout_task")
         phone = next(s for s in found if s.kind == "phone")
-        applied, skipped = tidying.apply(self.trip, found, {ice.key: "remove_keep", callout.key: "to_info",
-                                                            phone.key: "contact"})
+        applied, skipped = tidying.apply(
+            self.trip, found, {ice.key: "remove_keep", callout.key: "to_info", phone.key: "contact"}
+        )
         self.assertEqual((len(applied), skipped), (3, []))
         self.phase.refresh_from_db()
-        self.assertEqual(self.phase.content["paragraphs"],
-                         ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"])  # only the ticked line went
+        self.assertEqual(
+            self.phase.content["paragraphs"], ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"]
+        )  # only the ticked line went
         self.leg.refresh_from_db()
         self.assertIn("book 6 seats together", self.leg.notes)
         self.assertFalse(Section.objects.filter(pk=self.callout.pk).exists())
@@ -207,8 +318,9 @@ class ApplyTests(Fixture):
 
     def test_meal_phase_sets_the_time_and_removes_the_phase(self):
         meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
-        phase = Section.objects.create(day=self.day, section_type="note", title="~7pm — Dinner", order=5,
-                                       content={"tone": "", "paragraphs": []})
+        phase = Section.objects.create(
+            day=self.day, section_type="note", title="~7pm — Dinner", order=5, content={"tone": "", "paragraphs": []}
+        )
         [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
         applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
         self.assertEqual((len(applied), skipped), (1, []))
@@ -219,9 +331,9 @@ class ApplyTests(Fixture):
 
     def test_meal_phase_stale_when_the_meal_got_a_time(self):
         from datetime import time
+
         meal = Meal.objects.create(day=self.day, name="Zur Höll", meal_type="dinner")
-        phase = Section.objects.create(day=self.day, section_type="note", title="~7pm — Dinner", order=5,
-                                       content={})
+        phase = Section.objects.create(day=self.day, section_type="note", title="~7pm — Dinner", order=5, content={})
         [s] = [s for s in self.suggestions() if s.kind == "meal_phase"]
         Meal.objects.filter(pk=meal.pk).update(reserved_time=time(20, 0))
         applied, skipped = tidying.apply(self.trip, [s], {s.key: "time_remove"})
@@ -268,10 +380,13 @@ class PageTests(Fixture):
         self.assertTrue(TidyDismissal.objects.filter(key=summary.key).exists())
         self.assertNotContains(self.client.get(self.url), "Check out Hotel Hessischer Hof after breakfast")
         ice = next(s for s in found if s.before.startswith("ICE"))
-        self.client.post(self.url, {f"pick-{ice.key}": "on", f"act-{ice.key}": "remove",
-                                    f"act-{summary.key}": "remove"})  # an unticked action is ignored
+        self.client.post(
+            self.url, {f"pick-{ice.key}": "on", f"act-{ice.key}": "remove", f"act-{summary.key}": "remove"}
+        )  # an unticked action is ignored
         self.phase.refresh_from_db()
-        self.assertEqual(self.phase.content["paragraphs"], ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"])
+        self.assertEqual(
+            self.phase.content["paragraphs"], ["Check out Hotel Hessischer Hof after breakfast", "Coffee first"]
+        )
 
     def test_permissions_and_trip_page_link(self):
         self.client.force_login(self.viewer)

@@ -1,239 +1,173 @@
-# bucketlists/models.py
-from django.db import models
-from apps.core.models import TimeStampedModel
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
 from apps.activities.models import Activity
-from apps.locations.models import City, POI
+from apps.core.models import TimeStampedModel
 from apps.events.models import Event
-from django.core.validators import MinValueValidator, MaxValueValidator
+from apps.locations.models import POI, City
 
 
 class BucketListItem(TimeStampedModel):
     """User's bucket list items - references to activities, locations, or events they want to experience"""
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='bucket_list_items'
-    )
-    
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bucket_list_items")
+
     # Reference to global content (only ONE should be set)
     activity = models.ForeignKey(
         Activity,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='bucket_list_items',
-        help_text="Activity to experience"
+        related_name="bucket_list_items",
+        help_text="Activity to experience",
     )
-    
+
     city = models.ForeignKey(  # CORRECTED: Changed from 'location' to 'city'
         City,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='bucket_list_items',
-        help_text="City/destination to visit"
+        related_name="bucket_list_items",
+        help_text="City/destination to visit",
     )
-    
+
     event = models.ForeignKey(
         Event,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='bucket_list_items',
-        help_text="Event to attend"
+        related_name="bucket_list_items",
+        help_text="Event to attend",
     )
 
     pois = models.ManyToManyField(
         POI,
         blank=True,
-        related_name='bucket_list_items',
-        db_table='bucket_list_item_pois',
-        help_text="Places / points of interest to visit (one item can cover several)"
+        related_name="bucket_list_items",
+        db_table="bucket_list_item_pois",
+        help_text="Places / points of interest to visit (one item can cover several)",
     )
 
     # The trip planned for this item (set by "Plan a trip"). One trip can serve
     # several items. The FK lives here, not on Trip, so trips never depends on
     # bucketlists (CLAUDE.md, "Dependency layers": bucketlists -> trips).
     trip = models.ForeignKey(
-        'trips.Trip',
+        "trips.Trip",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='bucket_list_items',
-        help_text="Trip planned for this item"
+        related_name="bucket_list_items",
+        help_text="Trip planned for this item",
     )
 
     # The idea this goal became on its trip's Ideas shelf (day-first plan P6): the precise link.
     # ``trip`` stays, filled in from the idea on save. Ideas live in trips, which never reads this.
     trip_idea = models.ForeignKey(
-        'trips.TripIdea',
+        "trips.TripIdea",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='goals',
-        help_text="Idea on the trip's shelf this goal became"
+        related_name="goals",
+        help_text="Idea on the trip's shelf this goal became",
     )
 
     categories = models.ManyToManyField(
-        'BucketListCategory',
-        through='BucketListItemCategory',
-        related_name='items',
+        "BucketListCategory",
+        through="BucketListItemCategory",
+        related_name="items",
         blank=True,
     )
-    
+
     # Custom items (when user creates their own, not from catalog)
-    custom_title = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="For custom bucket list items not in catalog"
-    )
-    custom_description = models.TextField(
-        blank=True,
-        help_text="Description for custom items"
-    )
-    
+    custom_title = models.CharField(max_length=200, blank=True, help_text="For custom bucket list items not in catalog")
+    custom_description = models.TextField(blank=True, help_text="Description for custom items")
+
     # User customization
-    personal_notes = models.TextField(
-        blank=True,
-        help_text="Personal notes, reasons, memories"
-    )
-    
+    personal_notes = models.TextField(blank=True, help_text="Personal notes, reasons, memories")
+
     # Planning
-    target_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="When user hopes to complete this"
-    )
+    target_date = models.DateField(null=True, blank=True, help_text="When user hopes to complete this")
     target_end_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Last day of the planned dates (blank = a single day)"
+        null=True, blank=True, help_text="Last day of the planned dates (blank = a single day)"
     )
     target_season = models.CharField(
         max_length=20,
         choices=[
-            ('spring', 'Spring'),
-            ('summer', 'Summer'),
-            ('fall', 'Fall'),
-            ('winter', 'Winter'),
-            ('anytime', 'Anytime')
+            ("spring", "Spring"),
+            ("summer", "Summer"),
+            ("fall", "Fall"),
+            ("winter", "Winter"),
+            ("anytime", "Anytime"),
         ],
-        default='anytime',
-        help_text="Best time to do this"
+        default="anytime",
+        help_text="Best time to do this",
     )
-    
+
     estimated_budget = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="User's estimated budget in their currency"
+        max_digits=10, decimal_places=2, null=True, blank=True, help_text="User's estimated budget in their currency"
     )
-    budget_currency = models.CharField(max_length=3, default='USD')
-    
+    budget_currency = models.CharField(max_length=3, default="USD")
+
     # Priority and status
-    PRIORITY_CHOICES = [
-        (1, 'Low'),
-        (2, 'Medium'),
-        (3, 'High'),
-        (4, 'Very High'),
-        (5, 'Must Do!')
-    ]
+    PRIORITY_CHOICES = [(1, "Low"), (2, "Medium"), (3, "High"), (4, "Very High"), (5, "Must Do!")]
     priority = models.IntegerField(
-        choices=PRIORITY_CHOICES,
-        default=3,
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
+        choices=PRIORITY_CHOICES, default=3, validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
-    
+
     STATUS_CHOICES = [
-        ('wishlist', 'Wishlist'),
-        ('researching', 'Researching'),
-        ('planning', 'Planning'),
-        ('booked', 'Booked'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('abandoned', 'Abandoned')
+        ("wishlist", "Wishlist"),
+        ("researching", "Researching"),
+        ("planning", "Planning"),
+        ("booked", "Booked"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("abandoned", "Abandoned"),
     ]
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='wishlist',
-        db_index=True
-    )
-    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="wishlist", db_index=True)
+
     # Completion
-    completed_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="When user completed this item"
-    )
-    completion_notes = models.TextField(
-        blank=True,
-        help_text="Thoughts/reflections after completing"
-    )
-    
+    completed_date = models.DateField(null=True, blank=True, help_text="When user completed this item")
+    completion_notes = models.TextField(blank=True, help_text="Thoughts/reflections after completing")
+
     # Rating after completion
     user_rating = models.IntegerField(
         null=True,
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text="User's rating after completing"
+        help_text="User's rating after completing",
     )
-    
+
     # Sharing
-    is_public = models.BooleanField(
-        default=False,
-        help_text="Show on your public bucket list page"
-    )
-    
+    is_public = models.BooleanField(default=False, help_text="Show on your public bucket list page")
+
     # Travel companions
-    with_who = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Who user wants to do this with"
-    )
-    
+    with_who = models.CharField(max_length=100, blank=True, help_text="Who user wants to do this with")
+
     # Inspiration source
     inspiration_source = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Where they got the idea (friend, blog, movie, etc.)"
+        max_length=200, blank=True, help_text="Where they got the idea (friend, blog, movie, etc.)"
     )
-    
+
     # Reminders
-    reminder_enabled = models.BooleanField(
-        default=False,
-        help_text="Send reminders about this item"
-    )
-    next_reminder_date = models.DateField(
-        null=True,
-        blank=True
-    )
-    
+    reminder_enabled = models.BooleanField(default=False, help_text="Send reminders about this item")
+    next_reminder_date = models.DateField(null=True, blank=True)
+
     # Tags
-    tags = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="User's custom tags"
-    )
-    
+    tags = models.JSONField(default=list, blank=True, help_text="User's custom tags")
+
     # Display order
-    display_order = models.IntegerField(
-        default=0,
-        help_text="User's custom ordering"
-    )
-    
+    display_order = models.IntegerField(default=0, help_text="User's custom ordering")
+
     class Meta:
-        db_table = 'bucket_list_items'
-        ordering = ['user', '-priority', 'display_order']
+        db_table = "bucket_list_items"
+        ordering = ["user", "-priority", "display_order"]
         indexes = [
-            models.Index(fields=['user', 'status']),
-            models.Index(fields=['user', '-priority']),
-            models.Index(fields=['status', 'target_date']),
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["user", "-priority"]),
+            models.Index(fields=["status", "target_date"]),
         ]
-    
+
     def __str__(self):
         return f"{self.user.username}'s: {self.title}"
 
@@ -300,8 +234,13 @@ class BucketListItem(TimeStampedModel):
     def target_url(self):
         """Detail page of the linked activity / city / POI / event, if any."""
         from django.urls import reverse
-        names = {"activity": "activities:activity_detail", "city": "locations:city_detail",
-                 "poi": "locations:poi_detail", "event": "events:event_detail"}
+
+        names = {
+            "activity": "activities:activity_detail",
+            "city": "locations:city_detail",
+            "poi": "locations:poi_detail",
+            "event": "events:event_detail",
+        }
         target = self.target
         return reverse(names[self.kind], args=[target.slug]) if target is not None else None
 
@@ -348,10 +287,12 @@ class BucketListItem(TimeStampedModel):
         """The catalogue cities this goal is in (its city, its event's or activity's
         city, its POIs' cities), for filling in a trip's cities."""
         cities = []
-        for city in (self.city if self.city_id else None,
-                     self.event.city if self.event_id and self.event.city_id else None,
-                     self.activity.city if self.activity_id and self.activity.city_id else None,
-                     *(poi.city for poi in self._poi_list())):
+        for city in (
+            self.city if self.city_id else None,
+            self.event.city if self.event_id and self.event.city_id else None,
+            self.activity.city if self.activity_id and self.activity.city_id else None,
+            *(poi.city for poi in self._poi_list()),
+        ):
             if city is not None and city not in cities:
                 cities.append(city)
         return cities
@@ -374,9 +315,12 @@ class BucketListItem(TimeStampedModel):
     def photos(self):
         """Photos attached to this goal (added when ticking it off), oldest first."""
         from django.contrib.contenttypes.models import ContentType
+
         from apps.media_app.models import Media
-        return Media.objects.filter(content_type=ContentType.objects.get_for_model(self), object_id=self.pk,
-                                    media_type="image").order_by("created_at")
+
+        return Media.objects.filter(
+            content_type=ContentType.objects.get_for_model(self), object_id=self.pk, media_type="image"
+        ).order_by("created_at")
 
     def add_photos(self, files, user):
         """Store uploaded images as Media attached to this goal (scaled down; HEIC -> JPEG)."""
@@ -384,31 +328,40 @@ class BucketListItem(TimeStampedModel):
         from apps.media_app.forms import MAX_PICTURE_SIDE
         from apps.media_app.models import Media
         from apps.media_app.quota import check, size_of
+
         check(user, size_of(files))  # the storage limit, before anything is saved (R15)
         for f in files:
-            Media(file=shrink_image(f, MAX_PICTURE_SIDE) or f, uploaded_by=user, media_type="image",
-                  title=self.title[:200], alt_text=self.title[:200], content_object=self,
-                  privacy="public" if self.is_public else "private").save()
+            Media(
+                file=shrink_image(f, MAX_PICTURE_SIDE) or f,
+                uploaded_by=user,
+                media_type="image",
+                title=self.title[:200],
+                alt_text=self.title[:200],
+                content_object=self,
+                privacy="public" if self.is_public else "private",
+            ).save()
         if files:
             from .badges import award_badges
+
             award_badges(self.user)
 
     @property
     def is_completed(self):
         """Check if item is completed"""
-        return self.status == 'completed' and self.completed_date is not None
-    
-    def complete(self, completion_date=None, notes='', rating=None):
+        return self.status == "completed" and self.completed_date is not None
+
+    def complete(self, completion_date=None, notes="", rating=None):
         """Mark item as completed"""
         from django.utils import timezone
-        self.status = 'completed'
+
+        self.status = "completed"
         self.completed_date = completion_date or timezone.now().date()
         if notes:
             self.completion_notes = notes
         if rating:
             self.user_rating = rating
         self.save()
-    
+
     def clean(self):
         """One "what": an activity, a city, an event on its own, POIs, or a custom title.
 
@@ -419,144 +372,111 @@ class BucketListItem(TimeStampedModel):
 
         whats = [bool(self.activity_id), bool(self.city_id), bool(self.event_id and not self.activity_id)]
         if sum(whats) > 1:
-            raise ValidationError('Can only specify one of: activity, city or event')
+            raise ValidationError("Can only specify one of: activity, city or event")
         if self.event_id and self.activity_id and self.event.related_activity_id != self.activity_id:
-            raise ValidationError('That event is not a date of this activity')
+            raise ValidationError("That event is not a date of this activity")
         if self.target_end_date and self.target_date and self.target_end_date < self.target_date:
-            raise ValidationError({'target_end_date': 'The end date is before the start date'})
+            raise ValidationError({"target_end_date": "The end date is before the start date"})
 
 
 class BucketListCategory(TimeStampedModel):
     """User-created categories to organize their bucket list"""
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='bucket_list_categories'
-    )
-    
-    name = models.CharField(
-        max_length=100,
-        help_text="E.g., 'Adventure Goals', 'European Cities', 'Food Experiences'"
-    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bucket_list_categories")
+
+    name = models.CharField(max_length=100, help_text="E.g., 'Adventure Goals', 'European Cities', 'Food Experiences'")
     description = models.TextField(blank=True)
-    
-    color = models.CharField(
-        max_length=7,
-        default='#3B82F6',
-        help_text="Hex color code for visual organization"
-    )
-    icon = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Icon name or emoji"
-    )
-    
+
+    color = models.CharField(max_length=7, default="#3B82F6", help_text="Hex color code for visual organization")
+    icon = models.CharField(max_length=50, blank=True, help_text="Icon name or emoji")
+
     display_order = models.IntegerField(default=0)
-    
+
     # Stats
     item_count = models.IntegerField(default=0)
-    
+
     class Meta:
-        db_table = 'bucket_list_categories'
-        verbose_name_plural = 'Bucket List Categories'
-        unique_together = [['user', 'name']]
-        ordering = ['user', 'display_order', 'name']
-    
+        db_table = "bucket_list_categories"
+        verbose_name_plural = "Bucket List Categories"
+        unique_together = [["user", "name"]]
+        ordering = ["user", "display_order", "name"]
+
     def __str__(self):
         return f"{self.user.username}'s {self.name}"
 
 
 class BucketListItemCategory(models.Model):
     """Many-to-many relationship between items and categories"""
-    
-    item = models.ForeignKey(
-        BucketListItem,
-        on_delete=models.CASCADE,
-        related_name='category_memberships'
-    )
-    category = models.ForeignKey(
-        BucketListCategory,
-        on_delete=models.CASCADE,
-        related_name='item_memberships'
-    )
-    
+
+    item = models.ForeignKey(BucketListItem, on_delete=models.CASCADE, related_name="category_memberships")
+    category = models.ForeignKey(BucketListCategory, on_delete=models.CASCADE, related_name="item_memberships")
+
     added_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
-        db_table = 'bucket_list_item_categories'
-        unique_together = [['item', 'category']]
-    
+        db_table = "bucket_list_item_categories"
+        unique_together = [["item", "category"]]
+
     def __str__(self):
         return f"{self.item.title} in {self.category.name}"
 
 
 class BucketListMilestone(TimeStampedModel):
     """Track user milestones and achievements"""
-    
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='bucket_list_milestones'
-    )
-    
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bucket_list_milestones")
+
     MILESTONE_TYPES = [
-        ('items_added', 'Items Added'),
-        ('items_completed', 'Items Completed'),
-        ('countries_visited', 'Countries Visited'),
-        ('activities_completed', 'Activities Completed'),
-        ('events_attended', 'Events Attended'),
-        ('custom', 'Custom Milestone')
+        ("items_added", "Items Added"),
+        ("items_completed", "Items Completed"),
+        ("countries_visited", "Countries Visited"),
+        ("activities_completed", "Activities Completed"),
+        ("events_attended", "Events Attended"),
+        ("custom", "Custom Milestone"),
     ]
-    milestone_type = models.CharField(
-        max_length=20,
-        choices=MILESTONE_TYPES
-    )
+    milestone_type = models.CharField(max_length=20, choices=MILESTONE_TYPES)
     # Which badge (apps.bucketlists.badges.BADGES); one row per user and badge, written when earned.
     code = models.CharField(max_length=40, blank=True)
-    
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    
+
     # Target
-    target_count = models.IntegerField(
-        help_text="Target number to achieve"
-    )
-    current_count = models.IntegerField(
-        default=0,
-        help_text="Current progress"
-    )
-    
+    target_count = models.IntegerField(help_text="Target number to achieve")
+    current_count = models.IntegerField(default=0, help_text="Current progress")
+
     # Achievement
     is_achieved = models.BooleanField(default=False)
     achieved_date = models.DateTimeField(null=True, blank=True)
-    
+
     # Reward/badge
     badge_icon = models.CharField(max_length=50, blank=True)
-    badge_color = models.CharField(max_length=7, default='#10B981')
-    
+    badge_color = models.CharField(max_length=7, default="#10B981")
+
     class Meta:
-        db_table = 'bucket_list_milestones'
-        ordering = ['user', '-is_achieved', 'milestone_type']
+        db_table = "bucket_list_milestones"
+        ordering = ["user", "-is_achieved", "milestone_type"]
         constraints = [
-            models.UniqueConstraint(fields=['user', 'code'], condition=~models.Q(code=''),
-                                    name='milestone_unique_badge_per_user'),
+            models.UniqueConstraint(
+                fields=["user", "code"], condition=~models.Q(code=""), name="milestone_unique_badge_per_user"
+            ),
         ]
-    
+
     def __str__(self):
         return f"{self.user.username}: {self.title} ({self.current_count}/{self.target_count})"
-    
+
     @property
     def progress_percentage(self):
         """Calculate progress percentage"""
         if self.target_count > 0:
             return min(100, (self.current_count / self.target_count) * 100)
         return 0
-    
+
     def check_achievement(self):
         """Check if milestone has been achieved"""
         if not self.is_achieved and self.current_count >= self.target_count:
             from django.utils import timezone
+
             self.is_achieved = True
             self.achieved_date = timezone.now()
             self.save()

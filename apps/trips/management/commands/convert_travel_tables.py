@@ -8,6 +8,7 @@ leg; each converted table becomes a travel section (apps/trips/travel_tables.py)
 
 A second run finds nothing to do: converted tables are travel sections.
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.trips import travel_tables
@@ -38,8 +39,14 @@ class Command(BaseCommand):
                 if row["leg"] is not None:
                     self.stdout.write(f"  link    {hop} = existing leg {row['leg'].origin} → {row['leg'].destination}")
                     continue
-                unmatched = [text for text, city in ((row["origin"], row["origin_city"]),
-                                                     (row["destination"], row["destination_city"])) if city is None]
+                unmatched = [
+                    text
+                    for text, city in (
+                        (row["origin"], row["origin_city"]),
+                        (row["destination"], row["destination_city"]),
+                    )
+                    if city is None
+                ]
                 extra = f" (no city for: {', '.join(unmatched)})" if unmatched else ""
                 self.stdout.write(f"  create  {hop}{extra}")
             for total in section_plan.totals if any(r["include"] for r in section_plan.rows) else []:
@@ -51,6 +58,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Dry run: nothing saved. Add --apply to convert."))
             return
         result = travel_tables.apply(trip, plans, chosen)
-        self.stdout.write(self.style.SUCCESS(
-            f"Made {len(result['created'])} planned legs, linked {len(result['linked'])}; "
-            f"{result['sections']} tables became travel sections."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Made {len(result['created'])} planned legs, linked {len(result['linked'])}; "
+                f"{result['sections']} tables became travel sections."
+            )
+        )

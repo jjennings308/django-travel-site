@@ -1,14 +1,25 @@
 """Splitting a "choose one" between travellers (docs/plans/day-first-planning.md, P5)."""
+
 from datetime import date, time
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips import calendar, changes
 from apps.trips.forms import SplitForm
-from apps.trips.models import (Lodging, Meal, Option, OptionGroup, Section, TransportLeg, Traveler, Trip,
-                               TripActivity, TripChange, counts_q)
+from apps.trips.models import (
+    Lodging,
+    Meal,
+    Option,
+    OptionGroup,
+    Section,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripChange,
+    counts_q,
+)
 
 from .test_option_groups import Fixture
 
@@ -93,8 +104,9 @@ class AssignmentTests(SplitFixture):
 class WhatCountsTests(SplitFixture):
     def test_every_taken_option_counts(self):
         Option.objects.create(group=self.group, title="Nap", order=2)
-        nap = TripActivity.objects.create(trip=self.trip, day=self.day, title="Nap", kind="other",
-                                          option=Option.objects.get(title="Nap"))
+        nap = TripActivity.objects.create(
+            trip=self.trip, day=self.day, title="Nap", kind="other", option=Option.objects.get(title="Nap")
+        )
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
         counted = set(TripActivity.objects.filter(counts_q()).values_list("title", flat=True))
         self.assertEqual(counted, {"Castle tour", "Museum entry", "Lunch walk"})
@@ -103,8 +115,10 @@ class WhatCountsTests(SplitFixture):
 
     def test_the_estimate_adds_both_tracks(self):
         from django.apps import apps
+
         apps.get_model("accounts", "AccountSettings").objects.update_or_create(
-            user=self.editor, defaults={"preferred_currency": "EUR"})
+            user=self.editor, defaults={"preferred_currency": "EUR"}
+        )
         self.museum.est_cost, self.museum.currency = 14, "EUR"
         self.museum.save()
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
@@ -119,8 +133,8 @@ class TracksOnThePageTests(SplitFixture):
         Meal.objects.create(day=self.day, name="Augustiner", meal_type="dinner", reserved_time=time(19, 30))
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
         html = self.timeline(self.page())
-        box = html[html.index("data-split-group"):]
-        box = box[:box.index("Reopen the choice")]
+        box = html[html.index("data-split-group") :]
+        box = box[: box.index("Reopen the choice")]
         self.assertEqual(box.count("data-track>"), 2)
         self.assertIn("Debbie", box)
         self.assertIn("Ed, John", box)  # travellers in name order
@@ -129,20 +143,26 @@ class TracksOnThePageTests(SplitFixture):
         self.assertIn("Museum entry", box)
         self.assertIn("EUR 28.00", box)  # the castle track's cost
         outside = html.replace(box, "")
-        outside = outside[outside.index("day-body"):]  # the summary line's highlights may name either track
+        outside = outside[outside.index("day-body") :]  # the summary line's highlights may name either track
         self.assertNotIn("Castle tour", outside)
         self.assertIn("Lunch walk", outside)
         self.assertIn("Augustiner", outside)  # after the split, together again
         self.assertLess(html.index("data-split-group"), html.index("Augustiner"))
 
     def test_a_tracks_notes_and_stay_are_in_it(self):
-        Section.objects.create(day=self.day, section_type="note", title="Meet at the gate", option=self.castle,
-                               content={"tone": "", "paragraphs": ["By the fountain"]})
-        Lodging.objects.create(trip=self.trip, name="Hotel Füssen", check_in=self.day.date,
-                               check_out=date(2027, 9, 20), option=self.castle)
+        Section.objects.create(
+            day=self.day,
+            section_type="note",
+            title="Meet at the gate",
+            option=self.castle,
+            content={"tone": "", "paragraphs": ["By the fountain"]},
+        )
+        Lodging.objects.create(
+            trip=self.trip, name="Hotel Füssen", check_in=self.day.date, check_out=date(2027, 9, 20), option=self.castle
+        )
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
         html = self.timeline(self.page())
-        box = html[html.index("data-split-group"):html.index("Reopen the choice")]
+        box = html[html.index("data-split-group") : html.index("Reopen the choice")]
         self.assertIn("Meet at the gate", box)
         self.assertIn("Hotel Füssen", box)
         self.assertEqual(html.count("Meet at the gate"), 1)
@@ -167,8 +187,9 @@ class CalendarTests(SplitFixture):
 
     def test_only_mine_follows_each_persons_track(self):
         debbie_user = self.debbie_account()
-        Lodging.objects.create(trip=self.trip, name="Hotel Füssen", check_in=self.day.date,
-                               check_out=date(2027, 9, 19), option=self.castle)
+        Lodging.objects.create(
+            trip=self.trip, name="Hotel Füssen", check_in=self.day.date, check_out=date(2027, 9, 19), option=self.castle
+        )
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
         mine = self.ics(debbie_user)
         self.assertIn("Castle tour", mine)
@@ -195,6 +216,7 @@ class CalendarTests(SplitFixture):
 class BookletTests(SplitFixture):
     def booklet(self):
         from unittest import mock
+
         captured = {}
 
         def fake(html, base_url):
@@ -209,13 +231,13 @@ class BookletTests(SplitFixture):
     def test_two_tracks_side_by_side(self):
         self.split(castle=[self.debbie], museum=[self.john, self.ed])
         html = self.booklet()
-        tracks = html[html.index('class="tracks"'):]
-        tracks = tracks[:tracks.index("</table>")]
+        tracks = html[html.index('class="tracks"') :]
+        tracks = tracks[: tracks.index("</table>")]
         self.assertEqual(tracks.count("<td"), 2)
         self.assertIn("Debbie", tracks)
         self.assertIn("Castle tour", tracks)
         self.assertIn("Museum entry", tracks)
-        activities = html[html.index("<h3>Activities</h3>"):]
+        activities = html[html.index("<h3>Activities</h3>") :]
         self.assertNotIn("Castle tour", activities)
         self.assertIn("Lunch walk", activities)
 

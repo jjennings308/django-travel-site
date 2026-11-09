@@ -1,6 +1,8 @@
 """Change history and undo (site roadmap R8)."""
+
 import io
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -9,12 +11,23 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.current import acting_as
-from apps.trips import changes
-from apps.trips.tests.helpers import make_task
 from apps.trips.models import (
-    BookingTask, Confirmation, ConfirmationLink, Contact, Day, ItemLink, Lodging, Meal, Section, TransportLeg,
-    Traveler, Trip, TripActivity, TripChange, TripGrant, TripRole,
+    Confirmation,
+    ConfirmationLink,
+    Contact,
+    Day,
+    ItemLink,
+    Meal,
+    Section,
+    TransportLeg,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripChange,
+    TripGrant,
+    TripRole,
 )
+from apps.trips.tests.helpers import make_task
 
 User = get_user_model()
 
@@ -24,18 +37,26 @@ class HistoryFixture(TestCase):
         self.ed = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd", first_name="Ed")
         self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
         self.co = User.objects.create_user("co", "co@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21),
-                                        created_by=self.ed)
+        self.trip = Trip.objects.create(
+            name="Bavaria", start_date=date(2027, 9, 18), end_date=date(2027, 9, 21), created_by=self.ed
+        )
         for user, role in ((self.ed, TripRole.EDITOR), (self.vi, TripRole.VIEWER), (self.co, TripRole.COMMENTOR)):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
         self.day = Day.objects.create(trip=self.trip, day_number=1, date=date(2027, 9, 19))
         self.day2 = Day.objects.create(trip=self.trip, day_number=2, date=date(2027, 9, 20))
         with acting_as(self.ed):
             self.leg = TransportLeg.objects.create(
-                trip=self.trip, mode="train", operator="DB", origin="Frankfurt Hbf", destination="Augsburg Hbf",
-                date=date(2027, 9, 19), departure_at=datetime(2027, 9, 19, 8, 0, tzinfo=dt_timezone.utc),
+                trip=self.trip,
+                mode="train",
+                operator="DB",
+                origin="Frankfurt Hbf",
+                destination="Augsburg Hbf",
+                date=date(2027, 9, 19),
+                departure_at=datetime(2027, 9, 19, 8, 0, tzinfo=dt_timezone.utc),
                 arrival_at=datetime(2027, 9, 19, 11, 0, tzinfo=dt_timezone.utc),
-                origin_timezone="Europe/Berlin", destination_timezone="Europe/Berlin")
+                origin_timezone="Europe/Berlin",
+                destination_timezone="Europe/Berlin",
+            )
         self.url = reverse("trips:trip_history", args=[self.trip.pk])
 
     def move_leg(self, hour=8, minute=30, user=None):
@@ -105,15 +126,18 @@ class UndoTests(HistoryFixture):
         self.assertEqual(self.leg.departure_at.hour, 9)
         # Edited behind the history's back (a queryset update records nothing).
         newest = TripChange.objects.latest("id")
-        TransportLeg.objects.filter(pk=self.leg.pk).update(departure_at=datetime(2027, 9, 19, 12, 0, tzinfo=dt_timezone.utc))
+        TransportLeg.objects.filter(pk=self.leg.pk).update(
+            departure_at=datetime(2027, 9, 19, 12, 0, tzinfo=dt_timezone.utc)
+        )
         self.assertContains(self.undo(newest), "edited since")
 
     def test_editors_only(self):
         change = self.move_leg()
         for user in (self.vi, self.co):
             self.client.force_login(user)
-            self.assertEqual(self.client.post(reverse("trips:change_undo", args=[self.trip.pk, change.pk])).status_code,
-                             403)
+            self.assertEqual(
+                self.client.post(reverse("trips:change_undo", args=[self.trip.pk, change.pk])).status_code, 403
+            )
 
     def test_undo_a_section_text_and_a_meal_time(self):
         section = Section.objects.create(day=self.day, section_type="narrative", content={"paragraphs": ["A"]})

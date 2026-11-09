@@ -1,4 +1,5 @@
 """SEO basics (site roadmap R22): public place pages, robots.txt, sitemap.xml, page tags and JSON-LD."""
+
 import json
 import re
 from datetime import date, time, timedelta
@@ -26,41 +27,94 @@ def jsonld(response):
 class Fixture(TestCase):
     def setUp(self):
         self.member = User.objects.create_user("mem", "mem@example.com", "pw-1234-abcd")
-        self.de = Country.objects.create(name="Germany", slug="germany", iso_code="DE", iso3_code="DEU",
-                                         continent="Europe", **APPROVED)
+        self.de = Country.objects.create(
+            name="Germany", slug="germany", iso_code="DE", iso3_code="DEU", continent="Europe", **APPROVED
+        )
         self.bavaria = Region.objects.create(name="Bavaria", slug="bavaria", country=self.de, **APPROVED)
-        self.munich = City.objects.create(name="Munich", slug="munich", country=self.de, region=self.bavaria,
-                                          latitude=48.137, longitude=11.575, description="Beer & <b>art</b>.",
-                                          **APPROVED)
-        self.castle = POI.objects.create(name="Nymphenburg Palace", slug="nymphenburg", city=self.munich,
-                                         latitude=48.158, longitude=11.503, address="Schloß Nymphenburg 1",
-                                         **APPROVED)
-        self.pending_place = POI.objects.create(name="Secret Bar", slug="secret-bar", city=self.munich,
-                                                latitude=48.1, longitude=11.5, submitted_by=self.member, **PENDING)
-        self.pending_city = City.objects.create(name="Hiddenville", slug="hiddenville", country=self.de,
-                                                latitude=48, longitude=11, **PENDING)
+        self.munich = City.objects.create(
+            name="Munich",
+            slug="munich",
+            country=self.de,
+            region=self.bavaria,
+            latitude=48.137,
+            longitude=11.575,
+            description="Beer & <b>art</b>.",
+            **APPROVED,
+        )
+        self.castle = POI.objects.create(
+            name="Nymphenburg Palace",
+            slug="nymphenburg",
+            city=self.munich,
+            latitude=48.158,
+            longitude=11.503,
+            address="Schloß Nymphenburg 1",
+            **APPROVED,
+        )
+        self.pending_place = POI.objects.create(
+            name="Secret Bar",
+            slug="secret-bar",
+            city=self.munich,
+            latitude=48.1,
+            longitude=11.5,
+            submitted_by=self.member,
+            **PENDING,
+        )
+        self.pending_city = City.objects.create(
+            name="Hiddenville", slug="hiddenville", country=self.de, latitude=48, longitude=11, **PENDING
+        )
         self.cat, _ = ActivityCategory.objects.get_or_create(slug="festival", defaults={"name": "Festival"})
-        self.okto = Activity.objects.create(name="Oktoberfest", slug="oktoberfest", category=self.cat,
-                                            description="The </script> beer festival.", city=self.munich,
-                                            visibility="public", **APPROVED)
+        self.okto = Activity.objects.create(
+            name="Oktoberfest",
+            slug="oktoberfest",
+            category=self.cat,
+            description="The </script> beer festival.",
+            city=self.munich,
+            visibility="public",
+            **APPROVED,
+        )
         today = timezone.localdate()
-        self.event = Event.objects.create(name="Opera night", slug="opera-night", category=self.cat,
-                                          city=self.munich, start_date=today + timedelta(days=30),
-                                          start_time=time(19, 30), end_time=time(22, 0),
-                                          timezone="Europe/Berlin", **APPROVED)
-        self.old_event = Event.objects.create(name="Old fair", slug="old-fair", category=self.cat, city=self.munich,
-                                              start_date=today - timedelta(days=500), **APPROVED)
-        self.pending_event = Event.objects.create(name="Pending gig", slug="pending-gig", category=self.cat,
-                                                  city=self.munich, start_date=today + timedelta(days=5),
-                                                  created_by=self.member)
+        self.event = Event.objects.create(
+            name="Opera night",
+            slug="opera-night",
+            category=self.cat,
+            city=self.munich,
+            start_date=today + timedelta(days=30),
+            start_time=time(19, 30),
+            end_time=time(22, 0),
+            timezone="Europe/Berlin",
+            **APPROVED,
+        )
+        self.old_event = Event.objects.create(
+            name="Old fair",
+            slug="old-fair",
+            category=self.cat,
+            city=self.munich,
+            start_date=today - timedelta(days=500),
+            **APPROVED,
+        )
+        self.pending_event = Event.objects.create(
+            name="Pending gig",
+            slug="pending-gig",
+            category=self.cat,
+            city=self.munich,
+            start_date=today + timedelta(days=5),
+            created_by=self.member,
+        )
 
 
 class PublicPlacePagesTests(Fixture):
     def test_signed_out_visitors_see_approved_places_only(self):
-        for name, args in (("locations:country_list", []), ("locations:region_list", []), ("locations:city_list", []),
-                           ("locations:poi_list", []), ("locations:poi_map", []), ("locations:country_detail", ["germany"]),
-                           ("locations:region_detail", ["bavaria"]), ("locations:city_detail", ["munich"]),
-                           ("locations:poi_detail", ["nymphenburg"])):
+        for name, args in (
+            ("locations:country_list", []),
+            ("locations:region_list", []),
+            ("locations:city_list", []),
+            ("locations:poi_list", []),
+            ("locations:poi_map", []),
+            ("locations:country_detail", ["germany"]),
+            ("locations:region_detail", ["bavaria"]),
+            ("locations:city_detail", ["munich"]),
+            ("locations:poi_detail", ["nymphenburg"]),
+        ):
             self.assertEqual(self.client.get(reverse(name, args=args)).status_code, 200, name)
         self.assertEqual(self.client.get(reverse("locations:poi_detail", args=["secret-bar"])).status_code, 404)
         self.assertEqual(self.client.get(reverse("locations:city_detail", args=["hiddenville"])).status_code, 404)
@@ -93,9 +147,16 @@ class RobotsSitemapTests(Fixture):
 
     def test_sitemap_lists_published_items_only(self):
         body = self.client.get("/sitemap.xml").content.decode()
-        for path in ("/locations/pois/nymphenburg/", "/locations/cities/munich/", "/locations/countries/germany/",
-                     "/locations/regions/bavaria/", "/activities/oktoberfest/", "/events/opera-night/",
-                     "/help/", "/about/"):
+        for path in (
+            "/locations/pois/nymphenburg/",
+            "/locations/cities/munich/",
+            "/locations/countries/germany/",
+            "/locations/regions/bavaria/",
+            "/activities/oktoberfest/",
+            "/events/opera-night/",
+            "/help/",
+            "/about/",
+        ):
             self.assertIn(f"<loc>http://127.0.0.1:8000{path}</loc>", body)
         for hidden in ("secret-bar", "hiddenville", "pending-gig", "old-fair", "/bucketlists/", "/trips/"):
             self.assertNotIn(hidden, body)
@@ -110,19 +171,26 @@ class TagTests(Fixture):
         self.assertContains(page, '<meta property="og:title" content="Munich, Bavaria, Germany">')
         self.assertContains(page, '<meta name="description" content="Beer &amp; art.">')
         self.assertContains(page, 'og:image" content="http://127.0.0.1:8000/static/core/branding/png/sbl-logo-hero')
-        self.assertContains(self.client.get(reverse("pages:about")), 'name="twitter:card" content="summary_large_image"')
+        self.assertContains(
+            self.client.get(reverse("pages:about")), 'name="twitter:card" content="summary_large_image"'
+        )
 
     def test_noindex_on_search_public_lists_and_shared_trips(self):
-        self.assertContains(self.client.get(reverse("pages:search"), {"q": "munich"}), 'name="robots" content="noindex"')
+        self.assertContains(
+            self.client.get(reverse("pages:search"), {"q": "munich"}), 'name="robots" content="noindex"'
+        )
         self.assertNotContains(self.client.get(reverse("pages:about")), 'content="noindex"')
         User.objects.filter(pk=self.member.pk).update(profile_visibility="public")
-        self.assertContains(self.client.get(reverse("bucketlists:public_list", args=["mem"])),
-                            'name="robots" content="noindex"')
+        self.assertContains(
+            self.client.get(reverse("bucketlists:public_list", args=["mem"])), 'name="robots" content="noindex"'
+        )
         from apps.trips.models import Trip
+
         trip = Trip.objects.create(name="Shared", start_date=date(2027, 5, 1), end_date=date(2027, 5, 2))
         trip.enable_public()
-        self.assertContains(self.client.get(reverse("public_trip", args=[trip.public_token])),
-                            'name="robots" content="noindex"')
+        self.assertContains(
+            self.client.get(reverse("public_trip", args=[trip.public_token])), 'name="robots" content="noindex"'
+        )
 
 
 class JsonLdTests(Fixture):
@@ -138,13 +206,23 @@ class JsonLdTests(Fixture):
 
     def test_place_city_activity_and_escaping(self):
         place = jsonld(self.client.get(reverse("locations:poi_detail", args=["nymphenburg"])))[0]
-        self.assertEqual((place["@type"], place["address"]["streetAddress"]), ("TouristAttraction", "Schloß Nymphenburg 1"))
+        self.assertEqual(
+            (place["@type"], place["address"]["streetAddress"]), ("TouristAttraction", "Schloß Nymphenburg 1")
+        )
         city = jsonld(self.client.get(reverse("locations:city_detail", args=["munich"])))[0]
         self.assertEqual((city["@type"], city["containedInPlace"]["name"]), ("City", "Germany"))
-        self.assertEqual(jsonld(self.client.get(reverse("activities:activity_detail", args=["oktoberfest"])))[0]["@type"],
-                         "TouristTrip")
-        Activity.objects.create(name="Rock </script><b>& roll", slug="rock", category=self.cat, description="x",
-                                visibility="public", **APPROVED)
+        self.assertEqual(
+            jsonld(self.client.get(reverse("activities:activity_detail", args=["oktoberfest"])))[0]["@type"],
+            "TouristTrip",
+        )
+        Activity.objects.create(
+            name="Rock </script><b>& roll",
+            slug="rock",
+            category=self.cat,
+            description="x",
+            visibility="public",
+            **APPROVED,
+        )
         response = self.client.get(reverse("activities:activity_detail", args=["rock"]))
         self.assertEqual(jsonld(response)[0]["name"], "Rock </script><b>& roll")  # parsed back intact...
         self.assertIn("Rock \\u003C/script\\u003E\\u003Cb\\u003E\\u0026 roll", response.content.decode())  # ...escaped

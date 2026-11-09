@@ -1,4 +1,5 @@
 """The budget in one currency and the Overview's estimate (site roadmap R10)."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -7,9 +8,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.core.models import ExchangeRate
-from apps.trips import budget
 from apps.trips.models import (
-    Confirmation, Day, Traveler, Trip, TripActivity, TripExpense, TripGrant, TripRate, TripRole,
+    Confirmation,
+    Day,
+    Traveler,
+    Trip,
+    TripActivity,
+    TripExpense,
+    TripGrant,
+    TripRate,
+    TripRole,
 )
 
 User = get_user_model()
@@ -21,8 +29,9 @@ class CurrencyFixture(TestCase):
             ExchangeRate.objects.create(date=day, currency="USD", per_euro=Decimal(usd))
             ExchangeRate.objects.create(date=day, currency="GBP", per_euro=Decimal(gbp))
         self.ed = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 22),
-                                        created_by=self.ed)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 17), end_date=date(2027, 9, 22), created_by=self.ed
+        )
         TripGrant.objects.create(trip=self.trip, user=self.ed, role=TripRole.EDITOR)
         self.james = Traveler.objects.create(name="James")
         self.regan = Traveler.objects.create(name="Regan")
@@ -30,8 +39,14 @@ class CurrencyFixture(TestCase):
         self.url = reverse("trips:trip_budget", args=[self.trip.pk])
 
     def cost(self, amount, currency, spent_on, paid_by, description="x"):
-        return TripExpense.objects.create(trip=self.trip, description=description, amount=Decimal(amount),
-                                          currency=currency, spent_on=spent_on, paid_by=paid_by)
+        return TripExpense.objects.create(
+            trip=self.trip,
+            description=description,
+            amount=Decimal(amount),
+            currency=currency,
+            spent_on=spent_on,
+            paid_by=paid_by,
+        )
 
     def page(self, **params):
         self.client.force_login(self.ed)
@@ -41,8 +56,8 @@ class CurrencyFixture(TestCase):
 class BudgetPageTests(CurrencyFixture):
     def setUp(self):
         super().setUp()
-        self.cost("100", "EUR", date(2027, 9, 17), self.james, "Hotel night")   # = 108 USD that day
-        self.cost("100", "EUR", date(2027, 9, 20), self.regan, "Dinner")        # = 110 USD that day
+        self.cost("100", "EUR", date(2027, 9, 17), self.james, "Hotel night")  # = 108 USD that day
+        self.cost("100", "EUR", date(2027, 9, 20), self.regan, "Dinner")  # = 110 USD that day
         self.cost("50", "USD", date(2027, 9, 18), self.regan, "Taxi")
 
     def test_each_cost_at_its_own_dates_rate(self):
@@ -91,8 +106,12 @@ class OwnRatesTests(CurrencyFixture):
     """The trip's own rates live on the Budget page (edit-by-day plan E3), saved by trips:trip_rates."""
 
     def rates_data(self, **row):
-        data = {"rates-TOTAL_FORMS": "1", "rates-INITIAL_FORMS": "0", "rates-MIN_NUM_FORMS": "0",
-                "rates-MAX_NUM_FORMS": "1000"}
+        data = {
+            "rates-TOTAL_FORMS": "1",
+            "rates-INITIAL_FORMS": "0",
+            "rates-MIN_NUM_FORMS": "0",
+            "rates-MAX_NUM_FORMS": "1000",
+        }
         data.update({f"rates-0-{name}": value for name, value in row.items()})
         return data
 
@@ -101,8 +120,10 @@ class OwnRatesTests(CurrencyFixture):
         page = self.page()
         self.assertContains(page, 'id="rates"')
         self.assertContains(page, f'action="{reverse("trips:trip_rates", args=[self.trip.pk])}"')
-        response = self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
-                                    self.rates_data(from_currency="eur", to_currency="USD", rate="1.5"))
+        response = self.client.post(
+            reverse("trips:trip_rates", args=[self.trip.pk]),
+            self.rates_data(from_currency="eur", to_currency="USD", rate="1.5"),
+        )
         self.assertEqual(response["Location"], self.url + "#rates")
         rate = TripRate.objects.get()
         self.assertEqual((rate.from_currency, rate.rate), ("EUR", Decimal("1.5")))
@@ -110,8 +131,10 @@ class OwnRatesTests(CurrencyFixture):
 
     def test_a_mistake_shows_on_the_budget_page_and_saves_nothing(self):
         self.client.force_login(self.ed)
-        response = self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
-                                    self.rates_data(from_currency="EUR", to_currency="EUR", rate="1"))
+        response = self.client.post(
+            reverse("trips:trip_rates", args=[self.trip.pk]),
+            self.rates_data(from_currency="EUR", to_currency="EUR", rate="1"),
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pick a different currency.")
         self.assertFalse(response.context["form"].is_bound)  # the add-a-cost form isn't shown with errors
@@ -125,9 +148,13 @@ class OwnRatesTests(CurrencyFixture):
         page = self.client.get(self.url)
         self.assertContains(page, "1 EUR = 1.5 USD")
         self.assertNotContains(page, "rates-TOTAL_FORMS")
-        self.assertEqual(self.client.post(reverse("trips:trip_rates", args=[self.trip.pk]),
-                                          self.rates_data(from_currency="GBP", to_currency="USD", rate="1")).status_code,
-                         403)
+        self.assertEqual(
+            self.client.post(
+                reverse("trips:trip_rates", args=[self.trip.pk]),
+                self.rates_data(from_currency="GBP", to_currency="USD", rate="1"),
+            ).status_code,
+            403,
+        )
 
     def test_edit_trip_no_longer_has_them(self):
         self.client.force_login(self.ed)
@@ -144,7 +171,9 @@ class EstimateTests(CurrencyFixture):
         response = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk]))
         estimate = response.context["cost_estimate"]
         # Latest rates: 200 EUR = 220 USD, 85 GBP = 110 USD.
-        self.assertEqual((estimate["total"], estimate["currency"], estimate["approx"]), (Decimal("830.00"), "USD", True))
+        self.assertEqual(
+            (estimate["total"], estimate["currency"], estimate["approx"]), (Decimal("830.00"), "USD", True)
+        )
         self.assertEqual((estimate["bookings"], estimate["estimates"]), (2, 1))
         self.assertContains(response, "≈ USD 830.00")
 

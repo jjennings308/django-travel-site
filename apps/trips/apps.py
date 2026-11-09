@@ -14,13 +14,18 @@ class TripsConfig(AppConfig):
     def ready(self):
         # Importing registers the post_save receivers that keep Traveler and
         # auth.User linked; see trips/signals.py.
-        from . import signals  # noqa: F401
-        from . import changes  # noqa: F401  (change records for the digest, site roadmap R7)
         # Ticket files count towards the account's storage limit (R15).
         from django.db.models import Sum
+
         from apps.media_app import quota
+
+        from . import (
+            changes,  # noqa: F401  (change records for the digest, site roadmap R7)
+            signals,  # noqa: F401
+        )
         from .models import ConfirmationFile
 
         def tickets(user):
             return ConfirmationFile.objects.filter(uploaded_by=user).aggregate(total=Sum("size"))["total"] or 0
+
         quota.register(tickets)

@@ -1,6 +1,6 @@
-# reviews/views.py
 """Reviews on catalogue pages. The list is an HTML fragment that the page loads after
 it renders (``partials/_reviews.html``), so catalogue apps never import reviews."""
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
@@ -21,12 +21,24 @@ def for_target(request, kind, slug):
     mine = review_by(request.user, target)
     reported = set()
     if request.user.is_authenticated:
-        reported = set(ReviewReport.objects.filter(reporter=request.user, review__in=reviews).values_list("review_id", flat=True))
-    return render(request, "reviews/_list.html", {
-        "target": target, "kind": kind, "reviews": reviews[:SHOWN], "total": target.review_count,
-        "mine": mine, "reported": reported, "report_form": ReportForm(), "back": target_url(target) + "#reviews",
-        "rounded": int(round(target.average_rating or 0)),
-    })
+        reported = set(
+            ReviewReport.objects.filter(reporter=request.user, review__in=reviews).values_list("review_id", flat=True)
+        )
+    return render(
+        request,
+        "reviews/_list.html",
+        {
+            "target": target,
+            "kind": kind,
+            "reviews": reviews[:SHOWN],
+            "total": target.review_count,
+            "mine": mine,
+            "reported": reported,
+            "report_form": ReportForm(),
+            "back": target_url(target) + "#reviews",
+            "rounded": int(round(target.average_rating or 0)),
+        },
+    )
 
 
 @login_required
@@ -39,9 +51,17 @@ def write(request, kind, slug):
         upsert_review(request.user, target, data["rating"], data["comment"], data["title"], data["visit_date"])
         messages.success(request, "Thanks, your review is up." if mine is None else "Your review was updated.")
         return redirect(target_url(target) + "#reviews")
-    return render(request, "reviews/review_form.html", {
-        "form": form, "target": target, "kind": kind, "mine": mine, "back": target_url(target),
-    })
+    return render(
+        request,
+        "reviews/review_form.html",
+        {
+            "form": form,
+            "target": target,
+            "kind": kind,
+            "mine": mine,
+            "back": target_url(target),
+        },
+    )
 
 
 @login_required
@@ -78,13 +98,18 @@ def report(request, pk):
     review.save(update_fields=list(fields))
 
     from apps.notifications.services import notify_staff
+
     hidden = " It has been hidden until someone looks at it." if not review.is_approved else ""
-    notify_staff("review_reported", f"Review reported: {review.get_review_target_name()}",
-                 f"@{request.user.username} reported {review.author_name}'s review of "
-                 f"{review.get_review_target_name()} ({review.get_review_type_display()}): "
-                 f"{form.instance.get_reason_display()}.{hidden}",
-                 reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0", obj=review,
-                 exclude=request.user)
+    notify_staff(
+        "review_reported",
+        f"Review reported: {review.get_review_target_name()}",
+        f"@{request.user.username} reported {review.author_name}'s review of "
+        f"{review.get_review_target_name()} ({review.get_review_type_display()}): "
+        f"{form.instance.get_reason_display()}.{hidden}",
+        reverse("admin:reviews_reviewreport_changelist") + "?is_resolved__exact=0",
+        obj=review,
+        exclude=request.user,
+    )
     messages.success(request, "Thanks, our team will take a look.")
     return redirect(back)
 
@@ -93,8 +118,10 @@ def report(request, pk):
 def trip_rate(request, pk):
     """Rate a finished trip's places (site roadmap R17); the rules are in ``trip_ratings``."""
     from apps.trips.models import Trip
+
     from . import trip_ratings
     from .services import review_by
+
     trip = get_object_or_404(Trip.objects.visible_to(request.user), pk=pk)
     items = trip_ratings.targets(trip)
     if request.method == "POST":
@@ -109,14 +136,28 @@ def trip_rate(request, pk):
             if rating.isdigit() and 1 <= int(rating) <= 5:
                 answers[(kind, item.pk)] = (int(rating), request.POST.get(f"{field}-comment", "").strip()[:2000])
         saved = trip_ratings.save(trip, request.user, answers)
-        messages.success(request, f"Thanks — {saved} rating{'s' if saved != 1 else ''} saved." if saved
-                         else "Nothing rated; you can come back to this page any time.")
+        messages.success(
+            request,
+            f"Thanks — {saved} rating{'s' if saved != 1 else ''} saved."
+            if saved
+            else "Nothing rated; you can come back to this page any time.",
+        )
         return redirect("trips:trip_detail", pk=trip.pk)
     rows = []
     for kind, item in items:
         existing = review_by(request.user, item)
-        rows.append({"kind": kind, "item": item, "field": f"{kind}-{item.pk}",
-                     "label": "City" if kind == "city" else "Place",
-                     "rating": existing.rating if existing else None, "comment": existing.comment if existing else ""})
-    return render(request, "reviews/trip_rate.html", {"trip": trip, "rows": rows,
-                                                      "verified": trip_ratings.was_there(trip, request.user)})
+        rows.append(
+            {
+                "kind": kind,
+                "item": item,
+                "field": f"{kind}-{item.pk}",
+                "label": "City" if kind == "city" else "Place",
+                "rating": existing.rating if existing else None,
+                "comment": existing.comment if existing else "",
+            }
+        )
+    return render(
+        request,
+        "reviews/trip_rate.html",
+        {"trip": trip, "rows": rows, "verified": trip_ratings.was_there(trip, request.user)},
+    )

@@ -1,15 +1,15 @@
-# events/views.py
+from datetime import date as date_cls
+
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import Http404
-from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.urls import reverse
 from django.utils import timezone
-from datetime import date as date_cls
+from django.views.decorators.http import require_POST
 
 from apps.activities.models import Activity, ActivityCategory, ActivityTag
 from apps.approval_system.models import ApprovalStatus
@@ -17,14 +17,17 @@ from apps.core.utils.breadcrumbs import build_breadcrumbs
 from apps.locations.models import City, Country, Region
 
 from .forms import EventForm
-from .seo import event_meta
 from .models import Event
+from .seo import event_meta
 
 
 def _visible_event_or_404(request, slug):
     """404 (not 403) for an event this user may not see, so its existence isn't revealed."""
     event = get_object_or_404(
-        Event.objects.select_related("category", "city__country", "country", "poi", "created_by", "related_activity", *Event.PICTURE_RELATED), slug=slug
+        Event.objects.select_related(
+            "category", "city__country", "country", "poi", "created_by", "related_activity", *Event.PICTURE_RELATED
+        ),
+        slug=slug,
     )
     if not event.is_visible_to(request.user):
         raise Http404
@@ -34,9 +37,8 @@ def _visible_event_or_404(request, slug):
 def event_list(request):
     """Browse approved events (upcoming by default), with filters."""
     today = timezone.now().date()
-    events = (
-        Event.objects.filter(approval_status=ApprovalStatus.APPROVED)
-        .select_related("category", "city__country", "country", *Event.PICTURE_RELATED)
+    events = Event.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related(
+        "category", "city__country", "country", *Event.PICTURE_RELATED
     )
     when = request.GET.get("when", "upcoming")
     if when == "past":
@@ -47,8 +49,12 @@ def event_list(request):
 
     # The Tag select: tags of activities with an event in this list (upcoming or past), counted in events.
     tag = request.GET.get("tag", "")
-    tags = ActivityTag.keeping(ActivityTag.objects.filter(activities__events__in=events)
-                               .annotate(n=Count("activities__events", distinct=True)).order_by("name"), tag)
+    tags = ActivityTag.keeping(
+        ActivityTag.objects.filter(activities__events__in=events)
+        .annotate(n=Count("activities__events", distinct=True))
+        .order_by("name"),
+        tag,
+    )
 
     activity = None
     if request.GET.get("activity"):
@@ -67,25 +73,43 @@ def event_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         events = events.filter(
-            Q(name__icontains=q) | Q(short_description__icontains=q) | Q(description__icontains=q)
-            | Q(city__name__icontains=q) | Q(location_text__icontains=q) | Q(venue_name__icontains=q)
+            Q(name__icontains=q)
+            | Q(short_description__icontains=q)
+            | Q(description__icontains=q)
+            | Q(city__name__icontains=q)
+            | Q(location_text__icontains=q)
+            | Q(venue_name__icontains=q)
         )
 
     page_obj = Paginator(events, 24).get_page(request.GET.get("page"))
-    countries = Country.objects.filter(
-        Q(cities__events__approval_status=ApprovalStatus.APPROVED)
-        | Q(events_unlinked__approval_status=ApprovalStatus.APPROVED)
-    ).distinct().order_by("name")
-    return render(request, "events/event_list.html", {
-        "page_obj": page_obj,
-        "categories": ActivityCategory.objects.filter(is_active=True),
-        "countries": countries,
-        "tags": tags,
-        "when": when,
-        "activity": activity,
-        "filters": {"category": category or "", "tag": tag, "country": country or "", "free": bool(request.GET.get("free")), "q": q},
-        "breadcrumb_list": build_breadcrumbs([("Events", None)]),
-    })
+    countries = (
+        Country.objects.filter(
+            Q(cities__events__approval_status=ApprovalStatus.APPROVED)
+            | Q(events_unlinked__approval_status=ApprovalStatus.APPROVED)
+        )
+        .distinct()
+        .order_by("name")
+    )
+    return render(
+        request,
+        "events/event_list.html",
+        {
+            "page_obj": page_obj,
+            "categories": ActivityCategory.objects.filter(is_active=True),
+            "countries": countries,
+            "tags": tags,
+            "when": when,
+            "activity": activity,
+            "filters": {
+                "category": category or "",
+                "tag": tag,
+                "country": country or "",
+                "free": bool(request.GET.get("free")),
+                "q": q,
+            },
+            "breadcrumb_list": build_breadcrumbs([("Events", None)]),
+        },
+    )
 
 
 def _next_date_link(event, user):
@@ -111,33 +135,47 @@ def _next_date_link(event, user):
 
 def event_detail(request, slug):
     event = _visible_event_or_404(request, slug)
-    return render(request, "events/event_detail.html", {
-        "event": event,
-        "performers": event.performers.all(),
-        "can_edit": event.can_edit(request.user),
-        "can_delete": event.can_delete(request.user),
-        "next_year": _next_date_link(event, request.user),
-        "city_choices": (
-            City.objects.filter(country=event.country, approval_status=ApprovalStatus.APPROVED).order_by("name")
-            if request.user.is_staff and event.needs_city_link and event.country_id else None
-        ),
-        "region_choices": (
-            Region.objects.filter(country=event.country).order_by("name")
-            if request.user.is_staff and event.needs_city_link and event.country_id else None
-        ),
-        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (event.name, None)]),
-        "seo": event_meta(event),
-    })
+    return render(
+        request,
+        "events/event_detail.html",
+        {
+            "event": event,
+            "performers": event.performers.all(),
+            "can_edit": event.can_edit(request.user),
+            "can_delete": event.can_delete(request.user),
+            "next_year": _next_date_link(event, request.user),
+            "city_choices": (
+                City.objects.filter(country=event.country, approval_status=ApprovalStatus.APPROVED).order_by("name")
+                if request.user.is_staff and event.needs_city_link and event.country_id
+                else None
+            ),
+            "region_choices": (
+                Region.objects.filter(country=event.country).order_by("name")
+                if request.user.is_staff and event.needs_city_link and event.country_id
+                else None
+            ),
+            "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (event.name, None)]),
+            "seo": event_meta(event),
+        },
+    )
 
 
 @login_required
 def my_events(request):
     """Everything the user submitted, at any approval stage."""
-    events = Event.objects.filter(created_by=request.user).select_related("category", "city__country", "country", *Event.PICTURE_RELATED).order_by("-start_date")
-    return render(request, "events/my_events.html", {
-        "events": events,
-        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("My events", None)]),
-    })
+    events = (
+        Event.objects.filter(created_by=request.user)
+        .select_related("category", "city__country", "country", *Event.PICTURE_RELATED)
+        .order_by("-start_date")
+    )
+    return render(
+        request,
+        "events/my_events.html",
+        {
+            "events": events,
+            "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("My events", None)]),
+        },
+    )
 
 
 def _next_year(day):
@@ -165,7 +203,8 @@ def _copy_initial(source, another=False):
     else:
         initial.update(
             name=_next_year_name(source.name, source.start_date.year),
-            start_date=_next_year(source.start_date), end_date=_next_year(source.end_date),
+            start_date=_next_year(source.start_date),
+            end_date=_next_year(source.end_date),
         )
     return initial
 
@@ -182,11 +221,18 @@ def event_add(request):
         # "Add a date" from an activity page: pre-fill from the activity.
         activity = Activity.get_public_activities().filter(pk=request.GET["activity"]).first()
         if activity:
-            initial = {"related_activity": activity, "name": activity.name, "category": activity.category,
-                       "short_description": activity.short_description, "description": activity.description,
-                       "city": activity.city, "country": None if activity.city_id else activity.country,
-                       "location_text": "" if activity.city_id else activity.suggested_location,
-                       "poi": activity.venue, "venue_name": activity.venue.name if activity.venue_id else ""}
+            initial = {
+                "related_activity": activity,
+                "name": activity.name,
+                "category": activity.category,
+                "short_description": activity.short_description,
+                "description": activity.description,
+                "city": activity.city,
+                "country": None if activity.city_id else activity.country,
+                "location_text": "" if activity.city_id else activity.suggested_location,
+                "poi": activity.venue,
+                "venue_name": activity.venue.name if activity.venue_id else "",
+            }
     form = EventForm(request.POST or None, request.FILES or None, initial=initial)
     if source is not None and source.featured_media_id:
         form.fields["picture"].help_text += " Leave empty to keep the picture of the event you're copying."
@@ -202,16 +248,23 @@ def event_add(request):
         else:
             event.save()
             event.submit_for_review(request.user)
-            messages.success(request, f"Thanks! “{event.name}” was sent for review. Only you can see it until it's approved.")
+            messages.success(
+                request, f"Thanks! “{event.name}” was sent for review. Only you can see it until it's approved."
+            )
         form.save_picture(request.user)
         if not form.cleaned_data.get("picture") and source is not None and source.featured_media_id:
             event.featured_media_id = source.featured_media_id  # next year's event keeps last year's picture
             event.save(update_fields=["featured_media"])
         return redirect("events:event_detail", slug=event.slug)
-    return render(request, "events/event_form.html", {
-        "form": form, "title": "Add an event",
-        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("Add", None)]),
-    })
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "form": form,
+            "title": "Add an event",
+            "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), ("Add", None)]),
+        },
+    )
 
 
 @login_required
@@ -226,17 +279,31 @@ def event_edit(request, slug):
         form.save_picture(request.user)
         # A creator's edit of a rejected / changes-requested event goes back to the queue.
         if not request.user.is_staff and event.approval_status in (
-            ApprovalStatus.REJECTED, ApprovalStatus.CHANGES_REQUESTED, ApprovalStatus.DRAFT
+            ApprovalStatus.REJECTED,
+            ApprovalStatus.CHANGES_REQUESTED,
+            ApprovalStatus.DRAFT,
         ):
             event.submit_for_review(request.user)
             messages.success(request, "Saved and re-submitted for review.")
         else:
             messages.success(request, "Saved.")
         return redirect("events:event_detail", slug=event.slug)
-    return render(request, "events/event_form.html", {
-        "form": form, "event": event, "title": f"Edit: {event.name}",
-        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (event.name, ("events:event_detail", {"slug": event.slug})), ("Edit", None)]),
-    })
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "form": form,
+            "event": event,
+            "title": f"Edit: {event.name}",
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("Events", "events:event_list"),
+                    (event.name, ("events:event_detail", {"slug": event.slug})),
+                    ("Edit", None),
+                ]
+            ),
+        },
+    )
 
 
 @login_required
@@ -280,8 +347,11 @@ def event_link_city(request, slug):
             messages.error(request, f"Choose the city's region in {event.country.name}.")
             return redirect("events:event_detail", slug=slug)
         same_name = City.objects.filter(country=event.country, name__iexact=name)
-        existing = (same_name.filter(region=region).first() or same_name.filter(region__isnull=True).first()) if region \
+        existing = (
+            (same_name.filter(region=region).first() or same_name.filter(region__isnull=True).first())
+            if region
             else same_name.first()
+        )
         if existing:
             city = existing
             if region and not city.region_id:
@@ -290,9 +360,16 @@ def event_link_city(request, slug):
         else:
             now = timezone.now()
             city = City.objects.create(
-                name=name, country=event.country, region=region, latitude=lat, longitude=lng,
-                approval_status=ApprovalStatus.APPROVED, submitted_by=event.created_by or request.user,
-                submitted_at=now, reviewed_by=request.user, reviewed_at=now,
+                name=name,
+                country=event.country,
+                region=region,
+                latitude=lat,
+                longitude=lng,
+                approval_status=ApprovalStatus.APPROVED,
+                submitted_by=event.created_by or request.user,
+                submitted_at=now,
+                reviewed_by=request.user,
+                reviewed_at=now,
             )
             messages.success(request, f"Created the city {city.name}, {city.country.name}.")
     event.city = city
@@ -301,8 +378,8 @@ def event_link_city(request, slug):
     return redirect("events:event_detail", slug=slug)
 
 
-
 # --- What's on (site roadmap R21) ---------------------------------------------------------------
+
 
 def calendar_today(request):
     """/events/calendar/: the reader's current month, filters kept."""
@@ -314,6 +391,7 @@ def calendar_today(request):
 def calendar_month(request, year, month):
     """A month of events the reader may see: a grid on a laptop, a list of days on a phone."""
     from . import whats_on
+
     if not (1 <= month <= 12 and 1900 <= year <= 2200):
         raise Http404
     events = Event.objects.visible_to(request.user).select_related("category", "city__country", "country")
@@ -327,22 +405,34 @@ def calendar_month(request, year, month):
     weeks = whats_on.month_grid(found, year, month)
     (prev_year, prev_month), (next_year, next_month) = whats_on.neighbours(year, month)
     first = date_cls(year, month, 1)
-    return render(request, "events/event_calendar.html", {
-        "weeks": weeks, "first": first, "today": timezone.localdate(),
-        "busy_days": [day for week in weeks for day in week if day.in_month and day.events],
-        "prev": (prev_year, prev_month), "next": (next_year, next_month), "event_count": len(found),
-        "prev_first": date_cls(prev_year, prev_month, 1), "next_first": date_cls(next_year, next_month, 1),
-        "categories": ActivityCategory.objects.filter(is_active=True),
-        "countries": Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by("name").only("name", "slug"),
-        "filters": {"category": category, "country": country},
-        "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (f"{first:%B %Y}", None)]),
-    })
+    return render(
+        request,
+        "events/event_calendar.html",
+        {
+            "weeks": weeks,
+            "first": first,
+            "today": timezone.localdate(),
+            "busy_days": [day for week in weeks for day in week if day.in_month and day.events],
+            "prev": (prev_year, prev_month),
+            "next": (next_year, next_month),
+            "event_count": len(found),
+            "prev_first": date_cls(prev_year, prev_month, 1),
+            "next_first": date_cls(next_year, next_month, 1),
+            "categories": ActivityCategory.objects.filter(is_active=True),
+            "countries": Country.objects.filter(approval_status=ApprovalStatus.APPROVED)
+            .order_by("name")
+            .only("name", "slug"),
+            "filters": {"category": category, "country": country},
+            "breadcrumb_list": build_breadcrumbs([("Events", "events:event_list"), (f"{first:%B %Y}", None)]),
+        },
+    )
 
 
 def whats_on_fragment(request, kind, slug):
     """What's on and Things to do for a country / region / city / place page, loaded after that page
     (``partials/_whats_on.html``) because locations may not import events or activities."""
     from . import whats_on
+
     model = whats_on.TARGETS.get(kind)
     if model is None:
         raise Http404
@@ -350,16 +440,26 @@ def whats_on_fragment(request, kind, slug):
     events = whats_on.events_for(kind, target, Event.objects.visible_to(request.user))
     activities = whats_on.things_to_do(kind, target)
     country = target if kind == "country" else (target.country if kind in ("city", "region") else target.city.country)
-    return render(request, "events/_whats_on.html", {
-        "kind": kind, "target": target, "events": events, "activities": activities,
-        "nearby_km": whats_on.NEARBY_KM, "country_slug": country.slug if country else "",
-    })
+    return render(
+        request,
+        "events/_whats_on.html",
+        {
+            "kind": kind,
+            "target": target,
+            "events": events,
+            "activities": activities,
+            "nearby_km": whats_on.NEARBY_KM,
+            "country_slug": country.slug if country else "",
+        },
+    )
 
 
 def event_ics(request, slug):
-    """"Add to my calendar": the event as an .ics file, for anyone who may see it."""
+    """ "Add to my calendar": the event as an .ics file, for anyone who may see it."""
     from django.http import HttpResponse
+
     from . import whats_on
+
     event = _visible_event_or_404(request, slug)
     url = request.build_absolute_uri(reverse("events:event_detail", args=[event.slug]))
     response = HttpResponse(whats_on.event_ics(event, url), content_type="text/calendar; charset=utf-8")

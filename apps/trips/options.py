@@ -27,6 +27,7 @@ travellers in a split, else the day's.
 
 Returns the open groups, for the Needs attention banner ("N decisions").
 """
+
 from datetime import datetime, timedelta
 
 from .models import OptionGroup
@@ -56,14 +57,26 @@ def on_it(own, option_travelers, day_travelers):
 def load(trip):
     """The trip's groups with their options, who takes them (P5) and votes (and who voted): four queries."""
     from django.db.models import Prefetch
+
     from .models import Option, Vote
+
     # An option's catalogue link (typed-choices T1) comes with it, so its line costs no query.
     # Their places' countries too, so a blank currency is read as the place's (CU1) without a query.
-    options = Option.objects.select_related("poi__city__country", "activity__city__country", "event__related_activity",
-                                            "event__poi__city__country", "event__city__country", "city__country")
-    return list(OptionGroup.objects.filter(trip=trip)
-                .prefetch_related(Prefetch("options", queryset=options), "options__travelers",
-                                  Prefetch("options__votes", queryset=Vote.objects.select_related("user").order_by("pk"))))
+    options = Option.objects.select_related(
+        "poi__city__country",
+        "activity__city__country",
+        "event__related_activity",
+        "event__poi__city__country",
+        "event__city__country",
+        "city__country",
+    )
+    return list(
+        OptionGroup.objects.filter(trip=trip).prefetch_related(
+            Prefetch("options", queryset=options),
+            "options__travelers",
+            Prefetch("options__votes", queryset=Vote.objects.select_related("user").order_by("pk")),
+        )
+    )
 
 
 def _keep(owner, name, keep):
@@ -109,6 +122,7 @@ def _costs(trip, groups):
     some option mixes currencies; an option with a cost there's no rate for shows none)."""
     from .budget import _cents, _money, rates_for
     from .currencies import currency_of
+
     home = (trip.home_currency or "USD").upper()
     wanted = []
     for group in groups:
@@ -127,8 +141,11 @@ def _costs(trip, groups):
             continue
         own = {currency for _, currency in parts}
         if len(own) == 1:  # one currency: shown in it, nothing to convert
-            option.cost = {"total": _money(sum(_cents(amount) for amount, _ in parts)), "currency": own.pop(),
-                           "approx": False}
+            option.cost = {
+                "total": _money(sum(_cents(amount) for amount, _ in parts)),
+                "currency": own.pop(),
+                "approx": False,
+            }
             continue
         total, approx = 0, False
         for amount, currency in parts:
@@ -148,6 +165,7 @@ def _per_person(groups):
     and each group's ``cheapest`` — the option cheapest per person — when two or more options have a cost for the
     same number of people in one currency."""
     from decimal import Decimal
+
     for group in groups:
         priced = []
         for option in group.options.all():
@@ -164,6 +182,7 @@ def _per_person(groups):
 def attach(trip, days, viewer=None, groups=None):
     """See the module docstring. ``days`` are the trip page's days (with their prefetched lists)."""
     from .costs import people_for
+
     groups = load(trip) if groups is None else groups
     options = {}
     day_by_pk = {day.pk: day for day in days}
@@ -195,8 +214,11 @@ def attach(trip, days, viewer=None, groups=None):
     file(_keep(trip, "transport", keep), "legs")
     file(_keep(trip, "lodging", keep), "stays")
     for day in days:
-        for attr, kind in (("ordered_activities", "activities"), ("ordered_meals", "meals"),
-                           ("ordered_sections", "sections")):
+        for attr, kind in (
+            ("ordered_activities", "activities"),
+            ("ordered_meals", "meals"),
+            ("ordered_sections", "sections"),
+        ):
             if hasattr(day, attr):
                 kept, out = _split_list(getattr(day, attr), keep)
                 if attr == "ordered_sections":  # a track's notes are read in its track (P5)
@@ -205,9 +227,16 @@ def attach(trip, days, viewer=None, groups=None):
                 setattr(day, attr, kept)
                 file(out, kind)
     # Items of a chosen option say where they came from; a split's items know their track (P5).
-    for item in [*trip.transport.all(), *trip.lodging.all(),
-                 *(i for day in days for attr in ("ordered_activities", "ordered_meals", "ordered_sections")
-                   for i in getattr(day, attr, []))]:
+    for item in [
+        *trip.transport.all(),
+        *trip.lodging.all(),
+        *(
+            i
+            for day in days
+            for attr in ("ordered_activities", "ordered_meals", "ordered_sections")
+            for i in getattr(day, attr, [])
+        ),
+    ]:
         if item.option_id and item.option_id in options:
             option = options[item.option_id]
             item.chosen_from = option.group_ref
@@ -237,8 +266,16 @@ def attach(trip, days, viewer=None, groups=None):
 
 def _kind_of(item):
     from .models import Lodging, Meal, TransportLeg
-    return ("legs" if isinstance(item, TransportLeg) else "stays" if isinstance(item, Lodging)
-            else "meals" if isinstance(item, Meal) else "activities")
+
+    return (
+        "legs"
+        if isinstance(item, TransportLeg)
+        else "stays"
+        if isinstance(item, Lodging)
+        else "meals"
+        if isinstance(item, Meal)
+        else "activities"
+    )
 
 
 def count_on_days(days):
@@ -267,11 +304,14 @@ def make_item(option, actor=None):
     it). Stay → a ``Lodging`` from the day for the option's nights; eat → a ``Meal`` at the choice's time;
     do → a ``TripActivity`` (start / end from the choice); travel → a planned ``TransportLeg``."""
     from django.db.models import Max
+
     from apps.approval_system.models import ApprovalStatus
     from apps.locations.models import City
+
     from . import currencies, quick_add, trip_cities
     from .logistics import match_city
     from .models import Lodging, Meal, OptionGroup, TransportLeg, TripActivity
+
     if option.made_id is not None:
         made = option.made
         if made is not None:
@@ -289,34 +329,69 @@ def make_item(option, actor=None):
     # What its cost means comes along (budget-estimates B1): the option's basis (its own or its kind's default,
     # written out so a meal made from a "total" option isn't read per person) and who it's for.
     from .costs import basis_of
-    cost_meaning = {"cost_basis": basis_of(option) if option.est_cost is not None else "",
-                    "cost_people": option.cost_people}
+
+    cost_meaning = {
+        "cost_basis": basis_of(option) if option.est_cost is not None else "",
+        "cost_people": option.cost_people,
+    }
 
     if group.kind == Kind.STAY:
         if not day.date:
             return None
         nights = option.stay_nights or 1
         item = Lodging.objects.create(
-            trip=trip, name=option.title[:200], address=option.place_text or (option.poi.address if option.poi_id else ""),
-            city=city or day.city, check_in=day.date, check_out=day.date + timedelta(days=nights),
-            nightly_rate=option.est_cost, currency=currency, notes=notes, option=option,
-            rooms=option.rooms, **cost_meaning)
+            trip=trip,
+            name=option.title[:200],
+            address=option.place_text or (option.poi.address if option.poi_id else ""),
+            city=city or day.city,
+            check_in=day.date,
+            check_out=day.date + timedelta(days=nights),
+            nightly_rate=option.est_cost,
+            currency=currency,
+            notes=notes,
+            option=option,
+            rooms=option.rooms,
+            **cost_meaning,
+        )
         item.fill_day_cities()
     elif group.kind == Kind.EAT:
         item = Meal.objects.create(
-            day=day, name=option.title[:200], meal_type=group.meal_type or Meal.MealType.DINNER,
-            reserved_time=group.start_time, poi=option.poi, why_recommended=notes,
-            order=next_order(day.meals.all()), option=option,
-            est_cost=option.est_cost, currency=currency if option.est_cost is not None else "", **cost_meaning)
+            day=day,
+            name=option.title[:200],
+            meal_type=group.meal_type or Meal.MealType.DINNER,
+            reserved_time=group.start_time,
+            poi=option.poi,
+            why_recommended=notes,
+            order=next_order(day.meals.all()),
+            option=option,
+            est_cost=option.est_cost,
+            currency=currency if option.est_cost is not None else "",
+            **cost_meaning,
+        )
     elif group.kind == Kind.DO:
-        poi = option.poi or (option.event.poi if option.event_id and option.event.poi_id else None) or (
-            option.activity.venue if option.activity_id and option.activity.venue_id else None)
+        poi = (
+            option.poi
+            or (option.event.poi if option.event_id and option.event.poi_id else None)
+            or (option.activity.venue if option.activity_id and option.activity.venue_id else None)
+        )
         kind = TripActivity.Kind.TICKET if option.event_id else quick_add.parse(option.title, "do")["activity_kind"]
         item = TripActivity.objects.create(
-            trip=trip, day=day, title=option.title[:200], kind=kind, poi=poi, event=option.event,
+            trip=trip,
+            day=day,
+            title=option.title[:200],
+            kind=kind,
+            poi=poi,
+            event=option.event,
             place_text="" if poi else (option.place_text or getattr(city, "name", "")),
-            start_time=group.start_time, end_time=group.end_time, est_cost=option.est_cost, currency=currency,
-            notes=notes, order=next_order(day.activities.all()), option=option, **cost_meaning)
+            start_time=group.start_time,
+            end_time=group.end_time,
+            est_cost=option.est_cost,
+            currency=currency,
+            notes=notes,
+            order=next_order(day.activities.all()),
+            option=option,
+            **cost_meaning,
+        )
     elif group.kind == Kind.TRAVEL:
         own = list(trip.cities.all())
         catalogue = None
@@ -327,23 +402,37 @@ def make_item(option, actor=None):
                 return None
             found = match_city(name, own)
             if found is None:
-                catalogue = catalogue if catalogue is not None else list(
-                    City.objects.filter(approval_status=ApprovalStatus.APPROVED))
+                catalogue = (
+                    catalogue
+                    if catalogue is not None
+                    else list(City.objects.filter(approval_status=ApprovalStatus.APPROVED))
+                )
                 found = match_city(name, catalogue)
             return found
+
         origin = option.from_text or (day.city.name if day.city_id else "")
         origin_city, destination_city = find(origin), find(option.to_text) or city
         item = TransportLeg.objects.create(
-            trip=trip, date=day.date, mode=group.mode or TransportLeg.Mode.OTHER, origin=origin[:120],
+            trip=trip,
+            date=day.date,
+            mode=group.mode or TransportLeg.Mode.OTHER,
+            origin=origin[:120],
             destination=(option.to_text or getattr(destination_city, "name", ""))[:120],
-            origin_city=origin_city, destination_city=destination_city,
+            origin_city=origin_city,
+            destination_city=destination_city,
             origin_timezone=getattr(origin_city, "timezone", "") or "",
             destination_timezone=getattr(destination_city, "timezone", "") or "",
-            cost=option.est_cost, currency=currency, notes=notes,
-            order=next_order(trip.transport.filter(date=day.date)), option=option, **cost_meaning)
+            cost=option.est_cost,
+            currency=currency,
+            notes=notes,
+            order=next_order(trip.transport.filter(date=day.date)),
+            option=option,
+            **cost_meaning,
+        )
     else:
         return None
     from django.contrib.contenttypes.models import ContentType
+
     option.made_type, option.made_id = ContentType.objects.get_for_model(item), item.pk
     option.save(update_fields=["made_type", "made_id"])
     trip_cities.sync(trip)
@@ -360,6 +449,7 @@ def make_for(group):
     or every option someone takes in a split — made once (``make_item`` reuses ``option.made``); an option
     with items put in it by hand makes nothing. Returns the items made or reused, in option order."""
     from .models import OptionGroup
+
     if group.kind == OptionGroup.Kind.ANY:
         return []
     items = []
@@ -381,30 +471,45 @@ def map_features(trip):
     with the choice's prompt and the option's votes. One query."""
     from django.db.models import Count
     from django.urls import reverse
+
     from .models import Option, OptionGroup
-    options = (Option.objects.filter(group__trip=trip, group__state=OptionGroup.State.OPEN)
-               .exclude(group__kind=OptionGroup.Kind.ANY)
-               .select_related("group__day", "poi", "city", "event__poi", "event__city", "activity__venue",
-                               "activity__city")
-               .annotate(votes_n=Count("votes")).order_by("group__day__day_number", "group_id", "order"))
+
+    options = (
+        Option.objects.filter(group__trip=trip, group__state=OptionGroup.State.OPEN)
+        .exclude(group__kind=OptionGroup.Kind.ANY)
+        .select_related("group__day", "poi", "city", "event__poi", "event__city", "activity__venue", "activity__city")
+        .annotate(votes_n=Count("votes"))
+        .order_by("group__day__day_number", "group_id", "order")
+    )
     features = []
     for option in options:
-        poi = option.poi or (option.event.poi if option.event_id and option.event.poi_id else None) or (
-            option.activity.venue if option.activity_id and option.activity.venue_id else None)
-        city = option.city or (option.event.city if option.event_id else None) or (
-            option.activity.city if option.activity_id else None) or (poi.city if poi is not None else None)
+        poi = (
+            option.poi
+            or (option.event.poi if option.event_id and option.event.poi_id else None)
+            or (option.activity.venue if option.activity_id and option.activity.venue_id else None)
+        )
+        city = (
+            option.city
+            or (option.event.city if option.event_id else None)
+            or (option.activity.city if option.activity_id else None)
+            or (poi.city if poi is not None else None)
+        )
         spot = poi if poi is not None and poi.latitude is not None else city
         if spot is None or spot.latitude is None or spot.longitude is None:
             continue
         group = option.group
         votes = f" · 👍 {option.votes_n}" if option.votes_n else ""
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(spot.longitude), float(spot.latitude)]},
-            "properties": {
-                "layer": "choices", "marker": "idea", "name": option.title,
-                "subtitle": f"Day {group.day.day_number} · {group.prompt}: undecided{votes}",
-                "url": reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}",
-            },
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(spot.longitude), float(spot.latitude)]},
+                "properties": {
+                    "layer": "choices",
+                    "marker": "idea",
+                    "name": option.title,
+                    "subtitle": f"Day {group.day.day_number} · {group.prompt}: undecided{votes}",
+                    "url": reverse("trips:trip_detail", args=[trip.pk]) + f"#group-{group.pk}",
+                },
+            }
+        )
     return features

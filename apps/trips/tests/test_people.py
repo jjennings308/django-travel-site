@@ -1,4 +1,5 @@
 """The People page and invite links (site roadmap R1)."""
+
 import re
 from datetime import date, timedelta
 from unittest import mock
@@ -28,8 +29,9 @@ class PeopleFixture(TestCase):
         self.carl = make_user("carl")
         self.vera = make_user("vera")
         self.stranger = make_user("stranger")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 8),
-                                        created_by=self.owner)
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 1), end_date=date(2027, 5, 8), created_by=self.owner
+        )
         self.grant(self.owner, TripRole.EDITOR, by=self.owner)
         self.grant(self.ed, TripRole.EDITOR)
         self.grant(self.carl, TripRole.COMMENTOR)
@@ -82,7 +84,9 @@ class PageTests(PeopleFixture):
     def test_no_grant_is_a_404(self):
         self.client.force_login(self.stranger)
         self.assertEqual(self.client.get(self.url).status_code, 404)
-        self.assertEqual(self.client.post(self.url, {"action": "invite", "email": "a@b.co", "role": "viewer"}).status_code, 404)
+        self.assertEqual(
+            self.client.post(self.url, {"action": "invite", "email": "a@b.co", "role": "viewer"}).status_code, 404
+        )
 
     def test_trip_page_and_edit_page_link_to_people(self):
         self.client.force_login(self.vera)
@@ -133,8 +137,9 @@ class InviteTests(PeopleFixture):
         self.assertEqual(self.g(self.stranger).role, TripRole.COMMENTOR)
         self.assertEqual(self.g(self.stranger).granted_by, self.ed)
         self.assertFalse(TripInvite.objects.exists())
-        self.assertTrue(Notification.objects.filter(user=self.stranger,
-                                                    notification_type__name="trip_access_granted").exists())
+        self.assertTrue(
+            Notification.objects.filter(user=self.stranger, notification_type__name="trip_access_granted").exists()
+        )
 
     def test_existing_account_keeps_a_higher_role(self):
         self.post(self.ed, action="invite", email="carl@example.com", role="viewer")
@@ -155,9 +160,12 @@ class InviteTests(PeopleFixture):
         def message(email):
             response = self.client.post(self.url, {"action": "invite", "email": email, "role": "viewer"}, follow=True)
             return [str(m) for m in response.context["messages"]][0]
+
         self.client.force_login(self.ed)
-        self.assertEqual(message("stranger@example.com").replace("stranger", "X"),
-                         message("nobody@example.com").replace("nobody", "X"))
+        self.assertEqual(
+            message("stranger@example.com").replace("stranger", "X"),
+            message("nobody@example.com").replace("nobody", "X"),
+        )
 
     def test_inviting_again_renews_the_one_open_invite(self):
         self.post(self.ed, action="invite", email="new@example.com", role="viewer")
@@ -194,8 +202,10 @@ class InviteTests(PeopleFixture):
         self.assertEqual(mail.outbox, [])
 
     def test_mail_failure_keeps_the_invite(self):
-        with mock.patch("apps.trips.people.EmailMessage.send", side_effect=OSError("smtp down")), \
-                self.assertLogs("apps.trips.people", "ERROR"):
+        with (
+            mock.patch("apps.trips.people.EmailMessage.send", side_effect=OSError("smtp down")),
+            self.assertLogs("apps.trips.people", "ERROR"),
+        ):
             response = self.post(self.ed, action="invite", email="new@example.com", role="viewer")
         self.assertEqual(response.status_code, 302)
         self.assertTrue(TripInvite.objects.filter(email="new@example.com").exists())
@@ -227,7 +237,9 @@ class AcceptTests(PeopleFixture):
         self.assertEqual((self.invite.state, self.invite.accepted_by), (TripInvite.State.ACCEPTED, self.stranger))
         self.assertIn(Traveler.objects.get(user=self.stranger), self.trip.travelers.all())
         # The inviter hears about it; the person who clicked Join isn't told they were added.
-        self.assertTrue(Notification.objects.filter(user=self.ed, notification_type__name="trip_invite_accepted").exists())
+        self.assertTrue(
+            Notification.objects.filter(user=self.ed, notification_type__name="trip_invite_accepted").exists()
+        )
         self.assertFalse(Notification.objects.filter(user=self.stranger).exists())
 
     def test_not_travelling(self):
@@ -285,9 +297,17 @@ class AcceptTests(PeopleFixture):
         form = self.client.get(register_url)
         self.assertEqual(form.context["form"].initial["email"], "friend@example.com")
         self.assertContains(form, 'name="next"')
-        data = {"username": "friend", "email": "friend@example.com", "first_name": "Fran", "last_name": "Friend",
-                "password1": "a-Long-pass-9876", "password2": "a-Long-pass-9876", "next": self.link,
-                "agree_to_terms": "on", "terms_accepted": "on"}
+        data = {
+            "username": "friend",
+            "email": "friend@example.com",
+            "first_name": "Fran",
+            "last_name": "Friend",
+            "password1": "a-Long-pass-9876",
+            "password2": "a-Long-pass-9876",
+            "next": self.link,
+            "agree_to_terms": "on",
+            "terms_accepted": "on",
+        }
         response = self.client.post(reverse("register"), data)
         self.assertEqual(response.status_code, 302)
         verify = re.search(r"https?://[^/\s]+(/[^\s]*verify-email/[^\s]+)", mail.outbox[-1].body).group(1)

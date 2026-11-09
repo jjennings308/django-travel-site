@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
@@ -15,11 +14,14 @@ class RoleRequestFlowTests(TestCase):
 
     def submit(self):
         self.client.force_login(self.alice)
-        return self.client.post(reverse("request_role"), {
-            "requested_role": RoleRequest.RequestedRole.VENDOR,
-            "business_name": "Alice Tours",
-            "business_description": "Small-group walking tours.",
-        })
+        return self.client.post(
+            reverse("request_role"),
+            {
+                "requested_role": RoleRequest.RequestedRole.VENDOR,
+                "business_name": "Alice Tours",
+                "business_description": "Small-group walking tours.",
+            },
+        )
 
     def test_request_page_renders(self):
         self.client.force_login(self.alice)
@@ -78,9 +80,7 @@ class AdminToggleStatusTests(TestCase):
         staff = User.objects.create_superuser("boss", "boss@example.com", "pw-1234-abcd")
         alice = User.objects.create_user("alice", "alice@example.com", "pw-1234-abcd")
         self.client.force_login(staff)
-        response = self.client.post(
-            reverse("staff:admin_toggle_user_status", args=[alice.id]), {"action": "verify"}
-        )
+        response = self.client.post(reverse("staff:admin_toggle_user_status", args=[alice.id]), {"action": "verify"})
         self.assertRedirects(response, reverse("staff:admin_account_detail", args=[alice.id]))
         alice.refresh_from_db()
         self.assertTrue(alice.is_verified)

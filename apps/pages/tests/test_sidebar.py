@@ -1,4 +1,5 @@
 """The sidebar follows the lifecycle: Discover → Dream → Pick a date → Plan → Done."""
+
 import re
 
 from django.contrib.auth import get_user_model
@@ -15,20 +16,40 @@ class SidebarTests(TestCase):
     def nav(self, url):
         html = self.client.get(url).content.decode()
         start = html.index('aria-label="Main"')
-        return html[start:html.index("</nav>", start)]
+        return html[start : html.index("</nav>", start)]
 
     def test_stages_in_order(self):
         text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", self.nav(reverse("pages:dashboard"))))
-        positions = [text.index(s) for s in ("Discover", "Activities", "Events", "Places", "Dream", "My bucket list",
-                                             "Pick a date", "My dates", "Plan", "Trips", "Done", "My adventures")]
+        positions = [
+            text.index(s)
+            for s in (
+                "Discover",
+                "Activities",
+                "Events",
+                "Places",
+                "Dream",
+                "My bucket list",
+                "Pick a date",
+                "My dates",
+                "Plan",
+                "Trips",
+                "Done",
+                "My adventures",
+            )
+        ]
         self.assertEqual(positions, sorted(positions))
 
     def test_one_active_item(self):
         bucket = reverse("bucketlists:dashboard")
-        for url, label in ((reverse("pages:dashboard"), "Home"), (bucket, "My bucket list"),
-                           (reverse("bucketlists:adventures"), "My adventures"), (reverse("events:event_list"), "Events"),
-                           (reverse("bucketlists:dates"), "My dates"),
-                           (reverse("trips:trip_list"), "Trips"), (reverse("activities:activity_list"), "Activities")):
+        for url, label in (
+            (reverse("pages:dashboard"), "Home"),
+            (bucket, "My bucket list"),
+            (reverse("bucketlists:adventures"), "My adventures"),
+            (reverse("events:event_list"), "Events"),
+            (reverse("bucketlists:dates"), "My dates"),
+            (reverse("trips:trip_list"), "Trips"),
+            (reverse("activities:activity_list"), "Activities"),
+        ):
             with self.subTest(url=url):
                 self.assertEqual(ACTIVE.findall(self.nav(url)), [label])
 

@@ -1,12 +1,10 @@
-# events/forms.py
 from django import forms
 
-from apps.core.widgets import DateInput, TimeInput
+from apps.activities.models import Activity, ActivityCategory
 from apps.approval_system.models import ApprovalStatus
+from apps.core.widgets import DateInput, TimeInput
 from apps.locations.models import POI, City, Country
 from apps.media_app.forms import PictureFormMixin
-
-from apps.activities.models import Activity, ActivityCategory
 
 from .models import Event
 
@@ -20,12 +18,33 @@ class EventForm(PictureFormMixin, forms.ModelForm):
     class Meta:
         model = Event
         fields = [
-            "related_activity", "name", "category", "short_description", "description",
-            "city", "country", "location_text", "poi", "venue_name", "venue_address",
-            "start_date", "end_date", "is_all_day", "start_time", "end_time",
-            "event_type", "organizer", "indoor_outdoor", "age_restriction",
-            "is_free", "ticket_price_min", "ticket_price_max", "currency", "ticket_url",
-            "website", "what_to_bring",
+            "related_activity",
+            "name",
+            "category",
+            "short_description",
+            "description",
+            "city",
+            "country",
+            "location_text",
+            "poi",
+            "venue_name",
+            "venue_address",
+            "start_date",
+            "end_date",
+            "is_all_day",
+            "start_time",
+            "end_time",
+            "event_type",
+            "organizer",
+            "indoor_outdoor",
+            "age_restriction",
+            "is_free",
+            "ticket_price_min",
+            "ticket_price_max",
+            "currency",
+            "ticket_url",
+            "website",
+            "what_to_bring",
         ]
         widgets = {
             "name": forms.TextInput(attrs={**INPUT, "placeholder": "e.g. Riverfront Jazz Festival"}),
@@ -54,19 +73,25 @@ class EventForm(PictureFormMixin, forms.ModelForm):
         self.setup_picture()
         self.fields["city"].queryset = (
             City.objects.filter(approval_status=ApprovalStatus.APPROVED)
-            .select_related("country", "region").order_by("country__name", "name")
+            .select_related("country", "region")
+            .order_by("country__name", "name")
         )
         # The region code tells same-named cities apart (Kansas City, MO / KS).
         self.fields["city"].label_from_instance = lambda c: ", ".join(
-            x for x in (c.name, c.region.code if c.region_id else "", c.country.name) if x)
+            x for x in (c.name, c.region.code if c.region_id else "", c.country.name) if x
+        )
         self.fields["city"].required = False
         self.fields["city"].empty_label = "Choose a city…"
-        self.fields["country"].queryset = Country.objects.filter(
-            approval_status=ApprovalStatus.APPROVED).order_by("name")
+        self.fields["country"].queryset = Country.objects.filter(approval_status=ApprovalStatus.APPROVED).order_by(
+            "name"
+        )
         self.fields["country"].empty_label = "Choose a country…"
         self.fields["location_text"].label = "City / town"
         self.fields["poi"].queryset = (
-            POI.objects.filter(approval_status=ApprovalStatus.APPROVED).select_related("city").order_by("city__name", "name"))
+            POI.objects.filter(approval_status=ApprovalStatus.APPROVED)
+            .select_related("city")
+            .order_by("city__name", "name")
+        )
         self.fields["poi"].label = "Venue from our places (optional)"
         self.fields["poi"].label_from_instance = lambda p: f"{p.name} ({p.city.name})"
         self.fields["poi"].empty_label = "Not one of our places"
@@ -112,8 +137,13 @@ class EventForm(PictureFormMixin, forms.ModelForm):
         start, end = cleaned.get("start_date"), cleaned.get("end_date")
         if start and end and end < start:
             self.add_error("end_date", "The end date can't be before the start date.")
-        if not cleaned.get("is_all_day") and cleaned.get("start_time") and cleaned.get("end_time") \
-                and (not end or end == start) and cleaned["end_time"] < cleaned["start_time"]:
+        if (
+            not cleaned.get("is_all_day")
+            and cleaned.get("start_time")
+            and cleaned.get("end_time")
+            and (not end or end == start)
+            and cleaned["end_time"] < cleaned["start_time"]
+        ):
             self.add_error("end_time", "The end time can't be before the start time on a one-day event.")
         lo, hi = cleaned.get("ticket_price_min"), cleaned.get("ticket_price_max")
         if lo is not None and hi is not None and hi < lo:

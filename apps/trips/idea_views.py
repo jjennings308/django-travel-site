@@ -6,6 +6,7 @@ its catalogue link, opened like + Add's) or add it as an option of a "choose one
 ``idea_from_catalogue`` is "Add to a trip" on a catalogue place, activity, event or city page: it lists
 the member's trips they may comment on and adds the item to the chosen one's shelf.
 """
+
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -23,7 +24,8 @@ from apps.approval_system.models import ApprovalStatus
 from apps.events.models import Event
 from apps.locations.models import POI, City
 
-from . import ideas, quick_add as parser, trip_cities
+from . import ideas, trip_cities
+from . import quick_add as parser
 from .forms import IdeaForm
 from .models import Day, Option, OptionGroup, Trip, TripIdea, Vote
 from .views import _back, _is_panel, _make_on_day, _readable_trip
@@ -132,19 +134,29 @@ def idea_option(request, pk, idea_pk):
     group_pk = request.POST.get("group") or (number if where == "group" else "")
     day_pk = request.POST.get("day") or (number if where == "day" else "")
     if group_pk:
-        group = get_object_or_404(OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN),
-                                  pk=group_pk if str(group_pk).isdigit() else 0)
+        group = get_object_or_404(
+            OptionGroup.objects.filter(trip=trip, state=OptionGroup.State.OPEN),
+            pk=group_pk if str(group_pk).isdigit() else 0,
+        )
         if not ideas.fits(idea, group):
-            messages.error(request, f"“{group.prompt}” is a choice about {group.get_kind_display().lower()}: "
-                                    f"“{idea.title}” doesn't fit it.")
+            messages.error(
+                request,
+                f"“{group.prompt}” is a choice about {group.get_kind_display().lower()}: "
+                f"“{idea.title}” doesn't fit it.",
+            )
             return redirect(_shelf(trip, idea))
     else:
         day = get_object_or_404(Day.objects.filter(trip=trip), pk=day_pk if str(day_pk).isdigit() else 0)
         prompt = " ".join(request.POST.get("prompt", "").split())[:200] or f"{idea.title} or …"
-        group = OptionGroup.objects.create(trip=trip, day=day, prompt=prompt, order=day.option_groups.count(),
-                                           kind=ideas.choice_kind(idea))
-    option = Option.objects.create(group=group, title=idea.title[:200], notes=idea.notes,
-                                   order=(group.options.aggregate(m=Max("order"))["m"] or 0) + 1)
+        group = OptionGroup.objects.create(
+            trip=trip, day=day, prompt=prompt, order=day.option_groups.count(), kind=ideas.choice_kind(idea)
+        )
+    option = Option.objects.create(
+        group=group,
+        title=idea.title[:200],
+        notes=idea.notes,
+        order=(group.options.aggregate(m=Max("order"))["m"] or 0) + 1,
+    )
     if group.kind != OptionGroup.Kind.ANY:
         ideas.fill_option(idea, option)
         trip_cities.sync(trip)
@@ -168,8 +180,11 @@ def _catalogue_target(kind, obj_pk, user):
     if model is None:
         raise Http404
     obj = get_object_or_404(model, pk=obj_pk)
-    visible = (obj.is_visible_to(user) if hasattr(obj, "is_visible_to")
-               else obj.approval_status == ApprovalStatus.APPROVED or user.is_staff)
+    visible = (
+        obj.is_visible_to(user)
+        if hasattr(obj, "is_visible_to")
+        else obj.approval_status == ApprovalStatus.APPROVED or user.is_staff
+    )
     if not visible:
         raise Http404
     return obj
@@ -184,7 +199,7 @@ def commentable_trips(user):
 
 @login_required
 def idea_from_catalogue(request, kind, obj_pk):
-    """"Add to a trip" from a catalogue page: pick one of your trips; the item joins its Ideas shelf."""
+    """ "Add to a trip" from a catalogue page: pick one of your trips; the item joins its Ideas shelf."""
     target = _catalogue_target(kind, obj_pk, request.user)
     trips = commentable_trips(request.user)
     if request.method == "POST":
@@ -199,6 +214,13 @@ def idea_from_catalogue(request, kind, obj_pk):
         else:
             messages.info(request, f"“{target.name}” is already an idea for “{trip.name}”.")
         return redirect(_shelf(trip, idea))
-    return render(request, "trips/idea_from_catalogue.html", {
-        "target": target, "kind": kind, "trips": trips, "back": _back(request, ""),
-    })
+    return render(
+        request,
+        "trips/idea_from_catalogue.html",
+        {
+            "target": target,
+            "kind": kind,
+            "trips": trips,
+            "back": _back(request, ""),
+        },
+    )

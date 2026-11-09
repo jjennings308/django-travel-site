@@ -1,16 +1,16 @@
 """Phase E of docs/plans/trip-items-and-confirmations.md: booking tasks point at the leg or
 stay they're about, suggestions for existing tasks, the derived "Not booked yet" list, and the
 offer to tick tasks off when an item gets its first confirmation."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.trips.forms import BookingTaskForm
-from apps.trips.tests.helpers import make_task
 from apps.trips.models import BookingTask, Confirmation, Day, Lodging, TransportLeg, Trip, TripGrant, TripRole
+from apps.trips.tests.helpers import make_task
 
 User = get_user_model()
 
@@ -19,17 +19,31 @@ class Fixture(TestCase):
     def setUp(self):
         self.editor = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.viewer = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 25),
-                                        created_by=self.editor)
+        self.trip = Trip.objects.create(
+            name="Europe", start_date=date(2027, 9, 18), end_date=date(2027, 9, 25), created_by=self.editor
+        )
         TripGrant.objects.create(trip=self.trip, user=self.editor, role=TripRole.EDITOR)
         TripGrant.objects.create(trip=self.trip, user=self.viewer, role=TripRole.VIEWER)
         self.day = Day.objects.create(trip=self.trip, day_number=4, date=date(2027, 9, 20))
-        self.ice = TransportLeg.objects.create(trip=self.trip, date=self.day.date, mode="train", operator="DB ICE",
-                                               origin="Frankfurt Hof", destination="Augsburg Hof")
-        self.ubahn = TransportLeg.objects.create(trip=self.trip, date=self.day.date, mode="train",
-                                                 origin="München Hbf", destination="Theresienwiese", order=1)
-        self.hof = Lodging.objects.create(trip=self.trip, name="Hessischer Hof", check_in=date(2027, 9, 18),
-                                          check_out=date(2027, 9, 20))
+        self.ice = TransportLeg.objects.create(
+            trip=self.trip,
+            date=self.day.date,
+            mode="train",
+            operator="DB ICE",
+            origin="Frankfurt Hof",
+            destination="Augsburg Hof",
+        )
+        self.ubahn = TransportLeg.objects.create(
+            trip=self.trip,
+            date=self.day.date,
+            mode="train",
+            origin="München Hbf",
+            destination="Theresienwiese",
+            order=1,
+        )
+        self.hof = Lodging.objects.create(
+            trip=self.trip, name="Hessischer Hof", check_in=date(2027, 9, 18), check_out=date(2027, 9, 20)
+        )
         self.detail = reverse("trips:trip_detail", args=[self.trip.pk])
 
     def page(self, user=None):
@@ -75,9 +89,11 @@ class TripPageTests(Fixture):
         page = self.page(self.viewer)
         self.assertContains(page, "Still to book: ICE seats for 6")
         html = page.content.decode()
-        row = html[html.index(f'id="to-book-leg-{self.ice.pk}"'):]
-        row = row[:row.index("</li>")]
-        self.assertIn(f'<a class="link-quiet font-medium" href="#leg-{self.ice.pk}">Frankfurt Hof → Augsburg Hof</a>', row)
+        row = html[html.index(f'id="to-book-leg-{self.ice.pk}"') :]
+        row = row[: row.index("</li>")]
+        self.assertIn(
+            f'<a class="link-quiet font-medium" href="#leg-{self.ice.pk}">Frankfurt Hof → Augsburg Hof</a>', row
+        )
         self.assertIn("Day 4", row)
         self.assertIn("ICE seats for 6", row)  # its to-do, in the item's To book row (booking-todos K2)
 
@@ -95,16 +111,16 @@ class TripPageTests(Fixture):
         self.client.force_login(self.editor)
         self.client.post(link, {"leg": self.ice.pk})
         self.assertEqual(ice_task.covered(), [self.ice])
-        self.client.post(reverse("trips:task_link", args=[self.trip.pk, hotel_task.pk]),
-                         {"dismiss": "Hessischer Hof"})
+        self.client.post(reverse("trips:task_link", args=[self.trip.pk, hotel_task.pk]), {"dismiss": "Hessischer Hof"})
         self.assertEqual(hotel_task.covered(), [])
         page = self.page()
         self.assertNotContains(page, "Looks like:")
         self.assertNotContains(page, "Not about:")  # the remembered dismissal isn't shown
 
     def test_no_suggestion_when_two_items_match(self):
-        Lodging.objects.create(trip=self.trip, name="Hessischer Hof Annex", check_in=date(2027, 9, 18),
-                               check_out=date(2027, 9, 19))
+        Lodging.objects.create(
+            trip=self.trip, name="Hessischer Hof Annex", check_in=date(2027, 9, 18), check_out=date(2027, 9, 19)
+        )
         BookingTask.objects.create(trip=self.trip, title="Hessischer Hof Annex rooms")
         self.assertNotContains(self.page(), "Looks like:")
 
@@ -117,10 +133,12 @@ class TripPageTests(Fixture):
         self.assertEqual(self.client.post(link, {"leg": self.ice.pk}).status_code, 404)
 
     def test_not_booked_yet(self):
-        flight = TransportLeg.objects.create(trip=self.trip, date=self.day.date, mode="plane", origin="MUC",
-                                             destination="MAN", order=2)
-        booked = Lodging.objects.create(trip=self.trip, name="The Christopher", check_in=date(2027, 9, 21),
-                                        check_out=date(2027, 9, 22))
+        flight = TransportLeg.objects.create(
+            trip=self.trip, date=self.day.date, mode="plane", origin="MUC", destination="MAN", order=2
+        )
+        booked = Lodging.objects.create(
+            trip=self.trip, name="The Christopher", check_in=date(2027, 9, 21), check_out=date(2027, 9, 22)
+        )
         Confirmation.objects.create(trip=self.trip, confirmation_number="CHR1").link(booked)
         make_task(self.trip, "Hof rooms", self.hof)
         items = self.page().context["not_booked"]
@@ -135,14 +153,18 @@ class OfferTests(Fixture):
         self.client.force_login(self.editor)
 
     def test_first_confirmation_offers_its_tasks_and_ticks_only_the_chosen(self):
-        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]), {
-            "action": "add", "confirmation_number": "DB123"})
+        response = self.client.post(
+            reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
+            {"action": "add", "confirmation_number": "DB123"},
+        )
         self.assertTrue(response["Location"].startswith(reverse("trips:task_offer", args=[self.trip.pk])))
         offer = self.client.get(response["Location"])
         self.assertContains(offer, "ICE seats for 6")
         self.assertContains(offer, "Seat map check")
-        done = self.client.post(reverse("trips:task_offer", args=[self.trip.pk]), {
-            "tasks": f"{self.seats.pk},{self.other.pk}", "done": [self.seats.pk], "next": self.detail})
+        done = self.client.post(
+            reverse("trips:task_offer", args=[self.trip.pk]),
+            {"tasks": f"{self.seats.pk},{self.other.pk}", "done": [self.seats.pk], "next": self.detail},
+        )
         self.assertRedirects(done, self.detail, fetch_redirect_response=False)
         self.seats.refresh_from_db()
         self.other.refresh_from_db()
@@ -151,20 +173,26 @@ class OfferTests(Fixture):
     def test_no_offer_for_a_second_confirmation(self):
         Confirmation.objects.create(trip=self.trip, confirmation_number="FIRST").link(self.ice)
         second = Confirmation.objects.create(trip=self.trip, confirmation_number="SECOND")
-        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
-                                    {"action": "attach", "confirmation": second.pk})
+        response = self.client.post(
+            reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
+            {"action": "attach", "confirmation": second.pk},
+        )
         self.assertNotIn("tasks/done", response["Location"])
 
     def test_attaching_an_existing_one_offers_too(self):
         conf = Confirmation.objects.create(trip=self.trip, confirmation_number="DB123")
-        response = self.client.post(reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
-                                    {"action": "attach", "confirmation": conf.pk})
+        response = self.client.post(
+            reverse("trips:item_confirmations", args=[self.trip.pk, "leg", self.ice.pk]),
+            {"action": "attach", "confirmation": conf.pk},
+        )
         self.assertIn("tasks/done", response["Location"])
 
     def test_offer_ignores_other_trips_tasks(self):
         other = Trip.objects.create(name="Other", start_date=date(2027, 1, 1), end_date=date(2027, 1, 2))
         theirs = BookingTask.objects.create(trip=other, title="Not yours")
-        self.client.post(reverse("trips:task_offer", args=[self.trip.pk]),
-                         {"tasks": str(theirs.pk), "done": [theirs.pk], "next": self.detail})
+        self.client.post(
+            reverse("trips:task_offer", args=[self.trip.pk]),
+            {"tasks": str(theirs.pk), "done": [theirs.pk], "next": self.detail},
+        )
         theirs.refresh_from_db()
         self.assertFalse(theirs.done)

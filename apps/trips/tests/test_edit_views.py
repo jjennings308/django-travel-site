@@ -13,32 +13,28 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Role
-from apps.trips.models import TripRole
 from apps.trips.forms import TransportLegForm
 from apps.trips.models import (
     BookingTask,
     Confirmation,
-    Contact,
     Day,
     Lodging,
     Section,
-    Traveler,
     TransportLeg,
+    Traveler,
     Trip,
     TripGrant,
+    TripRole,
     can_create_trip,
 )
-from apps.trips.views import _visible_capabilities
-
 from apps.trips.tests.helpers import give
+from apps.trips.views import _visible_capabilities
 
 User = get_user_model()
 
 
 def make_user(username, **kwargs):
-    return User.objects.create_user(
-        username, f"{username}@example.com", "pw-1234-abcd", **kwargs
-    )
+    return User.objects.create_user(username, f"{username}@example.com", "pw-1234-abcd", **kwargs)
 
 
 class TripEditingFixture(TestCase):
@@ -72,6 +68,7 @@ class TripEditingFixture(TestCase):
         data.update(overrides)
         return data
 
+
 class TripCreateTests(TripEditingFixture):
     def test_a_creator_may_open_the_form(self):
         self.give(self.alice, Role.CREATOR)
@@ -84,13 +81,9 @@ class TripCreateTests(TripEditingFixture):
         self.alice.trip_creation_blocked = True
         self.alice.save()
         self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse("trips:trip_create")).status_code, 403)
         self.assertEqual(
-            self.client.get(reverse("trips:trip_create")).status_code, 403
-        )
-        self.assertEqual(
-            self.client.post(
-                reverse("trips:trip_create"), self.valid_trip_payload()
-            ).status_code,
+            self.client.post(reverse("trips:trip_create"), self.valid_trip_payload()).status_code,
             403,
         )
         self.assertEqual(Trip.objects.count(), 1)
@@ -115,13 +108,9 @@ class TripCreateTests(TripEditingFixture):
     def test_creating_redirects_to_the_new_trip(self):
         self.give(self.alice, Role.CREATOR)
         self.client.force_login(self.alice)
-        response = self.client.post(
-            reverse("trips:trip_create"), self.valid_trip_payload()
-        )
+        response = self.client.post(reverse("trips:trip_create"), self.valid_trip_payload())
         new = Trip.objects.exclude(pk=self.trip.pk).get()
-        self.assertRedirects(
-            response, reverse("trips:trip_detail", args=[new.pk])
-        )
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[new.pk]))
 
     def test_a_new_traveler_can_be_added_from_the_same_form(self):
         self.give(self.alice, Role.CREATOR)
@@ -131,9 +120,7 @@ class TripCreateTests(TripEditingFixture):
             {**self.valid_trip_payload(), "new_traveler_name": "Ada Lovelace"},
         )
         new = Trip.objects.exclude(pk=self.trip.pk).get()
-        self.assertEqual(
-            [t.name for t in new.travelers.all()], ["Ada Lovelace"]
-        )
+        self.assertEqual([t.name for t in new.travelers.all()], ["Ada Lovelace"])
 
     def test_a_blank_traveler_name_is_not_an_error(self):
         self.give(self.alice, Role.CREATOR)
@@ -188,9 +175,7 @@ class TripEditTests(TripEditingFixture):
             reverse("trips:trip_settings", args=[self.trip.pk]),
             self.valid_trip_payload(name="Taos, revised"),
         )
-        self.assertRedirects(
-            response, reverse("trips:trip_detail", args=[self.trip.pk])
-        )
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]))
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.name, "Taos, revised")
 
@@ -209,9 +194,7 @@ class TripEditTests(TripEditingFixture):
         self.client.force_login(self.alice)
         # 403 not 404: she can already read the trip, so it is not a secret.
         self.assertEqual(
-            self.client.get(
-                reverse("trips:trip_settings", args=[self.trip.pk])
-            ).status_code,
+            self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])).status_code,
             403,
         )
         self.trip.refresh_from_db()
@@ -224,9 +207,7 @@ class TripEditTests(TripEditingFixture):
         self.give(self.alice, Role.CREATOR)
         self.client.force_login(self.alice)
         self.assertEqual(
-            self.client.get(
-                reverse("trips:trip_settings", args=[self.trip.pk])
-            ).status_code,
+            self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])).status_code,
             404,
         )
 
@@ -248,18 +229,14 @@ class TripEditTests(TripEditingFixture):
             reverse("trips:trip_settings", args=[self.trip.pk]),
             {**self.valid_trip_payload(), "new_traveler_name": "Bo"},
         )
-        self.assertEqual(
-            sorted(t.name for t in self.trip.travelers.all()), ["Bo"]
-        )
+        self.assertEqual(sorted(t.name for t in self.trip.travelers.all()), ["Bo"])
 
     def test_a_deleted_trip_cannot_be_edited(self):
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.trip.soft_delete()
         self.client.force_login(self.alice)
         self.assertEqual(
-            self.client.get(
-                reverse("trips:trip_settings", args=[self.trip.pk])
-            ).status_code,
+            self.client.get(reverse("trips:trip_settings", args=[self.trip.pk])).status_code,
             404,
         )
 
@@ -269,9 +246,7 @@ class TripDeleteTests(TripEditingFixture):
         self.own(self.alice)
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
-        response = self.client.post(
-            reverse("trips:trip_delete", args=[self.trip.pk])
-        )
+        response = self.client.post(reverse("trips:trip_delete", args=[self.trip.pk]))
         self.assertRedirects(response, reverse("trips:trip_list"))
         self.trip.refresh_from_db()
         self.assertTrue(self.trip.is_deleted)
@@ -280,21 +255,15 @@ class TripDeleteTests(TripEditingFixture):
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
         self.assertEqual(
-            self.client.get(
-                reverse("trips:trip_delete", args=[self.trip.pk])
-            ).status_code,
+            self.client.get(reverse("trips:trip_delete", args=[self.trip.pk])).status_code,
             403,
         )
         self.trip.refresh_from_db()
         self.assertFalse(self.trip.is_deleted)
 
     def test_deleting_keeps_the_data(self):
-        day = Day.objects.create(
-            trip=self.trip, day_number=1, date=date(2026, 9, 12)
-        )
-        section = Section.objects.create(
-            day=day, section_type=Section.Type.NOTE, content={}
-        )
+        day = Day.objects.create(trip=self.trip, day_number=1, date=date(2026, 9, 12))
+        section = Section.objects.create(day=day, section_type=Section.Type.NOTE, content={})
         self.own(self.alice)
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
@@ -308,9 +277,7 @@ class TripDeleteTests(TripEditingFixture):
         self.own(self.alice)
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         self.client.force_login(self.alice)
-        response = self.client.get(
-            reverse("trips:trip_delete", args=[self.trip.pk])
-        )
+        response = self.client.get(reverse("trips:trip_delete", args=[self.trip.pk]))
         self.assertEqual(response.status_code, 200)
         self.trip.refresh_from_db()
         self.assertFalse(self.trip.is_deleted)
@@ -326,12 +293,8 @@ class TripRestoreTests(TripEditingFixture):
     def test_staff_may_restore(self):
         self.trip.soft_delete()
         self.client.force_login(self.staff)
-        response = self.client.post(
-            reverse("trips:trip_restore", args=[self.trip.pk])
-        )
-        self.assertRedirects(
-            response, reverse("trips:trip_detail", args=[self.trip.pk])
-        )
+        response = self.client.post(reverse("trips:trip_restore", args=[self.trip.pk]))
+        self.assertRedirects(response, reverse("trips:trip_detail", args=[self.trip.pk]))
         self.trip.refresh_from_db()
         self.assertFalse(self.trip.is_deleted)
 
@@ -342,9 +305,7 @@ class TripRestoreTests(TripEditingFixture):
         self.trip.soft_delete()
         self.client.force_login(self.alice)
         self.assertEqual(
-            self.client.post(
-                reverse("trips:trip_restore", args=[self.trip.pk])
-            ).status_code,
+            self.client.post(reverse("trips:trip_restore", args=[self.trip.pk])).status_code,
             404,
         )
         self.trip.refresh_from_db()
@@ -353,9 +314,7 @@ class TripRestoreTests(TripEditingFixture):
     def test_get_does_not_restore(self):
         self.trip.soft_delete()
         self.client.force_login(self.staff)
-        response = self.client.get(
-            reverse("trips:trip_restore", args=[self.trip.pk])
-        )
+        response = self.client.get(reverse("trips:trip_restore", args=[self.trip.pk]))
         self.assertRedirects(response, reverse("trips:trip_list"))
         self.trip.refresh_from_db()
         self.assertTrue(self.trip.is_deleted)
@@ -405,9 +364,7 @@ class TripListLinkTests(TripEditingFixture):
         self.give(self.alice, TripRole.VIEWER, trip=self.trip)
         self.trip.soft_delete()
         self.client.force_login(self.alice)
-        self.assertNotContains(
-            self.client.get(reverse("trips:trip_list")), "Taos"
-        )
+        self.assertNotContains(self.client.get(reverse("trips:trip_list")), "Taos")
 
 
 class ListCapabilityEquivalenceTests(TripEditingFixture):
@@ -489,17 +446,22 @@ class EditTripPageTests(TripEditingFixture):
 
     def test_all_stays_and_legs_on_bookings_open_on_the_trip_page_and_flag_strays(self):
         """P7: All stays & legs moved from Edit trip to Bookings; each opens its item on the trip page."""
-        stay = Lodging.objects.create(trip=self.trip, name="El Rancho", check_in=self.day.date,
-                                      check_out=date(2026, 9, 15))
-        leg = TransportLeg.objects.create(trip=self.trip, mode="train", origin="Lamy", destination="Taos",
-                                          date=self.day.date)
-        stray = TransportLeg.objects.create(trip=self.trip, mode="pov", origin="A", destination="B",
-                                            date=date(2026, 10, 1))
+        stay = Lodging.objects.create(
+            trip=self.trip, name="El Rancho", check_in=self.day.date, check_out=date(2026, 9, 15)
+        )
+        leg = TransportLeg.objects.create(
+            trip=self.trip, mode="train", origin="Lamy", destination="Taos", date=self.day.date
+        )
+        stray = TransportLeg.objects.create(
+            trip=self.trip, mode="pov", origin="A", destination="B", date=date(2026, 10, 1)
+        )
         Lodging.objects.create(trip=self.trip, name="Early Inn", check_in=date(2026, 9, 1), check_out=date(2026, 9, 2))
         Confirmation.attach_number(self.trip, "RANCHO-1", stay)
         Confirmation.objects.create(trip=self.trip, confirmation_number="INS-9", label="Insurance")
         bookings = self.client.get(reverse("trips:trip_bookings", args=[self.trip.pk])).content.decode()
-        table = bookings[bookings.index("data-stays-legs"):bookings.index("</table>", bookings.index("data-stays-legs"))]
+        table = bookings[
+            bookings.index("data-stays-legs") : bookings.index("</table>", bookings.index("data-stays-legs"))
+        ]
         detail = reverse("trips:trip_detail", args=[self.trip.pk])
         for anchor in (f"stay-{stay.pk}", f"leg-{leg.pk}", f"leg-{stray.pk}"):
             self.assertIn(f'href="{detail}?item={anchor}#{anchor}"', table)
@@ -510,12 +472,13 @@ class EditTripPageTests(TripEditingFixture):
         self.assertEqual(table.count("data-not-on-a-day"), 2)
         self.assertIn("Not on any day", table)
         self.assertIn("Outside the trip's days", table)
-        loose = body[body.index('id="loose-confirmations"'):]
+        loose = body[body.index('id="loose-confirmations"') :]
         self.assertIn("INS-9", loose)
 
     def test_saving_the_trip_leaves_its_stays_and_legs_alone(self):
-        stay = Lodging.objects.create(trip=self.trip, name="El Rancho", check_in=self.day.date,
-                                      check_out=date(2026, 9, 15))
+        stay = Lodging.objects.create(
+            trip=self.trip, name="El Rancho", check_in=self.day.date, check_out=date(2026, 9, 15)
+        )
         TransportLeg.objects.create(trip=self.trip, mode="train", origin="Lamy", destination="Taos", date=self.day.date)
         response = self.client.post(self.url, self.valid_trip_payload(name="Taos 2026"))
         self.assertEqual(response.status_code, 302)
@@ -535,9 +498,17 @@ class LegFormTests(TripEditingFixture):
     moved here from the Edit trip formset tests when that formset went (E3)."""
 
     def form(self, **leg):
-        data = {"mode": "train", "date": "", "origin": "Munich", "origin_timezone": "Europe/Berlin",
-                "departure_local": "2027-09-25T10:00", "destination": "Berlin",
-                "destination_timezone": "Europe/Berlin", "arrival_local": "2027-09-25T14:00", "currency": "EUR"}
+        data = {
+            "mode": "train",
+            "date": "",
+            "origin": "Munich",
+            "origin_timezone": "Europe/Berlin",
+            "departure_local": "2027-09-25T10:00",
+            "destination": "Berlin",
+            "destination_timezone": "Europe/Berlin",
+            "arrival_local": "2027-09-25T14:00",
+            "currency": "EUR",
+        }
         data.update(leg)
         return TransportLegForm(data, instance=TransportLeg(trip=self.trip))
 
@@ -574,18 +545,29 @@ class LegFormTests(TripEditingFixture):
 
     def test_a_time_carrying_its_own_offset_is_trusted(self):
         # An explicit offset wins over the zone, so it is never re-converted.
-        leg = self.saved(mode="plane", origin="JFK", origin_timezone="America/New_York",
-                         departure_local="2026-01-15T18:00:00+00:00", destination="DEN",
-                         destination_timezone="America/Denver", arrival_local="2026-01-15T21:00:00+00:00")
+        leg = self.saved(
+            mode="plane",
+            origin="JFK",
+            origin_timezone="America/New_York",
+            departure_local="2026-01-15T18:00:00+00:00",
+            destination="DEN",
+            destination_timezone="America/Denver",
+            arrival_local="2026-01-15T21:00:00+00:00",
+        )
         self.assertEqual(leg.departure_at, datetime(2026, 1, 15, 18, 0, tzinfo=timezone.utc))
 
     def leg_page(self):
         self.give(self.alice, TripRole.EDITOR, trip=self.trip)
         leg = TransportLeg.objects.create(
-            trip=self.trip, mode=TransportLeg.Mode.PLANE, origin="JFK", destination="DEN",
-            origin_timezone="America/New_York", destination_timezone="America/Denver",
+            trip=self.trip,
+            mode=TransportLeg.Mode.PLANE,
+            origin="JFK",
+            destination="DEN",
+            origin_timezone="America/New_York",
+            destination_timezone="America/Denver",
             departure_at=datetime(2026, 1, 15, 23, 0, tzinfo=timezone.utc),
-            arrival_at=datetime(2026, 1, 16, 2, 30, tzinfo=timezone.utc))
+            arrival_at=datetime(2026, 1, 16, 2, 30, tzinfo=timezone.utc),
+        )
         self.client.force_login(self.alice)
         return self.client.get(reverse("trips:leg_edit", args=[self.trip.pk, leg.pk])).content.decode()
 

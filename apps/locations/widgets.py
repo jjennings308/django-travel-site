@@ -1,4 +1,3 @@
-# locations/widgets.py
 from django import forms
 
 
@@ -44,6 +43,7 @@ class CitySearchInput(forms.Select):
 
     def get_context(self, name, value, attrs):
         from django.urls import reverse
+
         context = super().get_context(name, value, attrs)
         widget = context["widget"]
         selected, chips = [], []
@@ -51,8 +51,11 @@ class CitySearchInput(forms.Select):
             for option in options:
                 if not option["value"]:
                     continue
-                city = {"id": str(option["value"]), "label": str(option["label"]),
-                        "timezone": option["attrs"].get("data-tz", "")}
+                city = {
+                    "id": str(option["value"]),
+                    "label": str(option["label"]),
+                    "timezone": option["attrs"].get("data-tz", ""),
+                }
                 if option["selected"]:
                     selected.append(city)
                 if group_name == self.chips_group:
@@ -65,9 +68,13 @@ class CitySearchInput(forms.Select):
             "text_class": widget["attrs"].get("class", ""),
             "placeholder": self.placeholder,
             "config": {
-                "name": widget["name"], "multiple": self.allow_multiple_selected, "selected": selected,
-                "chips": chips, "searchUrl": reverse("locations:city_search"),
-                "newUrl": reverse("locations:city_new"), "countriesUrl": reverse("locations:country_options"),
+                "name": widget["name"],
+                "multiple": self.allow_multiple_selected,
+                "selected": selected,
+                "chips": chips,
+                "searchUrl": reverse("locations:city_search"),
+                "newUrl": reverse("locations:city_new"),
+                "countriesUrl": reverse("locations:country_options"),
                 "regionsUrl": reverse("locations:get_regions", args=[0]),
             },
         }

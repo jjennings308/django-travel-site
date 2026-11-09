@@ -5,6 +5,7 @@
 Files can be edited and loaded back on /staff/import/, in this order: countries,
 regions, cities, places, activities, events.
 """
+
 from pathlib import Path
 
 from django.core.management.base import BaseCommand

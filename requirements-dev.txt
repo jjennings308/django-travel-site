@@ -7,3 +7,5 @@ django-browser-reload==1.21.0
 tblib==3.2.2
 # Renders flag-icons' SVGs to the committed country flag PNGs (scripts/build_flag_pngs.py; needs system cairo).
 cairosvg==2.7.1
+# Linting and formatting (ruff.toml); CI runs `ruff check` and `ruff format --check`.
+ruff==0.17.4

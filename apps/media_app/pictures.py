@@ -1,4 +1,3 @@
-# media_app/pictures.py
 """Picking the picture to show for an object that may borrow one from what it's linked to."""
 
 

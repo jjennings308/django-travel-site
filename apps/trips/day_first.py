@@ -23,6 +23,7 @@ step only for new code, never by importing this module from a migration.
 Decision to-dos (a to-do with options) were converted into groups here until retire-decision-todos D2
 removed them; ``make_group`` is what's left of that, used by ``import_itinerary`` and Tidy.
 """
+
 TONES = {"info": "tip", "tip": "tip", "warning": "warning", "critical": "critical"}
 #: Section types retired in S2: never saved any more, still read from documents and old snapshots.
 OLD_NOTE_TYPES = ("phase", "callout", "free_text")
@@ -36,7 +37,9 @@ def note_from(section_type, title, content):
     title = title or ""
     if section_type == "phase":
         title = (content.pop("heading", "") or title)[:200]
-        paragraphs = [p for p in [content.pop("summary", "")] if p] + [f"• {h}" for h in content.pop("highlights", []) or []]
+        paragraphs = [p for p in [content.pop("summary", "")] if p] + [
+            f"• {h}" for h in content.pop("highlights", []) or []
+        ]
         tone = ""
     elif section_type == "callout":
         text = content.pop("text", "") or ""
@@ -79,10 +82,22 @@ def adventure_group(title, content):
     for order, option in enumerate(_options(content)):
         extra = " · ".join(str(option.get(k)) for k in ("duration", "cost") if option.get(k))
         notes = "\n".join(p for p in (str(option.get("description") or ""), extra) if p)
-        options.append({"title": (str(option.get("title") or "") or f"Option {order + 1}")[:200], "notes": notes,
-                        "url": "", "est_cost": None, "currency": "", "order": order, "chosen": False})
-    return {"prompt": (content.get("prompt") or title or "Choose one")[:200], "notes": content.get("summary") or "",
-            "options": options}
+        options.append(
+            {
+                "title": (str(option.get("title") or "") or f"Option {order + 1}")[:200],
+                "notes": notes,
+                "url": "",
+                "est_cost": None,
+                "currency": "",
+                "order": order,
+                "chosen": False,
+            }
+        )
+    return {
+        "prompt": (content.get("prompt") or title or "Choose one")[:200],
+        "notes": content.get("summary") or "",
+        "options": options,
+    }
 
 
 def as_note(section_type, title, content):
@@ -95,12 +110,21 @@ def as_note(section_type, title, content):
 def make_group(trip, day, prompt, notes, options, order=None):
     """An ``OptionGroup`` on ``day`` with its options (dicts as ``adventure_group`` makes); a chosen one is picked."""
     from .models import Option, OptionGroup
-    group = OptionGroup.objects.create(trip=trip, day=day, prompt=prompt, notes=notes,
-                                       order=day.option_groups.count() if order is None else order)
+
+    group = OptionGroup.objects.create(
+        trip=trip, day=day, prompt=prompt, notes=notes, order=day.option_groups.count() if order is None else order
+    )
     chosen = None
     for data in options:
-        option = Option.objects.create(group=group, title=data["title"], notes=data["notes"], url=data["url"] or "",
-                                       est_cost=data["est_cost"], currency=data["currency"] or "", order=data["order"])
+        option = Option.objects.create(
+            group=group,
+            title=data["title"],
+            notes=data["notes"],
+            url=data["url"] or "",
+            est_cost=data["est_cost"],
+            currency=data["currency"] or "",
+            order=data["order"],
+        )
         if data["chosen"]:
             chosen = option
     if chosen is not None:

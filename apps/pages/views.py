@@ -1,20 +1,21 @@
-# pages/views.py
+from datetime import date as date_cls
+
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.conf import settings
-from django.shortcuts import render, redirect
-from django.db.models import Count, Q
-from django.utils import timezone
-from django.contrib import messages
 from django.core.cache import cache
 from django.core.mail import EmailMessage
+from django.db.models import Count
+from django.shortcuts import redirect, render
+from django.utils import timezone
+
 from apps.approval_system.models import ApprovalStatus
-from apps.core.ratelimit import limit
-from datetime import date as date_cls, timedelta
-from apps.accounts.models import Profile
-from apps.trips.models import Trip
 from apps.bucketlists.models import BucketListItem
-from apps.recommendations.services import Goals, for_user as recommend
+from apps.core.ratelimit import limit
+from apps.recommendations.services import Goals
+from apps.recommendations.services import for_user as recommend
+from apps.trips.models import Trip
 
 
 def _catalogue_counts():
@@ -23,6 +24,7 @@ def _catalogue_counts():
     if counts is None:
         from apps.activities.models import Activity
         from apps.locations.models import POI, City, Country
+
         approved = {"approval_status": ApprovalStatus.APPROVED}
         counts = {
             "countries": Country.objects.filter(**approved).count(),
@@ -38,8 +40,16 @@ def _goals(user):
     """What the user's bucket list covers, for recommendations (ids only, two queries)."""
     goals = Goals()
     items = BucketListItem.objects.filter(user=user).values(
-        "status", "activity_id", "activity__category_id", "activity__country_id", "event_id",
-        "event__category_id", "event__city__country_id", "event__country_id", "city__country_id")
+        "status",
+        "activity_id",
+        "activity__category_id",
+        "activity__country_id",
+        "event_id",
+        "event__category_id",
+        "event__city__country_id",
+        "event__country_id",
+        "city__country_id",
+    )
     for row in items:
         if row["activity_id"]:
             goals.activity_ids.add(row["activity_id"])
@@ -49,12 +59,27 @@ def _goals(user):
         if row["event_id"]:
             goals.event_ids.add(row["event_id"])
             goals.category_ids.add(row["event__category_id"])
-        goals.country_ids.update(c for c in (row["activity__country_id"], row["event__city__country_id"],
-                                             row["event__country_id"], row["city__country_id"]) if c)
-    goals.country_ids.update(c for c in BucketListItem.objects.filter(user=user).values_list("pois__city__country_id", flat=True) if c)
+        goals.country_ids.update(
+            c
+            for c in (
+                row["activity__country_id"],
+                row["event__city__country_id"],
+                row["event__country_id"],
+                row["city__country_id"],
+            )
+            if c
+        )
+    goals.country_ids.update(
+        c for c in BucketListItem.objects.filter(user=user).values_list("pois__city__country_id", flat=True) if c
+    )
     # ... and the countries of the user's own upcoming trips' cities.
-    goals.country_ids.update(c for c in Trip.objects.live().filter(grants__user=user, end_date__gte=timezone.localdate())
-                             .values_list("cities__country_id", flat=True) if c)
+    goals.country_ids.update(
+        c
+        for c in Trip.objects.live()
+        .filter(grants__user=user, end_date__gte=timezone.localdate())
+        .values_list("cities__country_id", flat=True)
+        if c
+    )
     return goals
 
 
@@ -62,110 +87,113 @@ def home(request):
     """Pre-login home page"""
     # Redirect authenticated users to dashboard
     if request.user.is_authenticated:
-        return redirect('pages:dashboard')
+        return redirect("pages:dashboard")
     context = {"catalogue": _catalogue_counts()}
-    return render(request, 'pages/home.html', context)
+    return render(request, "pages/home.html", context)
 
 
 @login_required
 def dashboard(request):
     """Post-login dashboard with personalized content"""
     user = request.user
-    
+
     # Quick stats for header
     bucket_list_count = BucketListItem.objects.filter(user=user).count()
     # Trip access goes through visible_to: grants plus the role ladder.
     visible_trips = Trip.objects.visible_to(user)
     trips_count = visible_trips.count()
-    
+
     # Destinations of trips that have ended. Trip.destination is free text
     # until it becomes a locations FK (work plan, Phase 4).
     today = timezone.now().date()
-    countries_visited = visible_trips.filter(
-        end_date__lt=today
-    ).exclude(destination='').values('destination').distinct().count()
-    
+    countries_visited = (
+        visible_trips.filter(end_date__lt=today).exclude(destination="").values("destination").distinct().count()
+    )
+
     # Attach counts to user object for template
     user.bucket_list_items_count = bucket_list_count
     user.trips_count = trips_count
     user.countries_visited = countries_visited
-    
+
     # Recent Activity - combine different model activities
     recent_activities = []
-    
+
     # Recent bucket list additions
-    recent_bucket_items = BucketListItem.objects.filter(
-        user=user
-    ).select_related('activity', 'city', 'event').order_by('-created_at')[:3]
-    
+    recent_bucket_items = (
+        BucketListItem.objects.filter(user=user).select_related("activity", "city", "event").order_by("-created_at")[:3]
+    )
+
     for item in recent_bucket_items:
-        recent_activities.append({
-            'title': 'Added to Bucket List',
-            'description': item.title,  # Uses the @property from model
-            'created_at': item.created_at,
-            'icon': 'bi-check2-square',
-            'color_class': '#f59e0b',  # Accent color
-        })
-    
+        recent_activities.append(
+            {
+                "title": "Added to Bucket List",
+                "description": item.title,  # Uses the @property from model
+                "created_at": item.created_at,
+                "icon": "bi-check2-square",
+                "color_class": "#f59e0b",  # Accent color
+            }
+        )
+
     # Recent trips
-    recent_trips = visible_trips.order_by('-created_at')[:3]
-    
+    recent_trips = visible_trips.order_by("-created_at")[:3]
+
     for trip in recent_trips:
-        recent_activities.append({
-            'title': 'Created Trip',
-            'description': trip.name,
-            'created_at': trip.created_at,
-            'icon': 'bi-airplane',
-            'color_class': '#2563eb',  # Primary color
-        })
-    
+        recent_activities.append(
+            {
+                "title": "Created Trip",
+                "description": trip.name,
+                "created_at": trip.created_at,
+                "icon": "bi-airplane",
+                "color_class": "#2563eb",  # Primary color
+            }
+        )
+
     # Sort all activities by date
-    recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
+    recent_activities.sort(key=lambda x: x["created_at"], reverse=True)
     recent_activities = recent_activities[:5]  # Keep only 5 most recent
-    
+
     # Upcoming Trips
-    upcoming_trips = visible_trips.filter(
-        start_date__gte=today
-    ).order_by('start_date')[:3]
-    
+    upcoming_trips = visible_trips.filter(start_date__gte=today).order_by("start_date")[:3]
+
     # Add days_until for each trip
     for trip in upcoming_trips:
         trip.days_until = (trip.start_date - today).days
-    
+
     # Bucket List Stats
     bucket_list_items = BucketListItem.objects.filter(user=user)
     total_items = bucket_list_items.count()
-    
+
     if total_items > 0:
-        completed_items = bucket_list_items.filter(status='completed').count()
-        in_progress_items = bucket_list_items.filter(status__in=['planning', 'booked', 'in_progress']).count()
-        
+        completed_items = bucket_list_items.filter(status="completed").count()
+        in_progress_items = bucket_list_items.filter(status__in=["planning", "booked", "in_progress"]).count()
+
         completion_percentage = int((completed_items / total_items) * 100)
-        
+
         bucket_list_stats = {
-            'total': total_items,
-            'completed': completed_items,
-            'in_progress': in_progress_items,
-            'completion_percentage': completion_percentage,
+            "total": total_items,
+            "completed": completed_items,
+            "in_progress": in_progress_items,
+            "completion_percentage": completion_percentage,
         }
     else:
         bucket_list_stats = None
-    
+
     recommendations = recommend(_goals(user))
     from apps.bucketlists.badges import progress
+
     badges = progress(user)
 
     context = {
-        'welcome': _welcome(user, bucket_list_count, trips_count),
-        'recent_activities': recent_activities,
-        'upcoming_trips': upcoming_trips,
-        'bucket_list_stats': bucket_list_stats,
-        'recommendations': recommendations,
-        'badges': badges,
-        'badges_earned': sum(1 for _, earned_at, _, _ in badges if earned_at),
+        "welcome": _welcome(user, bucket_list_count, trips_count),
+        "recent_activities": recent_activities,
+        "upcoming_trips": upcoming_trips,
+        "bucket_list_stats": bucket_list_stats,
+        "recommendations": recommendations,
+        "badges": badges,
+        "badges_earned": sum(1 for _, earned_at, _, _ in badges if earned_at),
     }
-    
-    return render(request, 'pages/dashboard.html', context)
+
+    return render(request, "pages/dashboard.html", context)
 
 
 def _welcome(user, goals, trips):
@@ -173,17 +201,35 @@ def _welcome(user, goals, trips):
     if user.welcome_dismissed_at:
         return None
     from apps.trips.models import TripInvite
+
     # Their trips first, then everyone on them (counting on the same join would count only them).
     theirs = Trip.objects.filter(grants__user=user).values("pk")
-    invited = (Trip.objects.filter(pk__in=theirs).annotate(people=Count("grants")).filter(people__gt=1).exists()
-               or TripInvite.objects.filter(invited_by=user).exists())
+    invited = (
+        Trip.objects.filter(pk__in=theirs).annotate(people=Count("grants")).filter(people__gt=1).exists()
+        or TripInvite.objects.filter(invited_by=user).exists()
+    )
     steps = [
-        {"done": goals > 0, "title": "Add a goal", "text": "Something you want to do or see, someday.",
-         "url": "bucketlists:item_add", "help": "bucket-list"},
-        {"done": trips > 0, "title": "Start a trip", "text": "Plan one from a goal, or start one from scratch.",
-         "url": "trips:trip_create", "help": "starting-a-trip"},
-        {"done": invited, "title": "Invite someone", "text": "Open a trip, click People, and invite who's going.",
-         "url": "trips:trip_list", "help": "sharing-and-access"},
+        {
+            "done": goals > 0,
+            "title": "Add a goal",
+            "text": "Something you want to do or see, someday.",
+            "url": "bucketlists:item_add",
+            "help": "bucket-list",
+        },
+        {
+            "done": trips > 0,
+            "title": "Start a trip",
+            "text": "Plan one from a goal, or start one from scratch.",
+            "url": "trips:trip_create",
+            "help": "starting-a-trip",
+        },
+        {
+            "done": invited,
+            "title": "Invite someone",
+            "text": "Open a trip, click People, and invite who's going.",
+            "url": "trips:trip_list",
+            "help": "sharing-and-access",
+        },
     ]
     return None if all(step["done"] for step in steps) else steps
 
@@ -224,9 +270,8 @@ def safety(request):
     return _legal_page(request, "pages/legal/safety.html", "Safety")
 
 
-
-CONTACT_LIMIT = 3          # messages per session ...
-CONTACT_WINDOW = 60 * 60   # ... per hour
+CONTACT_LIMIT = 3  # messages per session ...
+CONTACT_WINDOW = 60 * 60  # ... per hour
 
 
 def contact(request):
@@ -236,6 +281,7 @@ def contact(request):
     "website" field catches simple bots, and a session can send 3 an hour.
     """
     from .forms import ContactForm
+
     to = str(settings.LEGAL.get("contact_email", ""))
     ready = bool(to) and not to.startswith("[")
     initial = {}
@@ -255,9 +301,11 @@ def contact(request):
             EmailMessage(
                 subject=f"[{settings.SITE_NAME} contact] {data['subject']}",
                 body=f"From: {data['name']} <{data['email']}>\n"
-                     f"Signed in as: {request.user.username if request.user.is_authenticated else '(not signed in)'}\n\n"
-                     f"{data['message']}",
-                from_email=settings.DEFAULT_FROM_EMAIL, to=[to], reply_to=[data["email"]],
+                f"Signed in as: {request.user.username if request.user.is_authenticated else '(not signed in)'}\n\n"
+                f"{data['message']}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to],
+                reply_to=[data["email"]],
             ).send()
             request.session["contact_sent"] = sent + [now]
         messages.success(request, "Thanks, your message was sent. We'll reply by email.")
@@ -273,6 +321,7 @@ def features(request):
 def help_page(request):
     """How it works, the FAQ, and the guides the reader may see, grouped by section (helpdocs)."""
     from . import helpdocs
+
     return render(request, "pages/help.html", {"guide_sections": helpdocs.grouped(request.user)})
 
 
@@ -280,16 +329,25 @@ def help_guide(request, slug):
     """One guide (apps/pages/help/<slug>.md). An unknown slug, or a staff guide for anyone but
     staff, is a 404."""
     from django.http import Http404
+
     from apps.core.utils.breadcrumbs import build_breadcrumbs
+
     from . import helpdocs
+
     guide = helpdocs.guide(slug)
     if guide is None or not helpdocs.is_visible(guide, request.user):
         raise Http404
     related = [g for g in helpdocs.visible_to(request.user) if g.section == guide.section and g.slug != guide.slug]
-    return render(request, "pages/help_guide.html", {
-        "guide": guide, "related": related, "show_toc": len(guide.toc) >= 3,
-        "breadcrumb_list": build_breadcrumbs([("Help", "pages:help"), (guide.title, None)]),
-    })
+    return render(
+        request,
+        "pages/help_guide.html",
+        {
+            "guide": guide,
+            "related": related,
+            "show_toc": len(guide.toc) >= 3,
+            "breadcrumb_list": build_breadcrumbs([("Help", "pages:help"), (guide.title, None)]),
+        },
+    )
 
 
 @limit("search", 120, 60, methods=("GET",))
@@ -297,16 +355,23 @@ def search(request):
     """One search over the published catalogue (site roadmap R20; apps/pages/search.py). Grouped by
     kind, up to 8 each; ``?kind=`` shows one kind, paginated. Open to everyone."""
     from django.core.paginator import Paginator
+
     from apps.core.utils.breadcrumbs import build_breadcrumbs
+
     from . import search as catalogue_search
+
     q = request.GET.get("q", "").strip()[:100]
     filters = catalogue_search.Filters.from_get(request.GET)
-    context = {"search_q": q, "filters": filters, "kinds": catalogue_search.KINDS,
-               "kind_heading": catalogue_search.KINDS.get(filters.kind, ""),
-               "months": [(n, date_cls(2000, n, 1).strftime("%B")) for n in range(1, 13)],
-               "narrowed": bool(filters.month or filters.category or filters.tag),
-               "breadcrumb_list": build_breadcrumbs([("Search", None)]),
-               **catalogue_search.filter_choices(filters)}
+    context = {
+        "search_q": q,
+        "filters": filters,
+        "kinds": catalogue_search.KINDS,
+        "kind_heading": catalogue_search.KINDS.get(filters.kind, ""),
+        "months": [(n, date_cls(2000, n, 1).strftime("%B")) for n in range(1, 13)],
+        "narrowed": bool(filters.month or filters.category or filters.tag),
+        "breadcrumb_list": build_breadcrumbs([("Search", None)]),
+        **catalogue_search.filter_choices(filters),
+    }
     if len(q) >= 2:
         if filters.kind:
             querysets = catalogue_search.results(filters.kind, q, request.user, filters)
@@ -326,10 +391,13 @@ def profile_activity(request, username):
     private profile, or one waiting to be deleted, is only for its owner (404 otherwise)."""
     from django.http import Http404
     from django.shortcuts import get_object_or_404
+
     from .activity_feed import feed
+
     owner = get_object_or_404(get_user_model(), username=username, is_active=True)
     own = request.user.is_authenticated and request.user.pk == owner.pk
     if not own and (owner.profile_visibility == "private" or owner.deletion_requested_at):
         raise Http404
-    return render(request, "pages/_profile_activity.html", {"entries": feed(owner, request.user), "own": own,
-                                                            "owner": owner})
+    return render(
+        request, "pages/_profile_activity.html", {"entries": feed(owner, request.user), "own": own, "owner": owner}
+    )

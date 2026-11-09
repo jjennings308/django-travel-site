@@ -1,4 +1,5 @@
 """Checklists (site roadmap R9)."""
+
 from datetime import date
 from pathlib import Path
 
@@ -17,8 +18,9 @@ class ChecklistFixture(TestCase):
         self.ed = User.objects.create_user("ed", "ed@example.com", "pw-1234-abcd")
         self.co = User.objects.create_user("co", "co@example.com", "pw-1234-abcd")
         self.vi = User.objects.create_user("vi", "vi@example.com", "pw-1234-abcd")
-        self.trip = Trip.objects.create(name="Rome", start_date=date(2027, 5, 10), end_date=date(2027, 5, 14),
-                                        created_by=self.ed)
+        self.trip = Trip.objects.create(
+            name="Rome", start_date=date(2027, 5, 10), end_date=date(2027, 5, 14), created_by=self.ed
+        )
         for user, role in ((self.ed, TripRole.EDITOR), (self.co, TripRole.COMMENTOR), (self.vi, TripRole.VIEWER)):
             TripGrant.objects.create(trip=self.trip, user=user, role=role)
         self.james = Traveler.objects.create(name="James")
@@ -98,8 +100,9 @@ class PageTests(ChecklistFixture):
         self.assertNotIn(reverse("trips:checklist_edit", args=[self.trip.pk, self.docs.pk]), html)
 
     def test_needs_attention_only_in_the_two_weeks_before(self):
-        lists = checklists.attach(Trip.objects.prefetch_related("checklists__items__ticks", "travelers")
-                                  .get(pk=self.trip.pk))
+        lists = checklists.attach(
+            Trip.objects.prefetch_related("checklists__items__ticks", "travelers").get(pk=self.trip.pk)
+        )
         trip = self.trip
         self.assertEqual(checklists.attention(trip, lists, today=date(2027, 4, 1)), 0)
         self.assertEqual(checklists.attention(trip, lists, today=date(2027, 4, 30)), 3)  # 2 passports + insurance
@@ -116,23 +119,37 @@ class EditTests(ChecklistFixture):
         self.client.force_login(self.ed)
         edit_page = self.client.get(reverse("trips:trip_settings", args=[self.trip.pk]))
         self.assertContains(edit_page, "Start from a template")
-        response = self.client.post(reverse("trips:checklist_new", args=[self.trip.pk]), {
-            "title": "Packing", "kind": "packing",
-            "items-TOTAL_FORMS": "2", "items-INITIAL_FORMS": "0", "items-MIN_NUM_FORMS": "0",
-            "items-MAX_NUM_FORMS": "1000",
-            "items-0-text": "Charger", "items-0-per_person": "on", "items-0-order": "0",
-            "items-1-text": "", "items-1-order": "0",
-        })
+        response = self.client.post(
+            reverse("trips:checklist_new", args=[self.trip.pk]),
+            {
+                "title": "Packing",
+                "kind": "packing",
+                "items-TOTAL_FORMS": "2",
+                "items-INITIAL_FORMS": "0",
+                "items-MIN_NUM_FORMS": "0",
+                "items-MAX_NUM_FORMS": "1000",
+                "items-0-text": "Charger",
+                "items-0-per_person": "on",
+                "items-0-order": "0",
+                "items-1-text": "",
+                "items-1-order": "0",
+            },
+        )
         self.assertEqual(response.status_code, 302)
         packing = Checklist.objects.get(title="Packing")
         self.assertEqual([(i.text, i.per_person) for i in packing.items.all()], [("Charger", True)])
 
     def test_only_editors(self):
         self.client.force_login(self.co)
-        self.assertEqual(self.client.get(reverse("trips:checklist_edit", args=[self.trip.pk, self.docs.pk])).status_code,
-                         403)
-        self.assertEqual(self.client.post(reverse("trips:checklist_from_template", args=[self.trip.pk]),
-                                          {"template": "rail"}).status_code, 403)
+        self.assertEqual(
+            self.client.get(reverse("trips:checklist_edit", args=[self.trip.pk, self.docs.pk])).status_code, 403
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("trips:checklist_from_template", args=[self.trip.pk]), {"template": "rail"}
+            ).status_code,
+            403,
+        )
 
     def test_delete(self):
         ChecklistTick.objects.create(item=self.passport, traveler=self.james)
@@ -154,8 +171,9 @@ class TemplateTests(ChecklistFixture):
 
     def test_start_from_a_template(self):
         self.client.force_login(self.ed)
-        response = self.client.post(reverse("trips:checklist_from_template", args=[self.trip.pk]),
-                                    {"template": "international"})
+        response = self.client.post(
+            reverse("trips:checklist_from_template", args=[self.trip.pk]), {"template": "international"}
+        )
         made = Checklist.objects.get(title="International trip")
         self.assertRedirects(response, reverse("trips:checklist_edit", args=[self.trip.pk, made.pk]))
         self.assertEqual(made.kind, "documents")
@@ -166,11 +184,16 @@ class TemplateTests(ChecklistFixture):
 
     def test_unknown_template_is_a_404(self):
         self.client.force_login(self.ed)
-        self.assertEqual(self.client.post(reverse("trips:checklist_from_template", args=[self.trip.pk]),
-                                          {"template": "../../etc"}).status_code, 404)
+        self.assertEqual(
+            self.client.post(
+                reverse("trips:checklist_from_template", args=[self.trip.pk]), {"template": "../../etc"}
+            ).status_code,
+            404,
+        )
 
     def test_bad_template_is_rejected(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as folder:
             bad = Path(folder) / "bad.md"
             bad.write_text("title: X\nkind: luggage\nsummary: y\n\n- a\n", encoding="utf-8")

@@ -59,18 +59,13 @@ class Command(BaseCommand):
             if info["fills"]:
                 self.stdout.write(f"      fills: {', '.join(info['fills'])}")
             if info["conflicts"]:
-                self.stdout.write(
-                    f"      kept {keeper.name}'s: {', '.join(info['conflicts'])}"
-                )
+                self.stdout.write(f"      kept {keeper.name}'s: {', '.join(info['conflicts'])}")
             if info["account"]:
                 self.stdout.write(f"      account: {info['account']}")
             if info["memberships"]:
                 self.stdout.write(f"      programs: {', '.join(info['memberships'])}")
             if info["membership_conflicts"]:
-                self.stdout.write(
-                    f"      kept {keeper.name}'s programs: "
-                    f"{', '.join(info['membership_conflicts'])}"
-                )
+                self.stdout.write(f"      kept {keeper.name}'s programs: {', '.join(info['membership_conflicts'])}")
 
         for donor_name, reason in skipped:
             self.stdout.write(self.style.WARNING(f"  skipped {donor_name!r}: {reason}"))
@@ -80,19 +75,10 @@ class Command(BaseCommand):
         elif options["apply"]:
             with transaction.atomic():
                 self._merge(pairs)
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Merged {len(pairs)} traveler(s); "
-                    f"{len(pairs)} row(s) deleted."
-                )
-            )
+            self.stdout.write(self.style.SUCCESS(f"Merged {len(pairs)} traveler(s); {len(pairs)} row(s) deleted."))
         else:
-            self.stdout.write(
-                f"\nWould merge {len(pairs)} traveler(s). Nothing was written."
-            )
-            self.stderr.write(
-                self.style.WARNING("This was a dry run. Re-run with --apply to save.")
-            )
+            self.stdout.write(f"\nWould merge {len(pairs)} traveler(s). Nothing was written.")
+            self.stderr.write(self.style.WARNING("This was a dry run. Re-run with --apply to save."))
 
     def _plan(self):
         """Pair up the rows and describe every change, writes or no writes.
@@ -107,26 +93,18 @@ class Command(BaseCommand):
         for donor in travelers:
             if donor.pk in claimed:
                 continue
-            matches = [
-                t
-                for t in travelers
-                if t.pk != donor.pk and t.name.split()[:1] == [donor.name]
-            ]
+            matches = [t for t in travelers if t.pk != donor.pk and t.name.split()[:1] == [donor.name]]
             if not matches:
                 continue
             if len(matches) > 1:
-                skipped.append(
-                    (donor.name, "matches " + " and ".join(repr(m.name) for m in matches))
-                )
+                skipped.append((donor.name, "matches " + " and ".join(repr(m.name) for m in matches)))
                 continue
             keeper = matches[0]
             if keeper.pk in claimed:
                 skipped.append((donor.name, f'"{keeper.name}" is already a keeper'))
                 continue
             if donor.user_id and keeper.user_id:
-                skipped.append(
-                    (donor.name, f'both rows have an account ({donor.user.username})')
-                )
+                skipped.append((donor.name, f"both rows have an account ({donor.user.username})"))
                 continue
             claimed.add(keeper.pk)
             pairs.append((donor, keeper, self._describe(donor, keeper)))
@@ -150,9 +128,7 @@ class Command(BaseCommand):
         keeper_programs = set(keeper.memberships.values_list("program", flat=True))
         memberships, membership_conflicts = [], []
         for program in donor.memberships.values_list("program", flat=True):
-            (membership_conflicts if program in keeper_programs else memberships).append(
-                program
-            )
+            (membership_conflicts if program in keeper_programs else memberships).append(program)
         return {
             "memberships": memberships,
             "membership_conflicts": membership_conflicts,
@@ -173,17 +149,13 @@ class Command(BaseCommand):
             # the keeper would fire the account-linking signal mid-merge.
             if info["account"]:
                 Traveler.objects.filter(pk=donor.pk).update(user=None)
-                Traveler.objects.filter(pk=keeper.pk, user=None).update(
-                    user_id=donor.user_id
-                )
+                Traveler.objects.filter(pk=keeper.pk, user=None).update(user_id=donor.user_id)
             if info["fills"]:
                 for field in info["fills"]:
                     setattr(keeper, field, getattr(donor, field))
                 keeper.save(update_fields=info["fills"])
             # Before the delete: memberships CASCADE with the donor.
-            donor.memberships.filter(program__in=info["memberships"]).update(
-                traveler=keeper
-            )
+            donor.memberships.filter(program__in=info["memberships"]).update(traveler=keeper)
             # Deleting the donor drops its trip/day memberships on its own;
             # the keeper was added to them above, so nothing else is lost.
             donor.delete()
