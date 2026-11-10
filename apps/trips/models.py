@@ -1405,6 +1405,8 @@ class Section(models.Model):
 
     #: A note's tone → the callout style it is drawn with (on the page and in the booklet).
     NOTE_TONE_STYLES = {"tip": "info", "warning": "warning", "critical": "critical"}
+    #: A note's tone → the icon it shows when it has none of its own ("" is a plain note).
+    NOTE_ICONS = {"tip": "💡", "warning": "⚠", "critical": "❗", "": "📝"}
 
     # Contacts and info notes linked to this (ItemLink, U4); deleted with it.
     linked_refs = GenericRelation(
@@ -1445,6 +1447,21 @@ class Section(models.Model):
         """A note's callout style ("info" / "warning" / "critical"), or "" for a plain note."""
         content = self.content if isinstance(self.content, dict) else {}
         return self.NOTE_TONE_STYLES.get(content.get("tone") or "", "")
+
+    @property
+    def display_icon(self):
+        """The icon to show for this section: its own, else a note's default by tone.
+
+        A note usually has no icon of its own — + Add and the importers make notes with a tone only — so
+        without this the page shows a callout with nothing to tell a tip from a warning at a glance.
+        Other section types keep their blank icon.
+        """
+        if self.icon:
+            return self.icon
+        if self.section_type != self.Type.NOTE:
+            return ""
+        content = self.content if isinstance(self.content, dict) else {}
+        return self.NOTE_ICONS.get(content.get("tone") or "", self.NOTE_ICONS[""])
 
     def content_summary(self):
         """A short, type-appropriate label for the section list.
