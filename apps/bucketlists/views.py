@@ -727,6 +727,13 @@ def item_complete(request, pk):
             "item": item,
             "photos": item.photos(),
             "already_done": already_done,
+            "breadcrumb_list": build_breadcrumbs(
+                [
+                    ("Bucket list", "bucketlists:dashboard"),
+                    (item.title, reverse("bucketlists:item_edit", args=[item.pk])),
+                    ("Your adventure" if already_done else "Tick it off", None),
+                ]
+            ),
         },
     )
 
