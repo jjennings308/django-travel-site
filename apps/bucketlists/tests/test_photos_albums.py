@@ -54,6 +54,11 @@ class GoalPhotoTests(PhotoFixture):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.get(reverse("bucketlists:item_photos", args=[self.item.pk])).status_code, 404)
 
+    def test_breadcrumb_links_back_to_the_goal(self):
+        page = self.client.get(reverse("bucketlists:item_photos", args=[self.item.pk]))
+        self.assertContains(page, f'href="{reverse("bucketlists:item_edit", args=[self.item.pk])}"')
+        self.assertNotContains(page, 'href="None"')
+
     def test_delete_a_photo_also_leaves_albums(self):
         self.item.add_photos([photo()], self.alice)
         media = self.item.photos().get()
