@@ -1625,7 +1625,8 @@ DR1–DR2, one branch each, in order. Status: DR1 (move the whole trip, `apps/tr
 done on branch `dr1-shift-trip`; DR2 (put days in a new order, `trips:trip_reorder`) done on branch `dr2-reorder-days`;
 DR3 (fixes after first use: a day's date edit moves its journeys and one-night stays and can't take another day's
 date, reorder offers to move the stays it leaves, the start-date offer always shows, "Change booking" to-dos know when
-they're not needed, "To do:" wording on booked items) done on branch `dr3-day-move-fixes`. Complete.
+they're not needed, "To do:" wording on booked items) done on branch `dr3-day-move-fixes`; DR4 (add days at the start
+or end without moving anything already planned, `trips:trip_extend`) done on branch `dr4-add-days`. Complete.
 
 - **Move the whole trip** (DR1; no migration): `reschedule.shift_plan(trip, n)` (the preview, over the trip page's
   prefetch with `views._attach_confirmations` + `trip_notes.attach` but *not* `options.attach`, so undecided choices'
@@ -1685,6 +1686,16 @@ they're not needed, "To do:" wording on booked items) done on branch `dr3-day-mo
   them again → "Back on its booked dates: nothing to change" and **Close this to-do** (Mark done) in To book and on
   the To do page; offered, never automatic. Item rows' "Still to book:" reads **"To do:"** when the item has a
   confirmation (not in the booklet). Tests `test_day_move`.
+- **Add days at the start or end** (DR4; no migration): `reschedule.extend_plan(trip, n, at)` / `extend(trip, n, at,
+  user)` (`at` = "start" / "end") grow only `Trip.start_date` or `Trip.end_date` and make empty `Day` rows for the
+  new dates (never doubling a date that already has a day), then `day_fit.renumber` — every existing day, journey,
+  stay, booking and day's contents stays on its date (adding at the start shifts the day numbers). One history line
+  ("Added 2 days at the start: Sep 15–16", `before["extend"]` + made day pks); `is_move` / `changes.can_undo` accept
+  it and `undo_move` deletes the made days (refusing when one has meals, sections, activities or choices, or a
+  journey / stay is now on an added date), restores the dates and renumbers. No booking to-dos (nothing booked
+  moved). Page `trips:trip_extend` (`/trips/<pk>/extend/`, editors; linked from Settings under the dates and offered
+  on the fit-the-days page): number (1–60) + start/end → Preview (GET) → Add the days (POST, back to Settings'
+  days). Tests `test_extend`.
 
 ### Blank currencies
 

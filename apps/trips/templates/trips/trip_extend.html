@@ -1,0 +1,72 @@
+{% extends "trips/base_trips.html" %}
+{% comment %}
+Add days at the start or end (trips:trip_extend, shift-and-reorder DR4; apps/trips/reschedule.py). A number and a side, then Preview (a GET, nothing saved) shows the new dates and the days whose numbers change; Add the days (a POST) grows the trip's dates and makes the empty days, under one history line that can be undone. Nothing already on the trip moves.
+{% endcomment %}
+{% block title %}Add days — {{ trip.name }}{% endblock %}
+{% block wrap_class %}max-w-3xl{% endblock %}
+{% block content %}
+  <nav class="crumbs">
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+    <a href="{{ settings_url }}">Settings</a><span>/</span>
+    <span>Add days</span>
+  </nav>
+  <div class="card p-6" data-trip-extend>
+    <h1 class="page-title mb-1">Add days</h1>
+    <p class="mb-4 text-zinc-500">Add empty days at the start or end of the trip. Everything already on the trip keeps its date: days, journeys, stays, the things on each day and every booking. Nothing moves. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="adding-days-at-the-start-or-end" label="adding days at the start or end" text="How this works" %}</p>
+    <form method="get" class="mb-2 flex flex-wrap items-end gap-3" data-extend-pick>
+      <div>
+        <label for="extend-n">Days</label>
+        <input type="number" id="extend-n" name="n" min="1" max="{{ max_days }}" value="{{ n }}" required>
+      </div>
+      <div>
+        <label for="extend-at">At the</label>
+        <select id="extend-at" name="at">
+          <option value="start"{% if at == "start" %} selected{% endif %}>start</option>
+          <option value="end"{% if at == "end" %} selected{% endif %}>end</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-quiet">Preview</button>
+    </form>
+    <p class="note">Now {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}.</p>
+
+    {% if problem %}
+      <div class="callout callout-warning mt-5" data-extend-problem><p>{{ problem }}</p></div>
+    {% endif %}
+
+    {% if preview %}
+      <div class="mt-5 border-t border-zinc-100 pt-5" data-extend-preview>
+        <h2 class="form-section-title">{{ preview.old_span }} → {{ preview.new_span }}</h2>
+        <p class="mb-3 text-sm text-zinc-500">Adds {{ preview.n }} day{{ preview.n|pluralize }} at the {{ preview.at }}. The trip's other dates and everything on them stay exactly as they are.</p>
+
+        <div class="callout callout-info mb-3">
+          <p class="font-medium">Nothing else moves</p>
+          <p class="text-sm">Journeys, stays, meals, notes, activities, choices and every booking stay on their dates.{% if preview.new_dates %} The new day{{ preview.n|pluralize }} start empty.{% endif %}</p>
+        </div>
+
+        {% if preview.new_dates %}
+          <details class="mb-2" open><summary class="cursor-pointer font-medium">New day{{ preview.n|pluralize }} ({{ preview.new_dates|length }})</summary>
+            <ul class="mt-1 space-y-0.5 text-sm">
+              {% for when in preview.new_dates %}<li>{{ when|date:"l, F j" }}</li>{% endfor %}
+            </ul>
+          </details>
+        {% endif %}
+        {% if preview.already %}
+          <p class="note mb-2">Already on the trip, so kept rather than added again: {% for when in preview.already %}{{ when|date:"D, M j" }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+        {% endif %}
+        {% if preview.renumbered %}
+          <details class="mb-2"><summary class="cursor-pointer font-medium">Day numbers change ({{ preview.renumbered|length }})</summary>
+            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.renumbered %}<li>Day {{ row.old }} ({{ row.day.date|date:"M j" }}) becomes Day {{ row.new }}</li>{% endfor %}</ul>
+            <p class="note mt-1">Text that mentions a day by number still says the old one; check it.</p>
+          </details>
+        {% endif %}
+
+        <form method="post" class="mt-4" data-extend-apply>
+          {% csrf_token %}
+          <input type="hidden" name="n" value="{{ preview.n }}">
+          <input type="hidden" name="at" value="{{ preview.at }}">
+          <button type="submit" class="btn">Add the day{{ preview.n|pluralize }}</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

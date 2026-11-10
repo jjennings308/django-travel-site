@@ -410,13 +410,32 @@ def _datetime_of(value):
 # ------------------------------------------------------------------------------------------------- undo
 
 
+def _remove_added_days(trip, made_days):
+    """Delete the days ``extend`` added, refusing when one now has something on it (or a journey or stay is on
+    one of their dates): Undo must never throw away work done after the days were added."""
+    pks = [int(pk) for pk in made_days]
+    if not pks:
+        return
+    days = list(Day.objects.filter(trip=trip, pk__in=pks))
+    for day in days:
+        if day.meals.exists() or day.sections.exists() or day.activities.exists() or day.option_groups.exists():
+            raise CannotMove(f"Day {day.day_number} has things on it now; take them off before undoing.")
+    when = {day.date for day in days if day.date}
+    if when and TransportLeg.objects.filter(trip=trip, date__in=when).exists():
+        raise CannotMove("A journey is on an added day now; take it off before undoing.")
+    if when and Lodging.objects.filter(trip=trip, check_in__in=when).exists():
+        raise CannotMove("A stay starts on an added day now; take it off before undoing.")
+    Day.objects.filter(trip=trip, pk__in=pks).delete()
+
+
 def is_move(change):
-    """A whole-trip move (DR1) or a new order of days (DR2): undone by ``undo_move``."""
-    return bool(change.before) and ("shift" in change.before or "reorder" in change.before)
+    """A whole-trip move (DR1), a new order of days (DR2) or added days at the ends (DR4): undone by
+    ``undo_move``."""
+    return bool(change.before) and any(key in change.before for key in ("shift", "reorder", "extend"))
 
 
 def undo_move(change, user=None):
-    """Put back what ``shift`` or ``reorder`` moved. Returns the to-dos kept (edited or done since)."""
+    """Put back what ``shift``, ``reorder`` or ``extend`` did. Returns the to-dos kept (edited or done since)."""
     from . import changes, day_fit
     from .models import Trip
 
@@ -431,6 +450,8 @@ def undo_move(change, user=None):
     kept = []
     summary = f"Undid “{change.summary}”"
     with transaction.atomic(), changes.batch(summary[:450], trip=trip, actor=user, no_urgent=True):
+        if "extend" in before:
+            _remove_added_days(trip, before.get("made_days", {}))
         numbers = {}
         for day in Day.objects.filter(trip=trip, pk__in=[int(pk) for pk in before["days"]]):
             value = before["days"][str(day.pk)]
@@ -451,9 +472,11 @@ def undo_move(change, user=None):
         for stay in Lodging.objects.filter(trip=trip, pk__in=[int(pk) for pk in before["stays"]]):
             stay.check_in, stay.check_out = (_date_of(v) for v in before["stays"][str(stay.pk)])
             stay.save()
-        if before.get("move_trip") or before.get("restore_trip"):
+        if before.get("move_trip") or before.get("restore_trip") or before.get("extend"):
             trip.start_date, trip.end_date = (_date_of(v) for v in before["trip"])
             trip.save(update_fields=["start_date", "end_date"])
+        if "extend" in before:
+            day_fit.renumber(trip)
         for task in BookingTask.objects.filter(trip=trip, pk__in=[int(pk) for pk in before.get("tasks", {})]):
             task.due = _date_of(before["tasks"][str(task.pk)])
             task.save(update_fields=["due"])
@@ -466,6 +489,99 @@ def undo_move(change, user=None):
 
 
 undo_shift = undo_move  # DR1's name
+
+
+# ---------------------------------------------------------------------------------------------- add days (DR4)
+
+MAX_EXTEND_DAYS = 60
+
+
+def extend_plan(trip, n, at):
+    """What adding ``n`` empty days at the ``at`` ("start" or "end") would do (nothing saved).
+
+    The trip's range grows on that side and the new dates get days; every existing day keeps its date and
+    everything on it (journeys, stays, meals, notes, activities, choices and bookings) is untouched. Existing days
+    are numbered again in date order, so adding days at the start shifts their numbers.
+    """
+    if at not in ("start", "end"):
+        raise CannotMove("Choose whether to add days at the start or the end.")
+    if not isinstance(n, int) or not 1 <= n <= MAX_EXTEND_DAYS:
+        raise CannotMove(f"Add between 1 and {MAX_EXTEND_DAYS} days.")
+    if not trip.start_date or not trip.end_date:
+        raise CannotMove("Set the trip's dates first.")
+    if at == "start":
+        new_range = (trip.start_date - timedelta(days=n), trip.end_date)
+        wanted = [trip.start_date - timedelta(days=k) for k in range(n, 0, -1)]
+    else:
+        new_range = (trip.start_date, trip.end_date + timedelta(days=n))
+        wanted = [trip.end_date + timedelta(days=k) for k in range(1, n + 1)]
+    days = sorted(trip.days.all(), key=lambda d: (d.date is None, d.date or date.min, d.day_number))
+    have = {day.date for day in days if day.date}
+    new_dates = [when for when in wanted if when not in have]
+    already = [when for when in wanted if when in have]
+    prospective = [(when, None) for when in new_dates] + [(day.date, day) for day in days]
+    prospective.sort(key=lambda pair: (pair[0] is None, pair[0] or new_range[0], pair[1].day_number if pair[1] else 0))
+    renumbered = []
+    for number, (_when, day) in enumerate(prospective, start=1):
+        if day is not None and day.day_number != number:
+            renumbered.append({"day": day, "old": day.day_number, "new": number})
+    return {
+        "n": n,
+        "at": at,
+        "old_range": (trip.start_date, trip.end_date),
+        "new_range": new_range,
+        "old_span": span(trip.start_date, trip.end_date),
+        "new_span": span(*new_range),
+        "wanted": wanted,
+        "new_dates": new_dates,
+        "already": already,
+        "renumbered": renumbered,
+        "days": len(days),
+    }
+
+
+def extend(trip, n, at, user=None):
+    """Add ``n`` empty days at the start or end (``extend_plan``). One history line; ``undo_move`` deletes the
+    days it made (refusing if anything has been put on them since) and puts the trip's dates back."""
+    from . import changes, day_fit
+
+    plan = extend_plan(trip, n, at)
+    days = list(Day.objects.filter(trip=trip))
+    top = max((day.day_number for day in days), default=0)
+    made = []
+    before = {
+        "extend": n,
+        "at": at,
+        "trip": [_iso(trip.start_date), _iso(trip.end_date)],
+        "days": {},
+        "legs": {},
+        "stays": {},
+        "tasks": {},
+        "made_days": {},
+        "made_tasks": {},
+    }
+    with transaction.atomic():
+        with changes.quiet():
+            for offset, when in enumerate(plan["new_dates"], start=1):
+                made.append(Day.objects.create(trip=trip, day_number=top + offset, date=when))
+            trip.start_date, trip.end_date = plan["new_range"]
+            trip.save(update_fields=["start_date", "end_date"])
+            day_fit.renumber(trip)
+        before["made_days"] = {str(day.pk): _iso(day.date) for day in made}
+        wanted = plan["wanted"]
+        added_span = _d(wanted[0]) if n == 1 else span(wanted[0], wanted[-1])
+        unit = "day" if n == 1 else "days"
+        verb = "Added" if made else "Extended the trip"
+        where = "start" if at == "start" else "end"
+        line = changes.record(
+            trip.pk,
+            changes.TripChange.Kind.CHANGED,
+            f"{verb} {n} {unit} at the {where}: {added_span}"[:500],
+            item=trip,
+            actor=user,
+            before=before,
+        )
+    return {"change": line, "made_days": made, "new_range": plan["new_range"], "new_span": plan["new_span"]}
 
 
 # ------------------------------------------------------------------------------------------------ reorder (DR2)

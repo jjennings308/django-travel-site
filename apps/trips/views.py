@@ -1298,6 +1298,64 @@ def trip_shift(request, pk):
 
 
 @login_required
+def trip_extend(request, pk):
+    """Add empty days at the start or end (editors; shift-and-reorder DR4, ``apps/trips/reschedule.py``): a number
+    and a side → Preview (nothing saved) → Add the days. Only the trip's dates grow and the new dates get days;
+    every existing day, journey, stay, booking and day's contents stays exactly where it is."""
+    from . import reschedule
+
+    trip = _readable_trip(request, pk, "edit")
+    data = request.POST if request.method == "POST" else request.GET
+    at = data.get("at") if data.get("at") in ("start", "end") else "start"
+    raw = data.get("n") or ""
+    n = None
+    if raw:
+        try:
+            n = int(raw)
+        except (TypeError, ValueError):
+            n = None
+    settings_url = reverse("trips:trip_settings", args=[trip.pk])
+    if request.method == "POST":
+        if n is None:
+            messages.error(request, "Type how many days to add.")
+        else:
+            try:
+                done = reschedule.extend(trip, n, at, request.user)
+            except reschedule.CannotMove as reason:
+                messages.error(request, str(reason))
+            else:
+                trip.refresh_from_db()
+                unit = "day" if n == 1 else "days"
+                where = "start" if at == "start" else "end"
+                text = f"Added {n} {unit} at the {where}: {reschedule.span(trip.start_date, trip.end_date)}."
+                if done["made_days"]:
+                    text += " Everything else stayed where it was."
+                messages.success(request, text)
+                return redirect(settings_url + "#days")
+        return redirect("trips:trip_extend", pk=trip.pk)
+    preview = None
+    problem = None
+    if n is not None:
+        try:
+            preview = reschedule.extend_plan(trip, n, at)
+        except reschedule.CannotMove as reason:
+            problem = str(reason)
+    return render(
+        request,
+        "trips/trip_extend.html",
+        {
+            "trip": trip,
+            "preview": preview,
+            "problem": problem,
+            "n": raw or "1",
+            "at": at,
+            "max_days": reschedule.MAX_EXTEND_DAYS,
+            "settings_url": settings_url,
+        },
+    )
+
+
+@login_required
 def trip_bookings(request, pk):
     """Bookings (day-first plan P7): the trip's confirmations, what isn't booked yet and every journey
     and stay in date order, read-only; each line opens its item on the trip page (in the panel)."""
