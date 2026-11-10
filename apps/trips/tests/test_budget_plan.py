@@ -141,6 +141,36 @@ class RowTests(Fixture):
             ([r["label"] for r in stays["rows"]], stays["planned"]), (["Where to stay: Flat"], D("160.00"))
         )
 
+    def test_a_chosen_option_with_its_item_counts_once(self):
+        """Pick makes the stay inside the option; once it is booked, the Plan shows the booking only, not the option's
+        own estimate as well (the Augsburg ibis on Europe 2027 counted twice)."""
+        from apps.trips import options
+
+        group = OptionGroup.objects.create(
+            trip=self.trip, day=self.days[0], prompt="Where to stay", kind="stay", nights=2
+        )
+        ibis = Option.objects.create(
+            group=group, title="ibis", est_cost=D("2142.18"), currency="EUR", cost_basis="total"
+        )
+        Option.objects.create(group=group, title="Flat", est_cost=D("80"), currency="EUR")
+        group.pick(ibis)
+        stay = options.make_item(ibis)
+        self.assertEqual(stay.option_id, ibis.pk)
+        plan, _ = self.plan()
+        stays = self.category(plan, "stays")
+        self.assertEqual(([r["label"] for r in stays["rows"]], stays["planned"]), (["ibis"], D("2142.18")))
+
+        booking = Confirmation.objects.create(
+            trip=self.trip, confirmation_number="QTSPBTVK", cost=D("2960.94"), currency="EUR"
+        )
+        booking.link(stay)
+        plan, _ = self.plan()
+        stays = self.category(plan, "stays")
+        self.assertEqual(
+            ([r["label"] for r in stays["rows"]], stays["planned"], stays["booked"]),
+            (["ibis · QTSPBTVK"], D("2960.94"), D("2960.94")),
+        )
+
 
 class AllowanceTests(Fixture):
     def test_per_person_per_day_skipping_meals_included(self):
