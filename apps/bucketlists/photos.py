@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.core.utils.breadcrumbs import build_breadcrumbs
@@ -45,7 +46,11 @@ def item_photos(request, pk):
             "photos": item.photos(),
             "form": form,
             "breadcrumb_list": build_breadcrumbs(
-                [("Bucket list", "bucketlists:dashboard"), (item.title, None), ("Photos", None)]
+                [
+                    ("Bucket list", "bucketlists:dashboard"),
+                    (item.title, reverse("bucketlists:item_edit", args=[item.pk])),
+                    ("Photos", None),
+                ]
             ),
         },
     )

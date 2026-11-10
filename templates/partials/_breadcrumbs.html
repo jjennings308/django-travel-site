@@ -48,8 +48,10 @@ breadcrumbs = [
       {% if not forloop.first %}<li aria-hidden="true"><i class="bi bi-chevron-right text-xs text-warm-400"></i></li>{% endif %}
       {% if forloop.last %}
         <li class="font-medium text-warm-800" aria-current="page">{{ crumb.title }}</li>
-      {% else %}
+      {% elif crumb.url %}
         <li><a href="{{ crumb.url }}" class="hover:text-earth-clay">{{ crumb.title }}</a></li>
+      {% else %}
+        <li>{{ crumb.title }}</li>
       {% endif %}
     {% endfor %}
   </ol>
