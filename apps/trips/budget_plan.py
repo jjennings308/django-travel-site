@@ -267,7 +267,11 @@ def plan(context, target, expenses=()):
             line=cost.line,
         )
 
-    # Choices: a chosen / split-taken option's own cost counts; an undecided one is a range, outside the totals.
+    # Choices: a chosen / split-taken option's own cost counts (with any items filed in it: a castle's entry + its
+    # tour), except when the item Pick made from it counts — that item copied the option's price, so it is the row and
+    # the option's own estimate isn't added again (the Augsburg ibis counted twice). An undecided one is a range,
+    # outside the totals.
+    held = _made_held(items, context.get("option_groups", []))
     for group in context.get("option_groups", []):
         category = _GROUP_CATEGORY.get(group.kind, "other")
         day = by_pk.get(group.day_id)
@@ -295,6 +299,8 @@ def plan(context, target, expenses=()):
                 )
             continue
         for option in ([group.chosen] if getattr(group, "chosen", None) else []) + list(getattr(group, "tracks", [])):
+            if option.pk in held:
+                continue
             cost = option.cost_estimate()
             if cost is None or cost.total is None:
                 continue
@@ -324,6 +330,26 @@ def plan(context, target, expenses=()):
         add("food", **allowance)
 
     return _totals(rows, expenses, cash, everyone, target)
+
+
+def _made_held(items, groups):
+    """The ids of options whose Pick-made item (``Option.made``, typed-choices T2) is among the counted ``items``: that
+    item copied the option's price, so the option's own estimate isn't added beside it. No queries (the groups' options
+    are loaded; content types are cached)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    made = {
+        (option.made_type_id, option.made_id): option.pk
+        for group in groups
+        for option in group.options.all()
+        if option.made_id
+    }
+    held = set()
+    for item in items if made else ():
+        option_pk = made.get((ContentType.objects.get_for_model(type(item)).pk, item.pk))
+        if option_pk is not None and item.option_id == option_pk:
+            held.add(option_pk)
+    return held
 
 
 def _key(item):
