@@ -739,10 +739,9 @@ class TripForm(forms.ModelForm):
             trip = self.instance if self.instance.pk else None
             self.fields["cities"].queryset = _city_choices(trip)
             self.fields["cities"].label_from_instance = str  # "Kansas City, KS, US" tells same names apart
-            self.fields["cities"].widget = CitySearchMultiple(attrs={"size": 6})
-            self.fields["cities"].help_text = (
-                "Filled in from the days, stays and legs as you plan; add others you're thinking of."
-            )
+            cities = self.fields["cities"]
+            cities.widget = CitySearchMultiple(attrs={"size": 6})
+            cities.help_text = "Filled in from the days, stays and legs as you plan; add others you're thinking of."
 
     class Meta:
         model = Trip
@@ -1897,7 +1896,8 @@ class TravelPayloadForm(LogisticsTablePayloadForm):
         self.fields["columns"].required = False
         self.fields["rows"].required = False
         self.fields["columns"].help_text = "Only for reference rows (prices, what a ticket covers): one name per line."
-        self.fields["rows"].help_text = (
+        rows = self.fields["rows"]
+        rows.help_text = (
             "Reference rows, cells separated by “|”. The legs themselves are added on the trip page and edited as legs."
         )
         self.order_fields(["intro", "columns", "rows"])
