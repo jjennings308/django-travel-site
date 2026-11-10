@@ -116,6 +116,7 @@ class SectionLayoutTests(DetailFixture):
         section(self.day, Section.Type.NOTE, {"tone": "warning", "paragraphs": ["The road closes at dusk."]})
         html = self.get().content.decode()
         self.assertIn("callout-warning", html)
+        self.assertIn('<span aria-hidden="true">⚠</span>', html)
         self.assertIn("The road closes at dusk.", html)
 
     def test_a_plain_note_renders_every_paragraph(self):
@@ -124,6 +125,13 @@ class SectionLayoutTests(DetailFixture):
         self.assertIn("First thought.", html)
         self.assertIn("Second thought.", html)
         self.assertIn('<div class="section card prose-block">', html)
+        self.assertIn("📝", html)
+
+    def test_a_note_keeps_its_own_icon(self):
+        section(self.day, Section.Type.NOTE, {"tone": "warning", "paragraphs": ["Watch out."]}, icon="🔥")
+        html = self.get().content.decode()
+        self.assertIn("🔥", html)
+        self.assertNotIn("⚠", html.split('id="day-1"')[1].split("</details>")[0])
 
     def test_an_unknown_section_type_shows_a_placeholder_rather_than_vanishing(self):
         Section.objects.create(

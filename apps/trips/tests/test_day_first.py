@@ -150,7 +150,10 @@ class NoteTests(Fixture):
         )
         self.client.force_login(self.viewer)
         html = self.client.get(reverse("trips:trip_detail", args=[self.trip.pk])).content.decode()
-        self.assertIn('callout callout-info"><span class="font-semibold">Tip:</span> Pickup is in the terminal', html)
+        self.assertIn(
+            'callout callout-info"><span aria-hidden="true">💡</span> <span class="font-semibold">Tip:</span> Pickup is in the terminal',
+            html,
+        )
         self.assertIn("Morning — Arrive</h3>", html)
         self.assertIn("<p>• Coffee</p>", html)
 
