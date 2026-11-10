@@ -15,36 +15,40 @@ Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/resched
     {% if moved_from %}
       <p class="mb-4 text-zinc-500">The trip now starts {{ trip.start_date|date:"l, F j" }}, but its days, journeys and stays still start {{ moved_from|date:"l, F j" }}. This moves them all {{ preview.describe|default:"" }} to match{% if preview.new_end %}, and the trip's end to {{ preview.new_end|date:"l, F j" }} so it keeps its length{% endif %}; nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
     {% else %}
-      <p class="mb-4 text-zinc-500">Every day moves with what's on it, every journey keeps its local times on its new date, and every stay keeps its length. Payments, catalogue events and to-do due dates stay where they are. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
-      <form method="get" class="mb-2 flex flex-wrap items-end gap-3" data-shift-pick>
+      <p class="mb-4 text-zinc-500">Every day moves with what's on it, every journey keeps its local times on its new date, and every stay keeps its length. Payments, catalogue events and to-do due dates stay where they are. Booked journeys and stays can stay on their booked dates instead. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="moving-the-whole-trip" label="moving the whole trip" text="How this works" %}</p>
+      <form method="get" id="shift-pick" class="mb-2 flex flex-wrap items-end gap-3" data-shift-pick>
         <div>
           <label for="shift-start">New start date</label>
           <input type="date" id="shift-start" name="start" value="{{ start|date:'Y-m-d' }}" required>
         </div>
         <button type="submit" class="btn-quiet">Preview</button>
       </form>
+      {% if has_bookings %}
+        <label class="mb-2 flex min-h-11 items-center gap-2"><input type="hidden" name="keep_booked" value="0" form="shift-pick"><input type="checkbox" name="keep_booked" value="1" form="shift-pick" checked> Keep booked journeys and stays on their booked dates</label>
+      {% endif %}
       <p class="note">Now {{ trip.start_date|date:"D, M j" }} – {{ trip.end_date|date:"D, M j, Y" }}{% if length is not None %} ({{ length }} night{{ length|pluralize }}); the length stays the same{% endif %}.</p>
     {% endif %}
 
     {% if preview %}
       <div class="mt-5 border-t border-zinc-100 pt-5" data-shift-preview>
         <h2 class="form-section-title">{% if preview.move_trip %}{{ preview.old_span }} → {{ preview.new_span }}{% elif preview.new_end %}{{ preview.new_span }}{% else %}Days, journeys and stays {{ preview.describe }}{% endif %}</h2>
-        <p class="mb-3 text-sm text-zinc-500">{{ preview.describe|capfirst }}: {{ preview.days|length }} day{{ preview.days|length|pluralize }}, {{ preview.legs|length }} journey{{ preview.legs|length|pluralize }}, {{ preview.stays|length }} stay{{ preview.stays|length|pluralize }}.</p>
+        <p class="mb-3 text-sm text-zinc-500">{{ preview.describe|capfirst }}: {{ preview.days|length }} day{{ preview.days|length|pluralize }}, {{ preview.legs|length }} journey{{ preview.legs|length|pluralize }}, {{ preview.stays|length }} stay{{ preview.stays|length|pluralize }}{% if preview.kept_legs or preview.kept_stays %}; {{ preview.kept_legs|length }} journey{{ preview.kept_legs|length|pluralize }} and {{ preview.kept_stays|length }} stay{{ preview.kept_stays|length|pluralize }} kept on their booked dates{% endif %}.</p>
 
         {% if preview.booked %}
           <div class="callout callout-warning mb-3" data-shift-booked>
-            <p class="font-medium">Booked: these move on this site, not at the provider.</p>
+            <p class="font-medium">Booked: kept rows stay on their booked dates; the rest move on this site, not at the provider.</p>
             <ul class="mt-1 list-disc pl-5 text-sm">
-              {% for row in preview.booked %}<li><span class="font-mono">{{ row.confirmation.confirmation_number }}</span> · {{ row.items|join:", " }}{% if row.was %} · booked for {{ row.was }}, would be {{ row.now }}{% endif %}</li>{% endfor %}
+              {% for row in preview.booked %}<li><span class="font-mono">{{ row.confirmation.confirmation_number }}</span> · {{ row.items|join:", " }}{% if row.was and row.kept %} · kept on {{ row.was }}{% elif row.was %} · booked for {{ row.was }}, would be {{ row.now }}{% endif %}</li>{% endfor %}
             </ul>
           </div>
         {% endif %}
-        {% if preview.events or preview.closed or preview.strays %}
+        {% if preview.events or preview.closed or preview.strays or preview.kept_warnings %}
           <div class="callout callout-info mb-3" data-shift-warnings>
             <p class="font-medium">Check these</p>
             <ul class="mt-1 list-disc pl-5 text-sm">
               {% for text in preview.events %}<li data-shift-event>{{ text }}.</li>{% endfor %}
               {% for text in preview.closed %}<li data-shift-closed>{{ text }}.</li>{% endfor %}
+              {% for text in preview.kept_warnings %}<li data-shift-kept>{{ text|capfirst }}.</li>{% endfor %}
               {% for row in preview.strays %}<li data-shift-stray>{{ row.label }} is on {{ row.old|date:"M j" }}, which isn't one of the trip's days; it moves to {{ row.new|date:"M j" }} too.</li>{% endfor %}
             </ul>
           </div>
@@ -55,19 +59,20 @@ Move the whole trip (trips:trip_shift, shift-and-reorder DR1; apps/trips/resched
         </details>
         {% if preview.legs %}
           <details class="mb-2"><summary class="cursor-pointer font-medium">Journeys ({{ preview.legs|length }})</summary>
-            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.legs %}<li>{{ row.label }}: {{ row.old|date:"M j" }} → <strong>{{ row.new|date:"M j" }}{% if row.time %} {{ row.time }}{% endif %}</strong></li>{% endfor %}</ul>
+            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.legs %}<li>{{ row.label }}: {% if row.kept %}kept on {{ row.old|date:"M j" }}{% if row.time %}, {{ row.time }}{% endif %}{% else %}{{ row.old|date:"M j" }} → <strong>{{ row.new|date:"M j" }}{% if row.time %} {{ row.time }}{% endif %}</strong>{% endif %}</li>{% endfor %}</ul>
           </details>
         {% endif %}
         {% if preview.stays %}
           <details class="mb-2"><summary class="cursor-pointer font-medium">Stays ({{ preview.stays|length }})</summary>
-            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.stays %}<li>{{ row.label }}: {{ row.old.0|date:"M j" }}–{{ row.old.1|date:"M j" }} → <strong>{{ row.new.0|date:"M j" }}–{{ row.new.1|date:"M j" }}</strong></li>{% endfor %}</ul>
+            <ul class="mt-1 space-y-0.5 text-sm">{% for row in preview.stays %}<li>{{ row.label }}: {% if row.kept %}kept on {{ row.old.0|date:"M j" }}–{{ row.old.1|date:"M j" }}{% else %}{{ row.old.0|date:"M j" }}–{{ row.old.1|date:"M j" }} → <strong>{{ row.new.0|date:"M j" }}–{{ row.new.1|date:"M j" }}</strong>{% endif %}</li>{% endfor %}</ul>
           </details>
         {% endif %}
 
         <form method="post" class="mt-4" data-shift-apply>
           {% csrf_token %}
           {% if moved_from %}<input type="hidden" name="moved_from" value="{{ moved_from|date:'Y-m-d' }}">{% if preview.new_end %}<input type="hidden" name="keep_length" value="1">{% endif %}{% else %}<input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">{% endif %}
-          {% if preview.booked %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="booking_todos" value="1" checked> Add a to-do to change each booking ({{ preview.booked|length }})</label>{% endif %}
+          {% if preview.has_booked_items %}<label class="flex min-h-11 items-center gap-2"><input type="hidden" name="keep_booked" value="0"><input type="checkbox" name="keep_booked" value="1"{% if keep_booked %} checked{% endif %}> Keep booked journeys and stays on their booked dates</label>{% endif %}
+          {% if preview.booked %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="booking_todos" value="1" checked> Add a to-do to change or check each booking ({{ preview.booked|length }})</label>{% endif %}
           {% if preview.tasks %}<label class="flex min-h-11 items-center gap-2"><input type="checkbox" name="move_due" value="1"> Also move to-do due dates ({{ preview.tasks|length }}) <span class="text-sm text-zinc-500">— usually booking deadlines, which don't move with the trip</span></label>{% endif %}
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <button type="submit" class="btn">Apply</button>

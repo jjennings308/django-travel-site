@@ -97,20 +97,28 @@ def _label(item):
 # ------------------------------------------------------------------------------------------------ preview
 
 
-def shift_plan(trip, n, move_trip=True, new_end=None):
+def shift_plan(trip, n, move_trip=True, new_end=None, keep_booked=False):
     """What moving the trip by ``n`` days would do (nothing saved). See the module docstring. ``new_end``: the
-    trip's end date would become this too (``shift``'s keep-the-length case)."""
+    trip's end date would become this too (``shift``'s keep-the-length case). ``keep_booked``: leave the journey
+    and stay items a confirmation covers on their booked dates (the rest of the trip still moves)."""
     days = sorted(trip.days.all(), key=lambda d: (d.date is None, d.date or date.min, d.day_number))
     day_dates = {day.date for day in days if day.date}
     plus = lambda value: value + timedelta(days=n) if value else value  # noqa: E731
+    booked = _booked_items(trip)
+    kept = _kept_keys(booked, keep_booked)
 
     legs = []
     for leg in sorted(
         trip.transport.all(),
         key=lambda item: (item.date or date.min, item.departure_at or datetime.min.replace(tzinfo=UTC), item.pk),
     ):
-        new_departure = wall_clock_plus(leg.departure_at, leg.origin_timezone, n)
-        new_date = _local(new_departure, leg.origin_timezone).date() if new_departure else plus(leg.date)
+        keep = (type(leg).__name__, leg.pk) in kept
+        new_departure = leg.departure_at if keep else wall_clock_plus(leg.departure_at, leg.origin_timezone, n)
+        new_date = (
+            leg.date
+            if keep
+            else (_local(new_departure, leg.origin_timezone).date() if new_departure else plus(leg.date))
+        )
         legs.append(
             {
                 "leg": leg,
@@ -119,6 +127,7 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
                 "new": new_date,
                 "time": format_local_time(new_departure, leg.origin_timezone) if new_departure else "",
                 "stray": bool(leg.date) and leg.date not in day_dates,
+                "kept": keep,
             }
         )
     stays = [
@@ -126,7 +135,10 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
             "stay": stay,
             "label": stay.name,
             "old": (stay.check_in, stay.check_out),
-            "new": (plus(stay.check_in), plus(stay.check_out)),
+            "new": (stay.check_in, stay.check_out)
+            if (type(stay).__name__, stay.pk) in kept
+            else (plus(stay.check_in), plus(stay.check_out)),
+            "kept": (type(stay).__name__, stay.pk) in kept,
         }
         for stay in sorted(trip.lodging.all(), key=lambda s: (s.check_in or date.min, s.pk))
     ]
@@ -135,21 +147,39 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
         for task in sorted((t for t in trip.booking_tasks.all() if t.due), key=lambda t: (t.due, t.pk))
     ]
 
-    # Booked items: every confirmation linked to something that moves.
-    booked = []
+    def when_of(item):
+        dates = [d for d in _item_dates(item) if d]
+        return dates if (type(item).__name__, item.pk) in kept else [plus(d) for d in dates]
+
+    # Booked items: every confirmation linked to something that moves (or is kept on its dates).
+    booked_rows = []
     for confirmation in sorted(trip.confirmations.all(), key=lambda c: c.confirmation_number.lower()):
         items = getattr(confirmation, "_items", None) or []
         if not items:
             continue
-        dates = [d for item in items for d in _item_dates(item) if d]
-        booked.append(
+        dates = [d for item in items for d in when_of(item)]
+        was = [when for item in items for when in _item_dates(item) if when]
+        booked_rows.append(
             {
                 "confirmation": confirmation,
                 "items": [_label(i) for i in items],
-                "was": span(min(dates), max(dates)) if dates else "",
-                "now": span(plus(min(dates)), plus(max(dates))) if dates else "",
+                "was": span(min(was), max(was)) if was else "",
+                "now": span(min(dates), max(dates)) if dates else "",
+                "kept": all((type(i).__name__, i.pk) in kept for i in items),
             }
         )
+
+    new_day_dates = {plus(day.date) for day in days if day.date}
+    kept_warnings = []
+    for row in legs:
+        if row["kept"] and row["old"] and row["old"] not in new_day_dates:
+            kept_warnings.append(f"{row['label']} stays on {_d(row['old'])}, which isn't one of the trip's new days")
+    for row in stays:
+        if not row["kept"]:
+            continue
+        start, end = row["old"]
+        if start and not any(start <= when < (end or start + timedelta(days=1)) for when in new_day_dates):
+            kept_warnings.append(f"{row['label']} stays {span(start, end)}, outside the trip's new dates")
 
     events, closed = [], []
     for day in days:
@@ -203,11 +233,16 @@ def shift_plan(trip, n, move_trip=True, new_end=None):
         "legs": legs,
         "stays": stays,
         "tasks": tasks,
-        "booked": booked,
+        "booked": booked_rows,
         "events": events,
         "closed": closed,
-        "strays": [row for row in legs if row["stray"]],
-        "urgent": any(row["new"] and timezone.localdate() <= row["new"] <= soon for row in legs),
+        "strays": [row for row in legs if row["stray"] and not row["kept"]],
+        "keep_booked": keep_booked,
+        "kept_legs": [row for row in legs if row["kept"]],
+        "kept_stays": [row for row in stays if row["kept"]],
+        "kept_warnings": kept_warnings,
+        "has_booked_items": any(key[0] in ("TransportLeg", "Lodging") for key in booked),
+        "urgent": any(row["new"] and not row["kept"] and timezone.localdate() <= row["new"] <= soon for row in legs),
     }
 
 
@@ -221,6 +256,27 @@ def _item_dates(item):
     return [day.date] if day is not None else []
 
 
+def _booked_items(trip):
+    """{(class name, pk): (confirmation, item)} for every trip item a confirmation covers, so a move can leave a
+    booked journey or stay where it is (DR4)."""
+    from .models import Confirmation
+
+    found = {}
+    for confirmation in Confirmation.objects.filter(trip=trip).prefetch_related("links__content_type"):
+        for link in confirmation.links.all():
+            item = link.item
+            if item is not None:
+                found[(type(item).__name__, item.pk)] = (confirmation, item)
+    return found
+
+
+def _kept_keys(booked, keep_booked):
+    """The journey and stay items to leave on their booked dates: only those a confirmation covers."""
+    if not keep_booked:
+        return set()
+    return {key for key in booked if key[0] in ("TransportLeg", "Lodging")}
+
+
 def _urgent_days():
     from .changes import URGENT_DAYS
 
@@ -230,10 +286,12 @@ def _urgent_days():
 # ------------------------------------------------------------------------------------------------- apply
 
 
-def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True, new_end=None):
+def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True, new_end=None, keep_booked=False):
     """Move the trip by ``n`` days (see the module docstring). ``new_end`` (with ``move_trip=False``): also set the
     trip's end date — the fit page's "keep the length" after Settings moved only the start (DR3); undo puts it back.
-    Returns {"change", "made", "urgent"}."""
+    ``keep_booked``: leave the journeys and stays a confirmation covers on their booked dates (DR4); the rest of
+    the trip still moves and a reminder to-do asks the editor to check each kept booking.
+    Returns {"change", "made", "reminders", "urgent"}."""
     from . import changes
 
     if not n:
@@ -242,6 +300,8 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
     legs = list(TransportLeg.objects.filter(trip=trip))
     stays = list(Lodging.objects.filter(trip=trip))
     tasks = list(BookingTask.objects.filter(trip=trip, due__isnull=False)) if move_due else []
+    booked = _booked_items(trip)
+    kept = _kept_keys(booked, keep_booked)
     booked_for = _booked_print(trip)
     before = {
         "shift": n,
@@ -264,6 +324,9 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
         summary = f"Moved the trip {describe(n)}: {old_span} → {new_span}"
     else:
         summary = f"Moved the days, journeys and stays {describe(n)} to fit the new dates ({new_span})"
+    if kept:
+        count = len(kept)
+        summary += f"; kept {count} booked item{'s' if count != 1 else ''} on {'their' if count != 1 else 'its'} dates"
     soon_last = timezone.localdate() + timedelta(days=_urgent_days())
     urgent = False
     with transaction.atomic(), changes.batch(summary, trip=trip, actor=user, item=trip, no_urgent=True) as state:
@@ -273,6 +336,8 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
                 day.date = plus(day.date)
                 day.save(update_fields=["date"])
         for leg in legs:
+            if (type(leg).__name__, leg.pk) in kept:
+                continue
             if leg.departure_at:
                 leg.departure_at = wall_clock_plus(leg.departure_at, leg.origin_timezone, n)
                 leg.arrival_at = wall_clock_plus(leg.arrival_at, leg.destination_timezone, n)
@@ -282,6 +347,8 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
             if leg.date and timezone.localdate() <= leg.date <= soon_last:
                 urgent = True
         for stay in stays:
+            if (type(stay).__name__, stay.pk) in kept:
+                continue
             stay.check_in, stay.check_out = plus(stay.check_in), plus(stay.check_out)
             stay.save()
         if move_trip:
@@ -293,20 +360,22 @@ def shift(trip, n, user=None, move_due=False, booking_todos=True, move_trip=True
         for task in tasks:
             task.due = plus(task.due)
             task.save(update_fields=["due"])
-        made = (
-            _booking_todos(
+        made, reminders = [], []
+        if booking_todos:
+            made = _booking_todos(
                 trip,
                 f"The trip moved to {new_span} on this site; the booking itself hasn't changed.",
                 booked_for=booked_for,
+                skip=kept,
             )
-            if booking_todos
-            else []
-        )
+            if kept:
+                reminders = _kept_todos(trip, booked, kept)
+                made += reminders
         before["made_tasks"] = {str(task.pk): _task_print(task) for task in made}
         state["before"] = before
     if urgent:
         _notice_moved(trip, user, new_span)
-    return {"change": state["line"], "made": made, "urgent": urgent}
+    return {"change": state["line"], "made": made, "reminders": reminders, "urgent": urgent}
 
 
 def _booked_print(trip):
@@ -332,15 +401,17 @@ def _booked_print(trip):
     return found
 
 
-def _booking_todos(trip, notes, only=None, booked_for=None):
-    """One to-do per booking linked to something that moved: "Change booking GCH7JS to the new dates", covering
-    its journeys, stays and activities (High). ``only``: the confirmation pks to do (default all with links).
+def _booking_todos(trip, notes, only=None, booked_for=None, skip=()):
+    """One to-do per booking with something that moved: "Change booking GCH7JS to the new dates", covering its
+    journeys, stays and activities (High). ``only``: the confirmation pks to do (default all with links).
     ``booked_for`` (``_booked_print`` before the move): each covered item's booked dates go into the to-do's hidden
-    ``BookingTask.BOOKED_FOR`` line, so it can say when everything is back on them."""
+    ``BookingTask.BOOKED_FOR`` line, so it can say when everything is back on them. ``skip``: (class name, pk) items
+    kept on their booked dates — they aren't covered, and a booking with nothing else gets no to-do."""
     from .booking_tasks import kind_of
     from .models import TASKABLE, Confirmation
 
     taskable = tuple(TASKABLE.values())
+    skip = set(skip)
     made = []
     for confirmation in Confirmation.objects.filter(trip=trip).prefetch_related("links__content_type"):
         if only is not None and confirmation.pk not in only:
@@ -348,7 +419,9 @@ def _booking_todos(trip, notes, only=None, booked_for=None):
         items = [link.item for link in confirmation.links.all() if link.item is not None]
         if not items:
             continue
-        covered = [item for item in items if isinstance(item, taskable)]
+        covered = [item for item in items if isinstance(item, taskable) and (type(item).__name__, item.pk) not in skip]
+        if not covered:
+            continue
         keys = [f"{kind_of(item)}-{item.pk}" for item in covered]
         line = "; ".join(f"{key} {booked_for[key]}" for key in keys if booked_for and key in booked_for)
         task = BookingTask.objects.create(
@@ -358,6 +431,30 @@ def _booking_todos(trip, notes, only=None, booked_for=None):
             notes=notes + (f"\n{BookingTask.BOOKED_FOR}{line}" if line else ""),
         )
         for item in covered:
+            TaskLink.link(task, item)
+        made.append(task)
+    return made
+
+
+def _kept_todos(trip, booked, kept):
+    """One reminder per booking with an item kept on its booked dates: "Check booking GCH7JS still fits the new
+    dates" (Medium), covering the kept items. Not a "Change booking" to-do: nothing of theirs has moved."""
+    from .models import TASKABLE
+
+    taskable = tuple(TASKABLE.values())
+    by_confirmation = {}
+    for key, (confirmation, item) in booked.items():
+        if key in kept and isinstance(item, taskable):
+            by_confirmation.setdefault(confirmation.pk, (confirmation, []))[1].append(item)
+    made = []
+    for confirmation, items in by_confirmation.values():
+        task = BookingTask.objects.create(
+            trip=trip,
+            title=f"Check booking {confirmation.confirmation_number} still fits the new dates",
+            priority=BookingTask.Priority.MEDIUM,
+            notes="Kept on its booked dates on this site. Check it still works with the trip's new dates.",
+        )
+        for item in items:
             TaskLink.link(task, item)
         made.append(task)
     return made

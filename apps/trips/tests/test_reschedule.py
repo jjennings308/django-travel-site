@@ -268,7 +268,7 @@ class PageTests(Fixture):
         )
         BookingTask.objects.create(trip=self.trip, title="No due date")
         BookingTask.objects.create(trip=self.trip, title="Deposit", due=date(2027, 8, 1))
-        response = self.client.get(self.url(start="2027-09-09"))
+        response = self.client.get(self.url(start="2027-09-09", keep_booked=0))
         html = response.content.decode()
         self.assertEqual(response.status_code, 200)
         self.assertIn("Sep 17–20 → Sep 9–12", html)
@@ -283,7 +283,9 @@ class PageTests(Fixture):
 
     def test_apply_moves_and_says_so(self):
         Confirmation.objects.create(trip=self.trip, confirmation_number="GCH7JS").link(self.train)
-        response = self.client.post(self.url(), {"start": "2027-09-10", "booking_todos": "1"}, follow=True)
+        response = self.client.post(
+            self.url(), {"start": "2027-09-10", "booking_todos": "1", "keep_booked": "0"}, follow=True
+        )
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.start_date, date(2027, 9, 10))
         self.assertContains(response, "Moved the trip to Sep 10–13. 1 booking to change: see To book.")
