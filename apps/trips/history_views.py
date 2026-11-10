@@ -95,11 +95,12 @@ def change_undo(request, pk, change_pk):
         except reschedule.CannotMove as reason:
             messages.error(request, f"Couldn't undo: {reason}")
         else:
-            text = (
-                "Undone: the days are back in their old order."
-                if "reorder" in change.before
-                else "Undone: the trip is back on its old dates."
-            )
+            if "reorder" in change.before:
+                text = "Undone: the days are back in their old order."
+            elif "extend" in change.before:
+                text = "Undone: the added days are gone and the trip is back on its old dates."
+            else:
+                text = "Undone: the trip is back on its old dates."
             if kept:
                 text += (
                     " Kept the booking to-dos edited or done since: "

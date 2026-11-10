@@ -543,8 +543,9 @@ def latest_change_ids(trip):
 
 def can_undo(change, latest):
     """Offer Undo / Restore for this change? (The POST re-checks against the current data.)"""
-    if change.before and ("shift" in change.before or "reorder" in change.before):
-        # The whole trip moved (DR1) or its days were put in a new order (DR2): reschedule.undo_move.
+    if change.before and any(key in change.before for key in ("shift", "reorder", "extend")):
+        # The whole trip moved (DR1), its days were put in a new order (DR2) or days were added at the ends
+        # (DR4): reschedule.undo_move.
         return latest.get("newest") == change.pk
     if latest.get((change.item_type, change.item_id)) != change.pk or not change.before:
         return False

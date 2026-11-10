@@ -26,7 +26,10 @@ would mean two places to fix the next time a field is added.
     <h2 class="form-section-title">The trip</h2>
     <p class="form-section-lede">Name, dates and who is going.{% if not is_create %} If new dates leave days outside the trip or dates without a day, you're offered which to add or remove next.{% endif %}{% if not is_create %} Who can open the trip is on <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>.{% endif %}</p>
     <div class="field-grid">{{ form.as_p }}</div>
-    {% if not is_create and trip.start_date %}<p class="note mb-4" data-shift-link>Moving the whole trip, days, journeys and stays together? <a class="link-quiet font-medium" href="{% url 'trips:trip_shift' trip.pk %}">Move the whole trip…</a></p>{% endif %}
+    {% if not is_create and trip.start_date %}
+      <p class="note mb-1" data-extend-link>Adding days at the start or end without moving anything already on the trip? <a class="link-quiet font-medium" href="{% url 'trips:trip_extend' trip.pk %}">Add days…</a></p>
+      <p class="note mb-4" data-shift-link>Moving the whole trip, days, journeys and stays together? <a class="link-quiet font-medium" href="{% url 'trips:trip_shift' trip.pk %}">Move the whole trip…</a></p>
+    {% endif %}
 
     <fieldset class="mt-2 border-t border-zinc-100 pt-5">
       <legend class="form-section-title float-left mb-1 w-full">Add a traveler</legend>

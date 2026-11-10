@@ -1,6 +1,6 @@
 # Plan: move the whole trip to new dates, and put days in a new order
 
-Status: DR1, DR2 and DR3 done. DR3 (2026-11-02) on branch `dr3-day-move-fixes`. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
+Status: DR1, DR2, DR3 and DR4 done. DR4 (2026-11-09) on branch `dr4-add-days`. DR3 (2026-11-02) on branch `dr3-day-move-fixes`. DR1 (2026-11-02) on branch `dr1-shift-trip`; DR2 (2026-11-02) on branch `dr2-reorder-days`. Asked for by James 2026-11-02 (Europe 2027 / Bavaria: the start moves from 9/17 to 9/10 and
 some days need to swap round). Two phases, one branch each, in order: DR1 (shift the trip by N days), DR2 (reorder
 days). Read with `CLAUDE.md` → Trips → "One page to read and edit; trip-wide pages are views; Settings holds
 trip-level things" (the fit-the-days page, `apps/trips/day_fit.py`), "Leg times", "Planned legs", "Change digest",
@@ -206,6 +206,29 @@ to legs or stays (a stay spans several days, a leg can be overnight); keep the d
 - `BOOKED_FOR` stored and hidden; `back_on_booked_dates` true when moved back, false otherwise; Close works;
 - "To do:" vs "Still to book:" wording;
 - the trip page's and day fragment's query pins unchanged.
+
+## DR4 — Add days at the start or end (branch `dr4-add-days`)
+
+James's case (2026-11-09): "being able to handle adding a day(s) at the beginning or end that would not necessarily
+change already confirmed things". A whole-trip move is the wrong tool for that: it moves every day and booking. So
+this is a separate, smaller action:
+
+- **`reschedule.extend_plan(trip, n, at)`** (pure preview, `at` = `"start"` / `"end"`): the trip's range grows on
+  that side, the new dates get empty days, existing days keep their dates and contents. Days are numbered by date
+  (`day_fit.renumber`), so adding at the start shifts the numbers; the preview lists the changes.
+- **`reschedule.extend(trip, n, at, user)`**: one transaction under one history line "Added 2 days at the start:
+  Sep 15–16". It creates only dates that have no day (a day kept outside the dates is used as it is). No booking
+  to-dos, no notifications: nothing that was booked has moved.
+- **Undo** (`undo_move`, since `is_move` accepts `before["extend"]`): deletes the days the line made, refusing when
+  one has meals, sections, activities or choices on it, or a journey or stay now on one of their dates, then puts
+  the trip's dates back and renumbers.
+- **Page `trips:trip_extend`** (`/trips/<pk>/extend/`, editors; linked from Settings under the dates and offered on
+  the fit-the-days page): number (1–60) + start/end → Preview → Add the days; returns to Settings' days table.
+- Help: `starting-a-trip` → "Adding days at the start or end". The whole-trip move keeps its booking to-dos; its
+  "keep booked items where they are" option stays a later, separate change.
+
+**Tests:** `apps/trips/tests/test_extend.py` (previews, guards, apply leaves every existing day/journey/stay/booking
+where it was, one line, undo and its refusals, the page's permissions and links).
 
 ## Not changing
 

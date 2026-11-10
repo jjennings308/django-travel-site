@@ -23,6 +23,7 @@ urlpatterns = [
     path("<int:pk>/settings/", views.trip_settings, name="trip_settings"),
     path("<int:pk>/settings/days/", views.trip_days_fit, name="trip_days_fit"),
     path("<int:pk>/shift/", views.trip_shift, name="trip_shift"),
+    path("<int:pk>/extend/", views.trip_extend, name="trip_extend"),
     path("<int:pk>/reorder/", views.trip_reorder, name="trip_reorder"),
     path("<int:pk>/bookings/", views.trip_bookings, name="trip_bookings"),
     path("<int:pk>/route/", views.trip_route, name="trip_route"),

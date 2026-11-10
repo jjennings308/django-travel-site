@@ -3,7 +3,7 @@ summary: Create a trip from scratch or from a bucket-list goal, set its route (c
 audience: editors
 section: Getting started
 order: 20
-updated: 2026-11-02
+updated: 2026-11-09
 
 # Starting a trip
 
@@ -77,9 +77,20 @@ On **Photos**, **Use on the booklet** under a photo does the same; the one in us
 
 Change **Start date** or **End date** on **Settings** and save. If the days no longer fit the new dates, the next page lists what to do: **Add a day for** each new date without one (ticked), and **Remove** each day now outside the dates (ticked only when nothing is on it; otherwise it says what would be deleted, such as "2 meals, 1 note"). Journeys and stays aren't deleted with a day. Click **Fit the days**: the days are then numbered again in date order. **Leave them as they are** changes nothing; a day you keep shows under its date, outside the trip's dates.
 
-If the trip moves as a whole (it starts a week earlier, say), use [moving the whole trip](#moving-the-whole-trip) instead, so the days keep what's on them. When you've already changed the start date, the page that fits the days offers it at the top: "Your days are still on Sep 17–29. **Move everything to start on Sep 10** instead?"
+If you only want a longer trip at one end, use **Add days…** ([below](#adding-days-at-the-start-or-end)); nothing already planned moves. If the trip moves as a whole (it starts a week earlier, say), use [moving the whole trip](#moving-the-whole-trip) instead, so the days keep what's on them. When you've already changed the start date, the page that fits the days offers it at the top: "Your days are still on Sep 17–29. **Move everything to start on Sep 10** instead?"
 
 If you changed **only** the start date, it asks which you meant: "You moved the start to Sep 10. **Move the whole trip** (keeps 17 days, ends Sep 26) or keep the end at Oct 3 (adds 7 empty days, below)?" **Move the whole trip** moves the days, journeys and stays and the end date with them, so the trip keeps its length (with a preview first). To keep the end instead, use the list below it.
+
+## Adding days at the start or end
+
+If you want a little longer at the beginning or end without disturbing what's already planned, use **Add days…** on **Settings** (under the dates; it's also offered on the page that fits the days after a date change). Choose how many days and whether they go at the **start** or the **end**, then click **Preview**:
+
+- **Only the trip's dates grow** on that side: an earlier start or a later end.
+- **Every existing day keeps its date and everything on it** — its city, theme, meals, notes, activities, choices and comments — and every journey, stay and booking stays on its date. Nothing is moved.
+- **The new dates get empty days** to fill. A date that already has a day (one you kept outside the dates, say) is used as it is rather than added again.
+- **Days are numbered by date**, so days added at the start shift the existing numbers (with two days, Day 1 becomes Day 3). The preview lists them; text that mentions a day by number still says the old one, so check it.
+
+Click **Add the days** to save it. It's one line in the trip's history, and **Undo** on it removes the added days — refusing if you've since put something on one — and puts the dates back ([undo a change](/help/trip-history/#undo-a-change)). Unlike [moving the whole trip](#moving-the-whole-trip), no booking to-dos are made: nothing booked has moved.
 
 ## Moving the whole trip
 
