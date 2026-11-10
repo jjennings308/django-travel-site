@@ -1236,6 +1236,7 @@ def trip_shift(request, pk):
     data = request.POST if request.method == "POST" else request.GET
     moved_from = _date_param(data.get("moved_from"))
     start = _date_param(data.get("start"))
+    keep_booked = data.get("keep_booked", "1") != "0"
     n = 0
     if moved_from and trip.start_date:
         n = (trip.start_date - moved_from).days
@@ -1257,15 +1258,22 @@ def trip_shift(request, pk):
                 booking_todos=data.get("booking_todos") == "1",
                 move_trip=moved_from is None,
                 new_end=new_end,
+                keep_booked=keep_booked,
             )
         except reschedule.CannotMove as reason:
             messages.error(request, str(reason))
             return redirect("trips:trip_shift", pk=trip.pk)
         trip.refresh_from_db()
         text = f"Moved the trip to {reschedule.span(trip.start_date, trip.end_date)}."
-        if done["made"]:
-            count = len(done["made"])
-            text += f" {count} booking{'s' if count != 1 else ''} to change: see To book."
+        changing = len(done["made"]) - len(done["reminders"])
+        if changing or done["reminders"]:
+            parts = []
+            if changing:
+                parts.append(f"{changing} booking{'s' if changing != 1 else ''} to change")
+            if done["reminders"]:
+                count = len(done["reminders"])
+                parts.append(f"{count} kept booking{'s' if count != 1 else ''} to check")
+            text += f" {', '.join(parts)}: see To book."
         messages.success(request, text)
         if moved_from:
             from . import day_fit
@@ -1279,7 +1287,9 @@ def trip_shift(request, pk):
         page_trip = get_object_or_404(_trip_page_queryset(request.user), pk=trip.pk)
         _attach_confirmations(page_trip)
         trip_notes.attach(page_trip, list(page_trip.days.all()))
-        preview = reschedule.shift_plan(page_trip, n, move_trip=moved_from is None, new_end=new_end)
+        preview = reschedule.shift_plan(
+            page_trip, n, move_trip=moved_from is None, new_end=new_end, keep_booked=keep_booked
+        )
     elif start and start == trip.start_date:
         messages.info(request, "That's the trip's start date already.")
     length = (trip.end_date - trip.start_date).days if trip.start_date and trip.end_date else None
@@ -1292,6 +1302,8 @@ def trip_shift(request, pk):
             "moved_from": moved_from,
             "start": start or trip.start_date,
             "length": length,
+            "keep_booked": keep_booked,
+            "has_bookings": trip.confirmations.filter(links__isnull=False).exists(),
             "settings_url": reverse("trips:trip_settings", args=[trip.pk]),
         },
     )
