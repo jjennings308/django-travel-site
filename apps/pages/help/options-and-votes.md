@@ -81,7 +81,7 @@ A choice can say what kind of thing it decides, so each option asks only for wha
 | **Stay** | how many **nights**, from its day | a catalogue city or place, or an address; a **cost per night**; its own nights if it differs (a 3-night minimum) |
 | **Eat** | the **meal** and its time | a catalogue place (Food & drink first) or a typed one; a cost |
 | **Do** | a **time** and **until** | a catalogue place, activity or event, or a typed place; a cost |
-| **Travel** | the **mode** (train, flight…) and a time | **from**, **to** and its own **mode** if it differs (the train or the flight); a cost |
+| **Travel** | the **mode** (train, flight, taxi…) and a time | **from**, **to** and its own **mode** if it differs (the train or the flight); a cost |
 | **Anything** | a time | just a title, notes, a link and a cost, as before |
 
 The site guesses the kind from what you type: "Where to stay in Munich" or "Augsburg hotel" is a stay, "Dinner Friday" eating out (dinner), "Train or drive to Füssen" travel, anything else something to do. Change it on the choice's page and save: the options then ask for that kind's details. Choices made before kinds existed are **Anything** and work as before.

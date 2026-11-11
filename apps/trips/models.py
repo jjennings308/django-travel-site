@@ -832,6 +832,7 @@ class TransportLeg(models.Model):
         TRAIN = "train", "Train"
         POV = "pov", "Private vehicle"
         RENTAL_CAR = "rental_car", "Rental car"
+        TAXI = "taxi", "Taxi"
         WALKING = "walking", "Walking"
         OTHER = "other", "Other"
 

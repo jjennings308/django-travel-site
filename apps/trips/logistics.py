@@ -40,6 +40,7 @@ ROUGH_TIME = re.compile(
 # (mode, words): first match wins, checked against the whole row.
 MODE_WORDS = (
     ("plane", (r"\bflight\b", r"\bfly\b", r"\bairline", r"✈", r"\bair\b")),
+    ("taxi", (r"\btaxi\b", r"\bcab\b")),
     (
         "train",
         (

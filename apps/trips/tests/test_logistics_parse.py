@@ -57,9 +57,11 @@ class ParseTests(SimpleTestCase):
             ["C → D", "Rental car from Avis"],
             ["E → F", "Walk along the river"],
             ["G → H", "Bus"],
+            ["I → J", "Taxi to the station"],
         ]
         self.assertEqual(
-            [leg["mode"] for leg in proposed_legs(["Leg", "Notes"], rows)], ["plane", "rental_car", "walking", "other"]
+            [leg["mode"] for leg in proposed_legs(["Leg", "Notes"], rows)],
+            ["plane", "rental_car", "walking", "other", "taxi"],
         )
 
     def test_match_city(self):
