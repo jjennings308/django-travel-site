@@ -72,7 +72,7 @@ After a save beside the days, the list is refreshed. **Needs attention** counts 
 
 ### No booking needed
 
-Some things never need booking: a walk-up regional train, a free museum, a stay with friends. Click **No booking needed** on its row, or tick **No booking needed** on its page (under Details for a journey). It then never shows in To book, Not booked yet or the days' ⚠, and its row on the day says "no booking needed" instead of Planned or Scheduled. Untick it on its page to put it back.
+Some things never need booking: a walk-up regional train, a free museum, a stay with friends. Click **No booking needed** on its row, or tick **No booking needed** under **More details** on its page. It then never shows in To book, Not booked yet or the days' ⚠, and its row on the day says "no booking needed" instead of Planned or Scheduled. Untick it on its page to put it back.
 
 If a to-do covers it and nothing else that still needs booking, the site asks **Mark these done?** right away, as it does after a confirmation. Leave a to-do open and it stops counting as a warning: under the item it says "*to-do*: nothing left to book" with **Close this to-do**, and in To book and on the To do page it says **Nothing left to book**. A to-do that still covers something to book stays as it is.
 

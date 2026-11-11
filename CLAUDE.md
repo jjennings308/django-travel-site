@@ -870,6 +870,16 @@ that matter most:
   `trips:meal_edit` / `meal_delete` (`/trips/<pk>/days/<day_pk>/meals/<id>/`; confirmations and contacts & info like a
   leg's; the day page's Meals formset still edits them together). `section_edit` / `section_delete` honour `next`.
   Panel URLs carry a query string, so the offline worker never caches them; every item page still works on its own.
+- **Short item forms** (short-forms F1, `docs/plans/short-forms.md`; no migration): the journey, stay, trip activity,
+  meal and choice-option forms use `forms.MoreDetailsMixin` — `MORE` names the fields that fold under a closed **More
+  details** (`_form_fields.html`; the leg page's `grouped_more()` with sub-headings; **More about this option** per row on
+  the choice page), everything else is up front, so a new field shows up front. Never folded: `travelers` (the panel's
+  people tab) and the cost amount. The summary lists what's filled (`more_summary`: "provider, notes", "a, b, 2 more";
+  `order` never listed); it opens by itself only on an error (`more_open`). With `cost_split` the cost block
+  (`partials/_cost_fields.html`) keeps Cost, Currency and the preview up front and `partials/_cost_more.html` puts Cost
+  is / People / Rooms in the fold; the preview reads them from the nearest `[data-cost-scope]` (an option row's
+  fieldset), else the form. A stay's pin (latitude / longitude) is in its fold (was "Adjust the pin"); a leg's return
+  trip is its own closed fold (`return_open`). The day page's Meals formset and the other trip forms are unchanged.
 - **+ Add and five kinds** (day-first plan P3): each open day on the trip page ends, for editors, with **+ Add to Day N**
   (`partials/_day.html`, a form with `data-quick-add`): one line, Enter (an `sr-only` first submit button, no kind) or a
   kind button (Travel / Stay / Do / Eat / Note; Options comes with P4) → `trips:quick_add` (`/trips/<pk>/days/<day_pk>/add/`,
@@ -1731,6 +1741,12 @@ after the deploy.
   (`currencies.fee_offer`) → `trips:activity_use_fee` (POST, editors: estimate, currency, per person); never automatic.
   Found on the way: `TripActivityForm` never called `setup_cost`, so the activity page hid Currency / Cost is / People
   and saving it stored a blank currency — now it does. Tests `test_blank_currencies`.
+
+### Short forms
+
+Plan: `docs/plans/short-forms.md` (trip-item forms show what's needed up front, the rest under a closed **More
+details** that lists what's filled; later maybe the event, catalogue activity, goal and place forms). Decided
+2026-11-10. Phase F1 on branch `f1-short-item-forms`. Status: F1 done (see Trips → Short item forms).
 
 ### Notification clean-up
 

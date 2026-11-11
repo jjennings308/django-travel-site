@@ -1,0 +1,12 @@
+{% comment %}
+What an item's cost means, in its More details fold (short-forms F1): Cost is, People and Rooms (Rooms only for "Per room per night"; always without JavaScript). The amount, currency and preview line stay up front in partials/_cost_fields.html, which reads these fields from the same scope (an option row's [data-cost-scope] fieldset, else the form). Pass form.
+{% endcomment %}
+<div class="mb-4 sm:col-span-2" data-panel-tab="details" data-cost-more
+     x-data="{ rooms: {% if form.cost_basis.value == 'room_night' %}true{% else %}false{% endif %}, read() { var scope = $el.closest('[data-cost-scope]') || $el.closest('form'); var box = scope && scope.querySelector('[data-cost-fields]'); var r = box && window.sblCostPreview ? window.sblCostPreview(box) : null; if (r) this.rooms = r.rooms; } }"
+     x-init="read()" @change.window="read()">
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% if form.cost_basis %}<div class="min-w-0"><label for="{{ form.cost_basis.id_for_label }}">{{ form.cost_basis.label }}</label>{{ form.cost_basis }}{{ form.cost_basis.errors }}</div>{% endif %}
+    {% if form.cost_people %}<div class="min-w-0"><label for="{{ form.cost_people.id_for_label }}">{{ form.cost_people.label }}</label>{{ form.cost_people }}<p class="mt-1 text-xs text-zinc-500">{{ form.cost_people.help_text }}</p>{{ form.cost_people.errors }}</div>{% endif %}
+    {% if form.rooms %}<div class="min-w-0" x-show="rooms" data-cost-rooms><label for="{{ form.rooms.id_for_label }}">{{ form.rooms.label }}</label>{{ form.rooms }}{{ form.rooms.errors }}</div>{% endif %}
+  </div>
+</div>

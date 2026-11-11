@@ -1,7 +1,9 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
 One transport leg on its own page (trips:leg_edit), reached from either view of it (the trip-wide
-"Getting around" list or its day). Fieldsets come from LegEditForm.grouped().
+"Getting around" list or its day). Fieldsets come from LegEditForm.grouped(); the rest (zones, rough
+time, Cost is / People, notes, No booking needed, placement) is under More details (grouped_more(),
+short-forms F1), and the return trip is its own closed fold.
 {% endcomment %}
 {% block title %}Edit leg — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -26,19 +28,39 @@ One transport leg on its own page (trips:leg_edit), reached from either view of 
             {% for field in fields %}
               {% if field.name == form.cost_block_at %}{% include "trips/partials/_cost_fields.html" %}
               {% elif field.name in form.cost_block_hidden %}
-              {% else %}
-              <div class="mb-4">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
-                {{ field.errors }}
-              </div>
+              {% else %}{% include "trips/_form_field.html" %}
               {% endif %}
             {% endfor %}
           </div>
         </fieldset>
       {% endif %}
     {% endfor %}
+    {% with more=form.grouped_more %}{% if more %}
+      <details class="mb-4" data-more-details data-panel-tab="details"{% if form.more_open %} open{% endif %}>
+        <summary class="cursor-pointer text-sm font-medium text-zinc-700">More details{% if form.more_summary %}<span class="font-normal text-zinc-500" data-more-summary>: {{ form.more_summary }}</span>{% endif %}</summary>
+        {% for heading, fields in more %}
+          <fieldset class="form-section mt-3">
+            <legend class="form-section-title">{{ heading }}</legend>
+            <div class="field-grid">
+              {% for field in fields %}
+                {% if field.name == "cost_basis" %}{% include "trips/partials/_cost_more.html" %}
+                {% elif field.name in form.cost_block_hidden %}
+                {% else %}{% include "trips/_form_field.html" %}
+                {% endif %}
+              {% endfor %}
+            </div>
+          </fieldset>
+        {% endfor %}
+      </details>
+    {% endif %}{% endwith %}
+    {% with fields=form.return_fields %}{% if fields %}
+      <details class="mb-4" data-return-trip data-panel-tab="details"{% if form.return_open %} open{% endif %}>
+        <summary class="cursor-pointer text-sm font-medium text-zinc-700">Also add the return trip</summary>
+        <div class="field-grid mt-3">
+          {% for field in fields %}{% include "trips/_form_field.html" %}{% endfor %}
+        </div>
+      </details>
+    {% endif %}{% endwith %}
     <datalist id="transport-zone-suggestions">{% for zone in zone_suggestions %}<option value="{{ zone }}"></option>{% endfor %}</datalist>
     <script>
       // Picking a From / To city fills that end's zone from the city (data-tz, E5), only while the

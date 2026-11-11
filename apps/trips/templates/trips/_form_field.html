@@ -1,0 +1,9 @@
+{% comment %}
+One field as _form_fields.html draws it: label, widget, help, errors. Pass field. Travellers belong to the item panel's people tab.
+{% endcomment %}
+<div class="mb-4" data-panel-tab="{% if field.name == 'travelers' %}people{% else %}details{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}
+  {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
+  {{ field.errors }}
+</div>

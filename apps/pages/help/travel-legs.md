@@ -27,15 +27,23 @@ The other way: on a day's page, click **+ Leg** and type the leg like a table ro
 
 ## Edit a leg
 
-Click **Edit** beside the leg on the trip page or on its day's page. The leg's page has these groups:
+Click **Edit** beside the leg on the trip page or on its day's page. The leg's page shows what you need to plan and book it:
 
 | Group | Fields |
 | --- | --- |
 | **Route** | **Origin** and **Destination** (an airport code, station or town), **From city** and **To city** (to draw it on the map), **Mode**. |
-| **Schedule** | **Date**; **Departure (local)** and **Arrival (local)** with each end's time zone; **Rough duration**; **Order** (for legs without times). |
-| **Details** | **Operator** (airline, rail company), **Service number** (flight or train number), **Cost**, **Currency**, **Notes**. |
-| **Placement** | **Shown on its day under**: which travel section of the day it sits in. |
-| **Return trip** | **Also add the return trip** ([below](#return-trips)). |
+| **Schedule** | **Date**; **Departure (local)** and **Arrival (local)**. |
+| **Details** | **Operator** (airline, rail company), **Service number** (flight or train number), **Cost**, **Currency**. |
+
+The rest is under **More details**, which stays closed and lists what's filled in ("More details: notes, no booking needed"):
+
+| Group | Fields |
+| --- | --- |
+| **Schedule** | Each end's **time zone** (filled in from the cities); **Rough duration**; **Order** (for legs without times). |
+| **Details** | **Cost is** and **People** ([what a cost means](/help/budget/#what-a-cost-means)), **Notes**, **No booking needed**. |
+| **Placement** | **Shown on its day under**: which travel section of the day it sits in; **In option**. |
+
+**Also add the return trip** is a fold of its own under that ([below](#return-trips)).
 
 Click **Save**. Below the form are the leg's **Confirmations** and **Contacts & info**.
 
@@ -51,7 +59,7 @@ A leg appears on the day it departs. An overnight flight shows on the day it lea
 
 ## Return trips
 
-Tick **Also add the return trip** when you save a leg, and give the return's times (or just its day, if it's only planned). The site adds a second leg back the other way, with the ends and time zones swapped and the mode and operator copied. The two legs are separate from then on.
+Open **Also add the return trip** at the bottom of the leg's page, tick it, and give the return's times (or just its day, if it's only planned). The site adds a second leg back the other way, with the ends and time zones swapped and the mode and operator copied. The two legs are separate from then on.
 
 **Same booking as the way out** (below the return's times) puts the return on the way out's open to-dos and confirmation numbers, for a return ticket bought as one. It's ticked when the way out already has a to-do or a confirmation; untick it when the return is booked separately. Its own service number, cost and notes are never copied ([one to-do for several things](/help/bookings-and-confirmations/#one-to-do-for-several-things)).
 

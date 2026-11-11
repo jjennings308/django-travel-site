@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-A stay on its own page (trips:stay_new from its check-in day, trips:stay_edit; edit-by-day plan E1). Once saved, its confirmations and contacts & info are added here, like a leg's. The pin's coordinates sit in a closed fold: they're found from the address.
+A stay on its own page (trips:stay_new from its check-in day, trips:stay_edit; edit-by-day plan E1). Once saved, its confirmations and contacts & info are added here, like a leg's. The short form (short-forms F1): cost details, notes, No booking needed, In option and the pin's coordinates (found from the address) sit in More details.
 {% endcomment %}
 {% block title %}{% if stay %}{{ stay.name }}{% else %}New stay{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
@@ -17,20 +17,7 @@ A stay on its own page (trips:stay_new from its check-in day, trips:stay_edit; e
     <h1 class="page-title mb-1">{% if stay %}{{ stay.name }}{% else %}New stay{% endif %}</h1>
     <p class="mb-4 text-zinc-500">{% if stay %}{{ stay.check_in|date:"D M j" }} – {{ stay.check_out|date:"D M j" }} · {{ stay.nights }} night{{ stay.nights|pluralize }}.{% elif day %}Checking in on Day {{ day.day_number }}, {{ day.date|date:"l, F j" }}. Change the dates for a longer stay.{% endif %} {% include "partials/_help_link.html" with slug="adding-a-day" anchor="stays" label="stays" text="How this works" %}</p>
     {% if form.non_field_errors %}<div class="alert-error">{{ form.non_field_errors }}</div>{% endif %}
-    {% include "trips/_form_fields.html" with form=form hide_fields="latitude longitude" %}
-    <details class="mb-4" data-adjust-pin{% if form.latitude.errors or form.longitude.errors %} open{% endif %}>
-      <summary class="cursor-pointer text-sm font-medium text-zinc-700">Adjust the pin</summary>
-      <p class="note mt-2">Found from the address. Without an address the map uses the city's centre.</p>
-      <div class="field-grid mt-2">
-        {% for field in form %}{% if field.name == "latitude" or field.name == "longitude" %}
-          <div class="mb-4">
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {{ field.errors }}
-          </div>
-        {% endif %}{% endfor %}
-      </div>
-    </details>
+    {% include "trips/_form_fields.html" with form=form %}
     <div class="flex flex-wrap items-center gap-3">
       <button type="submit" class="btn">{% if stay %}Save{% else %}Add stay{% endif %}</button>
       <a class="btn-quiet" href="{{ next }}">Cancel</a>

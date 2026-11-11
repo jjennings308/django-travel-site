@@ -68,7 +68,7 @@ Editors make a choice on a day in either of two ways:
 - The day's page: **+ Choose one** under **Add to this day**.
 - An idea on the trip's Ideas shelf: **Add as an option** ([ideas and goals](/help/ideas-and-goals/#making-an-idea-an-option)).
 
-Either opens the choice's page: what's being decided, **What is this choice about?** ([below](#what-a-choice-is-about)), an optional time (it then sits in the timeline), notes, and its **Options** (title, notes, a link, an estimated cost, and what the kind asks for). Save, and each saved option gets a box to add things straight into it: type a line such as "Train Munich → Füssen 9:15" or "Dinner Augustiner 7pm", as in + Add.
+Either opens the choice's page: what's being decided, **What is this choice about?** ([below](#what-a-choice-is-about)), an optional time (it then sits in the timeline), notes, and its **Options**: a title, what the kind asks for and an estimated cost, with notes, a link, the nights or mode if it differs and what the cost covers under **More about this option**. Save, and each saved option gets a box to add things straight into it: type a line such as "Train Munich → Füssen 9:15" or "Dinner Augustiner 7pm", as in + Add.
 
 To put something already on the day into an option, open it (its panel or page) and choose the option under **In option**. Set it back to blank to take it out. Deleting a choice keeps everything that was in its options, simply on the day.
 
