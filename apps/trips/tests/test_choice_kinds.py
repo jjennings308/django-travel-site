@@ -95,7 +95,7 @@ class FormTests(Fixture):
         self.assertEqual(self.fields("stay"), {"city", "poi", "place_text", "nights"})
         self.assertEqual(self.fields("eat"), {"poi", "place_text"})
         self.assertEqual(self.fields("do"), {"poi", "activity", "event", "place_text"})
-        self.assertEqual(self.fields("travel"), {"from_text", "to_text"})
+        self.assertEqual(self.fields("travel"), {"from_text", "to_text", "mode"})
         self.assertEqual(self.fields("any"), set())
         # What the cost means (budget-estimates B1): a stay's options offer the stay bases, per night first.
         stay = OptionForm(trip=self.trip, kind="stay")
@@ -168,6 +168,12 @@ class LineTests(Fixture):
                 group=travel, title="RE", from_text="Augsburg", to_text="Munich", est_cost=12, currency="EUR"
             ).kind_line(),
             "Train · Augsburg → Munich · EUR 12.00",
+        )
+        self.assertEqual(
+            Option.objects.create(
+                group=travel, title="Flight", from_text="Augsburg", to_text="Munich", mode="plane"
+            ).kind_line(),
+            "Flight · Augsburg → Munich",
         )
         self.assertEqual(Option.objects.create(group=self.group("any"), title="x", est_cost=5).kind_line(), "")
 

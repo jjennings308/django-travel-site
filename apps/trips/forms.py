@@ -2597,8 +2597,8 @@ class OptionGroupForm(forms.ModelForm):
 class OptionForm(CostFieldsMixin, forms.ModelForm):
     """One option: a title, notes, a link and an estimated cost, plus what its choice's kind asks for
     (typed-choices T1): a place — a catalogue place, activity, event or city, or typed — for a stay, a meal
-    or something to do; a nights override for a stay (whose cost is per night); from / to for travel. Its
-    legs, stays, activities, meals and notes are those items with ``option`` set to it (each item's own
+    or something to do; a nights override for a stay (whose cost is per night); from / to and a mode for
+    travel. Its legs, stays, activities, meals and notes are those items with ``option`` set to it (each item's own
     page)."""
 
     #: The option fields each kind asks for, besides title, notes, link and cost (always).
@@ -2606,10 +2606,10 @@ class OptionForm(CostFieldsMixin, forms.ModelForm):
         "stay": ("city", "poi", "place_text", "nights"),
         "eat": ("poi", "place_text"),
         "do": ("poi", "activity", "event", "place_text"),
-        "travel": ("from_text", "to_text"),
+        "travel": ("from_text", "to_text", "mode"),
         "any": (),
     }
-    EXTRA = ("poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text")
+    EXTRA = ("poi", "activity", "event", "city", "place_text", "nights", "from_text", "to_text", "mode")
 
     class Meta:
         model = Option
@@ -2623,6 +2623,7 @@ class OptionForm(CostFieldsMixin, forms.ModelForm):
             "nights",
             "from_text",
             "to_text",
+            "mode",
             "notes",
             "url",
             "est_cost",

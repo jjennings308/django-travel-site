@@ -934,7 +934,7 @@ that matter most:
   eat / do / travel, with the kind's shared fields `nights` (stay), `meal_type` + `start_time` (eat), `start_time` /
   `end_time` (do), `mode` (travel). `Option` gains a catalogue link (at most one of `poi` / `activity` / `event` /
   `city`, `option_one_target`, SET_NULL), `place_text`, `nights` (a stay override; blank = the group's), `from_text` /
-  `to_text`, and `made` (generic, the item Pick creates — T2). For a stay `est_cost` is per night: `Option.own_cost` =
+  `to_text`, `mode` (a travel option's own mode, trips 0063; blank = the group's — its line and Pick use it), and `made` (generic, the item Pick creates — T2). For a stay `est_cost` is per night: `Option.own_cost` =
   its `costs.estimate` total (B1: nightly × `stay_nights`, × 1 while unknown, unless its basis says per room / per
   person; people from `options.attach`'s `option._people`) feeds `options._costs` and the trip estimate;
   `Option.kind_line()` is the box's and the booklet's line ("EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße",

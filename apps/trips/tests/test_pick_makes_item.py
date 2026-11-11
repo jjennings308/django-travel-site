@@ -192,6 +192,14 @@ class MakeTests(Fixture):
             ("train", self.day.date, self.augsburg, self.munich, "Europe/Berlin", Decimal("12"), True),
         )
 
+    def test_an_options_own_mode_wins(self):
+        group = self.choice("travel", mode="train")
+        flight = Option.objects.create(
+            group=group, title="Flight", from_text="Augsburg", to_text="Munich", mode="plane"
+        )
+        self.pick(flight)
+        self.assertEqual(TransportLeg.objects.get().mode, "plane")
+
     def test_anything_makes_nothing(self):
         group = self.choice("any")
         option = Option.objects.create(group=group, title="Castle")
