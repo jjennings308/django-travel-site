@@ -1,0 +1,4 @@
+{% comment %}
+An item's open to-dos with nothing left to book (booking_tasks.nothing_left: everything they cover is "No booking needed" or confirmed), under its row or card on the trip page. Pass trip, tasks (item.closable_tasks), kind and pk (the item's anchor) and can_edit. A quiet line, not a warning; editors get Close this to-do (a plain POST to task_done, back to the item). Never closed on its own.
+{% endcomment %}
+{% for task in tasks %}<p class="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500" data-nothing-left>{{ task.title }}: nothing left to book.{% if can_edit %}<form method="post" action="{% url 'trips:task_done' trip.pk task.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#{{ kind }}-{{ pk }}"><input type="hidden" name="done" value="1"><button type="submit" class="link-quiet font-medium" data-close-task>Close this to-do</button></form>{% endif %}</p>{% endfor %}
