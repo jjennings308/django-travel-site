@@ -1,13 +1,13 @@
 title: Travel legs
-summary: Add trains, flights and drives, from a rough plan to a booked journey with exact times, and make a return trip in one go.
+summary: Add trains, flights, taxis and drives, from a rough plan to a booked journey with exact times, and make a return trip in one go.
 audience: editors
 section: Trips
 order: 30
-updated: 2026-10-28
+updated: 2026-11-10
 
 # Travel legs
 
-A leg is one journey: a flight, a train, a drive or a walk. It starts as a plan and grows into a booking on the same record.
+A leg is one journey: a flight, a train, a taxi, a drive or a walk. It starts as a plan and grows into a booking on the same record.
 
 ## Planned, scheduled, booked
 

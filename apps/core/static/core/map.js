@@ -134,7 +134,7 @@
         train: { color: "#8B5A3C", weight: 4 },
         walking: { color: "#556B2F", weight: 3, dashArray: "1 6" }
       };
-      var road = { color: "#C58B2A", weight: 3.5, dashArray: "8 6" };  // pov, rental car, other
+      var road = { color: "#C58B2A", weight: 3.5, dashArray: "8 6" };  // pov, rental car, taxi, other
       features.forEach(function (f) {
         var pts = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
         if (f.properties.mode === "plane" && pts.length === 2) pts = SBLMap.arc(pts[0], pts[1]);

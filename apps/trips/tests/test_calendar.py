@@ -115,6 +115,13 @@ class FeedTests(CalendarFixture):
             },
         )
 
+    def test_a_taxi_has_its_icon(self):
+        taxi = TransportLeg.objects.create(
+            trip=self.trip, mode="taxi", origin="Augsburg Hbf", destination="Hotel", date=self.d3.date
+        )
+        event = self.events(self.feed())[f"leg-{taxi.pk}"]
+        self.assertEqual(str(event["SUMMARY"]), "🚕 Augsburg Hbf → Hotel (planned)")
+
     def test_legs_in_utc_with_operator_number_and_confirmation(self):
         event = self.events(self.feed())[f"leg-{self.flight.pk}"]
         self.assertEqual(event.decoded("dtstart"), datetime(2027, 9, 18, 22, 0, tzinfo=dt_timezone.utc))

@@ -44,6 +44,16 @@ class ParseTests(SimpleTestCase):
                 "duration": timedelta(minutes=45),
             },
         ),
+        (
+            "Taxi Munich → Salzburg ~2h",
+            {
+                "kind": "travel",
+                "mode": "taxi",
+                "origin": "Munich",
+                "destination": "Salzburg",
+                "duration": timedelta(hours=2),
+            },
+        ),
         ("Hotel Laimer Hof 3 nights", {"kind": "stay", "name": "Hotel Laimer Hof", "nights": 3}),
         ("Stay at Gasthof Post", {"kind": "stay", "name": "Gasthof Post", "nights": 1}),
         (

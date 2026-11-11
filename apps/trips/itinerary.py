@@ -111,7 +111,15 @@ def attach_stays(days, stays):
     return [stay for stay in stays if stay.check_in not in dates]
 
 
-MODE_ICONS = {"plane": "✈", "train": "🚆", "pov": "🚗", "rental_car": "🚙", "walking": "🚶", "other": "•"}
+MODE_ICONS = {
+    "plane": "✈",
+    "train": "🚆",
+    "pov": "🚗",
+    "rental_car": "🚙",
+    "taxi": "🚕",
+    "walking": "🚶",
+    "other": "•",
+}
 ACTIVITY_ICONS = {"tour": "🧭", "entry": "🎟", "ticket": "🎫", "table": "🍽", "car_hire": "🚙", "other": "•"}
 
 
