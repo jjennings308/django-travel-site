@@ -1,6 +1,6 @@
 """'Also add the return trip' on a transport leg: a second leg back the other way."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
@@ -116,6 +116,18 @@ class RoundTripTests(TestCase):
         form = self.form(return_arrival_local="")  # one time without the other
         self.assertFalse(form.is_valid())
         self.assertIn("return_arrival_local", form.errors)
+
+    def test_a_return_duration_fills_in_its_arrival(self):
+        form = self.form(
+            return_date="2027-07-05",
+            return_departure_local="18:00",
+            return_arrival_local="",
+            return_duration_minutes="150",
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        back = form.return_leg
+        self.assertEqual(back.arrival_at - back.departure_at, timedelta(minutes=150))
 
     def test_return_cannot_arrive_before_it_departs(self):
         form = self.form(return_arrival_local="2027-07-05 16:00")  # 14:00 UTC, before 17:00 UTC

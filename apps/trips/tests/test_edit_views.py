@@ -575,9 +575,9 @@ class LegFormTests(TripEditingFixture):
         # Regression guard: a second __init__ once silently dropped seed_local_time_initial, so
         # every existing leg opened with blank times and re-saving failed.
         body = self.leg_page()
-        self.assertIn('value="2026-01-15T18:00"', body)  # 23:00 UTC is 6:00 PM in New York
-        self.assertIn('value="2026-01-15T19:30"', body)  # 02:30 UTC next day is 7:30 PM in Denver
-        self.assertIn('type="datetime-local"', body)
+        self.assertIn('value="18:00"', body)  # 23:00 UTC is 6:00 PM in New York
+        self.assertIn('value="19:30"', body)  # 02:30 UTC next day is 7:30 PM in Denver
+        self.assertIn('type="time"', body)
 
     def test_the_zone_control_is_not_a_full_dropdown(self):
         # 486 zone <option>s per control made the old edit page 358kb; a suggestions datalist instead.
