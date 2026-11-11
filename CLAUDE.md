@@ -836,7 +836,14 @@ that matter most:
     to-do** (`task_new?leg=…`, partners pre-ticked) · **Add confirmation** (both in the panel) · **No booking needed**
     (`trips:item_no_booking`, POST, `undo=1`). `panel.js` swaps the list for `trips:to_book_fragment` after every save
     (the page's context, like `day_fragment`). Needs attention's "N not booked" / "N to do" became "N to book" (rows)
-    and "N other to-dos"; the day summary's ⚠ counts as before. **No booking needed** (`no_booking`, trips 0059) on
+    and "N other to-dos"; the day summary's ⚠ counts as before. **Nothing left to book**: `booking_tasks.nothing_left(task,
+    items)` — an open to-do every item of which is `no_booking` or confirmed, at least one `no_booking`, and not a "Change
+    booking" one (`booked_for()`) — set as `task.nothing_left` by `attach`, which puts it in the items' `closable_tasks`
+    instead of `open_tasks` (shown as `partials/_closable_tasks.html`, "… nothing left to book · Close this to-do", a
+    plain POST to `task_done`), keeps it out of the day's ⚠ and the banner (`to_book["other_live"]`), and gives it the
+    note and **Close this to-do** in To book and on the To do page. Marking an item (`item_no_booking`, or ticking it on
+    the leg / stay / activity page) first offers closing those to-dos on `task_offer` (`reason=no_booking`;
+    `booking_tasks.closable_after`); offered, never closed. **No booking needed** (`no_booking`, trips 0059) on
     `TransportLeg`, `Lodging`, `TripActivity`: on their forms (a leg's Details), tracked in history ("booking"), the
     item shows "no booking needed" instead of its stage, and `not_booked` / `to_book` skip it. One partial,
     `partials/_to_book.html` (`mode` page / todo / bookings).

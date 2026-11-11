@@ -8,7 +8,8 @@ Everything here works on rows the trip page already prefetched (``booking_tasks`
 A to-do covers any number of legs, stays and activities (booking-todos K1: ``TaskLink``, prefetched as
 ``booking_tasks__links``) — a round trip, a connection, a hotel and its transfer.
 
-- ``attach(trip)``: each leg, stay and activity gets ``open_tasks`` (every to-do covering it); each task
+- ``attach(trip)``: each leg, stay and activity gets ``open_tasks`` (every open to-do covering it, except those with
+  ``nothing_left``, which go to ``closable_tasks``: everything they cover is "No booking needed" or confirmed); each task
   gets ``items`` (in date order), ``item`` (the first), ``item_day``, ``item_info``, ``cover_label``
   ("Augsburg → Munich and back", "PIT → ATL → FRA", "Hotel Laimer Hof + 1 more") and ``more_labels``,
   and, when it covers nothing, ``suggestion`` — the one stay whose name its title contains, or the one
@@ -212,6 +213,7 @@ def attach(trip, suggestions=False):
     index = _item_index(legs, stays, activities)
     for item in legs + stays + activities:
         item.open_tasks = []
+        item.closable_tasks = []
     for task in trip.booking_tasks.all():
         items = [
             index[(link.content_type_id, link.object_id)]
@@ -224,18 +226,31 @@ def attach(trip, suggestions=False):
         task.more_labels = ", ".join(label(item) for item in task.items[1:])
         task.item_day = None
         task.suggestion = None
+        task.nothing_left = False
         if task.item is not None:
             kind = kind_of(task.item)
             when = task.item.date if kind == "leg" else task.item.check_in if kind == "stay" else task.item.day.date
             task.item_day = days_by_date.get(when)
+            task.nothing_left = nothing_left(task, task.items)
             if not task.done:
                 for item in task.items:
-                    item.open_tasks.append(task)
+                    (item.closable_tasks if task.nothing_left else item.open_tasks).append(task)
         elif suggestions and not task.done:
             task.suggestion = suggest(task, legs, stays, activities)
         task.item_info = describe(task.item) if task.item is not None else None
         task.suggestion_info = describe(task.suggestion) if task.suggestion is not None else None
         task.back_on_booked_dates = not task.done and back_on_booked_dates(task, task.items)
+
+
+def nothing_left(task, items):
+    """An open to-do none of whose items needs booking any more: each is marked "No booking needed" or confirmed,
+    and at least one is marked (all confirmed is K1's offer; a "Change booking" to-do, ``BOOKED_FOR``, is about
+    confirmed items on purpose). It no longer counts as a warning; offered for closing, never closed."""
+    if task.done or not items or task.booked_for():
+        return False
+    return any(item.no_booking for item in items) and all(
+        item.no_booking or getattr(item, "confirmation_list", None) for item in items
+    )
 
 
 def dates_key(item):
@@ -411,6 +426,22 @@ def offer_after(trip, newly):
     for task in trip.booking_tasks.filter(done=False, links__isnull=False).distinct():
         keys = task_keys(task)
         if keys & newly and keys <= confirmed:
+            found.append(task)
+    return found
+
+
+def closable_after(trip, item):
+    """Open to-dos covering ``item`` (just marked "No booking needed") that have ``nothing_left`` now: offered
+    for closing on the "Mark these done?" page, never closed."""
+    from .models import BookingTask
+
+    confirmed = confirmed_items(trip)
+    found = []
+    for task in BookingTask.for_item(item).filter(done=False):
+        items = task.covered()
+        for each in items:
+            each.confirmation_list = [True] if (kind_of(each), each.pk) in confirmed else []
+        if nothing_left(task, items):
             found.append(task)
     return found
 

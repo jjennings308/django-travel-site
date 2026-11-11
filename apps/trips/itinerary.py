@@ -130,7 +130,7 @@ def overview(days, not_booked=(), tasks=()):
         if day is not None:
             attention[day.pk] = attention.get(day.pk, 0) + 1
     for task in tasks:
-        if task.done:
+        if task.done or getattr(task, "nothing_left", False):  # nothing left to book: not a warning
             continue
         day = getattr(task, "item_day", None) or (task.day if task.day_id else None)
         if day is not None:

@@ -1,6 +1,6 @@
 {% extends "trips/base_trips.html" %}
 {% comment %}
-Offered after an item gets its first confirmation (views.task_offer, Phase E): tick off its open booking tasks, or leave them. Never automatic: a task like "seats for 6" may still be open after the first booking.
+Offered after an item gets its first confirmation (views.task_offer, Phase E), or is marked "No booking needed" (reason=no_booking): tick off its open booking tasks, or leave them. Never automatic: a task like "seats for 6" may still be open after the first booking.
 {% endcomment %}
 {% block title %}Tasks done? — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-xl{% endblock %}
@@ -10,7 +10,7 @@ Offered after an item gets its first confirmation (views.task_offer, Phase E): t
     <input type="hidden" name="next" value="{{ next }}">
     <input type="hidden" name="tasks" value="{{ ids }}">
     <h1 class="page-title mb-2">Mark these done?</h1>
-    <p class="mb-4 text-zinc-600">That booking is now confirmed. These tasks were about it:</p>
+    <p class="mb-4 text-zinc-600">{% if no_booking %}Nothing these to-dos cover needs booking now:{% else %}That booking is now confirmed. These tasks were about it:{% endif %}</p>
     <ul class="mb-5 space-y-2">
       {% for task in tasks %}
         <li><label class="flex items-start gap-2"><input type="checkbox" name="done" value="{{ task.pk }}" checked class="mt-1"> <span><span class="font-medium">{{ task.title }}</span>{% if task.item_label %} <span class="text-sm text-zinc-500">· {{ task.item_label }}</span>{% endif %}</span></label></li>

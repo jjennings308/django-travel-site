@@ -1,6 +1,7 @@
 """Reference's "To book" list you can work in (docs/plans/booking-todos.md, K2): one row per item still to book,
 No plan yet or its to-dos, Other to-dos, Mark done in place, the quick actions and "No booking needed"."""
 
+import re
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -254,3 +255,102 @@ class NoBookingTests(Fixture):
         self.assertIn("no_booking", LodgingForm(instance=self.hotel).fields)
         activity = TripActivity.objects.create(trip=self.trip, day=self.day1, title="Tour", kind="tour")
         self.assertIn("no_booking", TripActivityForm(instance=activity, trip=self.trip).fields)
+
+
+class NothingLeftTests(Fixture):
+    """A to-do whose items are all "No booking needed" or booked has nothing left to book: offered for closing
+    when the item is marked, and until then a quiet line, not a warning."""
+
+    def mark(self, item, kind="leg", **post):
+        self.client.force_login(self.editor)
+        url = reverse("trips:item_no_booking", args=[self.trip.pk, kind, item.pk])
+        return self.client.post(url, {"next": self.detail + "#to-book", **post})
+
+    def test_marking_offers_to_close_its_todo(self):
+        task = make_task(self.trip, "Book the Augsburg train", self.out)
+        response = self.mark(self.out)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("trips:task_offer", args=[self.trip.pk]), response.url)
+        self.assertIn("reason=no_booking", response.url)
+        page = self.client.get(response.url).content.decode()
+        self.assertIn("Nothing these to-dos cover needs booking now", page)
+        self.assertIn("Book the Augsburg train", page)
+        task.refresh_from_db()
+        self.assertFalse(task.done)  # offered, never closed on its own
+        self.client.post(response.url, {"tasks": str(task.pk), "done": [str(task.pk)], "next": self.detail})
+        task.refresh_from_db()
+        self.assertTrue(task.done)
+
+    def test_no_offer_while_the_todo_covers_something_still_to_book(self):
+        make_task(self.trip, "Book trains", self.out, self.back)
+        response = self.mark(self.out)
+        self.assertRedirects(response, self.detail + "#to-book", fetch_redirect_response=False)
+
+    def test_a_booked_partner_still_leaves_nothing(self):
+        task = make_task(self.trip, "Book trains", self.out, self.back)
+        Confirmation.objects.create(trip=self.trip, confirmation_number="DB1").link(self.back)
+        response = self.mark(self.out)
+        self.assertIn(f"tasks={task.pk}", response.url)
+
+    def test_the_leg_form_offers_it_too(self):
+        task = make_task(self.trip, "Book the Augsburg train", self.out)
+        self.client.force_login(self.editor)
+        url = reverse("trips:leg_edit", args=[self.trip.pk, self.out.pk])
+        form = self.client.get(url).context["form"]
+        data = {name: form[name].value() for name in form.fields if form[name].value() is not None}
+        data.update(no_booking="on", next=self.detail)
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302, response.context and response.context["form"].errors)
+        self.assertIn(f"tasks={task.pk}", response.url)
+        response = self.client.post(url, data)  # already marked: saving again offers nothing
+        self.assertNotIn("task_offer", response.url)
+        self.assertNotIn("/tasks/done/", response.url)
+
+    def test_until_closed_it_is_a_quiet_line_not_a_warning(self):
+        task = make_task(self.trip, "Book the Augsburg train", self.out)
+        self.out.no_booking = True
+        self.out.save()
+        html = self.page()
+        self.assertNotIn("Still to book: Book the Augsburg train", html)
+        self.assertIn("Book the Augsburg train: nothing left to book.", html)
+        self.assertIn("data-close-task", html)
+        self.assertIn("Nothing left to book", html)  # in Other to-dos
+        self.assertNotIn("1 other to-do", html)  # not in the banner
+        found = self.to_book()
+        self.assertTrue(found["other"][0].nothing_left)
+        self.assertEqual(task.pk, found["other"][0].pk)
+        self.assertNotIn("data-close-task", self.page(self.viewer))  # editors close it
+        todo = self.page(name="trip_todo")
+        self.assertIn("Nothing left to book", todo)
+        self.assertIn("Close this to-do", todo)
+
+    def test_day_warning_skips_it(self):
+        make_task(self.trip, "Book the Augsburg train", self.out)
+        before = self.page()
+        self.out.no_booking = True
+        self.out.save()
+        after = self.page()
+        count = lambda html: sum(int(n) for n in re.findall(r"⚠(\d+)", html))  # noqa: E731
+        self.assertEqual(count(after), count(before) - 1)
+
+    def test_a_stay_and_an_activity_show_it_too(self):
+        activity = TripActivity.objects.create(trip=self.trip, day=self.day1, title="Castle tour", kind="tour")
+        make_task(self.trip, "Book the hotel", self.hotel)
+        make_task(self.trip, "Book the tour", activity)
+        for item in (self.hotel, activity):
+            item.no_booking = True
+            item.save()
+        html = self.page()
+        self.assertIn("Book the hotel: nothing left to book.", html)
+        self.assertIn("Book the tour: nothing left to book.", html)
+        self.assertIn(f'value="{self.detail}#stay-{self.hotel.pk}"', html)
+
+    def test_a_change_booking_todo_is_left_alone(self):
+        from apps.trips.models import BookingTask
+
+        task = make_task(self.trip, "Change booking DB1 to the new dates", self.out)
+        task.notes = f"{BookingTask.BOOKED_FOR}leg-{self.out.pk} 2027-09-19"
+        task.save()
+        self.out.no_booking = True
+        self.out.save()
+        self.assertFalse(self.to_book()["other"][0].nothing_left)

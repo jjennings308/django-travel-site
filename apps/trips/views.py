@@ -620,6 +620,8 @@ def _to_book_urls(trip, to_book, can_edit):
             else reverse("trips:item_panel", args=[trip.pk, "task", task.pk])
         )
     to_book["count"] = len(to_book["rows"])
+    # The banner counts only other to-dos with something left to book; the rest wait for Close this to-do.
+    to_book["other_live"] = [task for task in to_book["other"] if not getattr(task, "nothing_left", False)]
     to_book["no_plan"] = [row for row in to_book["rows"] if row["no_plan"]]  # To do and Bookings
     return to_book
 
@@ -653,7 +655,16 @@ def item_no_booking(request, pk, kind, item_pk):
     item.no_booking = request.POST.get("undo") != "1"
     item.save(update_fields=["no_booking"])
     messages.success(request, f"{label(item)}: {'no booking needed' if item.no_booking else 'to book again'}.")
-    return redirect(_back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#to-book"))
+    back = _back(request, reverse("trips:trip_detail", args=[trip.pk]) + "#to-book")
+    return redirect(_closable_offer(trip, item, back) if item.no_booking else back)
+
+
+def _closable_offer(trip, item, back):
+    """After ``item`` became "No booking needed": the "Mark these done?" page for its open to-dos that have nothing
+    left to book (``booking_tasks.closable_after``), else ``back``."""
+    from . import booking_tasks
+
+    return _task_offer_or(trip, booking_tasks.closable_after(trip, item), back, reason="no_booking")
 
 
 #: The item panel's kinds (P2): where each is found in the trip page's assembled days; ``task`` is a
@@ -2678,7 +2689,7 @@ def leg_edit(request, pk, leg_pk):
         messages.success(request, f"Saved {leg.origin} → {leg.destination}.")
         if form.return_leg is not None:
             messages.info(request, f"Added the return: {form.return_leg.origin} → {form.return_leg.destination}.")
-        return redirect(_back(request, _leg_back(trip, leg)))
+        return redirect(_offer_if_no_booking(trip, leg, form, _back(request, _leg_back(trip, leg))))
     from .forms import COMMON_ZONE_SUGGESTIONS
 
     return render(
@@ -2802,7 +2813,7 @@ def activity_edit(request, pk, day_pk, activity_pk=None):
         messages.success(request, f"Saved {saved.title}.")
         if activity is None:  # stay on its page so a confirmation can be added straight away
             return redirect(reverse("trips:activity_edit", args=[trip.pk, day.pk, saved.pk]) + "?next=" + quote(back))
-        return redirect(back)
+        return redirect(_offer_if_no_booking(trip, saved, form, back))
     context = {"trip": trip, "day": day, "activity": activity, "form": form, "next": back}
     if activity is not None:
         context.update(_item_confirmations_context(request, trip, "activity", activity))
@@ -3307,7 +3318,7 @@ def stay_edit(request, pk, stay_pk):
         stay = form.save()
         messages.success(request, f"Saved {stay.name}.")
         _days_filled_message(request, form)
-        return redirect(_back(request, _stay_back(trip, stay)))
+        return redirect(_offer_if_no_booking(trip, stay, form, _back(request, _stay_back(trip, stay))))
     return render(
         request,
         "trips/stay_form.html",
@@ -3896,18 +3907,27 @@ def confirmation_spread(request, pk, confirmation_pk):
     )
 
 
-def _task_offer_or(trip, tasks, back):
+def _task_offer_or(trip, tasks, back, reason=""):
     """The "mark these tasks done?" page when an item just got its first confirmation and
-    has open tasks (Phase E: offered, never ticked automatically); else ``back``."""
+    has open tasks (Phase E: offered, never ticked automatically), or (``reason="no_booking"``) was just
+    marked "No booking needed"; else ``back``. Inside the item panel (``back`` has ``panel=1``) it opens there."""
     if not tasks:
         return back
     from urllib.parse import urlencode
 
-    return (
-        reverse("trips:task_offer", args=[trip.pk])
-        + "?"
-        + urlencode({"tasks": ",".join(str(t.pk) for t in tasks), "next": back})
-    )
+    params = {"tasks": ",".join(str(t.pk) for t in tasks), "next": back}
+    if reason:
+        params["reason"] = reason
+    if "panel=1" in back:
+        params["panel"] = "1"
+    return reverse("trips:task_offer", args=[trip.pk]) + "?" + urlencode(params)
+
+
+def _offer_if_no_booking(trip, item, form, back):
+    """After an item's own form saved: the close-its-to-dos offer when this save ticked "No booking needed"."""
+    if "no_booking" in form.changed_data and item.no_booking:
+        return _closable_offer(trip, item, back)
+    return back
 
 
 @login_required
@@ -3936,7 +3956,13 @@ def task_offer(request, pk):
     return render(
         request,
         "trips/task_offer.html",
-        {"trip": trip, "tasks": tasks, "next": back, "ids": ",".join(str(t.pk) for t in tasks)},
+        {
+            "trip": trip,
+            "tasks": tasks,
+            "next": back,
+            "ids": ",".join(str(t.pk) for t in tasks),
+            "no_booking": source.get("reason") == "no_booking",
+        },
     )
 
 
