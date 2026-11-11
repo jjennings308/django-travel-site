@@ -38,7 +38,7 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
             {% for field in option_form.visible_fields %}{% if field.name == option_form.cost_block_at %}
               <div class="min-w-0 sm:col-span-3">{% include "trips/partials/_cost_fields.html" with form=option_form %}</div>
             {% elif field.name in option_form.cost_block_hidden %}{% elif field.name != "DELETE" %}
-              <div class="min-w-0 {% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
+              <div class="min-w-0 {% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' or field.help_text and field.name == 'mode' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
             {% endif %}{% endfor %}
           </div>
           {% if option_form.non_field_errors %}<div class="alert-error mt-2">{{ option_form.non_field_errors }}</div>{% endif %}

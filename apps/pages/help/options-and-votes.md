@@ -3,7 +3,7 @@ summary: Put several options on a day ("Afternoon: castle or museum?"), let ever
 audience: everyone
 section: Trips
 order: 25
-updated: 2026-10-28
+updated: 2026-11-10
 
 # Choices, options and votes
 
@@ -42,7 +42,7 @@ On a choice that says what it's about ([below](#what-a-choice-is-about)), **Pick
 | **Stay** | a stay from the choice's day for the option's nights (its own, else the choice's; one if neither says), with its city, address or place, nightly price and notes |
 | **Eat** | a meal on the day at the choice's time, at the option's catalogue place or typed name |
 | **Do** | an activity on the day from the choice's time until its end, at its catalogue place, activity's venue or event (an event becomes a ticket) |
-| **Travel** | a planned journey on the day by the choice's mode, from and to the option's places (matched to the trip's cities) |
+| **Travel** | a planned journey on the day by the option's mode (else the choice's), from and to the option's places (matched to the trip's cities) |
 
 The option's details are copied once: from then on the stay, meal, activity or journey is the record, and changing the option doesn't change it. The new item sits inside its option, so it counts while the option is picked: **Reopen the choice** keeps it, under the option in **Considered**, and picking that option again uses it again instead of making another. Picking another option makes that option's item. An option you already put something in by hand (**In option**) makes nothing new. **Split** makes the item for each option someone takes, on their track.
 
@@ -81,12 +81,12 @@ A choice can say what kind of thing it decides, so each option asks only for wha
 | **Stay** | how many **nights**, from its day | a catalogue city or place, or an address; a **cost per night**; its own nights if it differs (a 3-night minimum) |
 | **Eat** | the **meal** and its time | a catalogue place (Food & drink first) or a typed one; a cost |
 | **Do** | a **time** and **until** | a catalogue place, activity or event, or a typed place; a cost |
-| **Travel** | the **mode** (train, flight…) and a time | **from** and **to**; a cost |
+| **Travel** | the **mode** (train, flight…) and a time | **from**, **to** and its own **mode** if it differs (the train or the flight); a cost |
 | **Anything** | a time | just a title, notes, a link and a cost, as before |
 
 The site guesses the kind from what you type: "Where to stay in Munich" or "Augsburg hotel" is a stay, "Dinner Friday" eating out (dinner), "Train or drive to Füssen" travel, anything else something to do. Change it on the choice's page and save: the options then ask for that kind's details. Choices made before kinds existed are **Anything** and work as before.
 
-On the day, each option shows a line for its kind: a stay "EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße", a meal "Augustiner Bräustuben · EUR 40.00", something to do "Hacker-Festzelt · 11:00–16:00", a journey "Train · Augsburg → Munich". A stay's cost counts as nightly price × nights, in the option's total and the trip's estimated cost. The PDF prints the same lines.
+On the day, each option shows a line for its kind: a stay "EUR 95.00/night × 3 = EUR 285.00 · Maximilianstraße", a meal "Augustiner Bräustuben · EUR 40.00", something to do "Hacker-Festzelt · 11:00–16:00", a journey "Train · Augsburg → Munich". A travel option can set its own mode, so one can be the train and another the flight; the line and Pick use it. A stay's cost counts as nightly price × nights, in the option's total and the trip's estimated cost. The PDF prints the same lines.
 
 ## From older trips
 

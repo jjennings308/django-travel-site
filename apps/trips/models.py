@@ -2363,7 +2363,8 @@ class Option(models.Model):
 
     Typed choices (T1): the fields its group's ``kind`` asks for — a catalogue link (at most one of
     ``poi`` / ``activity`` / ``event`` / ``city``) or a typed ``place_text`` (stay, eat, do), a ``nights``
-    override (stay; blank = the group's), ``from_text`` / ``to_text`` (travel). For a stay ``est_cost`` is
+    override (stay; blank = the group's), ``from_text`` / ``to_text`` and a ``mode`` override (travel; blank =
+    the group's). For a stay ``est_cost`` is
     per night (``own_cost`` multiplies); otherwise the total — unless ``cost_basis`` says otherwise (B1:
     ``costs``, with ``rooms`` and ``cost_people``). ``made`` is the item Pick created (T2)."""
 
@@ -2414,6 +2415,12 @@ class Option(models.Model):
     )
     from_text = models.CharField(max_length=120, blank=True, verbose_name="from")
     to_text = models.CharField(max_length=120, blank=True, verbose_name="to")
+    mode = models.CharField(
+        max_length=10,
+        blank=True,
+        choices=[("", "---------")] + list(TransportLeg.Mode.choices),
+        help_text="Only if it differs from the choice's.",
+    )
     made_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     made_id = models.PositiveBigIntegerField(null=True, blank=True)
     made = GenericForeignKey("made_type", "made_id")
@@ -2524,7 +2531,8 @@ class Option(models.Model):
             parts += [p for p in (self.place, when, cost_text) if p]
         elif group.kind == OptionGroup.Kind.TRAVEL:
             route = " → ".join(p for p in (self.from_text, self.to_text) if p)
-            parts += [p for p in (group.get_mode_display() if group.mode else "", route, cost_text) if p]
+            mode = self.get_mode_display() if self.mode else (group.get_mode_display() if group.mode else "")
+            parts += [p for p in (mode, route, cost_text) if p]
         return " · ".join(parts)
 
 
