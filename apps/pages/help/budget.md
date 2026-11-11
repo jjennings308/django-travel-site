@@ -3,7 +3,7 @@ summary: Record who paid for what, see each person's share and who owes whom, an
 audience: everyone
 section: Trips
 order: 40
-updated: 2026-11-02
+updated: 2026-11-10
 
 # The budget and splitting costs
 
@@ -75,7 +75,7 @@ If you changed money at a known rate and want the budget to use it: on the **Bud
 
 ## What a cost means
 
-Every journey, stay, activity, meal and choice option can carry a cost: what you expect to pay, whether or not it needs booking (the €8 castle museum at the door, lunch, the U-Bahn). Next to it, **Cost is** says what the number means, and the site works out the total and each person's share:
+Every journey, stay, activity, meal and choice option can carry a cost: what you expect to pay, whether or not it needs booking (the €8 castle museum at the door, lunch, the U-Bahn). **Cost is**, under **More details** on the item's page (**More about this option** on a choice), says what the number means, and the site works out the total and each person's share:
 
 | Cost is | Means | Offered on |
 |---|---|---|

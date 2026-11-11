@@ -17,6 +17,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from django import forms
+from django.core.exceptions import EmptyResultSet
 from django.db import models
 from django.db.models import Case, Q, Value, When
 from django.forms.formsets import formset_factory
@@ -872,6 +873,9 @@ class CostFieldsMixin:
 
     cost_amount_field = None
     cost_kind = None
+    #: Short item forms (short-forms F1): the amount, currency and preview stay up front, **Cost is** / **People**
+    #: / **Rooms** go into the form's **More details** fold (``partials/_cost_more.html``).
+    cost_split = False
 
     def setup_cost(self, kind, amount_field):
         from .costs import BASES_FOR, Basis
@@ -953,8 +957,57 @@ class CostFieldsMixin:
         return cleaned
 
 
-class LodgingForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm):
+class MoreDetailsMixin:
+    """A short item form (short-forms F1, ``docs/plans/short-forms.md``): the fields named in ``MORE`` fold under
+    **More details** (``_form_fields.html``, the leg page, the choice page's option rows); everything else is up
+    front, so a field added later shows up front. Never folded: ``travelers`` (the item panel's people tab) and the
+    cost amount. The fold stays closed and its summary lists what's filled; it opens by itself only on an error."""
+
+    MORE = ()
+    #: Never listed in the summary: they always hold something.
+    MORE_UNLISTED = ("order",)
+
+    @property
+    def more_names(self):
+        keep = {"travelers", getattr(self, "cost_amount_field", None)}
+        return [name for name in self.MORE if name in self.fields and name not in keep]
+
+    @property
+    def more_fields(self):
+        return [self[name] for name in self.more_names]
+
+    @property
+    def more_filled(self):
+        labels = []
+        for name in self.more_names:
+            if name in self.MORE_UNLISTED:
+                continue
+            value = self[name].value()
+            if value in (None, "", [], (), False, 0, "0") or (isinstance(value, str) and not value.strip()):
+                continue
+            label = str(self.fields[name].label or name.replace("_", " ")).strip()
+            labels.append(label[:1].lower() + label[1:] if not label[:2].isupper() else label)
+        return labels
+
+    @property
+    def more_summary(self):
+        filled = self.more_filled
+        if len(filled) <= 3:
+            return ", ".join(filled)
+        return f"{', '.join(filled[:2])}, {len(filled) - 2} more"
+
+    @property
+    def more_open(self):
+        return self.is_bound and any(self[name].errors for name in self.more_names)
+
+
+class LodgingForm(
+    MoreDetailsMixin, CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, LocatingStayMixin, forms.ModelForm
+):
     """One place to stay. Check-out has to follow check-in."""
+
+    cost_split = True
+    MORE = ("cost_basis", "cost_people", "rooms", "notes", "no_booking", "option", "latitude", "longitude")
 
     class Meta:
         model = Lodging
@@ -994,6 +1047,10 @@ class LodgingForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, Locating
                 self, "currency", trip, [self.initial.get("city") or self.instance.city_id], given_initial=given
             )
         self.setup_cost("stay", "nightly_rate")
+        if "latitude" in self.fields:  # the pin, in More details (short-forms F1; was the "Adjust the pin" fold)
+            self.fields[
+                "latitude"
+            ].help_text = "Found from the address. Without an address the map uses the city's centre."
 
     def clean(self):
         cleaned_data = super().clean()
@@ -2303,10 +2360,28 @@ class LegProposalForm(forms.Form):
 LegProposalFormSet = formset_factory(LegProposalForm, extra=0)
 
 
-class LegEditForm(InOptionMixin, TransportLegForm):
+class LegEditForm(MoreDetailsMixin, InOptionMixin, TransportLegForm):
     """One leg on its own page (``trips:leg_edit``): everything the formset row has, plus
     where on its day it's shown (``section``: a travel section of the leg's day) and its
     order among same-day legs without times."""
+
+    cost_split = True
+    MORE = (
+        "origin_timezone",
+        "destination_timezone",
+        "est_duration",
+        "order",
+        "cost_basis",
+        "cost_people",
+        "notes",
+        "no_booking",
+        "section",
+        "option",
+    )
+    #: Filled in from the cities, so they'd always be "filled": not listed in the summary.
+    MORE_UNLISTED = ("order", "origin_timezone", "destination_timezone")
+    #: Its own closed fold, "Also add the return trip" (short-forms F1).
+    RETURN = "Return trip"
 
     #: Fieldsets for the template: (heading, field names).
     GROUPS = (
@@ -2355,8 +2430,36 @@ class LegEditForm(InOptionMixin, TransportLegForm):
         self.setup_option(trip, trip.days.filter(date=leg.date).first() if trip and leg.date else None)
 
     def grouped(self):
-        """[(heading, [bound fields])] for the fieldsets, skipping names this form lacks."""
-        return [(heading, [self[name] for name in names if name in self.fields]) for heading, names in self.GROUPS]
+        """[(heading, [bound fields])] for the up-front fieldsets: names this form lacks, the folded ones
+        (``MORE``) and the return trip skipped."""
+        folded = set(self.more_names)
+        return [
+            (heading, [self[name] for name in names if name in self.fields and name not in folded])
+            for heading, names in self.GROUPS
+            if heading != self.RETURN
+        ]
+
+    def grouped_more(self):
+        """[(heading, [bound fields])] for the **More details** fold, in the fieldsets' order."""
+        folded = set(self.more_names)
+        groups = [
+            (heading, [self[name] for name in names if name in folded])
+            for heading, names in self.GROUPS
+            if heading != self.RETURN
+        ]
+        return [(heading, fields) for heading, fields in groups if fields]
+
+    def return_fields(self):
+        names = dict(self.GROUPS)[self.RETURN]
+        return [self[name] for name in names if name in self.fields]
+
+    @property
+    def return_open(self):
+        """The return-trip fold opens when it was asked for (and the page came back) or one of its fields erred."""
+        fields = self.return_fields()
+        return self.is_bound and (
+            bool(self.data.get(self.add_prefix("add_return"))) or any(field.errors for field in fields)
+        )
 
 
 class LegQuickAddForm(forms.Form):
@@ -2406,10 +2509,13 @@ class ConfirmationEditForm(forms.ModelForm):
         currencies.setup(self, "currency", trip, currencies.confirmation_city_ids(self.instance))
 
 
-class TripActivityForm(CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
+class TripActivityForm(MoreDetailsMixin, CostFieldsMixin, InOptionMixin, SyncsTripCitiesMixin, forms.ModelForm):
     """An activity on a day (``trips:activity_new`` / ``activity_edit``): a tour, timed entry,
     ticket, table or car hire. The place is a catalogue POI in one of the trip's cities (else
     typed), the travellers are the trip's own."""
+
+    cost_split = True
+    MORE = ("provider", "cost_basis", "cost_people", "notes", "no_booking", "order", "option")
 
     class Meta:
         model = TripActivity
@@ -2513,7 +2619,11 @@ def share_choices(*forms_or_formsets):
                 if not isinstance(field, forms.ModelChoiceField):
                     continue
                 label = getattr(field.label_from_instance, "__func__", field.label_from_instance)
-                key = (type(field), str(field.queryset.query), label, field.empty_label)
+                try:
+                    sql = str(field.queryset.query)
+                except EmptyResultSet:  # e.g. a stay choice's cities on a trip with none yet: nothing to list
+                    sql = "empty"
+                key = (type(field), sql, label, field.empty_label)
                 if key not in lists:
                     lists[key] = list(field.choices)
                 field.choices = lists[key]
@@ -2594,12 +2704,15 @@ class OptionGroupForm(forms.ModelForm):
         return cleaned
 
 
-class OptionForm(CostFieldsMixin, forms.ModelForm):
+class OptionForm(MoreDetailsMixin, CostFieldsMixin, forms.ModelForm):
     """One option: a title, notes, a link and an estimated cost, plus what its choice's kind asks for
     (typed-choices T1): a place — a catalogue place, activity, event or city, or typed — for a stay, a meal
     or something to do; a nights override for a stay (whose cost is per night); from / to and a mode for
     travel. Its legs, stays, activities, meals and notes are those items with ``option`` set to it (each item's own
     page)."""
+
+    cost_split = True
+    MORE = ("notes", "url", "nights", "mode", "cost_basis", "cost_people", "rooms", "order")
 
     #: The option fields each kind asks for, besides title, notes, link and cost (always).
     KIND_FIELDS = {
@@ -2733,9 +2846,21 @@ class SplitForm(forms.Form):
         return [(traveler, self[f"t{traveler.pk}"]) for traveler in self.travelers]
 
 
-class MealPageForm(InOptionMixin, MealForm):
+class MealPageForm(MoreDetailsMixin, InOptionMixin, MealForm):
     """A meal on its own page (``trips:meal_edit``): the day page's meal fields plus "In option" (P4),
     which the Meals formset leaves out so its rows cost no extra queries."""
+
+    cost_split = True
+    MORE = (
+        "cuisine",
+        "price_range",
+        "why_recommended",
+        "reservation_notes",
+        "cost_basis",
+        "cost_people",
+        "order",
+        "option",
+    )
 
     class Meta(MealForm.Meta):
         fields = MealForm.Meta.fields + ["currency", "cost_people", "option"]

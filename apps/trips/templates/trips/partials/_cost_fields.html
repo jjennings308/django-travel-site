@@ -1,24 +1,29 @@
 {% comment %}
 An item's cost and what it means, together (budget-estimates B1; forms.CostFieldsMixin): Cost, Currency, Cost is, People and Rooms (shown only for "Per room per night"; always without JavaScript), then a live preview line worked out in the browser from the fields (the saved figure is always computed in Python, apps/trips/costs.py). Pass form. Rendered by _form_fields.html, the leg page and the choice page where the amount would be. data-nights / data-people are the item's nights and people as the server knows them; a stay form's own Check in / Check out win.
+A short item form (form.cost_split, short-forms F1) shows only Cost, Currency and the preview here; Cost is, People and Rooms are in its More details fold (partials/_cost_more.html), so the preview reads its fields from the nearest [data-cost-scope] (an option row's fieldset), else the form, and listens to the whole page.
 {% endcomment %}
 {% with amount=form.cost_amount_bound %}
-<div class="mb-4 sm:col-span-2" data-panel-tab="details" data-cost-fields data-nights="{{ form.cost_nights|default_if_none:'' }}" data-people="{{ form.cost_people_default|default_if_none:'' }}"
+<div class="mb-4 sm:col-span-2" data-panel-tab="details" data-cost-fields{% if form.cost_split %} data-cost-split{% endif %} data-nights="{{ form.cost_nights|default_if_none:'' }}" data-people="{{ form.cost_people_default|default_if_none:'' }}"
      x-data="{ rooms: {% if form.cost_basis.value == 'room_night' %}true{% else %}false{% endif %}, line: '', read() { var r = window.sblCostPreview ? window.sblCostPreview($el) : null; if (r) { this.rooms = r.rooms; this.line = r.line; } } }"
-     x-init="read()" @input="read()" @change="read()">
+     x-init="read()" {% if form.cost_split %}@input.window="read()" @change.window="read()"{% else %}@input="read()" @change="read()"{% endif %}>
   <div class="grid gap-3 sm:grid-cols-2">
     <div class="min-w-0"><label for="{{ amount.id_for_label }}">{{ amount.label }}</label>{{ amount }}{{ amount.errors }}</div>
     {% if form.currency %}<div class="min-w-0"><label for="{{ form.currency.id_for_label }}">{{ form.currency.label }}</label>{{ form.currency }}{{ form.currency.errors }}</div>{% endif %}
+    {% if not form.cost_split %}
     {% if form.cost_basis %}<div class="min-w-0"><label for="{{ form.cost_basis.id_for_label }}">{{ form.cost_basis.label }}</label>{{ form.cost_basis }}{{ form.cost_basis.errors }}</div>{% endif %}
     {% if form.cost_people %}<div class="min-w-0"><label for="{{ form.cost_people.id_for_label }}">{{ form.cost_people.label }}</label>{{ form.cost_people }}<p class="mt-1 text-xs text-zinc-500">{{ form.cost_people.help_text }}</p>{{ form.cost_people.errors }}</div>{% endif %}
     {% if form.rooms %}<div class="min-w-0" x-show="rooms" data-cost-rooms><label for="{{ form.rooms.id_for_label }}">{{ form.rooms.label }}</label>{{ form.rooms }}{{ form.rooms.errors }}</div>{% endif %}
+    {% endif %}
   </div>
   <p class="mt-2 text-sm text-zinc-600" data-cost-preview x-show="line" x-text="line" x-cloak></p>
 </div>
 {% endwith %}
 <script>
   // The preview line (budget-estimates B1): the same arithmetic as costs.estimate, for display only.
+  // A split block (short forms) reads Cost is / People / Rooms from its scope: the option row's fieldset, else the form.
   window.sblCostPreview = window.sblCostPreview || function (box) {
-    function field(mark) { return box.querySelector('[data-cost="' + mark + '"]'); }
+    var scope = box.hasAttribute("data-cost-split") ? (box.closest("[data-cost-scope]") || box.closest("form") || box) : box;
+    function field(mark) { return scope.querySelector('[data-cost="' + mark + '"]'); }
     function num(mark) { var el = field(mark); return el && el.value !== "" ? Number(el.value) : null; }
     var basisEl = field("basis");
     var basis = basisEl ? (basisEl.value || basisEl.options[1].value) : "total";

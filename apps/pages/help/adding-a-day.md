@@ -3,7 +3,7 @@ summary: Add a day, fill in its details, then add travel, stays, things to do, m
 audience: editors
 section: Trips
 order: 20
-updated: 2026-11-02
+updated: 2026-11-10
 
 # How to add a day to your trip
 
@@ -81,6 +81,8 @@ At the top of the day page, **Add to this day** has a button for each kind of th
 | + Contact or note | A phone number or tip for the whole day | A contact (name, phone, email) or an info note (title and text). |
 | Section buttons | The day's write-up | **Note** (a heading, a tone and text: a part of the day, a tip or a warning; [notes](#notes)), **Travel notes** (a heading for the day's journeys, with an intro and rows for things like ticket prices). Options to pick from are a choice: **+ Choose one** ([choices](/help/options-and-votes/#making-a-choice)). |
 
+Each item's own page (journey, stay, activity, meal) shows the main fields; the rest, such as notes, the provider, a meal's cuisine, what the cost covers, **No booking needed** and **In option**, is under **More details**. It stays closed and lists what's filled in.
+
 Everything you add appears under **On this day**, in the same order as on the trip page. Each item has its own **Confirmations** and **Contacts & info** links for booking numbers and phone numbers.
 
 Items with a time (legs, activities, booked meals) go on the day's timeline in time order. Meals without a reservation time appear under **Food ideas**.
@@ -89,7 +91,7 @@ Items with a time (legs, activities, booked meals) go on the day's timeline in t
 
 Add a stay from the day you check in: **+ Stay** opens a new stay with check-in on that day and check-out the next morning. Change the check-out date for a longer stay; one stay covers all its nights.
 
-- **Address** finds the stay's pin on the trip map. Without an address the map uses the city's centre. To move the pin by hand, open **Adjust the pin**.
+- **Address** finds the stay's pin on the trip map. Without an address the map uses the city's centre. To move the pin by hand, open **More details** and change **Latitude** and **Longitude**.
 - **City**: the days the stay covers that have no city yet get this one (change a day trip by hand on its day).
 - After **Add stay** you stay on the stay's page: add its confirmation number in **Confirmations** and the front desk's phone in **Contacts & info** there ([bookings and confirmations](/help/bookings-and-confirmations/)).
 

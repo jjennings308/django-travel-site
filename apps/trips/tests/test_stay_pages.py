@@ -129,7 +129,7 @@ class StayPageTests(Fixture):
         stay = self.stay()
         self.client.force_login(self.editor)
         html = self.client.get(reverse("trips:stay_edit", args=[self.trip.pk, stay.pk])).content.decode()
-        fold = html[html.index("data-adjust-pin") : html.index("</details>", html.index("data-adjust-pin"))]
+        fold = html[html.index("data-more-details") : html.index("</details>", html.index("data-more-details"))]
         self.assertIn('name="latitude"', fold)
         self.assertIn("Found from the address. Without an address the map uses the city", fold)
         self.assertEqual(html.count('name="latitude"'), 1)

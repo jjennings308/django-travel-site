@@ -32,15 +32,28 @@ A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): w
     <h2 class="form-section-title mt-2 mb-3">Options</h2>
     <div class="space-y-4">
       {% for option_form in formset %}
-        <fieldset class="rounded-lg border border-zinc-200 p-4" data-option-form>
+        <fieldset class="rounded-lg border border-zinc-200 p-4" data-option-form data-cost-scope>
           {{ option_form.id }}
           <div class="grid gap-3 sm:grid-cols-3">
-            {% for field in option_form.visible_fields %}{% if field.name == option_form.cost_block_at %}
+            {% for field in option_form.visible_fields %}{% if field.name in option_form.more_names %}{% elif field.name == option_form.cost_block_at %}
               <div class="min-w-0 sm:col-span-3">{% include "trips/partials/_cost_fields.html" with form=option_form %}</div>
             {% elif field.name in option_form.cost_block_hidden %}{% elif field.name != "DELETE" %}
-              <div class="min-w-0 {% if field.name == 'notes' or field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' or field.help_text and field.name == 'mode' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
+              <div class="min-w-0 {% if field.name == 'title' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
             {% endif %}{% endfor %}
           </div>
+          {% if option_form.more_names %}
+            {# Short option rows (short-forms F1): notes, link, the nights / mode overrides, Cost is / People / Rooms and order. #}
+            <details class="mt-1" data-more-details{% if option_form.more_open %} open{% endif %}>
+              <summary class="cursor-pointer text-sm font-medium text-zinc-700">More about this option{% if option_form.more_summary %}<span class="font-normal text-zinc-500" data-more-summary>: {{ option_form.more_summary }}</span>{% endif %}</summary>
+              <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                {% for field in option_form.more_fields %}{% if field.name == "cost_basis" %}
+                  <div class="min-w-0 sm:col-span-3">{% include "trips/partials/_cost_more.html" with form=option_form %}</div>
+                {% elif field.name in option_form.cost_block_hidden %}{% else %}
+                  <div class="min-w-0 {% if field.name == 'notes' %}sm:col-span-3{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text and field.name == 'nights' or field.help_text and field.name == 'mode' %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
+                {% endif %}{% endfor %}
+              </div>
+            </details>
+          {% endif %}
           {% if option_form.non_field_errors %}<div class="alert-error mt-2">{{ option_form.non_field_errors }}</div>{% endif %}
           {% if option_form.instance.pk %}<label class="mt-2 flex items-center gap-2 text-sm text-zinc-600">{{ option_form.DELETE }} Remove this option (anything in it stays on the day)</label>{% endif %}
         </fieldset>

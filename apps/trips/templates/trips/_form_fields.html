@@ -10,18 +10,32 @@ Django has no built-in "render everything except these", and the trip form uses
 `as_p` while the day form needs a rendered hint under `travelers`. This partial
 exists so both get the same markup, and so a field added to a form appears
 without a template edit.
+
+A short item form (forms.MoreDetailsMixin, short-forms F1) names fields in MORE:
+they render in a closed "More details" fold after the others, its summary listing
+what's filled; it opens by itself when one of them has an error. Cost is / People /
+Rooms come there as partials/_cost_more.html. Forms without the mixin are unchanged.
 {% endcomment %}
 <div class="field-grid">
 {% for field in form.visible_fields %}
-  {% if field.name == form.cost_block_at %}{% include "trips/partials/_cost_fields.html" %}{# the cost and what it means, together (budget-estimates B1) #}
+  {% if field.name in form.more_names %}
+  {% elif field.name == form.cost_block_at %}{% include "trips/partials/_cost_fields.html" %}{# the cost and what it means, together (budget-estimates B1) #}
   {% elif field.name in form.cost_block_hidden %}
   {% elif not hide_fields or field.name not in hide_fields %}
-    <div class="mb-4" data-panel-tab="{% if field.name == 'travelers' %}people{% else %}details{% endif %}">
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<p class="mt-1 text-xs text-zinc-500">{{ field.help_text }}</p>{% endif %}
-      {{ field.errors }}
-    </div>
+    {% include "trips/_form_field.html" %}
   {% endif %}
 {% endfor %}
 </div>
+{% if form.more_names %}
+  <details class="mb-4" data-more-details data-panel-tab="details"{% if form.more_open %} open{% endif %}>
+    <summary class="cursor-pointer text-sm font-medium text-zinc-700">More details{% if form.more_summary %}<span class="font-normal text-zinc-500" data-more-summary>: {{ form.more_summary }}</span>{% endif %}</summary>
+    <div class="field-grid mt-3">
+    {% for field in form.more_fields %}
+      {% if field.name == "cost_basis" %}{% include "trips/partials/_cost_more.html" %}
+      {% elif field.name in form.cost_block_hidden %}
+      {% else %}{% include "trips/_form_field.html" %}
+      {% endif %}
+    {% endfor %}
+    </div>
+  </details>
+{% endif %}
