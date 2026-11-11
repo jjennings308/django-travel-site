@@ -1,6 +1,6 @@
 """Planned transport legs (a day, no times yet) and turning a logistics table into legs."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
@@ -113,7 +113,35 @@ class PlannedLegTests(Fixture):
             (datetime(2027, 9, 24, 12, 0, tzinfo=UTC), datetime(2027, 9, 24, 16, 15, tzinfo=UTC)),
         )
         html = form["return_departure_local"].as_widget()
-        self.assertIn('type="datetime-local"', html)
+        self.assertIn('type="time"', html)
+
+    def test_a_duration_fills_in_the_arrival(self):
+        form = self.form(
+            date="2027-09-20",
+            origin_timezone="America/New_York",
+            destination_timezone="America/Denver",
+            departure_local="10:00",
+            arrival_local="",
+            duration_minutes="420",
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        leg = form.save()
+        self.assertEqual(leg.arrival_at - leg.departure_at, timedelta(minutes=420))
+        self.assertEqual(leg.departure_local.strftime("%H:%M"), "10:00")
+        self.assertEqual(leg.arrival_local.strftime("%H:%M"), "15:00")
+
+    def test_a_time_only_arrival_that_looks_earlier_is_the_next_day(self):
+        form = self.form(
+            date="2027-09-20",
+            origin_timezone="Europe/Berlin",
+            destination_timezone="Europe/Berlin",
+            departure_local="23:30",
+            arrival_local="01:00",
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        leg = form.save()
+        self.assertEqual(leg.arrival_at - leg.departure_at, timedelta(hours=1, minutes=30))
+        self.assertEqual(leg.arrival_local.date(), date(2027, 9, 21))
 
     def test_planned_round_trip_needs_a_return_day(self):
         form = self.form(add_return="on")

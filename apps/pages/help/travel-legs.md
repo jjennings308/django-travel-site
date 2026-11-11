@@ -14,7 +14,7 @@ A leg is one journey: a flight, a train, a taxi, a drive or a walk. It starts as
 | Stage | When | Shown as |
 | --- | --- | --- |
 | **Planned** | It has a day, and perhaps a rough time such as "~45 min", but no times. | Under **Any time** on its day, in the order you give it. |
-| **Scheduled** | It has departure and arrival times. | On the day's timeline at its time. |
+| **Scheduled** | It has a departure time and an arrival (typed, or worked out from a duration). | On the day's timeline at its time. |
 | **Booked** | It has a confirmation number ([bookings](/help/bookings-and-confirmations/)). | The same, with its number. |
 
 ## Add a leg quickly
@@ -32,7 +32,7 @@ Click **Edit** beside the leg on the trip page or on its day's page. The leg's p
 | Group | Fields |
 | --- | --- |
 | **Route** | **Origin** and **Destination** (an airport code, station or town), **From city** and **To city** (to draw it on the map), **Mode**. |
-| **Schedule** | **Date**; **Departure (local)** and **Arrival (local)**. |
+| **Schedule** | **Date**; **Departs (local)**; **Duration (minutes)**; **Arrives (local)**. |
 | **Details** | **Operator** (airline, rail company), **Service number** (flight or train number), **Cost**, **Currency**. |
 
 The rest is under **More details**, which stays closed and lists what's filled in ("More details: notes, no booking needed"):
@@ -45,11 +45,15 @@ The rest is under **More details**, which stays closed and lists what's filled i
 
 **Also add the return trip** is a fold of its own under that ([below](#return-trips)).
 
+**Duration (minutes)** is the easy way to fill in the arrival: type the clock time it leaves and how long it takes, and the site works out the clock time it arrives, even when the two ends are in different time zones. Leave the duration blank to type **Arrives (local)** yourself instead. If you give both, the duration wins.
+
 Click **Save**. Below the form are the leg's **Confirmations** and **Contacts & info**.
 
 ## Times and time zones
 
-Times are picked (date and time, with your browser's picker) as the clock shows them where the leg leaves (**Departure (local)**) and where it arrives (**Arrival (local)**), each with its place's time zone, such as Europe/Berlin. Pick the **From city** and **To city** and their zones fill in by themselves (and so do Origin and Destination, when left blank); change a zone only for an airport in another zone than its city. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
+The **Date** is the one day the leg starts. The two times are clock times only, shown where the leg leaves (**Departs (local)**) and where it arrives (**Arrives (local)**), each with its place's time zone, such as Europe/Berlin. Pick the **From city** and **To city** and their zones fill in by themselves (and so do Origin and Destination, when left blank); change a zone only for an airport in another zone than its city. The trip page shows them the same way, whatever time zone you read it from: a 10:00 train from Frankfurt says 10:00 CEST in New York too.
+
+A time-only arrival earlier than the departure is read as the next local day, so an overnight flight is departure 23:30 and arrival 01:00. If you need to be explicit, the old date-and-time text is still accepted when an itinerary is imported or a script posts it.
 
 Leave both times blank while a leg is only planned. Once you add them, the leg's date follows its departure.
 
@@ -59,7 +63,7 @@ A leg appears on the day it departs. An overnight flight shows on the day it lea
 
 ## Return trips
 
-Open **Also add the return trip** at the bottom of the leg's page, tick it, and give the return's times (or just its day, if it's only planned). The site adds a second leg back the other way, with the ends and time zones swapped and the mode and operator copied. The two legs are separate from then on.
+Open **Also add the return trip** at the bottom of the leg's page, tick it, and give the **Return day** and its departure time with either a duration or an arrival time (or just the day, if it's only planned). The site adds a second leg back the other way, with the ends and time zones swapped and the mode and operator copied. The two legs are separate from then on.
 
 **Same booking as the way out** (below the return's times) puts the return on the way out's open to-dos and confirmation numbers, for a return ticket bought as one. It's ticked when the way out already has a to-do or a confirmation; untick it when the return is booked separately. Its own service number, cost and notes are never copied ([one to-do for several things](/help/bookings-and-confirmations/#one-to-do-for-several-things)).
 
@@ -73,5 +77,6 @@ By default a day's legs are on its timeline in time order. If you'd rather group
 | --- | --- |
 | A leg is on the wrong day | Check its **Date**, or its departure time and time zone. |
 | The times look hours off | Check each end's time zone. A zone left blank with no city means UTC. |
+| The arrival is on the wrong day | An arrival time earlier than the departure means the next local day; use the **Date** for the start and check both zones. |
 | A leg isn't drawn on the map | Pick its **From city** and **To city**. |
 | "Turn into legs" rows came out as the wrong places | Edit each leg's ends; see [tidying an itinerary](/help/tidying-an-itinerary/). |

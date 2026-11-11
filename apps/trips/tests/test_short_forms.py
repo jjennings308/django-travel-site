@@ -70,7 +70,17 @@ class Fixture(TestCase):
 
 class LayoutTests(Fixture):
     UP_FRONT = {
-        "leg": ["origin", "destination", "mode", "date", "departure_local", "arrival_local", "operator", "cost"],
+        "leg": [
+            "origin",
+            "destination",
+            "mode",
+            "date",
+            "departure_local",
+            "duration_minutes",
+            "arrival_local",
+            "operator",
+            "cost",
+        ],
         "stay": ["name", "city", "address", "check_in", "check_out", "nightly_rate", "currency"],
         "activity": ["kind", "title", "start_time", "end_time", "travelers", "est_cost", "currency"],
         "meal": ["name", "meal_type", "reserved_time", "est_cost", "currency"],

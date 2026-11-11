@@ -13,7 +13,7 @@ offset is trusted as-is and never re-converted.
 trip — see the class docstring.
 """
 
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from django import forms
@@ -24,7 +24,7 @@ from django.forms.formsets import formset_factory
 from django.forms.models import inlineformset_factory
 from django.utils import timezone as django_timezone
 
-from apps.core.widgets import CurrencySelect, DateInput, DateTimeLocalInput, TimeInput
+from apps.core.widgets import CurrencySelect, DateInput, TimeInput
 from apps.locations.models import POI, City
 from apps.locations.widgets import CitySearchInput, CitySearchMultiple
 from apps.media_app.forms import MAX_PICTURE_MB, PictureFormMixin
@@ -81,53 +81,51 @@ def _timezone_choices():
     return [("", "---------")] + sorted((name, name) for name in available_timezones())
 
 
-class LocalDateTimeField(forms.Field):
-    """A local wall-clock datetime, parsed leniently.
+class LocalTimeField(forms.TimeField):
+    """A local wall-clock time, parsed leniently.
 
-    Returns a ``datetime`` that is aware only when the text carried its own
-    offset. This is *not* ``forms.DateTimeField``: that one normalizes aware
-    input to ``settings.TIME_ZONE``, which would silently discard the
-    offset the user typed in.
+    The browser sends ``10:00``. A full date-and-time is still accepted (older
+    forms and scripts posted one), in which case a naive ``datetime`` comes back
+    so its date can be kept; an explicit offset is trusted. The common case is a
+    ``time``, combined with the form's date and the end's zone.
     """
 
-    # The browser's picker sends 2026-01-15T18:00; the lenient parsing below still takes
-    # typed text and an explicit offset (older forms, the admin, scripts).
-    widget = DateTimeLocalInput(styled=False)
+    widget = TimeInput(styled=False)
     default_error_messages = {
-        "invalid": "Enter a date and time, e.g. “2026-01-15 6:00 PM”.",
+        "invalid": "Enter a time, e.g. 6:00 PM.",
     }
 
     def to_python(self, value):
         if value in self.empty_values:
             return None
-        if isinstance(value, datetime):
+        if isinstance(value, (datetime, time)):
             return value
         text = str(value).strip()
         if not text:
             return None
 
-        # An explicit offset (Z, +02:00) is authoritative: keep it as aware
-        # and let the form skip zone conversion.
         try:
-            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            return time.fromisoformat(text)
         except ValueError:
-            parsed = None
-        if parsed is not None:
-            return parsed
+            pass
+
+        # A full datetime from an older form or a script: keep its date.
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            pass
 
         for fmt in DATETIME_FORMATS:
             try:
                 return datetime.strptime(text, fmt)
             except ValueError:
                 continue
+        for fmt in ("%I:%M %p", "%I:%M%p", "%I %p", "%I%p"):
+            try:
+                return datetime.strptime(text, fmt).time()
+            except ValueError:
+                continue
         raise forms.ValidationError(self.error_messages["invalid"], code="invalid")
-
-    def prepare_value(self, value):
-        """Render an existing UTC value as editable local text."""
-        if value in self.empty_values or not isinstance(value, datetime):
-            return value
-        local = django_timezone.localtime(value, django_timezone.UTC)
-        return local.strftime("%Y-%m-%dT%H:%M")
 
 
 class BlankOrderFallbackMixin:
@@ -307,16 +305,22 @@ class LocalLegTimeMixin:
         return {
             "origin_timezone": cls.zone_field("America/New_York"),
             "destination_timezone": cls.zone_field("America/Denver"),
-            "departure_local": LocalDateTimeField(
+            "departure_local": LocalTimeField(
                 required=False,
-                label="Departure (local)",
-                help_text="Wall-clock time at the origin. Converted to UTC on save. "
-                "Leave both times blank while it's only planned; add them when booked.",
+                label="Departs (local)",
+                help_text="The clock time where it leaves. Give a duration to work out the arrival.",
             ),
-            "arrival_local": LocalDateTimeField(
+            "duration_minutes": forms.IntegerField(
                 required=False,
-                label="Arrival (local)",
-                help_text="Wall-clock time at the destination. Converted to UTC on save.",
+                min_value=1,
+                max_value=60 * 24 * 30,
+                label="Duration (minutes)",
+                help_text="Fills in the arrival from the departure. Leave it blank to type the arrival instead.",
+            ),
+            "arrival_local": LocalTimeField(
+                required=False,
+                label="Arrives (local)",
+                help_text="The clock time where it arrives. Leave it blank when you give a duration.",
             ),
         }
 
@@ -330,35 +334,39 @@ class LocalLegTimeMixin:
         cls.declared_fields = cls.local_time_fields()
 
     @staticmethod
-    def _local_text(value, zone_name):
-        local = localize(value, zone_name)
-        if local is None:
-            return None
-        return local.strftime("%Y-%m-%dT%H:%M")  # the datetime-local picker's value format
+    def _day_for(raw, form_date):
+        """The calendar day a time belongs to: the form's Date, else a full old-style input's date."""
+        if form_date is not None:
+            return form_date
+        return raw.date() if isinstance(raw, datetime) else None
 
     def seed_local_time_initial(self):
-        """Show an existing leg's times as local text, the way they are read.
-
-        Without this the field opens blank on a leg that already has a departure
-        set, and re-saving would have to retype it.
-        """
+        """Show an existing leg's times as local clock times, and its duration in minutes."""
         if not self.instance.pk:
             return
-        self.fields["departure_local"].initial = self._local_text(
-            self.instance.departure_at, self.instance.origin_timezone
-        )
-        self.fields["arrival_local"].initial = self._local_text(
-            self.instance.arrival_at, self.instance.destination_timezone
-        )
+        departure = localize(self.instance.departure_at, self.instance.origin_timezone)
+        arrival = localize(self.instance.arrival_at, self.instance.destination_timezone)
+        self.fields["departure_local"].initial = departure.time() if departure else None
+        self.fields["arrival_local"].initial = arrival.time() if arrival else None
+        duration = self.instance.duration
+        if duration and duration.total_seconds() > 0:
+            self.fields["duration_minutes"].initial = int(duration.total_seconds() // 60)
 
-    def _resolve(self, raw, zone_name, zone_field_name, field_name, label):
-        """Turn one local input into an aware UTC datetime (None when left blank)."""
+    def _resolve(self, raw, zone_name, zone_field_name, field_name, label, day):
+        """Turn one local time into an aware UTC datetime (None when left blank)."""
         if raw is None:
             return None
 
-        if django_timezone.is_aware(raw):
-            # Typed with its own offset — trust it, ignore the zone dropdown.
-            return raw.astimezone(django_timezone.UTC)
+        if isinstance(raw, datetime):
+            if django_timezone.is_aware(raw):
+                # Typed with its own offset — trust it, ignore the zone dropdown.
+                return raw.astimezone(django_timezone.UTC)
+            naive = datetime.combine(day, raw.time())
+        else:
+            naive = datetime.combine(day, raw)
+
+        if django_timezone.is_aware(naive):
+            return naive.astimezone(django_timezone.UTC)
 
         if not zone_name:
             self.add_error(
@@ -368,62 +376,102 @@ class LocalLegTimeMixin:
             return None
 
         try:
-            converted = local_to_utc(raw, zone_name)
+            converted = local_to_utc(naive, zone_name)
         except (ZoneInfoNotFoundError, ValueError, KeyError):
             self.add_error(zone_field_name, f"{zone_name!r} is not a valid timezone.")
             return None
 
         if converted is None:
             self.add_error(zone_field_name, "Choose a timezone to convert from.")
-            return None
         return converted
+
+    @staticmethod
+    def _first_time_after(raw, day, zone_name, not_before):
+        """The first local day from ``day`` on whose clock time the arrival is not before departure.
+
+        A time-only arrival can be on the next local day (an overnight flight), so try the
+        following days in the destination's own zone rather than adding 24 hours in UTC.
+        """
+        arrival = None
+        for extra in range(1, 8):
+            candidate = datetime.combine(day + timedelta(days=extra), raw)
+            if django_timezone.is_aware(candidate):
+                arrival = candidate.astimezone(django_timezone.UTC)
+            elif zone_name:
+                arrival = local_to_utc(candidate, zone_name)
+            if arrival is not None and arrival >= not_before:
+                return arrival
+        return None
 
     def clean_local_leg_times(self):
         """Derive the UTC fields and check the leg does not run backwards."""
-        # Convert even when another field has an error: the model-level
-        # validation that runs after this needs real datetimes, and skipping
-        # would report a misleading "cannot be null" on top of the real
-        # error. Per-field errors are still collected via add_error.
+        form_date = self.cleaned_data.get("date")
+        dep_raw = self.cleaned_data.get("departure_local")
+        arr_raw = self.cleaned_data.get("arrival_local")
+        duration = self.cleaned_data.get("duration_minutes")
+
+        if dep_raw is None:
+            # Planned: no times, so it needs its day.
+            self.instance.departure_at = self.instance.arrival_at = None
+            if arr_raw is not None:
+                self.add_error("arrival_local", "Give the departure time too.")
+            if duration is not None:
+                self.add_error("duration_minutes", "Give the departure time too.")
+            if "date" in self.fields and not form_date:
+                self.add_error("date", "Give the day, or the departure time.")
+            return self.cleaned_data
+
+        dep_day = self._day_for(dep_raw, form_date)
+        if dep_day is None:
+            self.add_error("date", "Give the day the leg starts.")
+            return self.cleaned_data
+
         departure = self._resolve(
-            self.cleaned_data.get("departure_local"),
+            dep_raw,
             self.cleaned_data.get("origin_timezone"),
             "origin_timezone",
             "departure_at",
             "Departure",
+            dep_day,
         )
-        arrival = self._resolve(
-            self.cleaned_data.get("arrival_local"),
-            self.cleaned_data.get("destination_timezone"),
-            "destination_timezone",
-            "arrival_at",
-            "Arrival",
-        )
-
-        departure_given = self.cleaned_data.get("departure_local") is not None
-        arrival_given = self.cleaned_data.get("arrival_local") is not None
-        if departure_given != arrival_given:
-            # Both or neither: a leg with one time would show half a journey.
-            missing = "arrival_local" if departure_given else "departure_local"
-            self.add_error(missing, "Give both times, or leave both blank while the leg is only planned.")
-        if not departure_given and not arrival_given:
-            # Planned: no times, so it needs its day.
-            self.instance.departure_at = self.instance.arrival_at = None
-            if "date" in self.fields and not self.cleaned_data.get("date"):
-                self.add_error("date", "Give the day, or the departure time.")
-            return self.cleaned_data
-
         if departure is not None:
             self.instance.departure_at = departure
+
+        if duration is not None:
+            arrival = departure + timedelta(minutes=duration) if departure is not None else None
+        elif arr_raw is not None:
+            arr_day = self._day_for(arr_raw, form_date) or dep_day
+            arrival = self._resolve(
+                arr_raw,
+                self.cleaned_data.get("destination_timezone"),
+                "destination_timezone",
+                "arrival_at",
+                "Arrival",
+                arr_day,
+            )
+            if (
+                arrival is not None
+                and isinstance(arr_raw, time)
+                and arr_raw.tzinfo is None
+                and departure is not None
+                and arrival < departure
+            ):
+                arrival = self._first_time_after(
+                    arr_raw, arr_day, self.cleaned_data.get("destination_timezone"), departure
+                )
+        else:
+            self.add_error("arrival_local", "Give a duration or an arrival time.")
+            arrival = None
+
         if arrival is not None:
             self.instance.arrival_at = arrival
-
-        if departure and arrival and arrival < departure:
-            self.add_error(
-                "arrival_local",
-                "Arrival is before departure. Check the local times and zones "
-                "— a leg arriving “the same day” locally can still be next "
-                "day in UTC.",
-            )
+            if departure is not None and arrival < departure:
+                self.add_error(
+                    "arrival_local",
+                    "Arrival is before departure. Check the local times and zones "
+                    "— a leg arriving “the same day” locally can still be next "
+                    "day in UTC.",
+                )
         return self.cleaned_data
 
 
@@ -475,6 +523,7 @@ class TransportLegAdminForm(LocalLegTimeMixin, forms.ModelForm):
             "destination",
             "destination_city",
             "departure_local",
+            "duration_minutes",
             "origin_timezone",
             "arrival_local",
             "destination_timezone",
@@ -530,7 +579,7 @@ class DayAdminForm(forms.ModelForm):
 # render. They deliberately do not reuse the admin forms by inheritance: an
 # admin form is shaped by what the inline needs to show, and these are shaped
 # by what one person editing one trip needs. The shared pieces that *are*
-# genuinely shared — LocalDateTimeField and the roster rule — are shared by
+# genuinely shared — LocalTimeField and the roster rule — are shared by
 # composition instead.
 # ---------------------------------------------------------------------------
 
@@ -1094,6 +1143,7 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
             "origin_city",
             "origin_timezone",
             "departure_local",
+            "duration_minutes",
             "destination",
             "destination_city",
             "destination_timezone",
@@ -1132,21 +1182,28 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
             label="Also add the return trip",
             help_text="Makes a second leg back the other way when you save; only its times are needed.",
         )
-        self.fields["return_departure_local"] = LocalDateTimeField(
+        self.fields["return_departure_local"] = LocalTimeField(
             required=False,
             label="Return departs (local)",
-            help_text="Wall-clock time where this leg arrives (the destination's zone).",
+            help_text="The clock time where this leg arrives (the destination's zone).",
         )
-        self.fields["return_arrival_local"] = LocalDateTimeField(
+        self.fields["return_duration_minutes"] = forms.IntegerField(
+            required=False,
+            min_value=1,
+            max_value=60 * 24 * 30,
+            label="Return duration (minutes)",
+            help_text="Fills in the return's arrival. Leave it blank to type the arrival instead.",
+        )
+        self.fields["return_arrival_local"] = LocalTimeField(
             required=False,
             label="Return arrives (local)",
-            help_text="Wall-clock time back where this leg left from (the origin's zone).",
+            help_text="The clock time back where this leg left from (the origin's zone).",
         )
         self.fields["return_date"] = forms.DateField(
             required=False,
-            label="Return day (if no times yet)",
+            label="Return day",
             widget=DateInput(styled=False),
-            help_text="For a planned return: just the day, without times.",
+            help_text="The day the return starts. Use it on its own for a planned return.",
         )
         # Booking-todos K1: the return joins the way out's open to-dos and confirmations. Ticked when the
         # way out has either, so a round trip bought as one ticket stays one booking.
@@ -1186,19 +1243,25 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
             if not (cleaned_data.get(end) or "").strip():
                 cleaned_data[end] = city.name
 
-    def _return_utc(self, raw, zone_name, field):
+    def _return_utc(self, raw, zone_name, field, day):
         """A return time as aware UTC: typed with an offset is trusted, else converted
-        in ``zone_name`` (the swapped end's zone)."""
+        in ``zone_name`` (the swapped end's zone) on ``day``."""
         if raw is None:
             self.add_error(field, "Needed for the return trip.")
             return None
-        if django_timezone.is_aware(raw):
-            return raw.astimezone(django_timezone.UTC)
+        if isinstance(raw, datetime):
+            if django_timezone.is_aware(raw):
+                return raw.astimezone(django_timezone.UTC)
+            naive = datetime.combine(day, raw.time())
+        else:
+            naive = datetime.combine(day, raw)
+        if django_timezone.is_aware(naive):
+            return naive.astimezone(django_timezone.UTC)
         if not zone_name:
             self.add_error(field, "Give this leg's time zones so the return time can be converted.")
             return None
         try:
-            converted = local_to_utc(raw, zone_name)
+            converted = local_to_utc(naive, zone_name)
         except (ZoneInfoNotFoundError, ValueError, KeyError):
             self.add_error(field, f"{zone_name!r} is not a valid timezone.")
             return None
@@ -1209,8 +1272,16 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
     def _clean_return(self, cleaned_data):
         """The return leaves from this leg's destination zone and arrives in its origin zone.
         With no return times it is a planned return on ``return_date``."""
-        if cleaned_data.get("return_departure_local") is None and cleaned_data.get("return_arrival_local") is None:
-            return_date = cleaned_data.get("return_date")
+        dep_raw = cleaned_data.get("return_departure_local")
+        arr_raw = cleaned_data.get("return_arrival_local")
+        duration = cleaned_data.get("return_duration_minutes")
+        return_date = cleaned_data.get("return_date")
+
+        if dep_raw is None:
+            if arr_raw is not None:
+                self.add_error("return_arrival_local", "Give the return departure time too.")
+            if duration is not None:
+                self.add_error("return_duration_minutes", "Give the return departure time too.")
             if not return_date:
                 self.add_error("return_date", "Give the return's day, or its departure and arrival times.")
                 return
@@ -1222,14 +1293,30 @@ class TransportLegForm(CostFieldsMixin, SyncsTripCitiesMixin, LocalLegTimeMixin,
                 return
             self._return_times = ("planned", return_date)
             return
+
+        return_day = self._day_for(dep_raw, return_date)
+        if return_day is None:
+            self.add_error("return_date", "Give the day the return starts.")
+            return
         departure = self._return_utc(
-            cleaned_data.get("return_departure_local"),
-            cleaned_data.get("destination_timezone"),
-            "return_departure_local",
+            dep_raw, cleaned_data.get("destination_timezone"), "return_departure_local", return_day
         )
-        arrival = self._return_utc(
-            cleaned_data.get("return_arrival_local"), cleaned_data.get("origin_timezone"), "return_arrival_local"
-        )
+        if duration is not None:
+            arrival = departure + timedelta(minutes=duration) if departure is not None else None
+        elif arr_raw is not None:
+            arr_day = self._day_for(arr_raw, return_date) or return_day
+            arrival = self._return_utc(arr_raw, cleaned_data.get("origin_timezone"), "return_arrival_local", arr_day)
+            if (
+                arrival is not None
+                and isinstance(arr_raw, time)
+                and arr_raw.tzinfo is None
+                and departure is not None
+                and arrival < departure
+            ):
+                arrival = self._first_time_after(arr_raw, arr_day, cleaned_data.get("origin_timezone"), departure)
+        else:
+            self.add_error("return_arrival_local", "Give a duration or an arrival time.")
+            arrival = None
         if departure is None or arrival is None:
             return
         if arrival < departure:
@@ -2391,6 +2478,7 @@ class LegEditForm(MoreDetailsMixin, InOptionMixin, TransportLegForm):
             (
                 "date",
                 "departure_local",
+                "duration_minutes",
                 "origin_timezone",
                 "arrival_local",
                 "destination_timezone",
@@ -2405,7 +2493,14 @@ class LegEditForm(MoreDetailsMixin, InOptionMixin, TransportLegForm):
         ("Placement", ("section", "option")),
         (
             "Return trip",
-            ("add_return", "return_departure_local", "return_arrival_local", "return_date", "same_booking"),
+            (
+                "add_return",
+                "return_date",
+                "return_departure_local",
+                "return_duration_minutes",
+                "return_arrival_local",
+                "same_booking",
+            ),
         ),
     )
 
