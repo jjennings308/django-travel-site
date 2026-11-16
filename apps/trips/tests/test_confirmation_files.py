@@ -162,6 +162,14 @@ class DownloadAndDeleteTests(FilesFixture):
             self.client.get(reverse("trips:confirmation_file", args=[other.pk, self.record.pk])).status_code, 404
         )
 
+    def test_a_file_missing_from_storage_is_a_404_not_a_500(self):
+        """Dev has no private_uploads (its copy of production doesn't bring them): "Save for offline" asked for
+        the trip's tickets and each was an error page (and on production an error email)."""
+        os.remove(self.record.file.path)
+        self.client.force_login(self.viewer)
+        with self.assertLogs("apps.trips.files", level="WARNING"):
+            self.assertEqual(self.client.get(self.url).status_code, 404)
+
     def test_remove_deletes_the_stored_file(self):
         path = self.record.file.path
         self.assertTrue(os.path.exists(path))

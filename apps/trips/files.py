@@ -9,13 +9,14 @@ only Safari shows it). At most ``MAX_FILE_MB`` each and ``MAX_TRIP_MB`` for all 
 under their original name, with nosniff, no caching and a sandbox CSP.
 """
 
+import logging
 import os
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.db.models import Sum
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -24,6 +25,8 @@ from PIL import Image, UnidentifiedImageError
 from apps.core.utils.images import heic_to_jpeg
 
 from .models import ConfirmationFile
+
+logger = logging.getLogger(__name__)
 
 MAX_FILE_MB = 10
 MAX_TRIP_MB = 200
@@ -134,8 +137,13 @@ def confirmation_file(request, pk, file_pk):
 
     trip = _readable_trip(request, pk, "view")
     record = get_object_or_404(ConfirmationFile, pk=file_pk, confirmation__trip=trip)
+    try:
+        handle = record.file.open("rb")
+    except FileNotFoundError:  # its record is here but the file isn't (dev has no private_uploads): not a 500
+        logger.warning("Ticket file %s is missing from storage", record.pk)
+        raise Http404("That file isn't available.") from None
     response = FileResponse(
-        record.file.open("rb"), as_attachment=False, filename=record.original_name, content_type=record.content_type
+        handle, as_attachment=False, filename=record.original_name, content_type=record.content_type
     )
     response["X-Content-Type-Options"] = "nosniff"
     response["Cache-Control"] = "private, no-store"
