@@ -21,6 +21,15 @@ class ServedTests(TestCase):
         self.assertIn('"sbl-offline-"', body)
         self.assertIn("data-sbl-offline hidden", body)  # what it switches on in a saved page
 
+    def test_never_keeps_an_opaque_copy(self):
+        """An opaque (no-cors) CDN copy fails the page's SRI check, so Alpine and every menu stopped on trip pages
+        after Save for offline: the worker neither stores nor serves one, and v3 drops caches that hold them."""
+        body = self.client.get("/sw.js").content.decode()
+        self.assertIn('const CACHE = "sbl-offline-v3-"', body)
+        self.assertIn('if (hit && hit.type !== "opaque") return hit;', body)
+        self.assertIn('if (response.ok && response.type !== "opaque") cache.put', body)
+        self.assertNotIn('response.type === "opaque") cache.put', body)
+
     def test_manifest(self):
         response = self.client.get("/manifest.webmanifest")
         self.assertEqual(response["Content-Type"], "application/manifest+json")

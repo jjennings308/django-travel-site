@@ -13,7 +13,9 @@
 const params = new URL(self.location).searchParams;
 // "v2" (site roadmap R23): CDN files now load with SRI (CORS), so copies cached before, fetched without
 // CORS, must go; activate deletes every other sbl-offline-* cache. Bump it when that happens again.
-const CACHE = "sbl-offline-v2-" + (params.get("u") || "anon");
+// "v3" (2026-11-15): "Save for offline" on a first visit still stored opaque (no-cors) CDN copies, which the
+// browser refuses for an SRI script, so Alpine and every menu stopped on trip pages; those caches must go too.
+const CACHE = "sbl-offline-v3-" + (params.get("u") || "anon");
 const DEBUG = params.get("debug") === "1";  // dev: static files aren't hashed, so fetch them fresh
 const PAGE = /^\/trips\/\d+\/$/;
 const SAVED = [PAGE, /^\/trips\/\d+\/booklet\.pdf$/, /^\/trips\/\d+\/files\/\d+\/$/];
@@ -52,12 +54,15 @@ self.addEventListener("fetch", (event) => {
   if (CDN_HOSTS.includes(url.hostname)) event.respondWith(cacheFirst(request));
 });
 
+// Only real (readable) copies are kept and served: an opaque one can't pass the page's SRI check, so a page
+// asking for the file with CORS would get nothing (the menus broke that way). One found is dropped and refetched.
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(request, MATCH);
-  if (hit) return hit;
+  if (hit && hit.type !== "opaque") return hit;
+  if (hit) await cache.delete(request, MATCH);
   const response = await fetch(request);
-  if (response.ok || response.type === "opaque") cache.put(request, response.clone());
+  if (response.ok && response.type !== "opaque") cache.put(request, response.clone());
   return response;
 }
 

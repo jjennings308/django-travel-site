@@ -290,7 +290,9 @@ User-submitted content inherits the `apps.approval_system.models.Approvable` mix
   Icons 1.11.0, flag-icons 7.2.3 (npm path), Leaflet; `apps/pages/tests/test_upkeep` fails otherwise. To update
   one: change the version, hash the exact file (`curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A`)
   and, since the offline worker caches CDN files, bump the cache name in `core/sw.js` **and**
-  `trips/partials/_offline.html` (`sbl-offline-v2-` → `v3`; a test checks they match). Dependabot doesn't cover them.
+  `trips/partials/_offline.html` (now `sbl-offline-v3-` → `v4`; a test checks they match). Dependabot doesn't cover them.
+  The worker never stores or serves an opaque (no-cors) copy, and Save for offline fetches CDN files with CORS: an
+  opaque copy fails the page's SRI check, which stopped Alpine and every menu on trip pages (fixed 2026-11-15, v3).
 - **Settings' selects** (was Edit trip) load each option list once per page (`trips.forms.share_choices`, R23; a
   ModelChoiceField re-queries on every render), so the page's count doesn't grow with rows
   (`test_upkeep.EditTripQueryTests`, pinned at 19; 60 with the formsets before edit-by-day E3, 23 with All stays &

@@ -4,7 +4,7 @@ The trip page offline (site roadmap R6): register the worker (core/sw.js, served
 {% url 'service_worker' as sw_url %}{% url 'trips:trip_pdf' trip.pk as booklet_url %}
 <script>
 (function () {
-  var CACHE = "sbl-offline-v2-{{ offline_key }}";  {# must match core/sw.js CACHE (v2 since R23) #}
+  var CACHE = "sbl-offline-v3-{{ offline_key }}";  {# must match core/sw.js CACHE (v3 since 2026-11-15) #}
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("{{ sw_url }}?u={{ offline_key }}{% if offline_debug %}&debug=1{% endif %}", { scope: "/trips/" }).catch(function () {});
   }
@@ -32,8 +32,9 @@ The trip page offline (site roadmap R6): register the worker (core/sw.js, served
           for (var url of this.urls()) {
             try {
               var sameSite = new URL(url, location.href).origin === location.origin;
-              var response = await fetch(url, sameSite ? { credentials: "same-origin" } : { mode: "no-cors" });
-              if ((response.ok && !response.redirected) || response.type === "opaque") await cache.put(url, response);
+              // CDN files are fetched with CORS, as the page loads them (SRI): an opaque copy would be refused.
+              var response = await fetch(url, sameSite ? { credentials: "same-origin" } : { mode: "cors", credentials: "omit" });
+              if (response.ok && !response.redirected && response.type !== "opaque") await cache.put(url, response);
               else if (sameSite) failed.push(url);
             } catch (e) { if (new URL(url, location.href).origin === location.origin) failed.push(url); }
           }
