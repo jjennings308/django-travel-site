@@ -102,11 +102,23 @@ class Rates:
         self.table = {}  # currency -> [(date, per_euro)] newest first
         if not wanted:
             return
+        from django.db.models import DateField, ExpressionWrapper, F, Q, Subquery
+
         today = timezone.localdate()
         known = [d for d in dates if d]
         low = min(known + [today]) - timedelta(days=14)  # no upper bound: there are no future rates
+        # Or two weeks before the newest stored rate, if that's earlier: when the daily fetch has stopped for a while
+        # nothing is newer than ``low``, and the page would convert nothing at all instead of using the latest (and
+        # saying so). Still one query; the subquery runs once (not per row).
+        newest_less_two_weeks = (
+            ExchangeRate.objects.filter(currency__in=wanted)
+            .order_by("-date")
+            .annotate(cut=ExpressionWrapper(F("date") - timedelta(days=14), output_field=DateField()))
+            .values("cut")[:1]
+        )
         rows = (
-            ExchangeRate.objects.filter(currency__in=wanted, date__gte=low)
+            ExchangeRate.objects.filter(currency__in=wanted)
+            .filter(Q(date__gte=low) | Q(date__gte=Subquery(newest_less_two_weeks)))
             .order_by("currency", "-date")
             .values_list("currency", "date", "per_euro")
         )

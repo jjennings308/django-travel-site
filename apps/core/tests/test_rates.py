@@ -116,3 +116,28 @@ class CatalogueConversionTests(TestCase):
                 "{% load conversion_tags %}[{{ 100|convert_curr:'EUR:USD' }}|{{ 1|convert_curr:'EUR:XYZ' }}]"
             ).render(Context())
         self.assertEqual(rendered, "[$110.00|]")
+
+
+class StaleRatesTests(TestCase):
+    """The daily fetch stopped (production's last rate Oct 30, read on Nov 15): a 2027 trip's page loaded rates
+    from 14 days before today only, found none, and listed every amount as "Not converted (no rate)"."""
+
+    def setUp(self):
+        ExchangeRate.objects.create(date=date(2026, 10, 29), currency="USD", per_euro=Decimal("1.10"))
+        ExchangeRate.objects.create(date=date(2026, 10, 30), currency="USD", per_euro=Decimal("1.12"))
+        ExchangeRate.objects.create(date=date(2026, 10, 30), currency="GBP", per_euro=Decimal("0.85"))
+
+    @mock.patch("apps.core.rates.timezone.localdate", return_value=date(2026, 11, 15))
+    def test_the_newest_rate_is_used_however_old_and_marked_latest(self, _today):
+        table = rates.Rates(["USD", "GBP"], [date(2027, 9, 17)])
+        conversion = table.convert(Decimal("100"), "EUR", "USD", on=date(2027, 9, 17))
+        self.assertEqual(
+            (conversion.amount, conversion.rate_date, conversion.latest), (Decimal("112.00"), date(2026, 10, 30), True)
+        )
+        self.assertIsNotNone(table.convert(Decimal("85"), "GBP", "USD", on=date(2027, 9, 17)))
+
+    @mock.patch("apps.core.rates.timezone.localdate", return_value=date(2026, 11, 15))
+    def test_still_one_query_and_an_unknown_currency_is_still_none(self, _today):
+        with self.assertNumQueries(1):
+            table = rates.Rates(["USD", "CHF"], [date(2027, 9, 17)])
+        self.assertIsNone(table.convert(Decimal("10"), "CHF", "USD", on=date(2027, 9, 17)))

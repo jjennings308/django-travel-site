@@ -552,7 +552,9 @@ that matter most:
 - **Budget in one currency** (site roadmap R10; core 0001, trips 0040): `core.ExchangeRate` (date, currency,
   `per_euro`) holds the ECB's daily reference rates, fetched by `manage.py fetch_rates [--history 90d|all]`
   (production cron after ~16:00 CET; outbound HTTPS to www.ecb.europa.eu). `apps.core.rates.Rates(currencies,
-  dates, overrides)` loads what a page needs in one query and `convert()` returns a `Conversion` (amount,
+  dates, overrides)` loads what a page needs in one query (rates from 14 days before its earliest date or today, or
+  from 14 days before the newest stored rate when that's earlier, so a stopped `fetch_rates` still converts at the
+  latest, marked "(latest)", instead of nothing — fixed 2026-11-15) and `convert()` returns a `Conversion` (amount,
   rate, source ECB / trip / same, rate date, `latest` when a dated rate wasn't there) or None for an unknown
   currency (listed, never guessed). `trips.TripRate` (1 from = rate to) is the editor's override, both ways,
   edited on the Budget page under **Your own rates** (`trips:trip_rates`, POST, editors; everyone sees them; moved from Edit trip in E3). Budget page: `?in=XXX` (default the reader's
