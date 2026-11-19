@@ -3,7 +3,7 @@ summary: Find your way around a trip page: the days at a glance, each day's plan
 audience: everyone
 section: Trips
 order: 10
-updated: 2026-11-02
+updated: 2026-11-19
 
 # Reading your trip
 
@@ -15,15 +15,21 @@ Under the trip's name you see its dates, how many nights, and its planning stage
 
 | Button or link | What it does |
 | --- | --- |
-| **Settings** | The trip's name, dates, travellers, cities and trip-wide lists. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). Everything on a day is changed right on the trip page ([open an item](#open-an-item)). |
-| **Download PDF** | The printable booklet ([see below](#booklet)); **▾** beside it offers **PDF with budget** ([see below](#booklet-with-a-budget)). |
-| **Bookings** · **To do** | Every confirmation, what isn't booked yet, and every journey and stay; and what's left to decide, book and do ([bookings](/help/bookings-and-confirmations/#the-bookings-page)). Click a line there to open it here, beside the page. |
-| **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its shared costs, and the shared photo album. |
-| **⋯** | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
+| **Settings** (the gear) | The trip's name, dates, travellers, cities and trip-wide lists. Only editors see it ([who can do what](/help/sharing-and-access/#who-can-do-what)). Everything on a day is changed right on the trip page ([open an item](#open-an-item)). |
+| **Download PDF** | The printable booklet ([see below](#booklet)); the arrow beside it offers **PDF with budget** ([see below](#booklet-with-a-budget)). |
+| **⋯** (More actions) | **Add to calendar** ([calendar feed](/help/calendar-feed/)), and sharing and deleting when you're allowed to ([sharing](/help/sharing-and-access/#the-public-share-link)). Editors also find **Tidy suggestions** here ([tidying an itinerary](/help/tidying-an-itinerary/)). |
 
-When something needs attention, a **Needs attention** banner sits under the title. It counts what's still **to book** (journeys, stays and activities with no confirmation), **other to-dos** (ones not about any of them), open **decisions** (undecided [choices](/help/options-and-votes/)), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
+Under the title, a row of tabs takes you around the trip: **Overview** (this page), **Bookings**, **To do**, **Map**, **Budget**, **Photos**, **People** and **History**. The same tabs sit at the top of each of those pages, with the one you're on underlined, so you can go from one to another without coming back. On a phone the row scrolls sideways. A number on a tab is how many are waiting: things still **to book** on Bookings, open to-dos on To do.
 
-The bar under the title jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
+| Tab | What it shows |
+| --- | --- |
+| **Bookings** · **To do** | Every confirmation, what isn't booked yet, and every journey and stay; and what's left to decide, book and do ([bookings](/help/bookings-and-confirmations/#the-bookings-page)). Click a line there to open it on the trip page, beside the days. |
+| **Map** · **Budget** · **Photos** | The trip's map (with switches for cities, places, journeys, stays and ideas), its costs, and the shared photo album. |
+| **People** · **History** | Who's on the trip and what they can do ([sharing and access](/help/sharing-and-access/)), and every change with undo ([history](/help/trip-history/)). |
+
+When something needs attention, a **Needs attention** banner sits under the tabs. It counts what's still **to book** (journeys, stays and activities with no confirmation), **other to-dos** (ones not about any of them), open **decisions** (undecided [choices](/help/options-and-votes/)), **documents not ticked** on a checklist, and journeys **not on any day**. Each one links to its list.
+
+The bar under that jumps to the two parts of the page, **Days** and **Reference**. It stays at the top as you scroll.
 
 ## Days at a glance
 
@@ -97,7 +103,7 @@ Paper can't link, so the booklet repeats contacts and confirmation numbers on ea
 
 ## Booklet with a budget
 
-Click **▾** beside **Download PDF** and choose **PDF with budget** for the same booklet plus money for the road. Anyone who can see the trip can download either one.
+Click the arrow beside **Download PDF** and choose **PDF with budget** for the same booklet plus money for the road. Anyone who can see the trip can download either one.
 
 - **To pay** under each journey, stay, activity and meal where money still changes hands, in that item's own currency (what you'll hand over there, never converted):
   - "To pay: €48 (booked €96, paid €48)" for a booking with a cost, from the payments recorded for it on the Budget page; a booking that covers several things says it once, on the first ("To pay: €120 for 4 journeys …");

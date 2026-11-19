@@ -86,7 +86,7 @@ class SettingsTests(Fixture):
 
     def test_the_trip_page_header(self):
         html = self.get("trip_detail").content.decode()
-        self.assertIn("data-settings-link>Settings</a>", html)
+        self.assertIn('data-settings-link><i class="bi bi-gear" aria-hidden="true"></i>Settings</a>', html)
         self.assertNotIn(">Edit trip</a>", html)
         self.assertIn(reverse("trips:trip_bookings", args=[self.trip.pk]), html)
         self.assertIn(reverse("trips:trip_todo", args=[self.trip.pk]), html)

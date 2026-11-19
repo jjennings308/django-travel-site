@@ -10,8 +10,8 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; booking-todos K2 order)
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>To do</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
     <h1 class="page-title">To do {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" %}</h1>
     {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}

@@ -10,8 +10,8 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>Map</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Map</h1>

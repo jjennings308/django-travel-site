@@ -1,0 +1,17 @@
+{% comment %}
+  The trip's sections (ux-consistency V3): Overview and the trip-wide views, on the trip page and each of them, the
+  current one marked by the URL name. Counts only from what the page already has (no queries): to_book on the trip,
+  Bookings and To do pages; the trip page's annotated open to-dos, else the To do page's own list.
+{% endcomment %}
+{% with here=request.resolver_match.url_name %}
+<nav class="trip-tabs" aria-label="Trip sections" data-trip-tabs>
+  <a href="{% url 'trips:trip_detail' trip.pk %}"{% if here == "trip_detail" %} aria-current="page"{% endif %}>Overview</a>
+  <a href="{% url 'trips:trip_bookings' trip.pk %}"{% if here == "trip_bookings" %} aria-current="page"{% endif %} data-bookings-link>Bookings{% if to_book.rows %} <span class="trip-tab-count" title="To book">{{ to_book.count }}</span>{% endif %}</a>
+  <a href="{% url 'trips:trip_todo' trip.pk %}"{% if here == "trip_todo" %} aria-current="page"{% endif %}>To do{% if trip.outstanding_task_count %} <span class="trip-tab-count" title="Open to-dos">{{ trip.outstanding_task_count }}</span>{% elif open_tasks %} <span class="trip-tab-count" title="Open to-dos">{{ open_tasks|length }}</span>{% endif %}</a>
+  <a href="{% url 'trips:trip_map' trip.pk %}"{% if here == "trip_map" %} aria-current="page"{% endif %}>Map</a>
+  <a href="{% url 'trips:trip_budget' trip.pk %}"{% if here == "trip_budget" %} aria-current="page"{% endif %}>Budget</a>
+  <a href="{% url 'trips:trip_photos' trip.pk %}"{% if here == "trip_photos" %} aria-current="page"{% endif %}>Photos</a>
+  <a href="{% url 'trips:trip_people' trip.pk %}"{% if here == "trip_people" %} aria-current="page"{% endif %}>People</a>
+  <a href="{% url 'trips:trip_history' trip.pk %}"{% if here == "trip_history" %} aria-current="page"{% endif %}>History</a>
+</nav>
+{% endwith %}

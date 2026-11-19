@@ -33,6 +33,7 @@ from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone as django_timezone
+from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
 from apps.core.pwa import offline_cache_key
@@ -919,8 +920,14 @@ def _warn_if_ready_with_open_tasks(request, trip):
         if open_tasks:
             messages.warning(
                 request,
-                f"“{trip.name}” is marked Ready to go but still has {open_tasks} booking "
-                f"task{'s' if open_tasks != 1 else ''} outstanding.",
+                format_html(
+                    "“{}” is marked Ready to go but still has {} open to-do{}. "
+                    '<a class="font-medium underline" href="{}" data-ready-todo-link>Go to To do</a>',
+                    trip.name,
+                    open_tasks,
+                    "s" if open_tasks != 1 else "",
+                    reverse("trips:trip_todo", args=[trip.pk]),
+                ),
             )
 
 

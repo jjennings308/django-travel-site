@@ -173,6 +173,31 @@
     @apply text-sm text-zinc-500 transition hover:text-accent-700;
   }
 
+  /* A button and its menu chevron as one outline button (ux-consistency V3: Download PDF ▾). */
+  .trips-ui .btn-split {
+    @apply inline-flex;
+  }
+  .trips-ui .btn-split > .btn-quiet:first-child:not(:last-child) {
+    @apply rounded-r-none;
+  }
+  .trips-ui .btn-split > .btn-quiet + .btn-quiet {
+    @apply -ml-px rounded-l-none px-2.5;
+  }
+
+  /* The trip's sections (ux-consistency V3, trips/partials/_trip_tabs.html): one row, scrolling sideways on a phone. */
+  .trips-ui .trip-tabs {
+    @apply mb-6 flex gap-1 overflow-x-auto border-b border-zinc-200 text-sm whitespace-nowrap;
+  }
+  .trips-ui .trip-tabs a {
+    @apply -mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900;
+  }
+  .trips-ui .trip-tabs a[aria-current="page"] {
+    @apply border-accent-600 text-accent-700;
+  }
+  .trips-ui .trip-tab-count {
+    @apply rounded-full bg-zinc-100 px-1.5 text-xs font-semibold text-zinc-700;
+  }
+
   /* ------------------------------------------------------------------- forms */
   .trips-ui form p {
     @apply mb-4;
@@ -755,6 +780,7 @@
     }
     .trips-ui button.link-quiet { min-width: 44px; justify-content: center; }
     .trips-ui .day-nav a { @apply inline-flex min-h-11 items-center px-4; }
+    .trips-ui .trip-tabs a { @apply min-h-11; }
     /* Lists of links: menus, the footer, breadcrumbs, a guide's "On this page". */
     footer li > a, nav li > a { @apply inline-flex min-h-11 items-center; }
     /* A tick box is small; its label is the target. */
