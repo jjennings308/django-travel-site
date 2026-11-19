@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Trip map: the days' cities in date order (numbered, joined by a line or by the transport legs), the trip's other cities, your own goals' places of interest (bucketlists:trip_map_places) and the Ideas shelf's and undecided choices' places (faint, off until switched on; P6, typed-choices T3), with switches per layer; drawn by partials/_map.html from trips:trip_map_data. Anyone who can see the trip sees it. Never part of the public view.
 {% endcomment %}
@@ -6,11 +7,11 @@ Trip map: the days' cities in date order (numbered, joined by a line or by the t
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Map</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Map</h1>

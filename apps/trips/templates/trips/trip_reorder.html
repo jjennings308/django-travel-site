@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Put the days in a new order (trips:trip_reorder, shift-and-reorder DR2; apps/trips/reschedule.py). The dates stay in their column; the days' folded lines (trips/partials/_day_line.html) move between them with ↑ / ↓ or by dragging (a small script, no new CDN file), or a Position box each without JavaScript (inside noscript, so it is only sent then). Preview (nothing saved) shows what moves and what to check — a stay left behind with a ticked offer to move it with its days (DR3) —; Apply saves it as one history line that can be undone.
 {% endcomment %}
 {% block title %}Reorder days — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{{ settings_url }}#days">Settings</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{{ settings_url }}#days">Settings</a>
     <span>Reorder days</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="card p-6" data-trip-reorder>
     <h1 class="page-title mb-1">Put the days in a new order</h1>
     <p class="mb-4 text-zinc-500">The dates stay where they are; the days move between them, with everything on them and their journeys. A stay moves with its nights when they stay together and in order. Nothing changes until you click <strong>Apply</strong>. {% include "partials/_help_link.html" with slug="adding-a-day" anchor="changing-the-order-of-days" label="changing the order of days" text="How this works" %}</p>

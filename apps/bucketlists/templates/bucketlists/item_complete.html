@@ -6,7 +6,7 @@
   <div class="sbl-card p-6">
     <div class="mb-4 text-center">
       <div class="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700"><i class="bi bi-trophy"></i></div>
-      <h1 class="text-2xl font-bold text-warm-900">{% if already_done %}Your adventure{% else %}Tick it off{% endif %}</h1>
+      <h1 class="sbl-dialog-title">{% if already_done %}Your adventure{% else %}Tick it off{% endif %}</h1>
       <p class="text-lg font-semibold text-warm-800">“{{ item.title }}”</p>
     </div>
     {% if photos %}

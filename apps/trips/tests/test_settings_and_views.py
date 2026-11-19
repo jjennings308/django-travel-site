@@ -169,7 +169,7 @@ class ReadOnlyViewTests(Fixture):
 
     def test_bookings_for_everyone_without_forms(self):
         html = self.get("trip_bookings", self.viewer).content.decode()
-        main = html[html.index('<nav class="crumbs">') :]
+        main = html[html.index('aria-label="Breadcrumb"') :]  # the page's own content starts at its breadcrumbs
         self.assertNotIn('method="post"', main)
         for anchor in (f"leg-{self.leg.pk}", f"stay-{self.stay.pk}"):
             self.assertIn(self.item(anchor), html)

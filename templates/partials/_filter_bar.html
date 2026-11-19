@@ -1,0 +1,13 @@
+{% comment %}
+A list page's filters (ux-consistency V2), rendered by {% templatetag openblock %} filter_bar {% templatetag closeblock %} (apps/core/templatetags/filter_tags.py): fields in one grid; a select or tick box applies at once, Go (and Enter in the search box) applies the rest and is the way without JavaScript; Clear while anything is set; the result count.
+{% endcomment %}
+<form method="get" class="sbl-card mb-6 p-4" data-filter-bar onchange="if (event.target.matches('select, input[type=checkbox], input[type=radio]')) this.submit()">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] lg:items-end">
+    {{ fields }}
+  </div>
+  <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+    <button type="submit" class="sbl-btn sbl-btn-outline sbl-btn-sm" data-filter-go><i class="bi bi-funnel"></i>Go</button>
+    {% if active %}<a href="{{ clear_url }}" class="sbl-link" data-filter-clear>Clear</a>{% endif %}
+    {% if count is not None %}<span class="ml-auto text-warm-600" data-filter-count>{{ count }} result{{ count|pluralize }}</span>{% endif %}
+  </div>
+</form>

@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Rate a finished trip's places (reviews:trip_rate, site roadmap R17). Each row is a published catalogue city or place the trip went to; a rating becomes (or updates) that member's review. Unrated rows are left alone.
 {% endcomment %}
 {% block title %}Rate {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Rate</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">How was it? {% include "partials/_help_link.html" with slug="places-and-events" anchor="rating-a-finished-trip" label="rating a trip" %}</h1>

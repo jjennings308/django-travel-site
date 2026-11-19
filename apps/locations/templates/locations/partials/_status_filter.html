@@ -1,0 +1,11 @@
+{# locations/partials/_status_filter.html — the staff-only Status filter of the location lists (show_status_filter), one field of the filter bar (ux-consistency V2) #}
+{% if show_status_filter %}
+<div><label for="filter_status" class="sbl-label">Status</label>
+  <select id="filter_status" name="status" class="sbl-input">
+    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+  </select></div>
+{% endif %}

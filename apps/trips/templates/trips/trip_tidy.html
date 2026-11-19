@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Content clean-up review (trips:trip_tidy, U7; apps/trips/tidy.py detects, tidying.py applies). Suggestions only: nothing changes until ticked suggestions are applied, in one transaction. "Not this" dismisses a suggestion for good (TidyDismissal). "Day N" slips are flagged only.
 {% endcomment %}
 {% block title %}Tidy — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Tidy</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Tidy suggestions</h1>

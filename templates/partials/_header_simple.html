@@ -59,7 +59,7 @@
                 {% csrf_token %}
                 <button type="submit" 
                         class="w-full text-left px-4 py-2 text-warm-700 hover:bg-warm-50 transition-colors">
-                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                  <i class="bi bi-box-arrow-right me-2"></i>Log out
                 </button>
               </form>
             </div>
@@ -69,11 +69,11 @@
           {# User is not logged in #}
           <a href="{% url 'login' %}" 
              class="text-warm-700 hover:text-earth-clay font-medium transition-colors">
-            Login
+            Log in
           </a>
           <a href="{% url 'register' %}" 
              class="inline-flex items-center gap-2 px-6 py-2.5 bg-earth-clay text-white font-semibold rounded-lg hover:bg-earth-clay-dark transition-all duration-200 shadow-sm hover:shadow-md">
-            Sign Up
+            Sign up
           </a>
         {% endif %}
       </div>

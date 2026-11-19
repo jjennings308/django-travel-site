@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load filter_tags %}
 
 {% block title %}Events{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
@@ -24,9 +25,9 @@
     <span class="flex gap-2">{% if user.is_authenticated %}<a class="sbl-btn sbl-btn-primary sbl-btn-sm" href="{% url 'events:event_add' %}?activity={{ activity.pk }}"><i class="bi bi-calendar-plus"></i>Add a date</a>{% endif %}<a class="sbl-btn sbl-btn-outline sbl-btn-sm" href="{% url 'events:event_list' %}">All events</a></span>
   </div>
 {% endif %}
-<form method="get" class="sbl-card mb-6 grid grid-cols-1 gap-3 p-4 md:grid-cols-6 md:items-end">
+{% filter_bar count=page_obj.paginator.count ignore="when" keep="activity" %}
   {% if activity %}<input type="hidden" name="activity" value="{{ activity.slug }}">{% endif %}
-  <div{% if not tags %} class="md:col-span-2"{% endif %}><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
+  <div><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Name, city, venue…"></div>
   <div><label class="sbl-label" for="when">When</label>
     <select id="when" name="when" class="sbl-input"><option value="upcoming" {% if when == 'upcoming' %}selected{% endif %}>Upcoming</option><option value="past" {% if when == 'past' %}selected{% endif %}>Past</option></select></div>
   <div><label class="sbl-label" for="category">Category</label>
@@ -35,11 +36,8 @@
     <select id="tag" name="tag" class="sbl-input"><option value="">All</option>{% for t in tags %}<option value="{{ t.slug }}" {% if filters.tag == t.slug %}selected{% endif %}>{{ t.name }} ({{ t.n }})</option>{% endfor %}</select></div>{% endif %}
   <div><label class="sbl-label" for="country">Country</label>
     <select id="country" name="country" class="sbl-input"><option value="">All</option>{% for c in countries %}<option value="{{ c.slug }}" {% if filters.country == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-  <div class="flex items-center justify-between gap-3 md:block">
-    <label class="mb-2 flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="free" value="1" class="sbl-check" {% if filters.free %}checked{% endif %}>Free only</label>
-    <button type="submit" class="sbl-btn sbl-btn-primary w-full"><i class="bi bi-funnel"></i>Filter</button>
-  </div>
-</form>
+  <label class="flex items-center gap-2 self-end pb-2 text-sm text-warm-700"><input type="checkbox" name="free" value="1" class="sbl-check" {% if filters.free %}checked{% endif %}>Free only</label>
+{% endfilter_bar %}
 
 {% if page_obj %}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -47,10 +45,7 @@
   </div>
   {% include "partials/_pagination.html" %}
 {% else %}
-  <div class="sbl-card p-10 text-center text-warm-500">
-    <i class="bi bi-calendar-x mb-2 block text-4xl"></i>
-    <p class="mb-4">No {{ when }} events match.{% if user.is_authenticated %} Know of one?{% endif %}</p>
-    {% if user.is_authenticated %}<a href="{% url 'events:event_add' %}" class="sbl-btn sbl-btn-primary">Add an event</a>{% endif %}
-  </div>
+  {% if user.is_authenticated %}{% url 'events:event_add' as add_url %}{% endif %}
+  {% if when == "past" %}{% include "components/feedback/empty_state.html" with icon="bi-calendar-x" title="No past events match" %}{% else %}{% include "components/feedback/empty_state.html" with icon="bi-calendar-x" title="No upcoming events match" message=user.is_authenticated|yesno:"Know of one?," action_url=add_url action_text="Add an event" %}{% endif %}
 {% endif %}
 {% endblock %}

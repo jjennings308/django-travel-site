@@ -1,7 +1,7 @@
 <!-- templates/accounts/profile.html -->
 {% extends 'base.html' %}
 
-{% block title %}{{ profile_user.get_full_name }}'s Profile{% endblock %}
+{% block title %}{{ profile_user.get_full_name }}'s profile{% endblock %}
 
 {% block content %}
 <div class="mt-6">
@@ -39,10 +39,10 @@
                         <div class="col-span-12 md:col-span-2 text-right">
                             {% if is_own_profile %}
                                 <a href="{% url 'edit_profile' %}" class="sbl-btn sbl-btn-primary">
-                                    <i class="bi bi-pencil"></i> Edit Profile
+                                    <i class="bi bi-pencil"></i> Edit profile
                                 </a>
                                 <a href="{% url 'edit_travel_preferences' %}" class="sbl-btn sbl-btn-outline mt-2">
-                                    <i class="bi bi-airplane"></i> Travel Prefs
+                                    <i class="bi bi-airplane"></i> Travel prefs
                                 </a>
                                 <a href="{% url 'role_request_status' %}" class="sbl-btn sbl-btn-outline mt-2">
                                     <i class="bi bi-briefcase"></i> Vendor / provider access
@@ -70,7 +70,7 @@
             {% if travel_preferences and is_own_profile %}
             <div class="sbl-card mb-4">
                 <div class="p-5">
-                    <h5><i class="bi bi-airplane"></i> Travel Style</h5>
+                    <h5><i class="bi bi-airplane"></i> Travel style</h5>
                     <ul class="list-none">
                         <li><strong>Budget:</strong> {{ travel_preferences.get_budget_preference_display }}</li>
                         <li><strong>Pace:</strong> {{ travel_preferences.get_travel_pace_display }}</li>
@@ -91,7 +91,7 @@
             <!-- Stats -->
             <div class="sbl-card mb-4">
                 <div class="p-5">
-                    <h5>Travel Stats</h5>
+                    <h5>Travel stats</h5>
                     <ul class="list-none">
                         <li><strong>Countries Visited:</strong> {{ profile.countries_visited_count }}</li>
                         <li><strong>Trips Completed:</strong> {{ profile.trips_completed_count }}</li>

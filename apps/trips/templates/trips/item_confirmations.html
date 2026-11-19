@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 One item's confirmations (trips:item_confirmations): a leg, stay, day's section or meal. Reached from Edit trip, the day page and the section page.
 {% endcomment %}
 {% block title %}Confirmations — {{ item_label }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a>
     <span>Confirmations</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">{{ item_label }}</h1>

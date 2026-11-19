@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 The route builder (trips:trip_route, day-first plan P1; apps/trips/route.py): city + nights rows in order. Preview lists what saving would do; Save sets the days' cities and, if ticked, adds planned legs and placeholder stays, in one transaction.
 {% endcomment %}
 {% block title %}Route — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Route</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">The route</h1>

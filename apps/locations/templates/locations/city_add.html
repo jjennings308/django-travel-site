@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Add City{% endblock %}
+{% block title %}Add a city{% endblock %}
 
 {% block breadcrumbs %}
   {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
@@ -9,10 +9,7 @@
 
 {% block content %}
 <div class="py-6" style="max-width: 900px;">
-    <div class="mb-6">
-        <h1 class="text-4xl font-bold mb-2">Add New City</h1>
-        <p class="text-warm-500">Submit a new city for approval</p>
-    </div>
+    {% include "partials/_page_header.html" with title="Add a city" subtitle="Submit a new city for approval" %}
 
     <form method="post" class="sbl-card shadow-sm">
         <div class="p-5 p-6">
@@ -20,7 +17,7 @@
             
             <!-- Basic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
@@ -39,14 +36,14 @@
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Region/State</label>
+                        <label class="sbl-label font-semibold">Region/state</label>
                         <select name="region" id="region-select" class="sbl-input">
                             <option value="">Select Region (Optional)</option>
                         </select>
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Capital Type</label>
+                        <label class="sbl-label font-semibold">Capital type</label>
                         <select name="capital_type" class="sbl-input">
                             <option value="">Not a capital</option>
                             {% for value, label in capital_types %}
@@ -69,7 +66,7 @@
 
             <!-- Geographic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-4">
@@ -96,16 +93,16 @@
 
             <!-- Travel Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Travel Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Travel information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Best Time to Visit</label>
+                        <label class="sbl-label font-semibold">Best time to visit</label>
                         <input type="text" name="best_time_to_visit" class="sbl-input" placeholder="e.g., Spring (March-May) and Fall (Sept-Nov)">
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Average Daily Budget (USD)</label>
+                        <label class="sbl-label font-semibold">Average daily budget (USD)</label>
                         <input type="number" name="average_daily_budget" step="0.01" class="sbl-input" placeholder="e.g., 150.00">
                     </div>
                 </div>
@@ -113,7 +110,7 @@
 
             <!-- Featured Media -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image to represent this city</p>
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
@@ -148,7 +145,7 @@
             <div class="flex justify-between items-center pt-6 border-t border-warm-200">
                 <a href="{% url 'locations:city_list' %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
                 <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
-                    Submit for Approval
+                    Submit for approval
                 </button>
             </div>
         </div>

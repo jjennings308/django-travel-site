@@ -4,14 +4,14 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Browse Rewards Programs{% endblock %}
+{% block title %}Browse rewards programs{% endblock %}
 
 {% block content %}
 <div class="my-12">
     <div class="grid grid-cols-12 mb-6">
         <div class="col-span-12 md:col-span-8">
-            <h1>Browse Rewards Programs</h1>
-            <p class="text-warm-500">Explore travel loyalty programs to track</p>
+            <h1 class="sbl-page-title">Browse rewards programs</h1>
+            <p class="sbl-page-subtitle">Explore travel loyalty programs to track</p>
         </div>
         {% if user.is_authenticated %}
         <div class="col-span-12 md:col-span-4 text-right">
@@ -75,7 +75,7 @@
                                 <div class="flex justify-between items-center">
                                     <small class="text-warm-500">{{ program.get_program_type_display }}</small>
                                     <a href="{% url 'rewards:program_detail' program.id %}" class="sbl-btn sbl-btn-sm sbl-btn-outline">
-                                        View Details
+                                        View details
                                     </a>
                                 </div>
                             </div>

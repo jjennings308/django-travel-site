@@ -52,7 +52,7 @@
 
     <aside class="space-y-6">
       <section class="sbl-card p-5">
-        <h2 class="mb-4 font-bold text-warm-900">Quick Info</h2>
+        <h2 class="mb-4 font-bold text-warm-900">Quick info</h2>
         <dl class="space-y-4">
           <div><dt class="text-sm text-warm-500">When</dt>
             <dd>{{ event.start_date|date:"D, M j, Y" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"D, M j, Y" }}{% endif %}</dd>

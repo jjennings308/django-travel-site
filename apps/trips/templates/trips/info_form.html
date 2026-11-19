@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 An info note's own page (trips:info_edit / info_new, U4): its details and which of the trip's items it's linked to.
 {% endcomment %}
 {% block title %}{% if obj %}{{ obj.title }}{% else %}New info note{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a>
     <span>{% if obj %}{{ obj.title }}{% else %}New info note{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

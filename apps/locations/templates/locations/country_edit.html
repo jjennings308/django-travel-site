@@ -9,10 +9,10 @@
 
 {% block content %}
 <div class="py-6" style="max-width: 900px;">
-    <div class="mb-6">
-        <h1 class="text-4xl font-bold mb-2">Edit {{ country.flag_emoji }} {{ country.name }}</h1>
-        <p class="text-warm-500">Changes are saved straight to the country; its approval status does not change.</p>
-    </div>
+    <header class="mb-6" data-page-header>
+        <h1 class="sbl-page-title">Edit {{ country.flag_emoji }} {{ country.name }}</h1>
+        <p class="sbl-page-subtitle">Changes are saved straight to the country; its approval status does not change.</p>
+    </header>
 
     <form method="post" class="sbl-card shadow-sm">
         <div class="p-5 p-6">
@@ -20,7 +20,7 @@
             
             <!-- Basic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
@@ -57,7 +57,7 @@
 
             <!-- Geographic Coordinates -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Coordinates</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic coordinates</h3>
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
                         <label class="sbl-label font-semibold">Latitude</label>
@@ -73,21 +73,21 @@
 
             <!-- Travel Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Travel Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Travel information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Currency Code</label>
+                        <label class="sbl-label font-semibold">Currency code</label>
                         <input type="text" name="currency_code" value="{{ country.currency_code|default:'' }}" maxlength="3" class="sbl-input uppercase" placeholder="e.g., USD">
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Currency Name</label>
+                        <label class="sbl-label font-semibold">Currency name</label>
                         <input type="text" name="currency_name" value="{{ country.currency_name|default:'' }}" class="sbl-input" placeholder="e.g., US Dollar">
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Phone Code</label>
+                        <label class="sbl-label font-semibold">Phone code</label>
                         <input type="text" name="phone_code" value="{{ country.phone_code|default:'' }}" class="sbl-input" placeholder="e.g., +1">
                     </div>
                     
@@ -99,12 +99,12 @@
                     </div>
                     
                     <div class="col-span-12">
-                        <label class="sbl-label font-semibold">Visa Information</label>
+                        <label class="sbl-label font-semibold">Visa information</label>
                         <textarea name="visa_info" rows="3" class="sbl-input" placeholder="Details about visa requirements...">{{ country.visa_info }}</textarea>
                     </div>
                     
                     <div class="col-span-12">
-                        <label class="sbl-label font-semibold">Travel Tips</label>
+                        <label class="sbl-label font-semibold">Travel tips</label>
                         <textarea name="travel_tips" rows="4" class="sbl-input" placeholder="General travel tips and advice...">{{ country.travel_tips }}</textarea>
                     </div>
                 </div>
@@ -112,7 +112,7 @@
 
             <!-- Featured Media -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image to replace the current one{% if not country.featured_media %} (none set yet){% endif %}.</p>
                 {% if country.featured_media %}<div class="mb-4"><p class="sbl-label">Current</p><img src="{{ country.featured_media.file.url }}" alt="{{ country.name }}" class="h-32 rounded-lg {% if country.featured_media.is_flag %}bg-warm-100 object-contain p-2{% else %}object-cover{% endif %}"></div>{% endif %}
                 {# The flag (country-flags plan C1): choosing another image replaces it as the picture; this puts it back. #}

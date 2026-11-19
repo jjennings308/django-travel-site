@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load filter_tags %}
 
 {% block title %}My bucket list{% endblock %}
 {% block breadcrumbs %}{% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}{% endblock %}
@@ -26,38 +27,35 @@
   </div>
 </section>
 
-<form method="get" class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-5 md:items-end">
-  <div class="md:col-span-2"><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Search your list"></div>
+{% filter_bar count=items|length ignore="sort" %}
+  <div><label class="sbl-label" for="q">Search</label><input id="q" name="q" value="{{ filters.q }}" class="sbl-input" placeholder="Search your list"></div>
   <div><label class="sbl-label" for="status">Status</label>
-    <select id="status" name="status" class="sbl-input" onchange="this.form.submit()">
+    <select id="status" name="status" class="sbl-input">
       <option value="">All (not abandoned)</option><option value="active" {% if filters.status == 'active' %}selected{% endif %}>In progress</option>
       {% for value, label in status_choices %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select></div>
   <div><label class="sbl-label" for="category">Category</label>
-    <select id="category" name="category" class="sbl-input" onchange="this.form.submit()">
+    <select id="category" name="category" class="sbl-input">
       <option value="">All</option>{% for c in categories %}<option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }} ({{ c.n }})</option>{% endfor %}
     </select></div>
   <div><label class="sbl-label" for="sort">Sort</label>
-    <select id="sort" name="sort" class="sbl-input" onchange="this.form.submit()">
+    <select id="sort" name="sort" class="sbl-input">
       <option value="priority" {% if filters.sort == 'priority' %}selected{% endif %}>Priority</option>
       <option value="target" {% if filters.sort == 'target' %}selected{% endif %}>Target date</option>
       <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
     </select></div>
-</form>
+{% endfilter_bar %}
 
 {% if items %}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     {% for item in items %}{% include "bucketlists/partials/_item_card.html" with owner=True %}{% endfor %}
   </div>
 {% else %}
-  <div class="sbl-card p-10 text-center text-warm-500">
-    <i class="bi bi-list-check mb-2 block text-4xl"></i>
-    {% if filters.q or filters.status or filters.category %}<p>Nothing matches those filters.</p>
-    {% else %}
-      <p class="mb-1">Your bucket list is empty.</p>
-      <p class="mb-4 text-sm">Add a goal of your own, or use “Add to bucket list” on any <a class="sbl-link" href="{% url 'activities:activity_list' %}">activity</a>, <a class="sbl-link" href="{% url 'events:event_list' %}">event</a> or place.</p>
-      <a href="{% url 'bucketlists:item_add' %}" class="sbl-btn sbl-btn-primary">Add your first goal</a>
-    {% endif %}
-  </div>
+  {% if filters.q or filters.status or filters.category %}
+    {% include "components/feedback/empty_state.html" with icon="bi-list-check" title="Nothing matches those filters" %}
+  {% else %}
+    {% url 'bucketlists:item_add' as add_url %}{% url 'activities:activity_list' as browse_url %}
+    {% include "components/feedback/empty_state.html" with icon="bi-list-check" title="Your bucket list is empty" message="Add a goal of your own, or use “Add to bucket list” on any activity, event or place." action_url=add_url action_text="Add your first goal" secondary_url=browse_url secondary_text="Browse activities" %}
+  {% endif %}
 {% endif %}
 {% endblock %}

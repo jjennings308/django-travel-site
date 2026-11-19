@@ -1,13 +1,14 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% block title %}{% if is_create %}Add a day{% else %}Day {{ day.day_number }}{% endif %} — {{ trip.name }}{% endblock %}
 
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_settings' trip.pk %}#day-{{ day.pk }}">{{ trip.name }}</a>
-  </nav>
+  {% endbreadcrumbs %}
 
   <div class="page-header">
     <div>

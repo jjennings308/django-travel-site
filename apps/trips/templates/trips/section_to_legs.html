@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Review logistics tables' travel rows as legs (trips:section_to_legs for one table, trips:trip_travel_review for the whole trip; apps/trips/travel_tables.py). A row already on that day links to the existing leg; others become planned legs. Rows found only by the word "to" start unticked. Nothing is saved until confirming; times are never guessed.
 {% endcomment %}
@@ -6,11 +7,11 @@ Review logistics tables' travel rows as legs (trips:section_to_legs for one tabl
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Make legs</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">{{ heading }}</h1>

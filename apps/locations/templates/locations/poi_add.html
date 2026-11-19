@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Add POI{% endblock %}
+{% block title %}Add a place{% endblock %}
 
 {% block breadcrumbs %}
   {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
@@ -9,10 +9,7 @@
 
 {% block content %}
 <div class="py-6" style="max-width: 900px;">
-    <div class="mb-6">
-        <h1 class="text-4xl font-bold mb-2">Add New Point of Interest</h1>
-        <p class="text-warm-500">Submit a new attraction, landmark, or place for approval</p>
-    </div>
+    {% include "partials/_page_header.html" with title="Add a place" subtitle="Submit a new attraction, landmark, or place for approval" %}
 
     <form method="post" class="sbl-card shadow-sm">
         <div class="p-5 p-6">
@@ -20,7 +17,7 @@
             
             <!-- Basic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
@@ -62,7 +59,7 @@
 
             <!-- Location Details -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Location Details</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Location details</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-4">
@@ -89,7 +86,7 @@
 
             <!-- Contact & Visiting Info -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Contact & Visiting Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Contact & visiting information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
@@ -103,7 +100,7 @@
                     </div>
                     
                     <div class="col-span-12 md:col-span-4">
-                        <label class="sbl-label font-semibold">Entry Fee</label>
+                        <label class="sbl-label font-semibold">Entry fee</label>
                         <input type="number" name="entry_fee" step="0.01" class="sbl-input" placeholder="e.g., 25.00">
                     </div>
                     
@@ -113,7 +110,7 @@
                     </div>
                     
                     <div class="col-span-12 md:col-span-4">
-                        <label class="sbl-label font-semibold">Typical Visit Duration (minutes)</label>
+                        <label class="sbl-label font-semibold">Typical visit duration (minutes)</label>
                         <input type="number" name="typical_duration" class="sbl-input" placeholder="e.g., 120">
                     </div>
                 </div>
@@ -136,7 +133,7 @@
 
             <!-- Featured Media -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image or video to represent this POI</p>
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
@@ -178,7 +175,7 @@
             <div class="flex justify-between items-center pt-6 border-t border-warm-200">
                 <a href="{% url 'locations:poi_list' %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
                 <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
-                    Submit for Approval
+                    Submit for approval
                 </button>
             </div>
         </div>

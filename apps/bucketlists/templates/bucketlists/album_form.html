@@ -4,7 +4,7 @@
 {% block content %}
 <div class="mx-auto max-w-xl">
   <form method="post" class="sbl-card p-6">{% csrf_token %}
-    <h1 class="mb-4 text-2xl font-bold text-warm-900">{% if album %}Edit album{% else %}New album{% endif %}</h1>
+    <h1 class="mb-4 sbl-dialog-title">{% if album %}Edit album{% else %}New album{% endif %}</h1>
     {% include "events/partials/_field.html" with field=form.title %}
     {% include "events/partials/_field.html" with field=form.description %}
     <fieldset class="mb-4">

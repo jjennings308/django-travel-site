@@ -1,13 +1,14 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% block title %}Edit cost — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <a href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <h1 class="page-title mb-4">Edit “{{ expense.description }}”</h1>

@@ -1,16 +1,17 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 A stay on its own page (trips:stay_new from its check-in day, trips:stay_edit; edit-by-day plan E1). Once saved, its confirmations and contacts & info are added here, like a leg's. The short form (short-forms F1): cost details, notes, No booking needed, In option and the pin's coordinates (found from the address) sit in More details.
 {% endcomment %}
 {% block title %}{% if stay %}{{ stay.name }}{% else %}New stay{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    {% if day %}<a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>{% endif %}
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    {% if day %}<a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a>{% endif %}
     <span>{% if stay %}{{ stay.name }}{% else %}New stay{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details people">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

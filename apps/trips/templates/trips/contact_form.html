@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 A contact's own page (trips:contact_edit / contact_new, U4): its details and which of the trip's items it's linked to.
 {% endcomment %}
 {% block title %}{% if obj %}{{ obj.name }}{% else %}New contact{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a>
     <span>{% if obj %}{{ obj.name }}{% else %}New contact{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

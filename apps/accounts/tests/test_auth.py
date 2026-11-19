@@ -23,7 +23,7 @@ class AuthFixture(TestCase):
 class LoginTests(AuthFixture):
     def test_login_page_renders(self):
         response = self.client.get(reverse("login"))
-        self.assertContains(response, "Login")
+        self.assertContains(response, "Log in")
 
     def test_valid_credentials_log_in_and_land_on_the_dashboard(self):
         response = self.client.post(reverse("login"), {"username": "alice", "password": "pw-1234-abcd"})
@@ -61,7 +61,7 @@ class PasswordChangeTests(AuthFixture):
         self.client.force_login(self.alice)
         response = self.client.get(reverse("password_change"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Change Password")
+        self.assertContains(response, "Change password")
 
     def test_change_password_requires_being_signed_in(self):
         response = self.client.get(reverse("password_change"))
@@ -105,7 +105,7 @@ class PasswordResetTests(AuthFixture):
     def test_request_page_renders(self):
         response = self.client.get(reverse("password_reset"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Send Reset Link")
+        self.assertContains(response, "Send reset link")
 
     def test_done_page_renders(self):
         self.assertEqual(self.client.get(reverse("password_reset_done")).status_code, 200)
@@ -157,4 +157,4 @@ class PasswordResetTests(AuthFixture):
     def test_a_bogus_link_renders_the_expired_page_rather_than_a_500(self):
         response = self.client.get(reverse("password_reset_confirm", args=["MQ", "not-a-token"]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Invalid Reset Link")
+        self.assertContains(response, "Invalid reset link")

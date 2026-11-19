@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Add days at the start or end (trips:trip_extend, shift-and-reorder DR4; apps/trips/reschedule.py). A number and a side, then Preview (a GET, nothing saved) shows the new dates and the days whose numbers change; Add the days (a POST) grows the trip's dates and makes the empty days, under one history line that can be undone. Nothing already on the trip moves.
 {% endcomment %}
 {% block title %}Add days — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{{ settings_url }}">Settings</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{{ settings_url }}">Settings</a>
     <span>Add days</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="card p-6" data-trip-extend>
     <h1 class="page-title mb-1">Add days</h1>
     <p class="mb-4 text-zinc-500">Add empty days at the start or end of the trip. Everything already on the trip keeps its date: days, journeys, stays, the things on each day and every booking. Nothing moves. {% include "partials/_help_link.html" with slug="starting-a-trip" anchor="adding-days-at-the-start-or-end" label="adding days at the start or end" text="How this works" %}</p>

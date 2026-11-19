@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% load static %}
 {% comment %}
 What's left to do (trips:trip_todo, edit-by-day plan E2; booking-todos K2 order): undecided choices, then the to-dos — open ones by priority and due date, the done ones folded away — then No plan yet (the trip's To book rows no to-do covers, partials/_to_book.html mode "todo": Add a to-do · Add confirmation · No booking needed, back here). Each thing shows once. Anyone who can see the trip reads it; editors add, edit and tick off here (Mark done in place, trips/to_book.js). Linked from the Needs attention banner and Reference.
@@ -6,11 +7,11 @@ What's left to do (trips:trip_todo, edit-by-day plan E2; booking-todos K2 order)
 {% block title %}To do — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-4xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>To do</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
     <h1 class="page-title">To do {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-to-do-page" label="to-dos" %}</h1>
     {% if can_edit %}<a class="btn" href="{% url 'trips:task_new' trip.pk %}?next={{ request.path|urlencode }}" data-task-new>Add a to-do</a>{% endif %}

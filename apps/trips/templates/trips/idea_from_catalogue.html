@@ -1,14 +1,15 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 "Add to a trip" from a catalogue place, activity, event or city (trips:idea_from_catalogue, day-first plan P6): the member's trips that aren't over and that they may add ideas to; the chosen trip's Ideas shelf gets it.
 {% endcomment %}
 {% block title %}Add {{ target.name }} to a trip{% endblock %}
 {% block wrap_class %}max-w-2xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
     <span>Add to a trip</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="card p-6">
     <h1 class="page-title mb-1">Add “{{ target.name }}” to a trip</h1>
     <p class="mb-4 text-zinc-500">It goes on the trip's Ideas shelf, where everyone on the trip can see it and vote, and an editor can put it on a day. {% include "partials/_help_link.html" with slug="ideas-and-goals" label="ideas" text="How this works" %}</p>

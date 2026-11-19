@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Fit the days to new dates (trips:trip_days_fit, day-first plan P7; apps/trips/day_fit.py): offered after Settings moves the trip's dates. Days for the new dates, ticked; days now outside the dates, ticked only when nothing is on them. When the start moved and the days don't start on it yet, it first offers to move everything (trips:trip_shift?moved_from=); when only the start moved, as a choice between keeping the length (the shift, which moves the end too) and keeping the end (this list) (shift-and-reorder DR3). Nothing changes until "Fit the days"; the days are then numbered again in date order.
 {% endcomment %}
 {% block title %}Fit the days — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{{ settings_url }}">Settings</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{{ settings_url }}">Settings</a>
     <span>Fit the days</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" data-days-fit>
     {% csrf_token %}
     <h1 class="page-title mb-1">The days and the new dates</h1>

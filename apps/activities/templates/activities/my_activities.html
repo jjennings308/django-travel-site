@@ -26,6 +26,6 @@
   </div>
   {% include "partials/_pagination.html" %}
 {% else %}
-  <div class="sbl-card p-10 text-center text-warm-500"><i class="bi bi-signpost-2 mb-2 block text-4xl"></i><p>You haven't added any activities yet.</p></div>
+  {% url 'activities:activity_add' as add_url %}{% include "components/feedback/empty_state.html" with icon="bi-signpost-2" title="You haven't added any activities yet" action_url=add_url action_text="Add an activity" %}
 {% endif %}
 {% endblock %}

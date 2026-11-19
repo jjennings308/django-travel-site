@@ -1,7 +1,7 @@
 <!-- templates/accounts/edit_preferences.html -->
 {% extends 'base.html' %}
 
-{% block title %}Edit Preferences{% endblock %}
+{% block title %}Edit preferences{% endblock %}
 
 {% block content %}
 {% if form.errors %}
@@ -21,7 +21,7 @@
                     <form method="post">
                         {% csrf_token %}
                         
-                        <h5>Travel Preferences</h5>
+                        <h5>Travel preferences</h5>
                         <hr>
                         
                         <div class="grid grid-cols-12">
@@ -30,19 +30,19 @@
                                 {{ form.budget_preference }}
                             </div>
                             <div class="col-span-12 md:col-span-6 mb-4">
-                                <label for="{{ form.travel_pace.id_for_label }}" class="sbl-label">Travel Pace</label>
+                                <label for="{{ form.travel_pace.id_for_label }}" class="sbl-label">Travel pace</label>
                                 {{ form.travel_pace }}
                             </div>
                         </div>
                         
                         <div class="mb-4">
-                            <label for="{{ form.fitness_level.id_for_label }}" class="sbl-label">Fitness Level (1-5)</label>
+                            <label for="{{ form.fitness_level.id_for_label }}" class="sbl-label">Fitness level (1-5)</label>
                             {{ form.fitness_level }}
                             <small class="text-warm-500">1 = Low activity, 5 = Very active</small>
                         </div>
                         
                         <div class="mb-4">
-                            <label class="sbl-label">Travel Styles</label>
+                            <label class="sbl-label">Travel styles</label>
                             <div class="border border-warm-200 rounded-lg p-2">
                                 {{ form.travel_styles }}
                             </div>
@@ -99,7 +99,7 @@
                             </label>
                         </div>
                         
-                        <h5 class="mt-6">Regional Settings</h5>
+                        <h5 class="mt-6">Regional settings</h5>
                         <hr>
                         
                         <div class="grid grid-cols-12">
@@ -124,7 +124,7 @@
                         </div>
                         
                         <div class="flex gap-2 mt-6">
-                            <button type="submit" class="sbl-btn sbl-btn-primary">Save Preferences</button>
+                            <button type="submit" class="sbl-btn sbl-btn-primary">Save preferences</button>
                             <a href="{% url 'profile' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
                         </div>
                     </form>

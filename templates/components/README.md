@@ -141,13 +141,12 @@ Show completion progress.
 #### Empty State
 Friendly no-data message.
 
+The site's one empty state (ux-consistency V2): icon, title, message, a primary and an optional secondary action.
+Pass resolved URLs (`{% url … as x %}` first), and keep the include on one line (a tag must not wrap).
+
 ```django
-{% include 'components/feedback/empty_state.html' with 
-   title="No trips yet" 
-   message="Start planning" 
-   icon="bi-airplane" 
-   cta_url="trips:plan" 
-   cta_text="Plan a Trip" %}
+{% url 'trips:trip_create' as create_url %}
+{% include 'components/feedback/empty_state.html' with icon="bi-map" title="No trips yet" message="Start one from scratch." action_url=create_url action_text="Start a trip" %}
 ```
 
 **Parameters:**
@@ -257,13 +256,8 @@ Large header for landing pages.
 
 ```django
 {% if not trips %}
-  {% include 'components/feedback/empty_state.html' with 
-     title="No trips yet" 
-     message="Start planning your first adventure today" 
-     icon="bi-airplane" 
-     cta_url="trips:plan" 
-     cta_text="Plan Your First Trip" 
-     color="olive" %}
+  {% url 'trips:trip_create' as create_url %}
+  {% include 'components/feedback/empty_state.html' with icon="bi-map" title="No trips yet" message="Start planning your first adventure today" action_url=create_url action_text="Start a trip" %}
 {% endif %}
 ```
 
