@@ -11,34 +11,7 @@
 
 {% block content %}
 <div class="py-6">
-    <!-- Header -->
-    <div class="sbl-card shadow-sm mb-6 overflow-hidden relative">
-        {% if poi.featured_media %}
-            <div class="relative" style="height: 400px;">
-                {% if poi.featured_media.media_type == 'video' %}
-                    <video src="{{ poi.featured_media.file.url }}" class="w-full h-full" style="object-fit: cover;" controls></video>
-                {% else %}
-                    <img src="{{ poi.featured_media.file.url }}" alt="{{ poi.name }}" class="w-full h-full" style="object-fit: cover;">
-                {% endif %}
-                <div class="absolute bottom-0 left-0 right-0 p-6" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
-                    <h1 class="text-4xl font-bold text-white mb-0">{{ poi.name }}</h1>
-                    <p class="text-lg font-semibold text-white/70 mb-0">{{ poi.city.name }}, {{ poi.city.country.iso_code }}</p>
-                </div>
-            </div>
-        {% else %}
-            <div class="bg-red-600 flex items-center justify-center" style="height: 400px;">
-                <div class="text-center">
-                    <i class="bi bi-geo-alt text-white" style="font-size: 8rem; opacity: 0.5;"></i>
-                    <h1 class="text-4xl font-bold text-white mt-4">{{ poi.name }}</h1>
-                    <p class="text-lg font-semibold text-white/70">{{ poi.city.name }}, {{ poi.city.country.iso_code }}</p>
-                </div>
-            </div>
-        {% endif %}
-        
-        <span class="sbl-badge absolute top-0 left-0 z-10 m-4 text-base shadow {% if poi.approval_status == 'approved' %} sbl-badge-success {% elif poi.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif poi.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
-            {{ poi.get_approval_status_display }}
-        </span>
-    </div>
+    {% include "partials/_detail_header.html" with title=poi.name label=poi.poi_type.name icon="bi-geo-alt" image=poi.featured_media place=header_place stars=poi.average_rating stars_count=poi.review_count status=poi.approval_status status_label=poi.get_approval_status_display actions_template="locations/partials/_header_actions.html" kind="poi" obj=poi %}
 
     <div class="grid grid-cols-12 gap-6">
         <!-- Main Content -->
@@ -46,7 +19,7 @@
             {% if poi.description %}
                 <div class="sbl-card shadow-sm mb-6">
                     <div class="p-5">
-                        <h3 class="text-xl font-semibold font-bold mb-4">About</h3>
+                        <h2 class="sbl-section-title">About</h2>
                         <p class="text-lg text-warm-700">{{ poi.description }}</p>
                     </div>
                 </div>
@@ -55,7 +28,7 @@
             <!-- Visiting Information -->
             <div class="sbl-card shadow-sm">
                 <div class="p-5">
-                    <h3 class="text-xl font-semibold font-bold mb-4">Visiting information</h3>
+                    <h2 class="sbl-section-title">Visiting information</h2>
                     
                     <div class="grid grid-cols-12 gap-4">
                         {% if poi.entry_fee %}
@@ -63,7 +36,7 @@
                                 <div class="flex items-center">
                                     <i class="bi bi-cash-coin text-2xl text-earth-clay mr-4"></i>
                                     <div>
-                                        <p class="text-warm-500 text-sm mb-0">Entry Fee</p>
+                                        <p class="text-warm-500 text-sm mb-0">Entry fee</p>
                                         <p class="font-bold mb-0">{{ poi.entry_fee_currency }} {{ poi.entry_fee }}</p>
                                     </div>
                                 </div>
@@ -73,8 +46,8 @@
                                 <div class="flex items-center">
                                     <i class="bi bi-cash-coin text-2xl text-emerald-700 mr-4"></i>
                                     <div>
-                                        <p class="text-warm-500 text-sm mb-0">Entry Fee</p>
-                                        <p class="font-bold mb-0 text-emerald-700">Free Entry</p>
+                                        <p class="text-warm-500 text-sm mb-0">Entry fee</p>
+                                        <p class="font-bold mb-0 text-emerald-700">Free entry</p>
                                     </div>
                                 </div>
                             </div>
@@ -83,9 +56,9 @@
                         {% if poi.typical_duration %}
                             <div class="col-span-12 md:col-span-6">
                                 <div class="flex items-center">
-                                    <i class="bi bi-clock text-2xl text-sky-700 mr-4"></i>
+                                    <i class="bi bi-clock mr-4 text-2xl text-earth-clay"></i>
                                     <div>
-                                        <p class="text-warm-500 text-sm mb-0">Typical Visit</p>
+                                        <p class="text-warm-500 text-sm mb-0">Typical visit</p>
                                         <p class="font-bold mb-0">{{ poi.typical_duration }} minutes</p>
                                     </div>
                                 </div>
@@ -98,7 +71,7 @@
                                     <i class="bi bi-universal-access text-2xl text-emerald-700 mr-4"></i>
                                     <div>
                                         <p class="text-warm-500 text-sm mb-0">Accessibility</p>
-                                        <p class="font-bold mb-0">Wheelchair Accessible</p>
+                                        <p class="font-bold mb-0">Wheelchair accessible</p>
                                     </div>
                                 </div>
                             </div>
@@ -123,12 +96,10 @@
 
         <!-- Sidebar -->
         <div class="col-span-12 lg:col-span-4">
-            {% include "partials/_bucket_add_button.html" with kind="poi" obj=poi form_class="mb-4" button_class="w-full" %}
-            {% include "partials/_trip_add_button.html" with kind="poi" obj=poi button_class="w-full" link_class="mb-4" %}
             <!-- Quick Info -->
             <div class="sbl-card shadow-sm mb-6">
                 <div class="p-5">
-                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Quick info</h5>
+                    <h2 class="sbl-section-title">Quick info</h2>
                     <dl class="mb-0">
                         <div class="mb-4">
                             <dt class="text-warm-500 text-sm mb-1">Type</dt>
@@ -161,8 +132,8 @@
                             <dt class="text-warm-500 text-sm mb-1">Country</dt>
                             <dd class="mb-0">
                                 <a href="{% url 'locations:country_detail' poi.city.country.slug %}" class="no-underline">
-                                    <span class="sbl-badge sbl-badge-neutral mr-1 mb-1" style="font-size: 1rem; padding: 0.5rem 0.75rem;">
-                                    <span class="{{ poi.city.country|country_flag_icon }}" style="margin-right: 0.5rem;"></span>
+                                    <span class="sbl-badge sbl-badge-neutral mb-1 mr-1 px-3 py-2 text-base">
+                                    <span class="{{ poi.city.country|country_flag_icon }} mr-2"></span>
                                     {{ poi.city.country.name }}
                                 </a>
                             </dd>
@@ -211,36 +182,9 @@
                 </div>
             </div>
 
-            <!-- Stats -->
-            {% if poi.visitor_count or poi.average_rating or poi.shown_trip_count %}
-                <div class="sbl-card shadow-sm mb-6">
-                    <div class="p-5">
-                        <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
-                        {% if poi.visitor_count %}
-                            <div class="flex justify-between mb-4">
-                                <span class="text-warm-500" title="Members who ticked off a goal here">Members who've been</span>
-                                <span class="text-lg font-semibold mb-0">{{ poi.visitor_count }}</span>
-                            </div>
-                        {% endif %}
-                        {% if poi.shown_trip_count %}
-                            <div class="flex justify-between mb-4">
-                                <span class="text-warm-500" title="Members' trips that include this place">On trips</span>
-                                <span class="text-lg font-semibold mb-0">{{ poi.shown_trip_count }}</span>
-                            </div>
-                        {% endif %}
-                        {% if poi.average_rating %}
-                            <div class="flex justify-between mb-0">
-                                <span class="text-warm-500">Rating</span>
-                                <span class="text-lg font-semibold mb-0">⭐ {{ poi.average_rating|floatformat:1 }} <a href="#reviews" class="text-sm font-normal text-warm-500 hover:underline">({{ poi.review_count }})</a></span>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endif %}
-
             <!-- Actions -->
             {% url 'locations:poi_edit' poi.slug as edit_url %}{% url 'locations:poi_list' as back_url %}
-            {% include "locations/partials/_actions.html" with edit_label="Edit Place" back_label="Back to Places" report_obj=poi %}
+            {% include "locations/partials/_actions.html" with edit_label="Edit place" back_label="Back to places" report_obj=poi %}
         </div>
     </div>
 </div>

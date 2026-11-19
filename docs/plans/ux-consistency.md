@@ -1,6 +1,6 @@
 # Plan: one look across the site — tokens, shared partials, trip tabs, place pages, navigation
 
-Status: V1 done on branch `v1-tokens`, V2 on branch `v2-shared-partials`, V3 on branch `v3-trip-tabs` (2026-11-19); V4–V5 not started. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
+Status: V1 done on branch `v1-tokens`, V2 on branch `v2-shared-partials`, V3 on branch `v3-trip-tabs`, V4 on branch `v4-place-headers` (2026-11-19); V5 not started. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
 Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs them.
 Every phase that changes something a user sees updates its Help guide in the same PR (`apps/pages/help/`, bump
 `updated`). Mockups (current vs proposed, numbered notes):
@@ -161,6 +161,8 @@ site-wide change to secondary text.
   here" (`partials/_trip_add_button.html`, outline) in a strip under the banner, with a one-line summary
   ("12 activities · 4 events"), using counts the view already has. Add that strip to `_detail_header` as an optional
   `actions_template=` (activities and events can adopt it later) — or as a sibling partial; pick the smaller.
+- Done note: countries and regions get the summary line only — bucket-list and Add to a trip don't take them
+  (`bucketlists._target_for`, `trips.idea_from_catalogue`). The Statistics card's counts moved into the summary.
 - No "Approved" badge (decision 5). Headings to `sbl-section-title`. Remove the inline `style=` (heights, object-fit,
   gradients) for Tailwind classes.
 - **Help:** `places-and-events.md`.

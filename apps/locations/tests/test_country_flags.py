@@ -187,10 +187,10 @@ class PageTests(Fixture):
         self.photo(self.france)
         flags.attach(self.france)  # keeps the photo as the picture; the flag is only flag_media
         page = self.client.get(reverse("locations:country_detail", args=["germany"])).content.decode()
-        self.assertIn('data-country-picture="flag"', page)
-        self.assertIn("object-contain", page.split('data-country-picture="flag"')[0].rsplit("<img", 1)[1])
+        banner = page.split('data-picture="flag"')[0].rsplit("<div", 1)[1]
+        self.assertIn("background-size: cover, contain", banner)  # the whole flag, never cropped
         page = self.client.get(reverse("locations:country_detail", args=["france"])).content.decode()
-        self.assertIn('data-country-picture="photo"', page)
+        self.assertIn('data-picture="photo"', page)
         listing = self.client.get(reverse("locations:country_list")).content.decode()
         self.assertIn('alt="Flag of Germany" class="h-full w-full rounded-t-xl bg-warm-100 object-contain', listing)
         self.assertIn('alt="France" class="h-full w-full rounded-t-xl object-cover', listing)
