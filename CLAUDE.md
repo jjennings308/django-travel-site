@@ -759,8 +759,10 @@ that matter most:
   "Turn “A → B” table rows into journeys" link)); **To do** (choices, then the to-dos by priority and due date — "what
   do I book next?" —, the done ones folded, then **No plan yet**: the To book rows no to-do covers, `mode="todo"`, with
   Add a to-do · Add confirmation · No booking needed linking to pages with `next` back; booking-todos K2; to-dos keep
-  their own pages; Mark done in place); the map page's lists; the calendar feed's links. The header links Bookings · To do · Map · Budget ·
-  Photos · People · History; the jump bar gains **Ideas** while the shelf has any. Budget keeps its own costs and rates.
+  their own pages; Mark done in place); the map page's lists; the calendar feed's links. The **tab bar** (`trips/partials/_trip_tabs.html`, ux-consistency V3: Overview · Bookings · To do · Map · Budget ·
+  Photos · People · History, `aria-current` from the URL name, on the trip page and each of those pages, whose breadcrumbs end at
+  the trip; counts only from what the page already has — `to_book`, the annotated `outstanding_task_count`, the To do page's
+  `open_tasks` — never a query) links them; the jump bar gains **Ideas** while the shelf has any. Budget keeps its own costs and rates.
   The booklet has no links.
 - **Booking tasks cover their items** (trips 0025, Phase E; booking-todos K1, trips 0056–0058): a to-do covers any
   number of legs, stays and trip activities through `TaskLink` (`trip_task_links`: task + generic item, once per pair,
@@ -790,8 +792,8 @@ that matter most:
   one is the tasks' options; three are the "choose one" groups, options and votes (P4: 35) — fixed per page, not per item); `test_detail.QueryCountTests` pins it (it warms the
   content-type cache first, so the count doesn't depend on test order).
 - **The web trip page is laid out for the web** (trip-page UX plan, U2; the booklet does the printing,
-  so add no print styling): a header (title, dates · nights · status; Settings and Download PDF;
-  Bookings · To do · Map · Budget · Photos links; a ⋯ menu, Alpine, with Add to calendar, Tidy suggestions (editors), Share /
+  so add no print styling): a header (title, dates · nights · status; Settings (outline, gear) and Download PDF
+  (a split outline button, chevron "More PDF choices"); then the tab bar; a More actions menu (`bi-three-dots`), Alpine, with Add to calendar, Tidy suggestions (editors), Share /
   the shared link / Stop sharing and Delete), the **Needs attention** banner (`#needs-attention`, only when
   something does: to book, other to-dos (K2), decisions, documents not ticked, not on any day, tables to convert,
   each linking to its list), a sticky jump bar (Days · Reference), then:
@@ -1748,7 +1750,7 @@ after the deploy.
 
 ### UX consistency
 
-Plan: `docs/plans/ux-consistency.md` (one look across the site: one warm palette and contrast fixes — V1; shared page header, breadcrumbs, filter bar, badges and wording — V2; the trip tab bar — V3; place pages on `_detail_header` — V4; navigation and dashboard — V5). Decided 2026-11-19. Phases V1–V5, one branch each, in order. Status: V1 (tokens: trips' zinc remapped to warm, `warm-500` darkened, sidebar labels and white-text buttons fixed, dead CSS / config files deleted) done on branch `v1-tokens`; V2 (page header, one breadcrumb, filter bar, empty states, sentence case, badges) done on branch `v2-shared-partials`.
+Plan: `docs/plans/ux-consistency.md` (one look across the site: one warm palette and contrast fixes — V1; shared page header, breadcrumbs, filter bar, badges and wording — V2; the trip tab bar — V3; place pages on `_detail_header` — V4; navigation and dashboard — V5). Decided 2026-11-19. Phases V1–V5, one branch each, in order. Status: V1 (tokens: trips' zinc remapped to warm, `warm-500` darkened, sidebar labels and white-text buttons fixed, dead CSS / config files deleted) done on branch `v1-tokens`; V2 (page header, one breadcrumb, filter bar, empty states, sentence case, badges) done on branch `v2-shared-partials`. V3 (the trip tab bar, outline Settings, icon menus, the Ready to go warning links To do) done on branch `v3-trip-tabs`.
 
 ### Short forms
 

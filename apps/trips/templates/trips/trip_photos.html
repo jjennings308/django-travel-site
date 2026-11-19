@@ -10,8 +10,8 @@ Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Any
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>Photos</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Photos</h1>

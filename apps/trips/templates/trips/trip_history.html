@@ -10,8 +10,8 @@ A trip's change history (trips:trip_history, site roadmap R8): newest first, fil
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>History</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="page-header">
     <div>
       <h1 class="page-title">History {% include "partials/_help_link.html" with slug="trip-history" label="history and undo" %}</h1>

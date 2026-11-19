@@ -10,8 +10,8 @@ Trip budget. First the Plan (budget-estimates B2; budget_plan.plan over the trip
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>Budget</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Budget {% include "partials/_help_link.html" with slug="budget" anchor="the-plan" label="the plan" %}</h1>

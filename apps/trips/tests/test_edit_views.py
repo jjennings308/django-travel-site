@@ -185,7 +185,9 @@ class TripEditTests(TripEditingFixture):
         BookingTask.objects.create(trip=self.trip, title="Book rental car")
         url = reverse("trips:trip_settings", args=[self.trip.pk])
         response = self.client.post(url, self.valid_trip_payload(status=Trip.Status.READY_TO_GO), follow=True)
-        self.assertContains(response, "marked Ready to go but still has 1 booking task outstanding")
+        self.assertContains(response, "marked Ready to go but still has 1 open to-do. ")
+        todo = reverse("trips:trip_todo", args=[self.trip.pk])
+        self.assertContains(response, f'href="{todo}" data-ready-todo-link>Go to To do</a>')  # a link, not escaped text
         response = self.client.post(url, self.valid_trip_payload(status=Trip.Status.CONFIRMING), follow=True)
         self.assertNotContains(response, "marked Ready to go")
 

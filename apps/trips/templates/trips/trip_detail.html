@@ -15,7 +15,7 @@
 
   {# Shown only on a saved copy served offline: the worker (core/sw.js) removes "hidden". #}
   <div class="callout-warning mb-4" role="status" data-sbl-offline hidden>Offline — this is the copy saved {% now "M j, g:i A" %}. Changes made since then aren't shown.</div>
-  <header class="mb-6">
+  <header class="mb-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
         <h1 class="hero-title">{{ trip.name }}</h1>
@@ -25,16 +25,15 @@
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        {% if can_edit %}<a class="btn" href="{% url 'trips:trip_settings' trip.pk %}" data-settings-link>Settings</a>{% endif %}
+        {% if can_edit %}<a class="btn-quiet" href="{% url 'trips:trip_settings' trip.pk %}" data-settings-link><i class="bi bi-gear" aria-hidden="true"></i>Settings</a>{% endif %}
         {# Download PDF (booklet-budget BB1): the plain booklet, or with a budget page; without JavaScript both links show. #}
         <div class="relative flex flex-wrap items-center gap-2" x-data="{ pdf: false }" @keydown.escape.window="pdf = false" @click.outside="pdf = false" data-pdf-menu>
-          <a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts" data-pdf-plain>Download PDF</a>
-          <button type="button" class="btn-quiet hidden" x-init="$el.classList.remove('hidden')" aria-label="More PDF choices" :aria-expanded="pdf" @click="pdf = !pdf">▾</button>
+          <span class="btn-split"><a class="btn-quiet" href="{% url 'trips:trip_pdf' trip.pk %}" title="A printable booklet: days, confirmations, stays and contacts" data-pdf-plain><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>Download PDF</a><button type="button" class="btn-quiet hidden" x-init="$el.classList.remove('hidden')" aria-label="More PDF choices" :aria-expanded="pdf" @click="pdf = !pdf"><i class="bi bi-chevron-down" aria-hidden="true"></i></button></span>
           <a class="btn-quiet" x-show="pdf" :class="'absolute right-0 top-full z-30 mt-1 whitespace-nowrap rounded-lg border border-zinc-200 bg-white shadow-lg'" href="{% url 'trips:trip_pdf' trip.pk %}?budget=1" title="The booklet plus a page of totals and what's still to pay on each item, as of today" data-pdf-budget>PDF with budget</a>
         </div>{% include "partials/_help_link.html" with slug="reading-your-trip" anchor="booklet" label="the PDF booklet" %}
-        {# ⋯ menu: calendar, sharing and delete, kept out of the way (Alpine). #}
+        {# More actions menu: calendar, sharing and delete, kept out of the way (Alpine). #}
           <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
-            <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu>⋯</button>
+            <button type="button" class="btn-quiet" aria-label="More actions" :aria-expanded="open" @click="open = !open" data-trip-menu><i class="bi bi-three-dots" aria-hidden="true"></i></button>
             <div class="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-lg" x-show="open" x-cloak>
               <a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_calendar' trip.pk %}" title="Subscribe to this trip in Google, Apple or Outlook calendar">Add to calendar</a>
               {% if can_edit %}<a class="link-quiet mb-2 block font-medium" href="{% url 'trips:trip_tidy' trip.pk %}" title="Text that repeats a leg, stay, booking or contact recorded elsewhere" data-tidy-link>Tidy suggestions</a>{% endif %}
@@ -64,16 +63,8 @@
           </div>
       </div>
     </div>
-    <p class="mt-2 flex flex-wrap gap-4 text-sm">
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_bookings' trip.pk %}" data-bookings-link>Bookings</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_todo' trip.pk %}">To do</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_map' trip.pk %}">Map</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_budget' trip.pk %}">Budget</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_photos' trip.pk %}">Photos</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_people' trip.pk %}">People</a>
-      <a class="link-quiet font-medium" href="{% url 'trips:trip_history' trip.pk %}">History</a>
-    </p>
   </header>
+  {% include "trips/partials/_trip_tabs.html" %}
 
   {# The route strip (day-first plan, P1): the days' cities as runs, from route.runs — no queries. #}
   {% if route_runs %}

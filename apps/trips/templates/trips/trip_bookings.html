@@ -9,8 +9,8 @@ Bookings (trips:trip_bookings, day-first plan P7): the trip's confirmations, wha
   {% breadcrumbs %}
     <a href="{% url 'trips:trip_list' %}">Trips</a>
     <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
-    <span>Bookings</span>
   {% endbreadcrumbs %}
+  {% include "trips/partials/_trip_tabs.html" %}
   <div class="mb-4">
     <h1 class="page-title">Bookings {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-bookings-page" label="bookings" %}</h1>
     <p class="mt-1 text-sm text-zinc-500">Confirmation numbers, what still needs booking, and every journey and stay. Click one to open it on the trip page{% if can_edit %}, where you change it{% endif %}.</p>
