@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 One meal on its own page (trips:meal_edit, day-first plan P2): its details, then its confirmations and contacts & info, as a leg's or an activity's page. The day page's Meals form edits the same rows together.
 {% endcomment %}
 {% block title %}{{ meal.name }} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs" data-panel-hide>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a>
     <span>{{ meal.name }}</span>
-  </nav>
+  {% endbreadcrumbs %}
   {% with suggestion=meal.catalogue_suggestion %}{% if suggestion %}
     {# A catalogue place matching the meal's name (R18; P3: offered on the meal's page as on the day page, never linked by itself). #}
     <form method="post" action="{% url 'trips:catalogue_link' trip.pk day.pk 'meal' meal.pk %}" class="callout-info mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm" data-panel-tab="details" data-catalogue-suggestion>

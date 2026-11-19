@@ -1,16 +1,17 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 One to-do (trips:task_new / task_edit, edit-by-day plan E2). Covers (booking-todos K1) is grouped checkboxes of the trip's legs, stays and activities by day; ?leg= / ?stay= / ?activity= (repeatable) pre-tick them for a new to-do, with a leg's way back and connections ("Also ticked"). The day and confirmation pickers offer only this trip's own things.
 {% endcomment %}
 {% block title %}{% if task %}{{ task.title }}{% else %}New to-do{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{% url 'trips:trip_todo' trip.pk %}">To do</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{% url 'trips:trip_todo' trip.pk %}">To do</a>
     <span>{% if task %}{{ task.title }}{% else %}New to-do{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

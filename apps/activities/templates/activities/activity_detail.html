@@ -87,7 +87,7 @@
 
         <aside class="space-y-6">
             <section class="sbl-card p-5">
-                <h2 class="mb-4 font-bold text-warm-900">Quick Info</h2>
+                <h2 class="mb-4 font-bold text-warm-900">Quick info</h2>
                 <dl class="space-y-4">
                     <div><dt class="text-sm text-warm-500">Category</dt><dd>{{ activity.category.name }}</dd></div>
                     {% if activity.venue %}<div><dt class="text-sm text-warm-500">Venue</dt><dd><a class="sbl-link" href="{% url 'locations:poi_detail' activity.venue.slug %}">{{ activity.venue.name }}</a></dd></div>{% endif %}

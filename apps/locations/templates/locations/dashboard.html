@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Location Dashboard{% endblock %}
+{% block title %}Locations dashboard{% endblock %}
 
 {% block content %}
 <div class="py-2">
   <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-3xl font-bold text-warm-900">Location Dashboard</h1>
-      <p class="mt-1 text-warm-500">Manage countries, regions, cities, and points of interest</p>
+      <h1 class="sbl-page-title">Locations dashboard</h1>
+      <p class="sbl-page-subtitle">Manage countries, regions, cities and places</p>
     </div>
     <a href="{% url 'locations:poi_map' %}" class="sbl-btn sbl-btn-outline"><i class="bi bi-map"></i> Places map</a>
   </header>
@@ -21,7 +21,7 @@
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <section class="rounded-xl border border-warm-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-3 text-lg font-bold text-warm-900">Your Recent Countries</h2>
+      <h2 class="mb-3 text-lg font-bold text-warm-900">Your recent countries</h2>
       {% if recent_countries %}
         <ul class="divide-y divide-warm-100">
           {% for country in recent_countries %}
@@ -47,7 +47,7 @@
     </section>
 
     <section class="rounded-xl border border-warm-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-3 text-lg font-bold text-warm-900">Your Recent Cities</h2>
+      <h2 class="mb-3 text-lg font-bold text-warm-900">Your recent cities</h2>
       {% if recent_cities %}
         <ul class="divide-y divide-warm-100">
           {% for city in recent_cities %}

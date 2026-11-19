@@ -16,6 +16,6 @@
     {% for event in events %}{% include "events/partials/_event_card.html" %}{% endfor %}
   </div>
 {% else %}
-  <div class="sbl-card p-10 text-center text-warm-500"><i class="bi bi-calendar-plus mb-2 block text-4xl"></i><p>You haven't added any events yet.</p></div>
+  {% url 'events:event_add' as add_url %}{% include "components/feedback/empty_state.html" with icon="bi-calendar-plus" title="You haven't added any events yet" action_url=add_url action_text="Add an event" %}
 {% endif %}
 {% endblock %}

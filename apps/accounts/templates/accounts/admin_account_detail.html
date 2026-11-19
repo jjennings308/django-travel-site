@@ -1,14 +1,14 @@
 <!-- templates/accounts/admin_account_detail.html -->
 {% extends 'base.html' %}
 
-{% block title %}Account Details - {{ account_user.email }}{% endblock %}
+{% block title %}Account details - {{ account_user.email }}{% endblock %}
 
 {% block content %}
 <div class="mt-6">
     <div class="grid grid-cols-12">
         <div class="col-span-12 md:col-span-12">
-            <h2>Account Details</h2>
-            <a href="{% url 'staff:admin_account_list' %}" class="sbl-btn sbl-btn-outline mb-4">← Back to List</a>
+            <h2>Account details</h2>
+            <a href="{% url 'staff:admin_account_list' %}" class="sbl-btn sbl-btn-outline mb-4">← Back to list</a>
         </div>
     </div>
     
@@ -17,7 +17,7 @@
         <div class="col-span-12 md:col-span-6">
             <div class="sbl-card mb-4">
                 <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                    <h5>Basic Information</h5>
+                    <h5>Basic information</h5>
                 </div>
                 <div class="p-5">
                     <table class="sbl-table">
@@ -75,7 +75,7 @@
         <div class="col-span-12 md:col-span-6">
             <div class="sbl-card mb-4">
                 <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                    <h5>Account Status</h5>
+                    <h5>Account status</h5>
                 </div>
                 <div class="p-5">
                     <table class="sbl-table">
@@ -118,7 +118,7 @@
                             <td>{{ stats.date_joined|date:"Y-m-d H:i" }}</td>
                         </tr>
                         <tr>
-                            <th>Last Login:</th>
+                            <th>Last login:</th>
                             <td>{{ stats.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
                         </tr>
                     </table>
@@ -132,19 +132,19 @@
                             <button type="submit" name="action" value="deactivate" 
                                     class="sbl-btn sbl-btn-accent sbl-btn-sm"
                                     onclick="return confirm('Deactivate this user?')">
-                                Deactivate Account
+                                Deactivate account
                             </button>
                         {% else %}
                             <button type="submit" name="action" value="activate" 
                                     class="sbl-btn sbl-btn-secondary sbl-btn-sm">
-                                Activate Account
+                                Activate account
                             </button>
                         {% endif %}
                         
                         {% if not stats.is_verified %}
                             <button type="submit" name="action" value="verify" 
                                     class="sbl-btn sbl-btn-accent sbl-btn-sm">
-                                Verify Email
+                                Verify email
                             </button>
                         {% endif %}
                     </form>

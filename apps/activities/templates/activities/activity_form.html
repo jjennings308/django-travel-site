@@ -19,7 +19,7 @@
                         {# Basic Information Section #}
                         <div class="sbl-card mb-6">
                             <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                                <h5 class="mb-0">Basic Information</h5>
+                                <h5 class="mb-0">Basic information</h5>
                             </div>
                             <div class="p-5">
                                 <div class="mb-4">
@@ -74,7 +74,7 @@
 
                                 <div class="mb-4">
                                     <label for="{{ form.specificity_level.id_for_label }}" class="sbl-label">
-                                        How Specific?
+                                        How specific?
                                     </label>
                                     {{ form.specificity_level }}
                                     {% if form.specificity_level.errors %}
@@ -160,13 +160,13 @@
                         {# Activity Characteristics #}
                         <div class="sbl-card mb-6">
                             <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                                <h5 class="mb-0">Activity Characteristics</h5>
+                                <h5 class="mb-0">Activity characteristics</h5>
                             </div>
                             <div class="p-5">
                                 <div class="grid grid-cols-12">
                                     <div class="col-span-12 md:col-span-4 mb-4">
                                         <label for="{{ form.skill_level.id_for_label }}" class="sbl-label">
-                                            Skill Level
+                                            Skill level
                                         </label>
                                         {{ form.skill_level }}
                                     </div>
@@ -180,7 +180,7 @@
 
                                     <div class="col-span-12 md:col-span-4 mb-4">
                                         <label for="{{ form.cost_level.id_for_label }}" class="sbl-label">
-                                            Cost Level
+                                            Cost level
                                         </label>
                                         {{ form.cost_level }}
                                     </div>
@@ -189,21 +189,21 @@
                                 <div class="grid grid-cols-12">
                                     <div class="col-span-12 md:col-span-4 mb-4">
                                         <label for="{{ form.best_for.id_for_label }}" class="sbl-label">
-                                            Best For
+                                            Best for
                                         </label>
                                         {{ form.best_for }}
                                     </div>
 
                                     <div class="col-span-12 md:col-span-4 mb-4">
                                         <label for="{{ form.indoor_outdoor.id_for_label }}" class="sbl-label">
-                                            Indoor/Outdoor
+                                            Indoor/outdoor
                                         </label>
                                         {{ form.indoor_outdoor }}
                                     </div>
 
                                     <div class="col-span-12 md:col-span-4 mb-4">
                                         <label for="{{ form.fitness_required.id_for_label }}" class="sbl-label">
-                                            Fitness Required (1-5)
+                                            Fitness required (1-5)
                                         </label>
                                         {{ form.fitness_required }}
                                     </div>
@@ -228,14 +228,14 @@
                                         <div class="grid grid-cols-12">
                                             <div class="col-span-12 md:col-span-6 mb-4">
                                                 <label for="{{ form.age_minimum.id_for_label }}" class="sbl-label">
-                                                    Minimum Age
+                                                    Minimum age
                                                 </label>
                                                 {{ form.age_minimum }}
                                             </div>
 
                                             <div class="col-span-12 md:col-span-6 mb-4">
                                                 <label for="{{ form.age_maximum.id_for_label }}" class="sbl-label">
-                                                    Maximum Age
+                                                    Maximum age
                                                 </label>
                                                 {{ form.age_maximum }}
                                             </div>
@@ -244,14 +244,14 @@
                                         <div class="grid grid-cols-12">
                                             <div class="col-span-12 md:col-span-6 mb-4">
                                                 <label for="{{ form.estimated_cost_min.id_for_label }}" class="sbl-label">
-                                                    Estimated Cost (Min)
+                                                    Estimated cost (min)
                                                 </label>
                                                 {{ form.estimated_cost_min }}
                                             </div>
 
                                             <div class="col-span-12 md:col-span-6 mb-4">
                                                 <label for="{{ form.estimated_cost_max.id_for_label }}" class="sbl-label">
-                                                    Estimated Cost (Max)
+                                                    Estimated cost (max)
                                                 </label>
                                                 {{ form.estimated_cost_max }}
                                             </div>
@@ -259,14 +259,14 @@
 
                                         <div class="mb-4">
                                             <label for="{{ form.equipment_needed.id_for_label }}" class="sbl-label">
-                                                Equipment Needed
+                                                Equipment needed
                                             </label>
                                             {{ form.equipment_needed }}
                                         </div>
 
                                         <div class="mb-4">
                                             <label for="{{ form.safety_notes.id_for_label }}" class="sbl-label">
-                                                Safety Notes
+                                                Safety notes
                                             </label>
                                             {{ form.safety_notes }}
                                         </div>
@@ -313,9 +313,9 @@
                             <a href="{% url 'activities:my_activities' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
                             <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg">
                                 {% if activity %}
-                                    Update Activity
+                                    Update activity
                                 {% else %}
-                                    Create Activity
+                                    Create activity
                                 {% endif %}
                             </button>
                         </div>

@@ -1,0 +1,10 @@
+{% comment %}
+A page's header (ux-consistency V2): the title (sbl-page-title), an optional subtitle and an optional badge beside the title, and the page's actions on the right (they wrap under it on a phone). Includes can't take blocks, so actions come as a template: {% include "partials/_page_header.html" with title="Cities" subtitle="…" actions_template="locations/partials/_list_actions.html" %}; a badge likewise as badge_template. Titles inside a centred card (confirm and small form pages) use the sbl-dialog-title class instead.
+{% endcomment %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4" data-page-header>
+  <div class="min-w-0">
+    <h1 class="sbl-page-title">{{ title }}{% if badge_template %} {% include badge_template %}{% endif %}</h1>
+    {% if subtitle %}<p class="sbl-page-subtitle">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if actions_template %}<div class="flex flex-wrap items-center gap-2">{% include actions_template %}</div>{% endif %}
+</header>

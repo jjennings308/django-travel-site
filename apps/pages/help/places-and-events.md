@@ -3,7 +3,7 @@ summary: Browse what there is to do, suggest new places, activities and events, 
 audience: everyone
 section: Places & events
 order: 10
-updated: 2026-11-03
+updated: 2026-11-19
 
 # Places, activities and events
 
@@ -11,7 +11,7 @@ The catalogue is what everyone's goals and trips are built from. An **activity**
 
 ## Browse
 
-Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has filters, and places also have a map. Once activities carry tags (*outdoor*, *free*, *family-friendly*: words that cut across categories), the Activities and Events lists have a **Tag** filter, and the tags on a page link to everything else with that tag. An event shows its activity's tags: it has none of its own, so an event with no activity never matches a tag. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)), or **Add to a trip** to put it on one of your trips' Ideas shelves ([ideas and goals](/help/ideas-and-goals/#adding-ideas)).
+Under **Discover** in the left menu: **Activities**, **Events** and **Places** — open to everyone, signed in or not, so you can share a link to any published one. Each has a row of filters at the top: a choice from a list applies at once, **Go** (or Enter in the search box) applies the rest, **Clear** shows everything again, and the count on the right says how many match. Places also have a map. Once activities carry tags (*outdoor*, *free*, *family-friendly*: words that cut across categories), the Activities and Events lists have a **Tag** filter, and the tags on a page link to everything else with that tag. An event shows its activity's tags: it has none of its own, so an event with no activity never matches a tag. A place, activity or event that's part of several members' trips shows **On trips** with how many (from two trips up; never which trips or whose). On anything you like, click **Add to bucket list** ([your bucket list](/help/bucket-list/)), or **Add to a trip** to put it on one of your trips' Ideas shelves ([ideas and goals](/help/ideas-and-goals/#adding-ideas)).
 
 ## Searching
 
@@ -36,7 +36,7 @@ Dates and "today" follow the time zone in your **Settings**.
 
 - **Add an activity** on the Activities page.
 - **Add an event** on the Events page, or **Add a date** on an activity, for its next occurrence. If the city isn't listed, tick **City not listed** and type it.
-- **Add POI** on the Places list, for a new place. A restaurant, market or bakery belongs here only if people travel for it (type **Food & drink**); everyday meals stay on your trip as typed text.
+- **Add a place** on the Places list, for a new place. A restaurant, market or bakery belongs here only if people travel for it (type **Food & drink**); everyday meals stay on your trip as typed text.
 
 New suggestions are checked by the site's staff before others see them. Until then you can see and edit yours under **My contributions** in your account menu (**Activities I added**, **Events I added**). You get a notification when one is approved.
 

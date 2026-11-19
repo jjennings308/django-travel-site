@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}My Submissions{% endblock %}
+{% block title %}My submissions{% endblock %}
 
 {% block content %}
 <header class="mb-4">
-  <h1 class="sbl-page-title">My Submissions</h1>
+  <h1 class="sbl-page-title">My submissions</h1>
   <p class="sbl-page-subtitle">Everything you've submitted for review, and where it stands.</p>
 </header>
 {% if user.is_staff %}{% include "approval_system/partials/_nav.html" with active="mine" %}{% endif %}

@@ -80,13 +80,13 @@
             <div class="my-1 border-t border-warm-200"></div>
             <form method="post" action="{% url 'logout' %}">
               {% csrf_token %}
-              <button type="submit" class="flex w-full items-center gap-2 px-4 py-2 text-left text-warm-700 hover:bg-warm-100"><i class="bi bi-box-arrow-right"></i>Logout</button>
+              <button type="submit" class="flex w-full items-center gap-2 px-4 py-2 text-left text-warm-700 hover:bg-warm-100"><i class="bi bi-box-arrow-right"></i>Log out</button>
             </form>
           </div>
         </div>
       {% else %}
-        <a class="inline-flex min-h-11 items-center rounded-md border border-earth-clay px-3 py-1.5 text-sm text-earth-clay hover:bg-earth-sand" href="{% url 'login' %}">Login</a>
-        <a class="rounded-md bg-earth-clay px-3 py-1.5 text-sm text-white hover:bg-earth-clay-dark" href="{% url 'register' %}">Sign Up</a>
+        <a class="inline-flex min-h-11 items-center rounded-md border border-earth-clay px-3 py-1.5 text-sm text-earth-clay hover:bg-earth-sand" href="{% url 'login' %}">Log in</a>
+        <a class="rounded-md bg-earth-clay px-3 py-1.5 text-sm text-white hover:bg-earth-clay-dark" href="{% url 'register' %}">Sign up</a>
       {% endif %}
     </div>
   </div>

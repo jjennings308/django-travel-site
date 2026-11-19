@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load filter_tags %}
 {% load static %}
 
 {% block title %}Regions{% endblock %}
@@ -9,62 +10,19 @@
 
 {% block content %}
 <div class="py-6">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-4xl font-bold mb-2">Regions & States</h1>
-            <p class="text-warm-500">Browse and manage regions and states</p>
-        </div>
-        <a href="{% url 'locations:region_add' %}" class="sbl-btn sbl-btn-secondary">
-            <i class="bi bi-plus-lg mr-2"></i>Add Region
-        </a>
-    </div>
+    {% url 'locations:region_add' as add_url %}
+    {% include "partials/_page_header.html" with title="Regions and states" subtitle="Browse and manage regions and states" actions_template="locations/partials/_list_actions.html" add_label="Add a region" map_switch=False %}
 
-    <!-- Filters -->
-    <div class="sbl-card shadow-sm mb-6">
-        <div class="p-5">
-            <form method="get">
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12 md:col-span-4">
-                        <label class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search regions..." class="sbl-input">
-                    </div>
-                    
-                    {% if show_status_filter %}
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Status</label>
-                        <select name="status" class="sbl-input">
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
-                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
-                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                        </select>
-                    </div>
-                    
-                    {% endif %}
-                    
-                    <div class="col-span-12 md:col-span-3">
-                        <label class="sbl-label text-sm font-semibold">Country</label>
-                        <select name="country" class="sbl-input">
-                            <option value="">All Countries</option>
-                            {% for country in countries %}
-                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ country.flag_emoji }} {{ country.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-2 flex items-end">
-                        <button type="submit" class="sbl-btn sbl-btn-secondary w-full">
-                            <i class="bi bi-funnel mr-2"></i>Filter
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+    {% filter_bar count=page_obj.paginator.count %}
+      <div><label for="filter_q" class="sbl-label">Search</label>
+        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search regions…" class="sbl-input"></div>
+      {% include "locations/partials/_status_filter.html" %}
+      <div><label for="filter_country" class="sbl-label">Country</label>
+        <select id="filter_country" name="country" class="sbl-input">
+          <option value="">All countries</option>
+          {% for country in countries %}<option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>{% endfor %}
+        </select></div>
+    {% endfilter_bar %}
 
     <!-- Regions Table -->
     <div class="sbl-card shadow-sm">
@@ -111,14 +69,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-12">
-                                <i class="bi bi-map text-warm-500" style="font-size: 3rem;"></i>
-                                <h5 class="mt-4 text-warm-500">No regions found</h5>
-                                <p class="text-warm-500">Try adjusting your filters or add a new region.</p>
-                                <a href="{% url 'locations:region_add' %}" class="sbl-btn sbl-btn-secondary mt-2">
-                                    <i class="bi bi-plus-lg mr-2"></i>Add Region
-                                </a>
-                            </td>
+                            <td colspan="6">{% url 'locations:region_add' as add_url %}{% include "components/feedback/empty_state.html" with icon="bi-map" title="No regions found" message="Try other filters, or add a new region." action_url=add_url action_text="Add a region" card=False %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

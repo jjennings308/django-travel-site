@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Trip budget. First the Plan (budget-estimates B2; budget_plan.plan over the trip page's context): rows by category — each item's estimate on its basis, a costed booking once over what it covers, chosen options, the daily food allowance; undecided choices as a range outside the totals — with Planned / of which booked / Paid / Left to pay per category and overall, and each traveller's share against what they've paid, all in ?in= (the reader's currency by default). Rows open the item on the trip page (?item=), where its cost is edited; the plan itself is read-only here. Then Spent: the costs (trips.budget.summarize), totals per currency, who owes whom, and the trip's own rates. Anyone who can see the trip sees this page; editors add costs. Never part of the public view.
 {% endcomment %}
@@ -6,11 +7,11 @@ Trip budget. First the Plan (budget-estimates B2; budget_plan.plan over the trip
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Budget</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Budget {% include "partials/_help_link.html" with slug="budget" anchor="the-plan" label="the plan" %}</h1>

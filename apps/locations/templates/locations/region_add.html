@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Add Region{% endblock %}
+{% block title %}Add a region{% endblock %}
 
 {% block breadcrumbs %}
   {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
@@ -9,10 +9,7 @@
 
 {% block content %}
 <div class="py-6" style="max-width: 900px;">
-    <div class="mb-6">
-        <h1 class="text-4xl font-bold mb-2">Add New Region</h1>
-        <p class="text-warm-500">Submit a new region or state for approval</p>
-    </div>
+    {% include "partials/_page_header.html" with title="Add a region" subtitle="Submit a new region or state for approval" %}
 
     <form method="post" class="sbl-card shadow-sm">
         <div class="p-5 p-6">
@@ -20,7 +17,7 @@
             
             <!-- Basic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
@@ -53,7 +50,7 @@
 
             <!-- Geographic Coordinates -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Coordinates</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic coordinates</h3>
                 <p class="text-warm-500 text-sm">Optional - coordinates for the region center</p>
                 
                 <div class="grid grid-cols-12 gap-4">
@@ -71,7 +68,7 @@
 
             <!-- Featured Media -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image to represent this region</p>
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
@@ -106,7 +103,7 @@
             <div class="flex justify-between items-center pt-6 border-t border-warm-200">
                 <a href="{% url 'locations:region_list' %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
                 <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
-                    Submit for Approval
+                    Submit for approval
                 </button>
             </div>
         </div>

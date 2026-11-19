@@ -1,16 +1,17 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Split a "choose one" between the day's travellers (trips:group_split, day-first plan P5): a row per person, an option each. Every option someone takes counts and shows as a track of the day; the calendar's "only mine" follows each person's track.
 {% endcomment %}
 {% block title %}Split {{ group.prompt }} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <span>Day {{ day.day_number }}</span><span>/</span>
-    <a href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ next|urlencode }}">{{ group.prompt }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <span>Day {{ day.day_number }}</span>
+    <a href="{% url 'trips:group_edit' trip.pk group.pk %}?next={{ next|urlencode }}">{{ group.prompt }}</a>
     <span>Split</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

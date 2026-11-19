@@ -1,61 +1,17 @@
 {% comment %}
-=============================================================================
-EMPTY STATE COMPONENT
-=============================================================================
-Friendly message shown when there's no data to display.
-Guides users with clear messaging and optional call-to-action.
-
-REQUIRED PARAMETERS:
-  - title: Main heading for empty state
-
-OPTIONAL PARAMETERS:
-  - message: Descriptive text explaining the empty state
-  - icon: Bootstrap icon class (defaults to "bi-inbox")
-  - cta_url: Django URL name for call-to-action button
-  - cta_text: Button text (defaults to "Get Started")
-  - color: Color variant for CTA button (clay, olive, ochre, sage) - defaults to 'clay'
-
-USAGE EXAMPLES:
-  {% include 'components/feedback/empty_state.html' with title="No trips yet" message="Start planning your first adventure" icon="bi-airplane" cta_url="trips:plan" cta_text="Plan a Trip" %}
-  
-  {% include 'components/feedback/empty_state.html' with title="Bucket list is empty" message="Add items you want to experience" icon="bi-list-check" cta_url="bucketlists:add" color="olive" %}
-  
-  {# Minimal version without CTA #}
-  {% include 'components/feedback/empty_state.html' with title="No results found" message="Try adjusting your filters" %}
-=============================================================================
+The site's one empty state (ux-consistency V2): an icon, a title, a line of text and up to two actions, centred in a card. Every value is plain (no URL names), so a page resolves its own URLs first:
+  {% templatetag openblock %} url 'activities:activity_add' as add_url {% templatetag closeblock %}
+  {% templatetag openblock %} include "components/feedback/empty_state.html" with icon="bi-signpost-2" title="No activities match" message="Have one in mind?" action_url=add_url action_text="Add an activity" {% templatetag closeblock %}
+icon: a Bootstrap Icons class (default bi-inbox). title, message: text. action_url / action_text: the primary button. secondary_url / secondary_text: an outline button beside it. card=False: no card around it (inside a card already).
 {% endcomment %}
-
-{# Set defaults #}
-{% with icon=icon|default:"bi-inbox" color=color|default:"clay" cta_text=cta_text|default:"Get Started" %}
-
-<div class="text-center py-12 px-4">
-  
-  {# Icon #}
-  <div class="mb-4">
-    <i class="{{ icon }} text-warm-300" style="font-size: 4rem;"></i>
-  </div>
-  
-  {# Title #}
-  <h3 class="text-xl font-semibold text-warm-900 mb-2">{{ title }}</h3>
-  
-  {# Message #}
-  {% if message %}
-  <p class="text-warm-600 mb-6 max-w-md mx-auto">{{ message }}</p>
-  {% endif %}
-  
-  {# Call to Action #}
-  {% if cta_url %}
-  <a href="{% url cta_url %}" 
-     class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold
-            transition-all duration-200 hover:shadow-md
-            {% if color == 'clay' %}bg-earth-clay hover:bg-earth-clay-dark text-white{% endif %}
-            {% if color == 'olive' %}bg-earth-olive hover:bg-earth-olive-dark text-white{% endif %}
-            {% if color == 'ochre' %}bg-earth-ochre-dark hover:bg-earth-clay-dark text-white{% endif %}
-            {% if color == 'sage' %}bg-earth-olive hover:bg-earth-olive-dark text-white{% endif %}">
-    {{ cta_text }}
-    <i class="bi bi-arrow-right"></i>
-  </a>
+<div class="{% if card is not False %}sbl-card {% endif %}px-6 py-10 text-center" data-empty-state>
+  <i class="bi {{ icon|default:'bi-inbox' }} mb-3 block text-4xl text-warm-300" aria-hidden="true"></i>
+  {% if title %}<p class="font-semibold text-warm-800">{{ title }}</p>{% endif %}
+  {% if message %}<p class="mx-auto mt-1 max-w-md text-sm text-warm-600">{{ message }}</p>{% endif %}
+  {% if action_url or secondary_url %}
+    <p class="mt-5 flex flex-wrap justify-center gap-2">
+      {% if action_url %}<a href="{{ action_url }}" class="sbl-btn sbl-btn-primary">{{ action_text }}</a>{% endif %}
+      {% if secondary_url %}<a href="{{ secondary_url }}" class="sbl-btn sbl-btn-outline">{{ secondary_text }}</a>{% endif %}
+    </p>
   {% endif %}
 </div>
-
-{% endwith %}

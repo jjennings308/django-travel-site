@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load filter_tags %}
 {% load static %}
 {% load humanize %}
 
@@ -10,70 +11,26 @@
 
 {% block content %}
 <div class="py-6">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-4xl font-bold mb-2">Cities</h1>
-            <p class="text-warm-500">Browse and manage cities</p>
-        </div>
-        <a href="{% url 'locations:city_add' %}" class="sbl-btn sbl-btn-accent">
-            <i class="bi bi-plus-lg mr-2"></i>Add City
-        </a>
-    </div>
+    {% url 'locations:city_add' as add_url %}
+    {% include "partials/_page_header.html" with title="Cities" subtitle="Browse and manage cities" actions_template="locations/partials/_list_actions.html" add_label="Add a city" map_switch=False %}
 
-    <!-- Filters -->
-    <div class="sbl-card shadow-sm mb-6">
-        <div class="p-5">
-            <form method="get">
-                {# Search, Country, Region, Status. Region options carry data-country; locations/country_filter.js shows only the chosen country's regions. #}
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12 md:col-span-3">
-                        <label for="filter_q" class="sbl-label text-sm font-semibold">Search</label>
-                        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search cities..." class="sbl-input">
-                    </div>
-
-                    <div class="col-span-12 sm:col-span-6 md:col-span-3">
-                        <label for="filter_country" class="sbl-label text-sm font-semibold">Country</label>
-                        <select id="filter_country" name="country" class="sbl-input">
-                            <option value="">All Countries</option>
-                            {% for country in countries %}
-                                <option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="col-span-12 sm:col-span-6 md:col-span-2">
-                        <label for="filter_region" class="sbl-label text-sm font-semibold">Region</label>
-                        <select id="filter_region" name="region" class="sbl-input" data-country-source="filter_country">
-                            <option value="">All Regions</option>
-                            {% for region in regions %}
-                                <option value="{{ region.id }}" data-country="{{ region.country_id }}" {% if selected_region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    {% if show_status_filter %}
-
-                    <div class="col-span-12 sm:col-span-6 md:col-span-2">
-                        <label for="filter_status" class="sbl-label text-sm font-semibold">Status</label>
-                        <select id="filter_status" name="status" class="sbl-input">
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
-                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
-                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                        </select>
-                    </div>
-
-                    {% endif %}
-
-                    <div class="col-span-12 sm:col-span-6 md:col-span-2 flex flex-col justify-end gap-2">
-                        <label class="flex items-center gap-2 text-sm text-warm-700"><input type="checkbox" name="capital" value="true" {% if capital_only %}checked{% endif %} class="sbl-check">Capitals only</label>
-                        <button type="submit" class="sbl-btn sbl-btn-accent w-full"><i class="bi bi-funnel"></i>Filter</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+    {# Search, Country, Region, Status. Region options carry data-country; locations/country_filter.js shows only the chosen country's regions. #}
+    {% filter_bar count=page_obj.paginator.count %}
+      <div><label for="filter_q" class="sbl-label">Search</label>
+        <input type="text" id="filter_q" name="q" value="{{ search_query }}" placeholder="Search cities…" class="sbl-input"></div>
+      <div><label for="filter_country" class="sbl-label">Country</label>
+        <select id="filter_country" name="country" class="sbl-input">
+          <option value="">All countries</option>
+          {% for country in countries %}<option value="{{ country.id }}" {% if selected_country == country.id|stringformat:"s" %}selected{% endif %}>{{ country.flag_emoji }} {{ country.name }}</option>{% endfor %}
+        </select></div>
+      <div><label for="filter_region" class="sbl-label">Region</label>
+        <select id="filter_region" name="region" class="sbl-input" data-country-source="filter_country">
+          <option value="">All regions</option>
+          {% for region in regions %}<option value="{{ region.id }}" data-country="{{ region.country_id }}" {% if selected_region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.name }}</option>{% endfor %}
+        </select></div>
+      {% include "locations/partials/_status_filter.html" %}
+      <label class="flex items-center gap-2 self-end pb-2 text-sm text-warm-700"><input type="checkbox" name="capital" value="true" {% if capital_only %}checked{% endif %} class="sbl-check">Capitals only</label>
+    {% endfilter_bar %}
 
     <!-- Cities Grid -->
     <div class="grid grid-cols-12 gap-6">
@@ -132,14 +89,7 @@
                 </div>
             </div>
         {% empty %}
-            <div class="col-span-12 text-center py-12">
-                <i class="bi bi-buildings text-warm-500" style="font-size: 4rem;"></i>
-                <h3 class="mt-4 text-warm-500">No cities found</h3>
-                <p class="text-warm-500">Try adjusting your filters or add a new city.</p>
-                <a href="{% url 'locations:city_add' %}" class="sbl-btn sbl-btn-accent mt-4">
-                    <i class="bi bi-plus-lg mr-2"></i>Add City
-                </a>
-            </div>
+            <div class="col-span-12">{% url 'locations:city_add' as add_url %}{% include "components/feedback/empty_state.html" with icon="bi-buildings" title="No cities found" message="Try other filters, or add a new city." action_url=add_url action_text="Add a city" card=False %}</div>
         {% endfor %}
     </div>
 

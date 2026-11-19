@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 One idea on the trip's Ideas shelf (trips:idea_edit, day-first plan P6): its title, notes and kind. Whoever added it (while they may comment) and editors change or remove it.
 {% endcomment %}
 {% block title %}{{ idea.title }} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-2xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}#ideas">Ideas</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}#ideas">Ideas</a>
     <span>{{ idea.title }}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

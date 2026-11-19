@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Bookings (trips:trip_bookings, day-first plan P7): the trip's confirmations, what isn't booked yet and every journey and stay in date order — read-only, for everyone who can see the trip. Each line opens its item on the trip page, in the panel (?item=<anchor>), where editors change it. Moved here from Edit trip: "All stays & legs". Loose confirmations are under Other.
 {% endcomment %}
 {% block title %}Bookings — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-5xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Bookings</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="mb-4">
     <h1 class="page-title">Bookings {% include "partials/_help_link.html" with slug="bookings-and-confirmations" anchor="the-bookings-page" label="bookings" %}</h1>
     <p class="mt-1 text-sm text-zinc-500">Confirmation numbers, what still needs booking, and every journey and stay. Click one to open it on the trip page{% if can_edit %}, where you change it{% endif %}.</p>

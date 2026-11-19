@@ -1,7 +1,7 @@
 <!-- templates/accounts/settings.html -->
 {% extends 'base.html' %}
 
-{% block title %}Account Settings{% endblock %}
+{% block title %}Account settings{% endblock %}
 
 {% block content %}
 <div class="mt-6">
@@ -9,7 +9,7 @@
         <div class="col-span-12 md:col-span-10 md:col-start-2">
             <div class="sbl-card">
                 <div class="border-b border-warm-200 px-5 py-3 font-semibold">
-                    <h3><i class="bi bi-gear"></i> Account Settings</h3>
+                    <h3><i class="bi bi-gear"></i> Account settings</h3>
                     <p class="text-warm-500 mb-0">Manage your notifications, regional preferences, and privacy</p>
                 </div>
                 <div class="p-5">
@@ -87,7 +87,7 @@
                         </div>
                         
                         <!-- Regional Settings -->
-                        <h5 class="border-b border-warm-200 pb-2 mt-6"><i class="bi bi-globe"></i> Regional Settings</h5>
+                        <h5 class="border-b border-warm-200 pb-2 mt-6"><i class="bi bi-globe"></i> Regional settings</h5>
                         
                         <div class="grid grid-cols-12 mt-4">
                             <div class="col-span-12 md:col-span-6 mb-4">
@@ -102,7 +102,7 @@
                         
                         <div class="grid grid-cols-12">
                             <div class="col-span-12 md:col-span-6 mb-4">
-                                <label for="{{ form.preferred_currency.id_for_label }}" class="sbl-label">Preferred Currency</label>
+                                <label for="{{ form.preferred_currency.id_for_label }}" class="sbl-label">Preferred currency</label>
                                 {{ form.preferred_currency }}
                             </div>
                             <div class="col-span-12 md:col-span-6 mb-4">
@@ -151,7 +151,7 @@
                         <!-- Action Buttons -->
                         <div class="flex gap-2 mt-6">
                             <button type="submit" class="sbl-btn sbl-btn-primary">
-                                <i class="bi bi-check-lg"></i> Save Settings
+                                <i class="bi bi-check-lg"></i> Save settings
                             </button>
                             <a href="{% url 'profile' %}" class="sbl-btn sbl-btn-outline">Cancel</a>
                         </div>
@@ -162,19 +162,19 @@
             <!-- Account Management Section -->
             <div class="sbl-card mt-4">
                 <div class="border-b border-warm-200 px-5 py-3 font-semibold bg-warm-50">
-                    <h5 class="mb-0"><i class="bi bi-person-gear"></i> Account Management</h5>
+                    <h5 class="mb-0"><i class="bi bi-person-gear"></i> Account management</h5>
                 </div>
                 <div class="p-5">
                     <div class="grid grid-cols-12">
                         <div class="col-span-12 md:col-span-6 mb-4">
-                            <h6>Change Email</h6>
+                            <h6>Change email</h6>
                             <p class="text-warm-500 text-sm">Update your email address</p>
-                            <button class="sbl-btn sbl-btn-outline sbl-btn-sm" disabled>Coming Soon</button>
+                            <button class="sbl-btn sbl-btn-outline sbl-btn-sm" disabled>Coming soon</button>
                         </div>
                         <div class="col-span-12 md:col-span-6 mb-4">
-                            <h6>Change Password</h6>
+                            <h6>Change password</h6>
                             <p class="text-warm-500 text-sm">Update your password</p>
-                            <a href="{% url 'password_change' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm">Change Password</a>
+                            <a href="{% url 'password_change' %}" class="sbl-btn sbl-btn-outline sbl-btn-sm">Change password</a>
                         </div>
                         <div class="col-span-12 md:col-span-6 mb-4">
                             <h6>Request a role</h6>
@@ -185,12 +185,12 @@
                     <hr>
                     <div class="grid grid-cols-12">
                         <div class="col-span-12 md:col-span-6 mb-4">
-                            <h6>Download Your Data</h6>
+                            <h6>Download your data</h6>
                             <p class="text-warm-500 text-sm">Export all your data</p>
                             {% url 'pages:my_data' as my_data_url %}{% if my_data_url %}<a href="{{ my_data_url }}" class="sbl-btn sbl-btn-outline sbl-btn-sm">Download my data</a>{% endif %}
                         </div>
                         <div class="col-span-12 md:col-span-6 mb-4">
-                            <h6 class="text-red-700">Delete Account</h6>
+                            <h6 class="text-red-700">Delete account</h6>
                             <p class="text-warm-500 text-sm">Permanently delete your account</p>
                             {% if my_data_url %}<a href="{{ my_data_url }}#delete" class="sbl-btn sbl-btn-outline-danger sbl-btn-sm">Delete my account</a>{% endif %}
                         </div>

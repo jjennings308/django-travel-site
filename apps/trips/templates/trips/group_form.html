@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 A "choose one" group's page (trips:group_new / group_edit, day-first plan P4): what's being decided and what kind of thing it is (typed-choices T1: the kind's shared fields show for it, Alpine; all show without JavaScript, and the form clears the others), when, and its options, which ask for the kind's fields; under each saved option, the items in it, and a one-line add straight into it (trips:quick_add with option=). An item can also be put in an option from its own page ("In option").
 {% endcomment %}
 {% block title %}{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <span>Day {{ day.day_number }}</span><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
+    <span>Day {{ day.day_number }}</span>
     <span>{% if group.pk %}{{ group.prompt }}{% else %}Choose one{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details" x-data="{ kind: '{{ form.kind.value|default:'any' }}' }">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

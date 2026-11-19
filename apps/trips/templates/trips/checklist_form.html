@@ -1,15 +1,16 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Make or edit a checklist (trips:checklist_new / checklist_edit, editors; site roadmap R9): its title and kind, and its items (text, "each person", order). Ticking happens on the trip page.
 {% endcomment %}
 {% block title %}{% if checklist %}{{ checklist.title }}{% else %}New checklist{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a>
     <span>Checklist</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate>
     {% csrf_token %}
     <h1 class="page-title mb-4">{% if checklist %}{{ checklist.title }}{% else %}New checklist{% endif %}</h1>

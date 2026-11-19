@@ -1,16 +1,17 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 An activity on a day (trips:activity_new / activity_edit): a tour, timed entry, ticket or pass, table reservation or car hire. Once saved, its confirmations are added on this page, like a leg's. A catalogue place's entry fee is offered as its estimate while it has none (blank-currencies CU1, trips:activity_use_fee).
 {% endcomment %}
 {% block title %}{% if activity %}{{ activity.title }}{% else %}New activity{% endif %} — {{ trip.name }}{% endblock %}
 {% block wrap_class %}max-w-3xl{% endblock %}
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a><span>/</span>
-    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_settings' trip.pk %}">{{ trip.name }}</a>
+    <a href="{% url 'trips:day_edit' trip.pk day.pk %}">Day {{ day.day_number }}</a>
     <span>{% if activity %}{{ activity.title }}{% else %}New activity{% endif %}</span>
-  </nav>
+  {% endbreadcrumbs %}
   {% if fee_offer %}
     <form method="post" action="{% url 'trips:activity_use_fee' trip.pk day.pk activity.pk %}" class="callout callout-info mb-4 flex flex-wrap items-center gap-3" data-panel-tab="details" data-fee-offer>
       {% csrf_token %}

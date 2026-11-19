@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Add to calendar (trips:trip_calendar, site roadmap R4): the viewer's own private feed link, how to subscribe in Google / Apple / Outlook, and Reset. The feed itself is trips:trip_calendar_feed (trips/calendar.py).
 {% endcomment %}
@@ -6,11 +7,11 @@ Add to calendar (trips:trip_calendar, site roadmap R4): the viewer's own private
 {% block wrap_class %}max-w-3xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Calendar</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Add to calendar {% include "partials/_help_link.html" with slug="calendar-feed" label="the calendar feed" %}</h1>

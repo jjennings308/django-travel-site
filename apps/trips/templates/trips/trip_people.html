@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 People on a trip (trips:trip_people, site roadmap R1): everyone who can see the trip sees who is on it; editors invite, change roles, remove, and resend or cancel open invites. The rules (never above your own role, never the creator) are in trips/people.py.
 {% endcomment %}
@@ -6,11 +7,11 @@ People on a trip (trips:trip_people, site roadmap R1): everyone who can see the 
 {% block wrap_class %}max-w-4xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>People</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">People {% include "partials/_help_link.html" with slug="sharing-and-access" anchor="who-can-do-what" label="roles" %}</h1>

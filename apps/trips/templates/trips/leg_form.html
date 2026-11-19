@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 One transport leg on its own page (trips:leg_edit), reached from either view of it (the trip-wide
 "Getting around" list or its day). Fieldsets come from LegEditForm.grouped(); the rest (zones, rough
@@ -9,11 +10,11 @@ short-forms F1), and the return trip is its own closed fold.
 {% block wrap_class %}max-w-3xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Leg</span>
-  </nav>
+  {% endbreadcrumbs %}
   <form method="post" class="card p-6" novalidate data-panel-tab="details people">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">

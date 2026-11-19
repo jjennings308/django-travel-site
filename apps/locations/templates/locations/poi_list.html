@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
+{% load filter_tags %}
 {% load static %}
 
-{% block title %}Points of Interest{% endblock %}
+{% block title %}Places{% endblock %}
 
 {% block breadcrumbs %}
   {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
@@ -9,51 +10,14 @@
 
 {% block content %}
 <div class="py-6">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-4xl font-bold mb-2">Points of Interest</h1>
-            <p class="text-warm-500">Discover attractions, landmarks, and places</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            {% include "locations/partials/_list_map_switch.html" with active="list" %}
-            <a href="{% url 'locations:poi_add' %}" class="sbl-btn sbl-btn-danger">
-                <i class="bi bi-plus-lg mr-2"></i>Add POI
-            </a>
-        </div>
-    </div>
+    {% url 'locations:poi_add' as add_url %}
+    {% include "partials/_page_header.html" with title="Places" subtitle="Discover attractions, landmarks and places" actions_template="locations/partials/_list_actions.html" add_label="Add a place" map_switch=True %}
 
-    <!-- Filters -->
-    <div class="sbl-card shadow-sm mb-6">
-        <div class="p-5">
-            <form method="get">
-                {# Search, Country, Type, Status. Country lists only countries that have places. #}
-                <div class="grid grid-cols-12 gap-4">
-                    {% include "locations/partials/_place_filter_fields.html" %}
-
-                    {% if show_status_filter %}
-
-                    <div class="col-span-12 md:col-span-2">
-                        <label class="sbl-label text-sm font-semibold">Status</label>
-                        <select name="status" class="sbl-input">
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
-                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
-                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                        </select>
-                    </div>
-
-                    {% endif %}
-                    
-                    <div class="col-span-12 md:col-span-2 flex items-end">
-                        <button type="submit" class="sbl-btn sbl-btn-danger w-full">
-                            <i class="bi bi-funnel mr-2"></i>Filter
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+    {# Search, Country, Type, Status. Country lists only countries that have places. #}
+    {% filter_bar count=page_obj.paginator.count %}
+      {% include "locations/partials/_place_filter_fields.html" %}
+      {% include "locations/partials/_status_filter.html" %}
+    {% endfilter_bar %}
 
     <!-- POIs Grid -->
     <div class="grid grid-cols-12 gap-6">
@@ -117,14 +81,7 @@
                 </div>
             </div>
         {% empty %}
-            <div class="col-span-12 text-center py-12">
-                <i class="bi bi-geo-alt text-warm-500" style="font-size: 4rem;"></i>
-                <h3 class="mt-4 text-warm-500">No POIs found</h3>
-                <p class="text-warm-500">Try adjusting your filters or add a new point of interest.</p>
-                <a href="{% url 'locations:poi_add' %}" class="sbl-btn sbl-btn-danger mt-4">
-                    <i class="bi bi-plus-lg mr-2"></i>Add POI
-                </a>
-            </div>
+            <div class="col-span-12">{% url 'locations:poi_add' as add_url %}{% include "components/feedback/empty_state.html" with icon="bi-geo-alt" title="No places found" message="Try other filters, or add a new place." action_url=add_url action_text="Add a place" card=False %}</div>
         {% endfor %}
     </div>
 

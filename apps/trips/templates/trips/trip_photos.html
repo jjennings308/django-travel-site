@@ -1,4 +1,5 @@
 {% extends "trips/base_trips.html" %}
+{% load breadcrumb_tags %}
 {% comment %}
 Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Anyone who can see the trip sees them; commentors and editors add photos; whoever added a photo, or an editor, removes it; editors pick the album's cover (My adventures) and the booklet's cover photo (Trip.cover_photo, the PDF's front page). Never part of the public view.
 {% endcomment %}
@@ -6,11 +7,11 @@ Trip photos: one shared album per trip (Trip.album, a media_app.MediaAlbum). Any
 {% block wrap_class %}max-w-5xl{% endblock %}
 
 {% block content %}
-  <nav class="crumbs">
-    <a href="{% url 'trips:trip_list' %}">Trips</a><span>/</span>
-    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a><span>/</span>
+  {% breadcrumbs %}
+    <a href="{% url 'trips:trip_list' %}">Trips</a>
+    <a href="{% url 'trips:trip_detail' trip.pk %}">{{ trip.name }}</a>
     <span>Photos</span>
-  </nav>
+  {% endbreadcrumbs %}
   <div class="page-header">
     <div>
       <h1 class="page-title">Photos</h1>

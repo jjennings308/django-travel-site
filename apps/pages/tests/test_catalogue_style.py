@@ -1,4 +1,4 @@
-"""Activities and events share one look: the banner header + Quick Info / Actions
+"""Activities and events share one look: the banner header + Quick info / Actions
 on detail pages, and the same card on list pages."""
 
 from datetime import date, timedelta
@@ -63,7 +63,7 @@ class CatalogueStyleTests(TestCase):
         ):
             with self.subTest(url=url):
                 page = self.client.get(url)
-                for text in ("Quick Info", "Actions", "Munich, Germany", "Festival", "text-4xl font-bold md:text-5xl"):
+                for text in ("Quick info", "Actions", "Munich, Germany", "Festival", "text-4xl font-bold md:text-5xl"):
                     self.assertContains(page, text)
         self.assertContains(self.client.get(reverse("events:event_detail", args=[self.event.slug])), "Cancelled")
 

@@ -58,11 +58,8 @@
       </ol>
     </section>
   {% empty %}
-    <div class="sbl-card p-10 text-center text-warm-500">
-      <i class="bi bi-trophy mb-2 block text-4xl"></i>
-      <p>Nothing ticked off yet. When you finish a goal, press <em>Done</em> on it and it appears here with your notes and photos.</p>
-      <a href="{% url 'bucketlists:dates' %}" class="sbl-btn sbl-btn-primary mt-4">See what's coming up</a>
-    </div>
+    {% url 'bucketlists:dates' as dates_url %}
+    {% include "components/feedback/empty_state.html" with icon="bi-trophy" title="Nothing ticked off yet" message="When you finish a goal, press Done on it and it appears here with your notes and photos." action_url=dates_url action_text="See what's coming up" %}
   {% endfor %}
 </div>
 {% endblock %}

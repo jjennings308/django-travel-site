@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Add Country{% endblock %}
+{% block title %}Add a country{% endblock %}
 
 {% block breadcrumbs %}
   {% include "partials/_breadcrumbs.html" with breadcrumbs=breadcrumb_list %}
@@ -9,10 +9,7 @@
 
 {% block content %}
 <div class="py-6" style="max-width: 900px;">
-    <div class="mb-6">
-        <h1 class="text-4xl font-bold mb-2">Add New Country</h1>
-        <p class="text-warm-500">Submit a new country for approval</p>
-    </div>
+    {% include "partials/_page_header.html" with title="Add a country" subtitle="Submit a new country for approval" %}
 
     <form method="post" class="sbl-card shadow-sm">
         <div class="p-5 p-6">
@@ -20,7 +17,7 @@
             
             <!-- Basic Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Basic Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Basic information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
@@ -57,7 +54,7 @@
 
             <!-- Geographic Coordinates -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Geographic Coordinates</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Geographic coordinates</h3>
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
                         <label class="sbl-label font-semibold">Latitude</label>
@@ -73,21 +70,21 @@
 
             <!-- Travel Information -->
             <div class="mb-12">
-                <h3 class="text-xl font-semibold font-bold mb-4">Travel Information</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Travel information</h3>
                 
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Currency Code</label>
+                        <label class="sbl-label font-semibold">Currency code</label>
                         <input type="text" name="currency_code" maxlength="3" class="sbl-input uppercase" placeholder="e.g., USD">
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Currency Name</label>
+                        <label class="sbl-label font-semibold">Currency name</label>
                         <input type="text" name="currency_name" class="sbl-input" placeholder="e.g., US Dollar">
                     </div>
                     
                     <div class="col-span-12 md:col-span-6">
-                        <label class="sbl-label font-semibold">Phone Code</label>
+                        <label class="sbl-label font-semibold">Phone code</label>
                         <input type="text" name="phone_code" class="sbl-input" placeholder="e.g., +1">
                     </div>
                     
@@ -99,12 +96,12 @@
                     </div>
                     
                     <div class="col-span-12">
-                        <label class="sbl-label font-semibold">Visa Information</label>
+                        <label class="sbl-label font-semibold">Visa information</label>
                         <textarea name="visa_info" rows="3" class="sbl-input" placeholder="Details about visa requirements..."></textarea>
                     </div>
                     
                     <div class="col-span-12">
-                        <label class="sbl-label font-semibold">Travel Tips</label>
+                        <label class="sbl-label font-semibold">Travel tips</label>
                         <textarea name="travel_tips" rows="4" class="sbl-input" placeholder="General travel tips and advice..."></textarea>
                     </div>
                 </div>
@@ -112,7 +109,7 @@
 
             <!-- Featured Media -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold font-bold mb-4">Featured Media</h3>
+                <h3 class="text-xl font-semibold font-bold mb-4">Featured media</h3>
                 <p class="text-warm-500 text-sm mb-4">Select an image or video to represent this country</p>
                 
                 <input type="hidden" name="featured_media_id" id="featured_media_id">
@@ -147,7 +144,7 @@
             <div class="flex justify-between items-center pt-6 border-t border-warm-200">
                 <a href="{% url 'locations:country_list' %}" class="sbl-btn sbl-btn-link text-warm-500 no-underline">Cancel</a>
                 <button type="submit" class="sbl-btn sbl-btn-primary sbl-btn-lg px-12">
-                    Submit for Approval
+                    Submit for approval
                 </button>
             </div>
         </div>

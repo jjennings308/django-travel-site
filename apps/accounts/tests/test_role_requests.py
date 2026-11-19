@@ -26,7 +26,7 @@ class RoleRequestFlowTests(TestCase):
     def test_request_page_renders(self):
         self.client.force_login(self.alice)
         response = self.client.get(reverse("request_role"))
-        self.assertContains(response, "Request a Role")
+        self.assertContains(response, "Request a role")
         self.assertContains(response, 'enctype="multipart/form-data"')
 
     def test_submitting_creates_a_pending_request(self):

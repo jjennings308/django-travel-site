@@ -1,0 +1,5 @@
+{% comment %}
+A location list's header actions (ux-consistency V2): the List / Map switch where there is a map, then its one primary button. Pass add_url, add_label and map_switch.
+{% endcomment %}
+{% if map_switch %}{% include "locations/partials/_list_map_switch.html" with active="list" %}{% endif %}
+<a href="{{ add_url }}" class="sbl-btn sbl-btn-primary"><i class="bi bi-plus-lg"></i>{{ add_label }}</a>

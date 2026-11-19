@@ -92,7 +92,7 @@
     state.current = url;
     var page = body.querySelector("[data-panel-page]");
     heading.textContent = page ? page.dataset.panelTitle.split(" — ")[0].replace(/\s+/g, " ").trim() : "";
-    body.querySelectorAll(".crumbs, [data-panel-hide]").forEach(function (el) { el.hidden = true; });
+    body.querySelectorAll("[data-panel-hide]").forEach(function (el) { el.hidden = true; });
     runScripts(body);
     buildTabs();
   }
