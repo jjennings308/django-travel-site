@@ -1,6 +1,6 @@
 # Plan: one look across the site — tokens, shared partials, trip tabs, place pages, navigation
 
-Status: proposed (2026-11-19). Not started. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
+Status: V1 done on branch `v1-tokens` (2026-11-19); V2–V5 not started. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
 Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs them.
 Every phase that changes something a user sees updates its Help guide in the same PR (`apps/pages/help/`, bump
 `updated`). Mockups (current vs proposed, numbered notes):

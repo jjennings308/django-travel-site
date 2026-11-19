@@ -15,7 +15,7 @@
   <div class="grid grid-cols-3 gap-4">
     <div class="sbl-card p-4"><p class="text-sm text-warm-500">New</p><p class="text-3xl font-bold text-emerald-700">{{ counts.create }}</p></div>
     <div class="sbl-card p-4"><p class="text-sm text-warm-500">Updates</p><p class="text-3xl font-bold text-sky-700">{{ counts.update }}</p></div>
-    <div class="sbl-card p-4"><p class="text-sm text-warm-500">Errors (skipped)</p><p class="text-3xl font-bold {% if counts.error %}text-red-700{% else %}text-warm-400{% endif %}">{{ counts.error }}</p></div>
+    <div class="sbl-card p-4"><p class="text-sm text-warm-500">Errors (skipped)</p><p class="text-3xl font-bold {% if counts.error %}text-red-700{% else %}text-warm-500{% endif %}">{{ counts.error }}</p></div>
   </div>
 
   {% if importer.rows %}

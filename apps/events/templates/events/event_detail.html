@@ -56,7 +56,7 @@
         <dl class="space-y-4">
           <div><dt class="text-sm text-warm-500">When</dt>
             <dd>{{ event.start_date|date:"D, M j, Y" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"D, M j, Y" }}{% endif %}</dd>
-            <dd class="text-sm text-warm-600">{% if event.is_all_day %}All day{% elif event.start_time %}{{ event.start_time|time:"g:i A" }}{% if event.end_time %} – {{ event.end_time|time:"g:i A" }}{% endif %} <span class="text-warm-400">(local time)</span>{% endif %}</dd></div>
+            <dd class="text-sm text-warm-600">{% if event.is_all_day %}All day{% elif event.start_time %}{{ event.start_time|time:"g:i A" }}{% if event.end_time %} – {{ event.end_time|time:"g:i A" }}{% endif %} <span class="text-warm-600">(local time)</span>{% endif %}</dd></div>
           <div><dt class="text-sm text-warm-500">Where</dt>
             {% if event.poi %}<dd><a class="sbl-link" href="{% url 'locations:poi_detail' event.poi.slug %}">{{ event.venue_name|default:event.poi.name }}</a></dd>{% elif event.venue_name %}<dd>{{ event.venue_name }}</dd>{% endif %}
             {% if event.venue_address %}<dd class="text-sm text-warm-600">{{ event.venue_address }}</dd>{% endif %}
