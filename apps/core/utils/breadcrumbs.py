@@ -269,43 +269,43 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def pois_list():
-        """Dashboard > Locations > POIs"""
+        """Dashboard > Locations > Places"""
         return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("POIs", None)]
+            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Places", None)]
         )
 
     @staticmethod
     def poi_add():
-        """Dashboard > Locations > POIs > Add POI"""
+        """Dashboard > Locations > Places > Add a place"""
         return build_breadcrumbs(
             [
                 ("Dashboard", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
-                ("POIs", "locations:poi_list"),
-                ("Add POI", None),
+                ("Places", "locations:poi_list"),
+                ("Add a place", None),
             ]
         )
 
     @staticmethod
     def poi_detail(poi):
-        """Dashboard > Locations > POIs > POI Name"""
+        """Dashboard > Locations > Places > Place name"""
         return build_breadcrumbs(
             [
                 ("Dashboard", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
-                ("POIs", "locations:poi_list"),
+                ("Places", "locations:poi_list"),
                 (poi.name, None),
             ]
         )
 
     @staticmethod
     def poi_edit(poi):
-        """Dashboard > Locations > POIs > POI Name > Edit"""
+        """Dashboard > Locations > Places > Place name > Edit"""
         return build_breadcrumbs(
             [
                 ("Dashboard", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
-                ("POIs", "locations:city_list"),
+                ("Places", "locations:poi_list"),
                 (poi.name, ("locations:poi_detail", {"slug": poi.slug})),
                 ("Edit", None),
             ]

@@ -1,0 +1,14 @@
+{% load humanize %}{# The strip under a place page's banner (ux-consistency V4): one line of what's here, from counts the page used to show in a Statistics card (each read once: city_count / poi_count query unless annotated), and for a city or a place Add to bucket list and Add to a trip. Pass kind= and obj= (to the header's include). #}
+<p class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-warm-600" data-header-summary>
+  {% if kind == "country" %}{% with n_regions=regions|length n_cities=obj.city_count n_places=obj.poi_count %}<span>{{ n_regions }} region{{ n_regions|pluralize }}</span><span>{{ n_cities|intcomma }} cit{{ n_cities|pluralize:"y,ies" }}</span><span>{{ n_places|intcomma }} place{{ n_places|pluralize }}</span>{% endwith %}
+  {% elif kind == "region" %}{% with n_cities=obj.city_count %}<span>{{ n_cities|intcomma }} cit{{ n_cities|pluralize:"y,ies" }}</span>{% endwith %}
+  {% elif kind == "city" %}{% with n_places=obj.poi_count %}<span>{{ n_places|intcomma }} place{{ n_places|pluralize }}</span>{% endwith %}{% if obj.population %}<span>Population {{ obj.population|intcomma }}</span>{% endif %}
+  {% elif kind == "poi" and obj.shown_trip_count %}<span title="Live trips that include this place">On trips: {{ obj.shown_trip_count }}</span>{% endif %}
+  {% if obj.visitor_count %}<span title="Members who ticked off a goal or finished a trip here">Members who've been: {{ obj.visitor_count|intcomma }}</span>{% endif %}
+</p>
+{% if kind == "city" or kind == "poi" %}
+  <div class="flex flex-wrap gap-2">
+    {% include "partials/_bucket_add_button.html" with button_style="sbl-btn-primary" %}
+    {% include "partials/_trip_add_button.html" %}
+  </div>
+{% endif %}

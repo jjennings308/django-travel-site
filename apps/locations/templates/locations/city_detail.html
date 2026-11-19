@@ -10,42 +10,7 @@
 
 {% block content %}
 <div class="py-6">
-    <!-- Header -->
-    <div class="sbl-card shadow-sm mb-6 overflow-hidden relative">
-        {% if city.featured_media %}
-            <div class="relative" style="height: 350px;">
-                <img src="{{ city.featured_media.file.url }}" alt="{{ city.name }}" class="w-full h-full" style="object-fit: cover;">
-                <div class="absolute bottom-0 left-0 right-0 p-6" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
-                    <h1 class="text-4xl font-bold text-white mb-0">
-                        {{ city.name }}
-                        {% if city.is_capital %}<span class="text-amber-600 ml-2">⭐</span>{% endif %}
-                    </h1>
-                    <p class="text-lg font-semibold text-white/70 mb-0">
-                        {{ city.country.flag_emoji }} {{ city.country.name }}
-                        {% if city.region %} • {{ city.region.name }}{% endif %}
-                    </p>
-                </div>
-            </div>
-        {% else %}
-            <div class="bg-sky-500 flex items-center justify-center" style="height: 350px;">
-                <div class="text-center">
-                    <i class="bi bi-buildings text-white" style="font-size: 6rem; opacity: 0.5;"></i>
-                    <h1 class="text-4xl font-bold text-white mt-4">
-                        {{ city.name }}
-                        {% if city.is_capital %}<span class="text-amber-600 ml-2">⭐</span>{% endif %}
-                    </h1>
-                    <p class="text-lg font-semibold text-white/70">
-                        {{ city.country.flag_emoji }} {{ city.country.name }}
-                        {% if city.region %} • {{ city.region.name }}{% endif %}
-                    </p>
-                </div>
-            </div>
-        {% endif %}
-        
-        <span class="sbl-badge absolute top-0 left-0 z-10 m-4 text-base shadow {% if city.approval_status == 'approved' %} sbl-badge-success {% elif city.approval_status == 'pending' %} sbl-badge-warning text-warm-900 {% elif city.approval_status == 'rejected' %} sbl-badge-danger {% else %} sbl-badge-neutral {% endif %}">
-            {{ city.get_approval_status_display }}
-        </span>
-    </div>
+    {% include "partials/_detail_header.html" with title=city.name label=header_label icon="bi-buildings" image=city.featured_media place=header_place stars=city.average_rating stars_count=city.review_count status=city.approval_status status_label=city.get_approval_status_display actions_template="locations/partials/_header_actions.html" kind="city" obj=city %}
 
     <div class="grid grid-cols-12 gap-6">
         <!-- Main Content -->
@@ -53,7 +18,7 @@
             {% if city.description %}
                 <div class="sbl-card shadow-sm mb-6">
                     <div class="p-5">
-                        <h3 class="text-xl font-semibold font-bold mb-4">About</h3>
+                        <h2 class="sbl-section-title">About</h2>
                         <p class="text-lg text-warm-700">{{ city.description }}</p>
                     </div>
                 </div>
@@ -62,7 +27,7 @@
             <!-- POIs -->
             <div class="sbl-card shadow-sm">
                 <div class="p-5">
-                    <h3 class="text-xl font-semibold font-bold mb-4">Attractions in {{ city.name }}</h3>
+                    <h2 class="sbl-section-title">Attractions in {{ city.name }}</h2>
                     {% if pois %}
                         <div class="grid grid-cols-12 gap-4">
                             {% for poi in pois %}
@@ -70,12 +35,12 @@
                                     <a href="{% url 'locations:poi_detail' poi.slug %}" class="no-underline">
                                         <div class="sbl-card border-0 bg-warm-50 h-full transition hover:shadow-md">
                                             {% if poi.featured_media %}
-                                                <div style="height: 160px; overflow: hidden;">
-                                                    <img src="{{ poi.featured_media.file.url }}" alt="{{ poi.name }}" class="w-full rounded-t-xl h-full" style="object-fit: cover;">
+                                                <div class="h-40 overflow-hidden">
+                                                    <img src="{{ poi.featured_media.file.url }}" alt="{{ poi.name }}" class="h-full w-full rounded-t-xl object-cover">
                                                 </div>
                                             {% endif %}
                                             <div class="p-5">
-                                                <h6 class="font-semibold text-warm-900 mb-1">{{ poi.name }}</h6>
+                                                <h3 class="mb-1 font-semibold text-warm-900">{{ poi.name }}</h3>
                                                 <p class="text-warm-500 text-sm mb-0">{{ poi.poi_type.name }}</p>
                                                 {% if poi.entry_fee %}
                                                     <p class="text-warm-500 text-sm mb-0">{{ poi.entry_fee_currency }} {{ poi.entry_fee }}</p>
@@ -96,12 +61,10 @@
 
         <!-- Sidebar -->
         <div class="col-span-12 lg:col-span-4">
-            {% include "partials/_bucket_add_button.html" with kind="city" obj=city form_class="mb-4" button_class="w-full" %}
-            {% include "partials/_trip_add_button.html" with kind="city" obj=city button_class="w-full" link_class="mb-4" %}
             <!-- Quick Info -->
             <div class="sbl-card shadow-sm mb-6">
                 <div class="p-5">
-                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Quick info</h5>
+                    <h2 class="sbl-section-title">Quick info</h2>
                     <dl class="mb-0">
                         <div class="mb-4">
                             <dt class="text-warm-500 text-sm mb-1">Country</dt>
@@ -139,14 +102,14 @@
                         
                         {% if city.best_time_to_visit %}
                             <div class="mb-4">
-                                <dt class="text-warm-500 text-sm mb-1">Best Time to Visit</dt>
+                                <dt class="text-warm-500 text-sm mb-1">Best time to visit</dt>
                                 <dd class="mb-0">{{ city.best_time_to_visit }}</dd>
                             </div>
                         {% endif %}
                         
                         {% if city.average_daily_budget %}
                             <div class="mb-4">
-                                <dt class="text-warm-500 text-sm mb-1">Average Daily Budget</dt>
+                                <dt class="text-warm-500 text-sm mb-1">Average daily budget</dt>
                                 <dd class="text-lg font-semibold mb-0">${{ city.average_daily_budget }}</dd>
                             </div>
                         {% endif %}
@@ -163,30 +126,9 @@
                 </div>
             </div>
 
-            <!-- Stats -->
-            <div class="sbl-card shadow-sm mb-6">
-                <div class="p-5">
-                    <h5 class="font-semibold text-warm-900 font-bold mb-4">Statistics</h5>
-                    <div class="flex justify-between mb-4">
-                        <span class="text-warm-500">POIs</span>
-                        <span class="text-lg font-semibold mb-0">{{ city.poi_count }}</span>
-                    </div>
-                    {% if city.visitor_count %}<div class="flex justify-between mb-4" title="Members who ticked off a goal or finished a trip here">
-                        <span class="text-warm-500">Members who've been</span>
-                        <span class="text-lg font-semibold mb-0">{{ city.visitor_count }}</span>
-                    </div>{% endif %}
-                    {% if city.average_rating %}
-                        <div class="flex justify-between mb-0">
-                            <span class="text-warm-500">Rating</span>
-                            <span class="text-lg font-semibold mb-0">⭐ {{ city.average_rating|floatformat:1 }} <a href="#reviews" class="text-sm font-normal text-warm-500 hover:underline">({{ city.review_count }})</a></span>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-
             <!-- Actions -->
             {% url 'locations:city_edit' city.slug as edit_url %}{% url 'locations:city_list' as back_url %}
-            {% include "locations/partials/_actions.html" with edit_label="Edit City" back_label="Back to Cities" %}
+            {% include "locations/partials/_actions.html" with edit_label="Edit city" back_label="Back to cities" %}
         </div>
     </div>
 </div>

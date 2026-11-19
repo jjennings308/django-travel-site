@@ -37,6 +37,11 @@ def _status_filter(request, queryset):
     return visible(queryset, user), status, staff
 
 
+def place_line(*places):
+    """ "Munich, Bavaria, Germany" for a place page's header (ux-consistency V4): the names that are set."""
+    return ", ".join(place.name for place in places if place)
+
+
 def pictures_first(queryset, *order):
     """Order ``queryset`` with the ones that have a picture first, then by ``order``."""
     has_picture = ExpressionWrapper(Q(featured_media__isnull=False), output_field=BooleanField())
@@ -386,6 +391,7 @@ def region_detail(request, slug):
         "can_edit": can_edit(request.user, region),
         "cities": cities,
         "breadcrumb_list": BreadcrumbPatterns.region_detail(region),
+        "header_place": region.country.name,
         "seo": place_meta("region", region),
     }
 
@@ -531,6 +537,8 @@ def city_detail(request, slug):
         "can_edit": can_edit(request.user, city),
         "pois": pois,
         "breadcrumb_list": BreadcrumbPatterns.city_detail(city),
+        "header_label": "City · Capital" if city.is_capital else "City",
+        "header_place": place_line(city.region, city.country),
         "seo": place_meta("city", city),
     }
 
@@ -818,6 +826,7 @@ def poi_detail(request, slug):
         "poi": poi,
         "can_edit": can_edit(request.user, poi),
         "breadcrumb_list": BreadcrumbPatterns.poi_detail(poi),
+        "header_place": place_line(poi.city, poi.city.region, poi.city.country),
         "seo": place_meta("place", poi),
     }
 
