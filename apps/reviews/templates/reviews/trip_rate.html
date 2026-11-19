@@ -21,7 +21,7 @@ Rate a finished trip's places (reviews:trip_rate, site roadmap R17). Each row is
       {% for row in rows %}
         <fieldset class="card p-4" data-rate-row>
           <legend class="sr-only">{{ row.item.name }}</legend>
-          <p class="font-medium">{{ row.item.name }} <span class="text-sm font-normal text-zinc-500">· {{ row.label }}</span></p>
+          <p class="font-medium">{{ row.item.name }} <span class="text-sm font-normal text-warm-500">· {{ row.label }}</span></p>
           <div class="mt-2 flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Rating for {{ row.item.name }}">
             {% for n in "12345" %}
               <label class="chip cursor-pointer"><input type="radio" name="{{ row.field }}-rating" value="{{ n }}"{% if row.rating|stringformat:"s" == n %} checked{% endif %}> {{ n }}★</label>

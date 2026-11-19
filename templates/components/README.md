@@ -15,7 +15,6 @@ components/
 │   └── loading_spinner.html    # Loading indicators
 ├── sections/
 │   └── hero.html               # Landing page hero sections
-├── home_example.html           # Homepage using components
 └── README.md                   # This file
 ```
 
@@ -33,7 +32,7 @@ cp -r components/* templates/components/
 Open `TAILWIND_SETUP_GUIDE.md` and follow Steps 1-7 in order.
 
 **Critical first steps:**
-1. Configure `tailwind.config.js` with your brand colors
+1. Brand colours are the `@theme` block in `theme/static_src/src/styles.css` (Tailwind 4 doesn't read a `tailwind.config.js`)
 2. Update `templates/base.html` to load Tailwind
 3. Start Tailwind dev server: `python manage.py tailwind start`
 
@@ -342,16 +341,15 @@ Each component has extensive inline documentation. Open any `.html` file to see:
 
 1. **Setup issues?** → See `TAILWIND_SETUP_GUIDE.md`
 2. **Component usage?** → Check inline docs in component files
-3. **Styling issues?** → Verify Tailwind config has your brand colors
+3. **Styling issues?** → Check the `@theme` block in `theme/static_src/src/styles.css` and rebuild (`python manage.py tailwind build`)
 
 ---
 
 ## ✅ Next Steps
 
 1. Follow `TAILWIND_SETUP_GUIDE.md` Steps 1-7
-2. Start with homepage (use `home_example.html` as template)
-3. Convert navigation and dashboard pages
-4. Migrate remaining pages one at a time
+2. Convert navigation and dashboard pages
+3. Migrate remaining pages one at a time
 
 ---
 

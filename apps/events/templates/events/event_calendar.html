@@ -30,8 +30,8 @@
   <div class="grid grid-cols-7 border-l border-t border-warm-200 text-sm">
     <div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Mon</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Tue</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Wed</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Thu</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Fri</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Sat</div><div class="border-b border-r border-warm-200 bg-warm-50 px-2 py-1 text-xs font-semibold uppercase text-warm-500">Sun</div>
     {% for week in weeks %}{% for day in week %}
-      <div class="min-h-28 border-b border-r border-warm-200 p-1.5 {% if not day.in_month %}bg-warm-50/60 text-warm-400{% elif day.date < today %}bg-warm-50/40{% endif %}" {% if day.events %}id="day-{{ day.date|date:'Y-m-d' }}"{% endif %}>
-        <p class="mb-1 text-xs font-semibold {% if day.date == today %}inline-flex size-6 items-center justify-center rounded-full bg-earth-clay text-white{% elif day.date < today %}text-warm-400{% else %}text-warm-600{% endif %}">{{ day.date.day }}</p>
+      <div class="min-h-28 border-b border-r border-warm-200 p-1.5 {% if not day.in_month %}bg-warm-50/60 text-warm-500{% elif day.date < today %}bg-warm-50/40{% endif %}" {% if day.events %}id="day-{{ day.date|date:'Y-m-d' }}"{% endif %}>
+        <p class="mb-1 text-xs font-semibold {% if day.date == today %}inline-flex size-6 items-center justify-center rounded-full bg-earth-clay text-white{% elif day.date < today %}text-warm-500{% else %}text-warm-600{% endif %}">{{ day.date.day }}</p>
         {% for event in day.shown %}<a href="{% url 'events:event_detail' event.slug %}" class="mb-0.5 block truncate rounded px-1.5 py-0.5 text-xs {% if event.approval_status != 'approved' %}border border-dashed border-earth-ochre bg-white text-warm-700{% else %}bg-earth-clay/10 text-earth-clay-dark hover:bg-earth-clay/20{% endif %}" title="{{ event.name }} · {{ event.place_name }}">{{ event.name }}</a>{% endfor %}
         {% if day.more %}<a href="#list-{{ day.date|date:'Y-m-d' }}" class="block px-1.5 text-xs text-warm-500 hover:text-earth-clay">+{{ day.more }} more</a>{% endif %}
       </div>
@@ -45,7 +45,7 @@
   <ol class="space-y-4">
     {% for day in busy_days %}
       <li id="list-{{ day.date|date:'Y-m-d' }}" class="scroll-mt-20 {% if day.events|length <= 3 %}sm:hidden{% endif %}">
-        <p class="mb-1 text-sm font-semibold {% if day.date == today %}text-earth-clay{% elif day.date < today %}text-warm-400{% else %}text-warm-700{% endif %}">{{ day.date|date:"l j F" }}{% if day.date == today %} · today{% endif %}</p>
+        <p class="mb-1 text-sm font-semibold {% if day.date == today %}text-earth-clay{% elif day.date < today %}text-warm-500{% else %}text-warm-700{% endif %}">{{ day.date|date:"l j F" }}{% if day.date == today %} · today{% endif %}</p>
         <ul class="sbl-card divide-y divide-warm-100">
           {% for event in day.events %}<li><a class="flex min-h-11 flex-wrap items-baseline gap-x-2 px-4 py-2 hover:bg-warm-50" href="{% url 'events:event_detail' event.slug %}"><span class="font-medium text-warm-900">{{ event.name }}</span><span class="text-sm text-warm-500">{{ event.place_name }}{% if event.start_time and not event.is_all_day %} · {{ event.start_time|time:"H:i" }}{% endif %}{% if event.approval_status != 'approved' %} · waiting for approval{% endif %}</span></a></li>{% endfor %}
         </ul>

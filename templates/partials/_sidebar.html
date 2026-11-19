@@ -1,7 +1,7 @@
 {# templates/partials/_sidebar.html — used by the desktop sidebar (base.html) and the mobile drawer. Grouped by the lifecycle: discover (activities, events, places) → put it on your bucket list → give it a date (My dates) → plan the trip → done (My adventures). #}
 {# Each numbered section folds (Alpine): the section of the current page is always open; the others remember open/closed in localStorage ("sbl-nav-<name>"), open by default. #}
 {% with current=request.resolver_match.view_name|default:"" %}
-{% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" step="mt-4 mb-1 flex w-full items-center gap-2 rounded-md px-3 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wider text-warm-400 hover:text-warm-700" num="flex size-4 items-center justify-center rounded-full bg-warm-200 text-[10px] text-warm-600" %}
+{% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" step="mt-4 mb-1 flex w-full items-center gap-2 rounded-md px-3 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wider text-warm-600 hover:text-warm-800" num="flex size-4 items-center justify-center rounded-full bg-warm-200 text-[10px] text-warm-600" %}
 <nav aria-label="Main">
   <ul class="flex flex-col gap-1">
     <li><a class="{{ base }} {% if current == 'pages:dashboard' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:dashboard' %}"><i class="bi bi-speedometer2"></i>Home</a></li>

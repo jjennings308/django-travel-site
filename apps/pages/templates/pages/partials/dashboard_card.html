@@ -12,7 +12,7 @@ color: primary (clay), accent (ochre), secondary (olive), success (sage), info (
   {% if disabled or not url_name %}
     <span class="block rounded-lg bg-warm-100 px-4 py-2 text-center text-sm font-medium text-warm-500">Coming soon</span>
   {% else %}
-    <a href="{% url url_name %}" class="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white {% if color == 'accent' %}bg-earth-ochre hover:bg-earth-ochre-dark{% elif color == 'secondary' %}bg-earth-olive hover:bg-earth-olive-dark{% elif color == 'success' %}bg-earth-sage hover:bg-earth-olive{% elif color == 'info' %}bg-earth-tan hover:bg-earth-clay{% else %}bg-earth-clay hover:bg-earth-clay-dark{% endif %}">
+    <a href="{% url url_name %}" class="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white {% if color == 'accent' %}bg-earth-ochre-dark hover:bg-earth-clay-dark{% elif color == 'secondary' %}bg-earth-olive hover:bg-earth-olive-dark{% elif color == 'success' %}bg-earth-olive hover:bg-earth-olive-dark{% elif color == 'info' %}bg-earth-clay hover:bg-earth-clay-dark{% else %}bg-earth-clay hover:bg-earth-clay-dark{% endif %}">
       Open <i class="bi bi-arrow-right"></i>
     </a>
   {% endif %}
