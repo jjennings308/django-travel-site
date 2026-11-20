@@ -1,28 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - ShareBucketList{% endblock %}
+{% block title %}Home - ShareBucketList{% endblock %}
 
 {% block content %}
-{% with card="rounded-xl border border-warm-200 bg-white shadow-sm" h2="text-xl font-semibold text-warm-900" ghost="rounded-lg border border-warm-300 px-3 py-1.5 text-sm font-medium text-warm-700 hover:bg-warm-100" solid="inline-flex items-center gap-1.5 rounded-lg bg-earth-clay px-3 py-1.5 text-sm font-medium text-white hover:bg-earth-clay-dark" %}
+{% comment %}
+Home (ux-consistency V5): the greeting as the page header with Plan a trip / Add a goal, the first-run welcome, three
+cards (next trip, bucket list, needs you), then recommendations and badges. Staff get a small row of their links.
+{% endcomment %}
+{% with card="sbl-card p-5" %}
+{% include "partials/_page_header.html" with title=greeting subtitle=today|date:"l, F j, Y" actions_template="pages/partials/_home_actions.html" %}
 
-{# Welcome header #}
-<header class="mb-8 flex flex-wrap items-center justify-between gap-6 rounded-2xl bg-gradient-to-br from-earth-clay to-earth-olive px-6 py-7 text-white shadow-sm">
-  <div>
-    <h1 class="text-2xl font-bold md:text-3xl">Welcome back, {{ user.get_full_name|default:user.username }}! 👋</h1>
-    <p class="mt-1 text-white/85">{% now "l, F j, Y" %}</p>
-  </div>
-  <dl class="flex w-full justify-around gap-8 text-center sm:w-auto">
-    <div><dd class="text-3xl font-bold tabular-nums">{{ user.bucket_list_items_count|default:0 }}</dd><dt class="text-sm text-white/85">Bucket List</dt></div>
-    <div><dd class="text-3xl font-bold tabular-nums">{{ user.trips_count|default:0 }}</dd><dt class="text-sm text-white/85">Trips</dt></div>
-    <div><dd class="text-3xl font-bold tabular-nums">{{ user.countries_visited|default:0 }}</dd><dt class="text-sm text-white/85">Countries</dt></div>
-  </dl>
-</header>
+{% if user.is_superuser or user.can_access_staff %}
+  <p class="-mt-3 mb-6 flex flex-wrap gap-x-4 gap-y-1 text-sm" data-staff-links>
+    <a class="sbl-link" href="{% url 'pages:staff_dashboard' %}"><i class="bi bi-clipboard-data"></i> Staff dashboard</a>
+    {% if user.is_staff %}<a class="sbl-link" href="{% url 'admin:index' %}"><i class="bi bi-shield-check"></i> Admin</a>{% endif %}
+  </p>
+{% endif %}
 
 {% if welcome %}
   {# First-run welcome (site roadmap R14): ticks itself off; hidden for good with "Hide this". #}
-  <section class="mb-8 {{ card }} p-6" id="welcome">
+  <section class="mb-8 sbl-card p-6" id="welcome">
     <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-      <h2 class="{{ h2 }}">Getting started</h2>
+      <h2 class="sbl-section-title mb-0">Getting started</h2>
       <form method="post" action="{% url 'pages:welcome_dismiss' %}">{% csrf_token %}<button type="submit" class="text-sm text-warm-500 hover:text-warm-900">Hide this</button></form>
     </div>
     <ol class="grid gap-4 md:grid-cols-3">
@@ -30,7 +29,7 @@
         <li class="rounded-lg border {% if step.done %}border-emerald-200 bg-emerald-50{% else %}border-warm-200{% endif %} p-4" data-welcome-step>
           <p class="font-semibold text-warm-900">{% if step.done %}<span class="text-emerald-700">✓</span>{% else %}{{ forloop.counter }}.{% endif %} {{ step.title }}</p>
           <p class="mt-1 text-sm text-warm-600">{{ step.text }}</p>
-          {% if not step.done %}<p class="mt-3 flex flex-wrap items-center gap-3 text-sm"><a class="{{ solid }}" href="{% url step.url %}">{{ step.title }}</a>{% include "partials/_help_link.html" with slug=step.help label=step.title text="How" %}</p>{% endif %}
+          {% if not step.done %}<p class="mt-3 flex flex-wrap items-center gap-3 text-sm"><a class="sbl-btn sbl-btn-outline" href="{% url step.url %}">{{ step.title }}</a>{% include "partials/_help_link.html" with slug=step.help label=step.title text="How" %}</p>{% endif %}
         </li>
       {% endfor %}
     </ol>
@@ -38,160 +37,116 @@
   </section>
 {% endif %}
 
-{# Quick access #}
-<section class="mb-8">
-  <h2 class="mb-4 {{ h2 }}">Quick Access</h2>
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {% include "pages/partials/dashboard_card.html" with title="Bucket List" description="Places, activities, and events" url_name="bucketlists:dashboard" icon="bi-check2-square" color="accent" %}
-        
-        {% include "pages/partials/dashboard_card.html" with title="Trips" description="Plan and manage your trips" url_name="trips:trip_list" icon="bi-airplane" color="primary" %}
-        
-        {% include "pages/partials/dashboard_card.html" with title="Rewards" description="Your loyalty programs" url_name="trips:traveler_profile" icon="bi-gift" color="secondary" %}
-        
-        {% include "pages/partials/dashboard_card.html" with title="Activities" description="Find things to do" url_name="activities:activity_list" icon="bi-activity" color="success" %}
-        
-        {% include "pages/partials/dashboard_card.html" with title="Locations" description="Explore destinations" url_name="locations:dashboard" icon="bi-geo-alt" color="info" %}
+<div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
 
-        {# Staff-only cards last, after everyone's own. #}
-        {% if user.is_superuser or user.can_access_staff %}
-        {% include "pages/partials/dashboard_card.html" with title="Staff dashboard" description="Site stats and what needs attention" url_name="pages:staff_dashboard" icon="bi-clipboard-data" color="primary" %}
-        {% if user.is_staff %}{% include "pages/partials/dashboard_card.html" with title="Admin" description="User & site administration" url_name="admin:index" icon="bi-shield-check" color="primary" %}{% endif %}
-        {% endif %}
-    </div>
-</section>
-
-<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-  <div class="space-y-8">
-
-    {# Recent activity #}
-    <section>
-      <div class="mb-4 flex items-center justify-between"><h2 class="{{ h2 }}">Recent Activity</h2></div>
-      <div class="{{ card }}">
-        {% if recent_activities %}
-          <ul class="divide-y divide-warm-100">
-            {% for activity in recent_activities %}
-              <li class="flex items-start gap-3 p-4 hover:bg-warm-50">
-                <div class="flex size-10 shrink-0 items-center justify-center rounded-lg text-lg text-white" style="background: {{ activity.color_class }};"><i class="bi {{ activity.icon }}"></i></div>
-                <div class="min-w-0">
-                  <div class="font-semibold text-warm-900">{{ activity.title }}</div>
-                  <div class="truncate text-sm text-warm-600">{{ activity.description }}</div>
-                  <div class="text-xs text-warm-500"><i class="bi bi-clock"></i> {{ activity.created_at|timesince }} ago</div>
-                </div>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="p-8 text-center text-warm-500">
-            <i class="bi bi-inbox mb-2 block text-4xl"></i>
-            <p>No recent activity yet. Start planning your adventures!</p>
-          </div>
-        {% endif %}
-      </div>
-    </section>
-
-    {# Upcoming trips #}
-    <section>
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="{{ h2 }}">Upcoming Trips</h2>
-        <a href="{% url 'trips:trip_list' %}" class="{{ ghost }}">All trips</a>
-      </div>
-      <div class="{{ card }}">
-        {% if upcoming_trips %}
-          <ul class="divide-y divide-warm-100">
-            {% for trip in upcoming_trips %}
-              <li>
-                <a href="{% url 'trips:trip_detail' trip.pk %}" class="flex items-start justify-between gap-3 p-4 hover:bg-warm-50">
-                  <div class="min-w-0">
-                    <div class="truncate font-semibold text-warm-900">{{ trip.name }}</div>
-                    <div class="text-sm text-warm-500"><i class="bi bi-calendar"></i> {{ trip.start_date|date:"M d, Y" }}{% if trip.end_date %} – {{ trip.end_date|date:"M d, Y" }}{% endif %}</div>
-                  </div>
-                  <span class="shrink-0 rounded-full bg-earth-sand px-2.5 py-0.5 text-xs font-medium text-earth-clay-dark">{{ trip.days_until }} days</span>
-                </a>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="p-8 text-center text-warm-500">
-            <i class="bi bi-calendar-x mb-2 block text-4xl"></i>
-            <p class="mb-3">No upcoming trips planned</p>
-            <a href="{% url 'trips:trip_list' %}" class="{{ solid }}">Go to your trips</a>
-          </div>
-        {% endif %}
-      </div>
-    </section>
-  </div>
-
-  <div class="space-y-8">
-
-    {# Recommendations #}
-    <section>
-      <div class="mb-4 flex items-center justify-between"><h2 class="{{ h2 }}">Recommended For You</h2></div>
-      {% if recommendations %}
-        <div class="space-y-4">
-          {% for rec in recommendations %}
-            <article class="relative overflow-hidden {{ card }} transition hover:-translate-y-1 sm:flex">
-              {# The reason pill sits on the picture; each reason has its own bright colour. #}
-              <div class="relative h-48 w-full shrink-0 sm:h-auto sm:min-h-44 sm:w-1/3">
-                {% if rec.image_url %}<img src="{{ rec.image_url }}" alt="{{ rec.title }}" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
-                {% else %}<div class="flex h-full w-full items-center justify-center bg-earth-clay text-4xl text-white/70">{% if rec.obj.category.icon and 'bi-' in rec.obj.category.icon %}<i class="bi {{ rec.obj.category.icon }}"></i>{% elif rec.obj.category.icon %}{{ rec.obj.category.icon }}{% else %}<i class="bi bi-compass"></i>{% endif %}</div>{% endif %}
-                <span class="absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide shadow-lg ring-2 ring-white/80 {% if rec.tag == 'New date for your goal' %}bg-emerald-500 text-white{% elif rec.tag == 'Matches your interests' %}bg-fuchsia-500 text-white{% elif rec.tag == 'Near your plans' %}bg-sky-500 text-white{% else %}bg-amber-400 text-warm-900{% endif %}">{{ rec.tag }}</span>
-              </div>
-              <div class="p-5 sm:w-2/3">
-                <h3 class="text-lg font-semibold text-warm-900">{{ rec.title }}</h3>
-                <p class="mt-1 mb-4 text-sm text-warm-600">{{ rec.description|truncatewords:22 }}</p>
-                <div class="flex flex-wrap items-center gap-2">
-                  <a href="{{ rec.url }}" class="{{ solid }}">Learn more <i class="bi bi-arrow-right"></i></a>
-                  {% include "partials/_bucket_add_button.html" with kind=rec.kind obj=rec.obj %}
-                </div>
-              </div>
-            </article>
-          {% endfor %}
+  {# Next trip #}
+  <section class="{{ card }} flex flex-col" data-home-card="next-trip" aria-labelledby="home-next-trip">
+    <h2 class="sbl-section-title" id="home-next-trip">Next trip</h2>
+    {% if next_trip %}
+      <div class="flex items-start gap-4">
+        <div class="flex w-16 shrink-0 flex-col items-center rounded-lg border border-warm-200 bg-warm-50 py-2" aria-hidden="true">
+          <span class="text-xs font-semibold uppercase text-earth-clay">{{ next_trip.start_date|date:"M" }}</span>
+          <span class="text-2xl font-bold leading-none text-warm-900">{{ next_trip.start_date|date:"j" }}</span>
         </div>
-      {% else %}
-        <div class="{{ card }} p-8 text-center text-warm-500">
-          <i class="bi bi-lightbulb mb-2 block text-4xl"></i>
-          <p class="mb-1">Nothing to suggest yet</p>
-          <p class="text-sm"><a class="sbl-link" href="{% url 'activities:activity_list' %}">Browse activities</a> and add a few to your bucket list; suggestions follow what you add.</p>
+        <div class="min-w-0">
+          <p class="truncate font-semibold text-warm-900"><a class="hover:underline" href="{% url 'trips:trip_detail' next_trip.pk %}">{{ next_trip.name }}</a></p>
+          <p class="text-sm text-warm-600">{% if next_trip.nights %}{{ next_trip.nights }} night{{ next_trip.nights|pluralize }}{% endif %}{% if next_trip.city_names %}{% if next_trip.nights %} · {% endif %}{{ next_trip.city_names|join:", " }}{% endif %}</p>
+          <p class="mt-1 text-sm font-medium text-earth-clay" data-countdown>{% if next_trip.day_now %}Happening now · day {{ next_trip.day_now }}{% elif next_trip.days_until == 1 %}Tomorrow{% else %}In {{ next_trip.days_until }} days{% endif %}</p>
+        </div>
+      </div>
+      {% if next_trip.tasks_percent is not None %}
+        <div class="mt-4">
+          <div class="mb-1 flex justify-between text-xs text-warm-600"><span>To-dos done</span><span>{{ next_trip.tasks_done }} of {{ next_trip.tasks_total }}</span></div>
+          <div class="h-2 overflow-hidden rounded-full bg-warm-100" role="progressbar" aria-label="To-dos done" aria-valuenow="{{ next_trip.tasks_percent }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-earth-olive" style="width: {{ next_trip.tasks_percent }}%"></div></div>
         </div>
       {% endif %}
-    </section>
+      <p class="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4 text-sm">
+        <a class="sbl-btn sbl-btn-outline" href="{% url 'trips:trip_detail' next_trip.pk %}">Open trip</a>
+        {% if next_trip.more_upcoming %}<a class="sbl-link" href="{% url 'trips:trip_list' %}">{{ next_trip.more_upcoming }} more coming up</a>{% endif %}
+      </p>
+    {% else %}
+      {% url 'trips:trip_create' as create_url %}
+      {% include 'components/feedback/empty_state.html' with icon="bi-airplane" title="No trip coming up" message="Start one from scratch or from a goal." action_url=create_url action_text="Plan a trip" card=False %}
+    {% endif %}
+  </section>
 
-    {# Badges #}
-    <section>
-      <div class="mb-4 flex items-center justify-between"><h2 class="{{ h2 }}">Badges</h2><a class="sbl-link text-sm" href="{% url 'bucketlists:adventures' %}">{{ badges_earned }} of {{ badges|length }} earned</a></div>
-      {% include "bucketlists/partials/_badges.html" %}
-    </section>
+  {# Bucket list #}
+  <section class="{{ card }} flex flex-col" data-home-card="bucket" aria-labelledby="home-bucket">
+    <h2 class="sbl-section-title" id="home-bucket">Bucket list</h2>
+    {% if bucket.total %}
+      <div class="mb-1 flex justify-between text-sm"><span class="text-warm-600">Done</span><span class="font-semibold text-warm-900">{{ bucket.done }} of {{ bucket.total }}</span></div>
+      <div class="h-2 overflow-hidden rounded-full bg-warm-100" role="progressbar" aria-label="Goals done" aria-valuenow="{{ bucket.percent }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-earth-clay" style="width: {{ bucket.percent }}%"></div></div>
+      {% if bucket.goals %}
+        <ul class="mt-4 divide-y divide-warm-100 text-sm">
+          {% for goal in bucket.goals %}
+            <li class="flex items-center justify-between gap-3 py-2"><a class="min-w-0 truncate text-warm-900 hover:underline" href="{% url 'bucketlists:item_edit' goal.pk %}">{{ goal.title }}</a><span class="sbl-badge sbl-badge-neutral shrink-0">{{ goal.stage_label }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <p class="mt-auto pt-4 text-sm"><a class="sbl-btn sbl-btn-outline" href="{% url 'bucketlists:dashboard' %}">Open bucket list</a></p>
+    {% else %}
+      {% url 'bucketlists:item_add' as add_url %}
+      {% include 'components/feedback/empty_state.html' with icon="bi-list-check" title="Your bucket list is empty" message="Something you want to do or see, someday." action_url=add_url action_text="Add a goal" card=False %}
+    {% endif %}
+  </section>
 
-    {# Bucket list progress #}
-    <section>
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="{{ h2 }}">Bucket List Progress</h2>
-        <a href="{% url 'bucketlists:dashboard' %}" class="{{ ghost }}">View all</a>
+  {# Needs you #}
+  <section class="{{ card }} flex flex-col" data-home-card="needs-you" aria-labelledby="home-needs-you">
+    <h2 class="sbl-section-title" id="home-needs-you">Needs you</h2>
+    {% if needs_you.any %}
+      <ul class="divide-y divide-warm-100 text-sm">
+        {% for task in needs_you.todos %}
+          <li class="py-2" data-needs="todo"><a class="block hover:underline" href="{{ task.url }}"><span class="font-medium text-warm-900">{{ task.title }}</span></a><span class="text-xs text-warm-600">{{ task.trip.name }}{% if task.due %} · due {{ task.due|date:"M j" }}{% endif %}{% if task.priority <= 2 %} · <span class="font-medium text-amber-700">{{ task.get_priority_display }}</span>{% endif %}</span></li>
+        {% endfor %}
+        {% if needs_you.todo_count > needs_you.todos|length %}<li class="py-2 text-xs text-warm-600">{{ needs_you.todo_count }} open to-dos in all, on your trips' To do pages</li>{% endif %}
+        {% for prompt in needs_you.ratings %}
+          <li class="py-2" data-needs="rating"><a class="block hover:underline" href="{{ prompt.url }}"><span class="font-medium text-warm-900">Rate the places from {{ prompt.trip.name }}</span></a><span class="text-xs text-warm-600">Your trip ended {{ prompt.trip.end_date|date:"M j" }}</span></li>
+        {% endfor %}
+        {% for row in needs_you.sent_back %}
+          <li class="py-2" data-needs="sent-back"><a class="block hover:underline" href="{{ row.url }}"><span class="font-medium text-warm-900">{{ row.name }}</span></a><span class="text-xs text-warm-600">{{ row.kind }} you added · <span class="font-medium {% if row.rejected %}text-red-700{% else %}text-amber-700{% endif %}">{{ row.status|lower|capfirst }}</span></span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include 'components/feedback/empty_state.html' with icon="bi-check2-circle" title="Nothing needs you" message="Open to-dos, trips to rate and anything sent back to you show up here." card=False %}
+    {% endif %}
+  </section>
+</div>
+
+<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+  {# Recommendations #}
+  <section class="lg:col-span-2" aria-labelledby="home-recommended">
+    <h2 class="sbl-section-title" id="home-recommended">Recommended for you</h2>
+    {% if recommendations %}
+      <div class="space-y-4">
+        {% for rec in recommendations %}
+          <article class="sbl-card relative overflow-hidden transition hover:-translate-y-1 sm:flex">
+            <div class="relative h-48 w-full shrink-0 sm:h-auto sm:min-h-44 sm:w-1/3">
+              {% if rec.image_url %}<img src="{{ rec.image_url }}" alt="{{ rec.title }}" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
+              {% else %}<div class="flex h-full w-full items-center justify-center bg-earth-clay text-4xl text-white/70">{% if rec.obj.category.icon and 'bi-' in rec.obj.category.icon %}<i class="bi {{ rec.obj.category.icon }}"></i>{% elif rec.obj.category.icon %}{{ rec.obj.category.icon }}{% else %}<i class="bi bi-compass"></i>{% endif %}</div>{% endif %}
+              <span class="sbl-badge sbl-badge-primary absolute left-3 top-3 shadow" data-rec-reason>{{ rec.tag }}</span>
+            </div>
+            <div class="p-5 sm:w-2/3">
+              <h3 class="text-lg font-semibold text-warm-900">{{ rec.title }}</h3>
+              <p class="mt-1 mb-4 text-sm text-warm-600">{{ rec.description|truncatewords:22 }}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ rec.url }}" class="sbl-btn sbl-btn-outline">Learn more <i class="bi bi-arrow-right"></i></a>
+                {% include "partials/_bucket_add_button.html" with kind=rec.kind obj=rec.obj button_style="sbl-btn-outline" %}
+              </div>
+            </div>
+          </article>
+        {% endfor %}
       </div>
-      <div class="{{ card }} p-5">
-        {% if bucket_list_stats %}
-          <div class="mb-2 flex justify-between text-sm">
-            <span class="text-warm-500">Overall progress</span>
-            <span class="font-bold text-warm-900">{{ bucket_list_stats.completion_percentage }}%</span>
-          </div>
-          <div class="mb-5 h-2.5 overflow-hidden rounded-full bg-warm-100" role="progressbar" aria-valuenow="{{ bucket_list_stats.completion_percentage }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="h-full rounded-full bg-gradient-to-r from-earth-clay to-earth-olive" style="width: {{ bucket_list_stats.completion_percentage }}%"></div>
-          </div>
-          <dl class="grid grid-cols-3 gap-3 text-center">
-            <div class="rounded-lg bg-warm-50 p-3"><dd class="text-2xl font-bold text-earth-clay">{{ bucket_list_stats.total }}</dd><dt class="text-xs text-warm-500">Total items</dt></div>
-            <div class="rounded-lg bg-warm-50 p-3"><dd class="text-2xl font-bold text-emerald-700">{{ bucket_list_stats.completed }}</dd><dt class="text-xs text-warm-500">Completed</dt></div>
-            <div class="rounded-lg bg-warm-50 p-3"><dd class="text-2xl font-bold text-amber-600">{{ bucket_list_stats.in_progress }}</dd><dt class="text-xs text-warm-500">In progress</dt></div>
-          </dl>
-        {% else %}
-          <div class="py-4 text-center text-warm-500">
-            <i class="bi bi-list-check mb-2 block text-4xl"></i>
-            <p class="mb-3">Your bucket list is empty</p>
-            <a href="{% url 'bucketlists:dashboard' %}" class="{{ solid }}">Add your first item</a>
-          </div>
-        {% endif %}
-      </div>
-    </section>
-  </div>
+    {% else %}
+      {% url 'activities:activity_list' as browse_url %}
+      {% include 'components/feedback/empty_state.html' with icon="bi-lightbulb" title="Nothing to suggest yet" message="Add a few activities to your bucket list; suggestions follow what you add." action_url=browse_url action_text="Browse activities" %}
+    {% endif %}
+  </section>
+
+  {# Badges #}
+  <section aria-labelledby="home-badges">
+    <div class="flex items-baseline justify-between gap-3"><h2 class="sbl-section-title" id="home-badges">Badges</h2><a class="sbl-link text-sm" href="{% url 'bucketlists:adventures' %}">{{ badges_earned }} of {{ badges|length }} earned</a></div>
+    {% include "bucketlists/partials/_badges.html" %}
+  </section>
 </div>
 {% endwith %}
 {% endblock %}

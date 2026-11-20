@@ -57,9 +57,9 @@ class SourceTests(SimpleTestCase):
 
     def test_sidebar_group_labels_are_readable(self):
         sidebar = (Path(settings.BASE_DIR) / "templates/partials/_sidebar.html").read_text()
-        step = re.search(r'step="([^"]*)"', sidebar).group(1)
-        self.assertIn("text-warm-600", step)
-        self.assertNotIn("text-warm-400", step)
+        group = re.search(r'group="([^"]*)"', sidebar).group(1)
+        self.assertIn("text-warm-600", group)
+        self.assertNotIn("text-warm-400", group)
 
     def test_dead_style_files_stay_gone(self):
         base = Path(settings.BASE_DIR)

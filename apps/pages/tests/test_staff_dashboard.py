@@ -44,20 +44,22 @@ class StaffDashboardTests(TestCase):
         )
         self.client.force_login(self.staff)
 
-    def test_staff_cards_come_last_on_the_dashboard(self):
+    def test_staff_links_on_home(self):
+        """Home (ux-consistency V5) gives staff a small row of links instead of Quick Access cards."""
         self.staff.is_staff = True
         self.staff.save()
 
-        def quick_access():
+        def links():
             html = self.client.get(reverse("pages:dashboard")).content.decode()
-            start = html.index("Quick Access")
-            return html[start : html.index("</section>", start)]
+            if "data-staff-links" not in html:
+                return ""
+            start = html.index("data-staff-links")
+            return html[start : html.index("</p>", start)]
 
-        cards = quick_access()
-        self.assertLess(cards.index(reverse("locations:dashboard")), cards.index(URL))
-        self.assertLess(cards.index(URL), cards.index(reverse("admin:index")))
+        row = links()
+        self.assertLess(row.index(URL), row.index(reverse("admin:index")))
         self.client.force_login(self.member)
-        self.assertNotIn(URL, quick_access())
+        self.assertEqual(links(), "")
 
     def test_access(self):
         self.client.logout()
@@ -68,7 +70,7 @@ class StaffDashboardTests(TestCase):
         self.assertEqual(self.client.get(URL).status_code, 200)
 
     def test_linked_for_staff_only(self):
-        self.assertContains(self.client.get(reverse("pages:dashboard")), URL)  # Quick Access card
+        self.assertContains(self.client.get(reverse("pages:dashboard")), URL)  # Home's staff links
         self.client.force_login(self.member)
         self.assertNotContains(self.client.get(reverse("pages:dashboard")), URL)
         self.member.is_staff = True

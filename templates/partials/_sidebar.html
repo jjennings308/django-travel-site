@@ -1,52 +1,33 @@
-{# templates/partials/_sidebar.html — used by the desktop sidebar (base.html) and the mobile drawer. Grouped by the lifecycle: discover (activities, events, places) → put it on your bucket list → give it a date (My dates) → plan the trip → done (My adventures). #}
-{# Each numbered section folds (Alpine): the section of the current page is always open; the others remember open/closed in localStorage ("sbl-nav-<name>"), open by default. #}
+{% comment %}
+templates/partials/_sidebar.html — the desktop sidebar (base.html) and the mobile drawer (ux-consistency V5). Home, then Discover (activities, events, places), then Your journey: the lifecycle as a numbered rail, each step with its stage as a small caption (Bucket list · Dream, My dates · Pick a date, Trips · Plan, Adventures · Done, plus Albums), then About and Help. Nothing folds.
+{% endcomment %}
 {% with current=request.resolver_match.view_name|default:"" %}
-{% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" step="mt-4 mb-1 flex w-full items-center gap-2 rounded-md px-3 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wider text-warm-600 hover:text-warm-800" num="flex size-4 items-center justify-center rounded-full bg-warm-200 text-[10px] text-warm-600" %}
+{% with base="flex items-center gap-3 rounded-md px-3 py-2 text-sm" idle="text-warm-600 hover:bg-warm-100 hover:text-warm-900" on="bg-earth-sand font-medium text-earth-clay-dark" group="mt-5 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-warm-600" num="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold" %}
 <nav aria-label="Main">
   <ul class="flex flex-col gap-1">
-    <li><a class="{{ base }} {% if current == 'pages:dashboard' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:dashboard' %}"><i class="bi bi-speedometer2"></i>Home</a></li>
+    <li><a class="{{ base }} {% if current == 'pages:dashboard' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:dashboard' %}" data-nav="home"{% if current == 'pages:dashboard' %} aria-current="page"{% endif %}><i class="bi bi-house"></i>Home</a></li>
   </ul>
 
-  <div x-data="{ open: {% if current|slice:':11' == 'activities:' or current|slice:':7' == 'events:' or current|slice:':10' == 'locations:' %}true{% else %}(() => { try { return localStorage.getItem('sbl-nav-discover') !== '0' } catch (e) { return true } })(){% endif %}, toggle() { this.open = !this.open; try { localStorage.setItem('sbl-nav-discover', this.open ? '1' : '0') } catch (e) {} } }">
-  <button type="button" class="{{ step }}" @click="toggle()" :aria-expanded="open.toString()"><span class="{{ num }}">1</span>Discover<i class="bi bi-chevron-down ml-auto text-[10px] transition-transform" :class="open ? '' : '-rotate-90'" aria-hidden="true"></i></button>
-  <ul class="flex flex-col gap-1" x-show="open" x-transition.opacity>
-    <li><a class="{{ base }} {% if current|slice:':11' == 'activities:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'activities:activity_list' %}"><i class="bi bi-signpost-2"></i>Activities</a></li>
-    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:event_list' %}"><i class="bi bi-calendar-event"></i>Events</a></li>
-    <li><a class="{{ base }} {% if current|slice:':10' == 'locations:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'locations:dashboard' %}"><i class="bi bi-geo-alt"></i>Places</a></li>
+  <p class="{{ group }}" id="nav-discover">Discover</p>
+  <ul class="flex flex-col gap-1" aria-labelledby="nav-discover">
+    <li><a class="{{ base }} {% if current|slice:':11' == 'activities:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'activities:activity_list' %}" data-nav="activities"{% if current|slice:':11' == 'activities:' %} aria-current="page"{% endif %}><i class="bi bi-signpost-2"></i>Activities</a></li>
+    <li><a class="{{ base }} {% if current|slice:':7' == 'events:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'events:event_list' %}" data-nav="events"{% if current|slice:':7' == 'events:' %} aria-current="page"{% endif %}><i class="bi bi-calendar-event"></i>Events</a></li>
+    <li><a class="{{ base }} {% if current|slice:':10' == 'locations:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'locations:dashboard' %}" data-nav="places"{% if current|slice:':10' == 'locations:' %} aria-current="page"{% endif %}><i class="bi bi-geo-alt"></i>Places</a></li>
   </ul>
-  </div>
 
-  <div x-data="{ open: {% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and current != 'bucketlists:adventures' and current|slice:':17' != 'bucketlists:album' %}true{% else %}(() => { try { return localStorage.getItem('sbl-nav-dream') !== '0' } catch (e) { return true } })(){% endif %}, toggle() { this.open = !this.open; try { localStorage.setItem('sbl-nav-dream', this.open ? '1' : '0') } catch (e) {} } }">
-  <button type="button" class="{{ step }}" @click="toggle()" :aria-expanded="open.toString()"><span class="{{ num }}">2</span>Dream<i class="bi bi-chevron-down ml-auto text-[10px] transition-transform" :class="open ? '' : '-rotate-90'" aria-hidden="true"></i></button>
-  <ul class="flex flex-col gap-1" x-show="open" x-transition.opacity>
-    <li><a class="{{ base }} {% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and current != 'bucketlists:adventures' and current|slice:':17' != 'bucketlists:album' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dashboard' %}"><i class="bi bi-list-check"></i>My bucket list</a></li>
-  </ul>
-  </div>
+  {# Your journey: one rail, the step number in a disc and the lifecycle stage underneath. #}
+  <p class="{{ group }}" id="nav-journey">Your journey</p>
+  <ol class="relative flex flex-col gap-1 before:absolute before:bottom-6 before:left-[1.45rem] before:top-6 before:w-px before:bg-warm-200" aria-labelledby="nav-journey">
+    <li class="relative">{% if current|slice:':12' == 'bucketlists:' and current != 'bucketlists:dates' and current != 'bucketlists:adventures' and current|slice:':17' != 'bucketlists:album' %}<a class="{{ base }} {{ on }}" aria-current="page"{% else %}<a class="{{ base }} {{ idle }}"{% endif %} href="{% url 'bucketlists:dashboard' %}" data-nav="bucket"><span class="{{ num }} border-earth-clay bg-white text-earth-clay">1</span><span><span class="block">Bucket list</span><span class="block text-xs text-warm-500" data-nav-caption>Dream</span></span></a></li>
+    <li class="relative">{% if current == 'bucketlists:dates' %}<a class="{{ base }} {{ on }}" aria-current="page"{% else %}<a class="{{ base }} {{ idle }}"{% endif %} href="{% url 'bucketlists:dates' %}" data-nav="dates"><span class="{{ num }} border-earth-clay bg-white text-earth-clay">2</span><span><span class="block">My dates</span><span class="block text-xs text-warm-500" data-nav-caption>Pick a date</span></span></a></li>
+    <li class="relative">{% if current|slice:':6' == 'trips:' %}<a class="{{ base }} {{ on }}" aria-current="page"{% else %}<a class="{{ base }} {{ idle }}"{% endif %} href="{% url 'trips:trip_list' %}" data-nav="trips"><span class="{{ num }} border-earth-clay bg-white text-earth-clay">3</span><span><span class="block">Trips</span><span class="block text-xs text-warm-500" data-nav-caption>Plan</span></span></a></li>
+    <li class="relative">{% if current == 'bucketlists:adventures' %}<a class="{{ base }} {{ on }}" aria-current="page"{% else %}<a class="{{ base }} {{ idle }}"{% endif %} href="{% url 'bucketlists:adventures' %}" data-nav="adventures"><span class="{{ num }} border-earth-clay bg-white text-earth-clay">4</span><span><span class="block">Adventures</span><span class="block text-xs text-warm-500" data-nav-caption>Done</span></span></a></li>
+    <li class="relative">{% if current|slice:':17' == 'bucketlists:album' %}<a class="{{ base }} {{ on }}" aria-current="page"{% else %}<a class="{{ base }} {{ idle }}"{% endif %} href="{% url 'bucketlists:albums' %}" data-nav="albums"><span class="{{ num }} border-warm-200 bg-white text-warm-500"><i class="bi bi-images text-[11px]" aria-hidden="true"></i></span><span>Albums</span></a></li>
+  </ol>
 
-  <div x-data="{ open: {% if current == 'bucketlists:dates' %}true{% else %}(() => { try { return localStorage.getItem('sbl-nav-dates') !== '0' } catch (e) { return true } })(){% endif %}, toggle() { this.open = !this.open; try { localStorage.setItem('sbl-nav-dates', this.open ? '1' : '0') } catch (e) {} } }">
-  <button type="button" class="{{ step }}" @click="toggle()" :aria-expanded="open.toString()"><span class="{{ num }}">3</span>Pick a date<i class="bi bi-chevron-down ml-auto text-[10px] transition-transform" :class="open ? '' : '-rotate-90'" aria-hidden="true"></i></button>
-  <ul class="flex flex-col gap-1" x-show="open" x-transition.opacity>
-    <li><a class="{{ base }} {% if current == 'bucketlists:dates' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:dates' %}"><i class="bi bi-calendar-check"></i>My dates</a></li>
-  </ul>
-  </div>
-
-  <div x-data="{ open: {% if current|slice:':6' == 'trips:' %}true{% else %}(() => { try { return localStorage.getItem('sbl-nav-plan') !== '0' } catch (e) { return true } })(){% endif %}, toggle() { this.open = !this.open; try { localStorage.setItem('sbl-nav-plan', this.open ? '1' : '0') } catch (e) {} } }">
-  <button type="button" class="{{ step }}" @click="toggle()" :aria-expanded="open.toString()"><span class="{{ num }}">4</span>Plan<i class="bi bi-chevron-down ml-auto text-[10px] transition-transform" :class="open ? '' : '-rotate-90'" aria-hidden="true"></i></button>
-  <ul class="flex flex-col gap-1" x-show="open" x-transition.opacity>
-    <li><a class="{{ base }} {% if current|slice:':6' == 'trips:' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'trips:trip_list' %}"><i class="bi bi-airplane"></i>Trips</a></li>
-  </ul>
-  </div>
-
-  <div x-data="{ open: {% if current == 'bucketlists:adventures' or current|slice:':17' == 'bucketlists:album' %}true{% else %}(() => { try { return localStorage.getItem('sbl-nav-done') !== '0' } catch (e) { return true } })(){% endif %}, toggle() { this.open = !this.open; try { localStorage.setItem('sbl-nav-done', this.open ? '1' : '0') } catch (e) {} } }">
-  <button type="button" class="{{ step }}" @click="toggle()" :aria-expanded="open.toString()"><span class="{{ num }}">5</span>Done<i class="bi bi-chevron-down ml-auto text-[10px] transition-transform" :class="open ? '' : '-rotate-90'" aria-hidden="true"></i></button>
-  <ul class="flex flex-col gap-1" x-show="open" x-transition.opacity>
-    <li><a class="{{ base }} {% if current == 'bucketlists:adventures' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:adventures' %}"><i class="bi bi-trophy"></i>My adventures</a></li>
-    <li><a class="{{ base }} {% if current|slice:':17' == 'bucketlists:album' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'bucketlists:albums' %}"><i class="bi bi-images"></i>My albums</a></li>
-  </ul>
-  </div>
-
-  <ul class="mt-4 flex flex-col gap-1 border-t border-warm-200 pt-3">
-    <li><a class="{{ base }} {% if current == 'pages:about' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:about' %}"><i class="bi bi-info-circle"></i>About</a></li>
+  <ul class="mt-5 flex flex-col gap-1 border-t border-warm-200 pt-3">
+    <li><a class="{{ base }} {% if current == 'pages:about' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:about' %}" data-nav="about"{% if current == 'pages:about' %} aria-current="page"{% endif %}><i class="bi bi-info-circle"></i>About</a></li>
+    <li><a class="{{ base }} {% if current|slice:':10' == 'pages:help' %}{{ on }}{% else %}{{ idle }}{% endif %}" href="{% url 'pages:help' %}" data-nav="help"{% if current|slice:':10' == 'pages:help' %} aria-current="page"{% endif %}><i class="bi bi-question-circle"></i>Help</a></li>
   </ul>
 </nav>
 {% endwith %}
