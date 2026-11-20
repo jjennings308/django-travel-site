@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.approval_system.models import ApprovalStatus
-from apps.locations.models import POI, City, Country
+from apps.locations.models import POI, City, Country, Region
 from apps.media_app.models import Media
 
 
@@ -27,10 +27,13 @@ class PlaceAdminWithUploaderlessPictureTests(TestCase):
         country = Country.objects.create(
             name="Testland", slug="testland", iso_code="TL", iso3_code="TLD", approval_status=ApprovalStatus.APPROVED
         )
-        city = City.objects.create(name="Testville", slug="testville", country=country, latitude=1, longitude=2)
+        region = Region.objects.create(name="Testshire", slug="testshire", country=country)
+        city = City.objects.create(
+            name="Testville", slug="testville", country=country, region=region, latitude=1, longitude=2
+        )
         poi = POI.objects.create(name="Old Bridge", slug="old-bridge", city=city, latitude=1, longitude=2)
         self.client.force_login(admin)
-        for model, obj in (("poi", poi), ("city", city), ("country", country)):
+        for model, obj in (("poi", poi), ("city", city), ("region", region), ("country", country)):
             with self.subTest(model):
                 response = self.client.get(reverse(f"admin:locations_{model}_change", args=[obj.pk]))
                 self.assertContains(response, name)
