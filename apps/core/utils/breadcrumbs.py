@@ -11,7 +11,7 @@ def trip_detail(request, trip_id):
     context = {
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
-            ('Dashboard', 'pages:dashboard'),
+            ('Home', 'pages:dashboard'),
             ('Trips', 'trips:trip_list'),
             (trip.name, None)  # None = current page
         ])
@@ -89,24 +89,24 @@ class BreadcrumbPatterns:
     @staticmethod
     def dashboard_only():
         """Just the dashboard"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard")])
+        return build_breadcrumbs([("Home", "pages:dashboard")])
 
     @staticmethod
     def trips_list():
-        """Dashboard > Trips"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Trips", None)])
+        """Home > Trips"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Trips", None)])
 
     @staticmethod
     def trip_detail(trip):
-        """Dashboard > Trips > Trip Name"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Trips", "trips:trip_list"), (trip.name, None)])
+        """Home > Trips > Trip Name"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Trips", "trips:trip_list"), (trip.name, None)])
 
     @staticmethod
     def trip_edit(trip):
-        """Dashboard > Trips > Trip Name > Edit"""
+        """Home > Trips > Trip Name > Edit"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Trips", "trips:trip_list"),
                 (trip.name, ("trips:trip_detail", {"pk": trip.pk})),
                 ("Edit", None),
@@ -115,39 +115,39 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def bucketlist():
-        """Dashboard > Bucket List"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Bucket List", None)])
+        """Home > Bucket List"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Bucket List", None)])
 
     @staticmethod
     def activities_list():
-        """Dashboard > Activities"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Activities", None)])
+        """Home > Activities"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Activities", None)])
 
     @staticmethod
     def activity_detail(activity):
-        """Dashboard > Activities > Activity Name"""
+        """Home > Activities > Activity Name"""
         return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Activities", "activities:dashboard"), (activity.name, None)]
+            [("Home", "pages:dashboard"), ("Activities", "activities:dashboard"), (activity.name, None)]
         )
 
     @staticmethod
     def locations_dashboard():
-        """Dashboard > Locations"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Locations", None)])
+        """Home > Locations"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Locations", None)])
 
     @staticmethod
     def countries_list():
-        """Dashboard > Locations > Countries"""
+        """Home > Locations > Countries"""
         return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Countries", None)]
+            [("Home", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Countries", None)]
         )
 
     @staticmethod
     def country_add():
-        """Dashboard > Locations > Countries > Add Country"""
+        """Home > Locations > Countries > Add Country"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Countries", "locations:country_list"),
                 ("Add Country", None),
@@ -156,10 +156,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def country_detail(country):
-        """Dashboard > Locations > Countries > Country Name"""
+        """Home > Locations > Countries > Country Name"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Countries", "locations:country_list"),
                 (country.name, None),
@@ -168,10 +168,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def country_edit(country):
-        """Dashboard > Locations > Countries > Country Name > Edit"""
+        """Home > Locations > Countries > Country Name > Edit"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Countries", "locations:country_list"),
                 (country.name, ("locations:country_detail", {"slug": country.slug})),
@@ -181,17 +181,15 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def regions_list():
-        """Dashboard > Locations > Regions"""
-        return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Regions", None)]
-        )
+        """Home > Locations > Regions"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Regions", None)])
 
     @staticmethod
     def region_add():
-        """Dashboard > Locations > Regions > Add Region"""
+        """Home > Locations > Regions > Add Region"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Regions", "locations:region_list"),
                 ("Add Region", None),
@@ -200,10 +198,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def region_detail(region):
-        """Dashboard > Locations > Regions > Region Name"""
+        """Home > Locations > Regions > Region Name"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Regions", "locations:region_list"),
                 (region.name, None),
@@ -212,10 +210,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def region_edit(region):
-        """Dashboard > Locations > Regions > Region Name > Edit"""
+        """Home > Locations > Regions > Region Name > Edit"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Regions", "locations:region_list"),
                 (region.name, ("locations:region_detail", {"slug": region.slug})),
@@ -225,17 +223,15 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def cities_list():
-        """Dashboard > Locations > Cities"""
-        return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Cities", None)]
-        )
+        """Home > Locations > Cities"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Cities", None)])
 
     @staticmethod
     def city_add():
-        """Dashboard > Locations > Cities > Add City"""
+        """Home > Locations > Cities > Add City"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Cities", "locations:city_list"),
                 ("Add City", None),
@@ -244,10 +240,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def city_detail(city):
-        """Dashboard > Locations > Cities > City Name"""
+        """Home > Locations > Cities > City Name"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Cities", "locations:city_list"),
                 (city.name, None),
@@ -256,10 +252,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def city_edit(city):
-        """Dashboard > Locations > Cities > City Name > Edit"""
+        """Home > Locations > Cities > City Name > Edit"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Cities", "locations:city_list"),
                 (city.name, ("locations:city_detail", {"slug": city.slug})),
@@ -269,17 +265,15 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def pois_list():
-        """Dashboard > Locations > Places"""
-        return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Places", None)]
-        )
+        """Home > Locations > Places"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Locations", "locations:dashboard"), ("Places", None)])
 
     @staticmethod
     def poi_add():
-        """Dashboard > Locations > Places > Add a place"""
+        """Home > Locations > Places > Add a place"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Places", "locations:poi_list"),
                 ("Add a place", None),
@@ -288,10 +282,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def poi_detail(poi):
-        """Dashboard > Locations > Places > Place name"""
+        """Home > Locations > Places > Place name"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Places", "locations:poi_list"),
                 (poi.name, None),
@@ -300,10 +294,10 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def poi_edit(poi):
-        """Dashboard > Locations > Places > Place name > Edit"""
+        """Home > Locations > Places > Place name > Edit"""
         return build_breadcrumbs(
             [
-                ("Dashboard", "pages:dashboard"),
+                ("Home", "pages:dashboard"),
                 ("Locations", "locations:dashboard"),
                 ("Places", "locations:poi_list"),
                 (poi.name, ("locations:poi_detail", {"slug": poi.slug})),
@@ -313,15 +307,13 @@ class BreadcrumbPatterns:
 
     @staticmethod
     def events_list():
-        """Dashboard > Events"""
-        return build_breadcrumbs([("Dashboard", "pages:dashboard"), ("Events", None)])
+        """Home > Events"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Events", None)])
 
     @staticmethod
     def event_detail(event):
-        """Dashboard > Events > Event Name"""
-        return build_breadcrumbs(
-            [("Dashboard", "pages:dashboard"), ("Events", "events:event_list"), (event.title, None)]
-        )
+        """Home > Events > Event Name"""
+        return build_breadcrumbs([("Home", "pages:dashboard"), ("Events", "events:event_list"), (event.title, None)])
 
 
 # Example usage in views:
@@ -341,7 +333,7 @@ def trip_booking(request, trip_id):
     context = {
         'trip': trip,
         'breadcrumb_list': build_breadcrumbs([
-            ('Dashboard', 'pages:dashboard'),
+            ('Home', 'pages:dashboard'),
             ('Trips', 'trips:trip_list'),
             (trip.name, ('trips:trip_detail', {'pk': trip.pk})),
             ('Book Flights', None)

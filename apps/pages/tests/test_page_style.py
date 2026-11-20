@@ -11,9 +11,9 @@ User = get_user_model()
 
 TITLE_CLASSES = {"sbl-page-title", "sbl-dialog-title", "page-title", "hero-title"}
 
-#: Pages whose <h1> is a banner, not a page title: the home page's marketing hero and the dashboard's greeting
-#: (navigation and dashboard, V5).
-BANNERS = {"/", "/dashboard/"}
+#: Pages whose <h1> is a banner, not a page title: the public home page's marketing hero. (The signed-in Home's
+#: greeting became a page header in V5.)
+BANNERS = {"/"}
 
 #: Prefixes never walked: auth flows that sign the client out or need tokens, the admin, files and feeds.
 SKIP = (

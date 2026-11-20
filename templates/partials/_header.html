@@ -19,17 +19,7 @@
     <div class="flex items-center gap-1">
       {% include "partials/_search_box.html" %}
       {% if user.is_authenticated %}
-        <nav class="hidden items-center gap-1 lg:flex">
-          <a href="{% url 'pages:dashboard' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Dashboard">
-            <i class="bi bi-speedometer2"></i><span class="hidden xl:inline">Dashboard</span>
-          </a>
-          <a href="{% url 'bucketlists:dashboard' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Bucket List">
-            <i class="bi bi-list-check"></i><span class="hidden xl:inline">Bucket List</span>
-          </a>
-          <a href="{% url 'trips:trip_list' %}" class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Trips">
-            <i class="bi bi-airplane"></i><span class="hidden xl:inline">Trips</span>
-          </a>
-        </nav>
+        {# Dashboard / Bucket list / Trips used to repeat here; the sidebar (lg up) and the drawer hold them (ux-consistency V5). #}
 
         {% if user.is_staff %}
           <a href="{% url 'admin:index' %}" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-warm-600 hover:bg-warm-100 hover:text-warm-900" title="Admin">

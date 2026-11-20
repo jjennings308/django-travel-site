@@ -3,11 +3,11 @@ summary: Collect the things you want to do, give them dates, plan trips for them
 audience: everyone
 section: Bucket list
 order: 10
-updated: 2026-10-27
+updated: 2026-11-19
 
 # Your bucket list
 
-Your bucket list follows each goal from an idea to a trip you've taken: **Dream**, **Pick a date**, **Plan**, **Done**. The left menu is grouped the same way.
+Your bucket list follows each goal from an idea to a trip you've taken: **Dream**, **Pick a date**, **Plan**, **Done**. The left menu's **Your journey** follows the same steps: **Bucket list**, **My dates**, **Trips**, **Adventures**.
 
 ## Add a goal
 

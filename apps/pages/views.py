@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.mail import EmailMessage
-from django.db.models import Count
+from django.db.models import Count, F, Q
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -94,89 +94,18 @@ def home(request):
 
 @login_required
 def dashboard(request):
-    """Post-login dashboard with personalized content"""
+    """Home (ux-consistency V5): a greeting, then three cards — the next trip, the bucket list and what needs the
+    member — then recommendations and badges. A fixed number of queries, whatever the member has
+    (``test_dashboard.QueryCountTests``)."""
     user = request.user
+    today = timezone.localdate()
+    hour = timezone.localtime().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
 
-    # Quick stats for header
-    bucket_list_count = BucketListItem.objects.filter(user=user).count()
-    # Trip access goes through visible_to: grants plus the role ladder.
     visible_trips = Trip.objects.visible_to(user)
     trips_count = visible_trips.count()
-
-    # Destinations of trips that have ended. Trip.destination is free text
-    # until it becomes a locations FK (work plan, Phase 4).
-    today = timezone.now().date()
-    countries_visited = (
-        visible_trips.filter(end_date__lt=today).exclude(destination="").values("destination").distinct().count()
-    )
-
-    # Attach counts to user object for template
-    user.bucket_list_items_count = bucket_list_count
-    user.trips_count = trips_count
-    user.countries_visited = countries_visited
-
-    # Recent Activity - combine different model activities
-    recent_activities = []
-
-    # Recent bucket list additions
-    recent_bucket_items = (
-        BucketListItem.objects.filter(user=user).select_related("activity", "city", "event").order_by("-created_at")[:3]
-    )
-
-    for item in recent_bucket_items:
-        recent_activities.append(
-            {
-                "title": "Added to Bucket List",
-                "description": item.title,  # Uses the @property from model
-                "created_at": item.created_at,
-                "icon": "bi-check2-square",
-                "color_class": "#f59e0b",  # Accent color
-            }
-        )
-
-    # Recent trips
-    recent_trips = visible_trips.order_by("-created_at")[:3]
-
-    for trip in recent_trips:
-        recent_activities.append(
-            {
-                "title": "Created Trip",
-                "description": trip.name,
-                "created_at": trip.created_at,
-                "icon": "bi-airplane",
-                "color_class": "#2563eb",  # Primary color
-            }
-        )
-
-    # Sort all activities by date
-    recent_activities.sort(key=lambda x: x["created_at"], reverse=True)
-    recent_activities = recent_activities[:5]  # Keep only 5 most recent
-
-    # Upcoming Trips
-    upcoming_trips = visible_trips.filter(start_date__gte=today).order_by("start_date")[:3]
-
-    # Add days_until for each trip
-    for trip in upcoming_trips:
-        trip.days_until = (trip.start_date - today).days
-
-    # Bucket List Stats
-    bucket_list_items = BucketListItem.objects.filter(user=user)
-    total_items = bucket_list_items.count()
-
-    if total_items > 0:
-        completed_items = bucket_list_items.filter(status="completed").count()
-        in_progress_items = bucket_list_items.filter(status__in=["planning", "booked", "in_progress"]).count()
-
-        completion_percentage = int((completed_items / total_items) * 100)
-
-        bucket_list_stats = {
-            "total": total_items,
-            "completed": completed_items,
-            "in_progress": in_progress_items,
-            "completion_percentage": completion_percentage,
-        }
-    else:
-        bucket_list_stats = None
+    goals = BucketListItem.objects.filter(user=user)
+    goal_counts = goals.aggregate(total=Count("pk"), done=Count("pk", filter=Q(status="completed")))
 
     recommendations = recommend(_goals(user))
     from apps.bucketlists.badges import progress
@@ -184,16 +113,125 @@ def dashboard(request):
     badges = progress(user)
 
     context = {
-        "welcome": _welcome(user, bucket_list_count, trips_count),
-        "recent_activities": recent_activities,
-        "upcoming_trips": upcoming_trips,
-        "bucket_list_stats": bucket_list_stats,
+        "greeting": f"{greeting}, {user.get_full_name() or user.username}",
+        "today": today,
+        "welcome": _welcome(user, goal_counts["total"], trips_count),
+        "next_trip": _next_trip(visible_trips, today),
+        "bucket": _bucket_card(goals, goal_counts),
+        "needs_you": _needs_you(user, visible_trips, today),
         "recommendations": recommendations,
         "badges": badges,
         "badges_earned": sum(1 for _, earned_at, _, _ in badges if earned_at),
     }
-
     return render(request, "pages/dashboard.html", context)
+
+
+def _next_trip(visible_trips, today):
+    """The member's next (or current) trip with its countdown, cities and how many of its to-dos are done."""
+    trip = (
+        visible_trips.filter(start_date__isnull=False, end_date__gte=today)
+        .annotate(
+            tasks_total=Count("booking_tasks", distinct=True),
+            tasks_done=Count("booking_tasks", filter=Q(booking_tasks__done=True), distinct=True),
+        )
+        .order_by("start_date", "pk")
+        .first()
+    )
+    if trip is None:
+        return None
+    trip.days_until = (trip.start_date - today).days
+    trip.day_now = (today - trip.start_date).days + 1 if trip.days_until <= 0 else None
+    trip.city_names = [city.name for city in trip.cities.all()[:4]]
+    trip.tasks_percent = round(100 * trip.tasks_done / trip.tasks_total) if trip.tasks_total else None
+    trip.more_upcoming = visible_trips.filter(start_date__gt=trip.start_date).count()
+    return trip
+
+
+def _bucket_card(goals, counts):
+    """Done of total and three open goals, the most recently touched first."""
+    open_goals = (
+        goals.exclude(status__in=("completed", "abandoned"))
+        .select_related("activity", "city", "event", "trip")
+        .prefetch_related("pois")
+        .order_by("-updated_at")[:3]
+    )
+    total, done = counts["total"], counts["done"]
+    return {
+        "total": total,
+        "done": done,
+        "percent": round(100 * done / total) if total else 0,
+        "goals": list(open_goals) if total else [],
+    }
+
+
+#: What a member submitted that came back to them (ux-consistency V5), newest decision first; one query each.
+SENT_BACK = (ApprovalStatus.CHANGES_REQUESTED, ApprovalStatus.REJECTED)
+SENT_BACK_DAYS = 90
+
+
+def _needs_you(user, visible_trips, today):
+    """Open to-dos on trips that haven't ended (most pressing first), finished trips waiting for a rating and the
+    member's submissions sent back in the last 90 days."""
+    from datetime import timedelta
+
+    from django.urls import reverse
+
+    from apps.activities.models import Activity
+    from apps.events.models import Event
+    from apps.locations.models import POI, City
+    from apps.reviews.models import TripRatingPrompt
+    from apps.trips.models import BookingTask
+
+    tasks = BookingTask.objects.filter(done=False, trip__in=visible_trips.filter(end_date__gte=today)).select_related(
+        "trip"
+    )
+    task_count = tasks.count()
+    todos = list(tasks.order_by("priority", F("due").asc(nulls_last=True), "trip__start_date", "pk")[:5])
+    for task in todos:
+        task.url = reverse("trips:trip_todo", args=[task.trip_id])
+
+    ratings = list(
+        TripRatingPrompt.objects.filter(
+            user=user, answered_at__isnull=True, skipped_at__isnull=True, trip__deleted_at__isnull=True
+        )
+        .select_related("trip")
+        .order_by("-trip__end_date")[:3]
+    )
+    for prompt in ratings:
+        prompt.url = reverse("reviews:trip_rate", args=[prompt.trip_id])
+
+    since = timezone.now() - timedelta(days=SENT_BACK_DAYS)
+    sent_back = []
+    for model, kind, url_name in (
+        (Activity, "Activity", "activities:activity_detail"),
+        (Event, "Event", "events:event_detail"),
+        (City, "City", "locations:city_detail"),
+        (POI, "Place", "locations:poi_detail"),
+    ):
+        mine = Q(submitted_by=user)
+        if any(field.name == "created_by" for field in model._meta.get_fields()):
+            mine |= Q(created_by=user)
+        for obj in model.objects.filter(mine, approval_status__in=SENT_BACK, reviewed_at__gte=since).only(
+            "pk", "name", "slug", "approval_status", "reviewed_at"
+        )[:5]:
+            sent_back.append(
+                {
+                    "kind": kind,
+                    "name": obj.name,
+                    "status": obj.get_approval_status_display(),
+                    "rejected": obj.approval_status == ApprovalStatus.REJECTED,
+                    "url": reverse(url_name, args=[obj.slug]),
+                    "at": obj.reviewed_at,
+                }
+            )
+    sent_back.sort(key=lambda row: row["at"], reverse=True)
+    return {
+        "todos": todos,
+        "todo_count": task_count,
+        "ratings": ratings,
+        "sent_back": sent_back[:5],
+        "any": bool(todos or ratings or sent_back),
+    }
 
 
 def _welcome(user, goals, trips):

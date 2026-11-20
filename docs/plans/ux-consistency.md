@@ -1,6 +1,6 @@
 # Plan: one look across the site — tokens, shared partials, trip tabs, place pages, navigation
 
-Status: V1 done on branch `v1-tokens`, V2 on branch `v2-shared-partials`, V3 on branch `v3-trip-tabs`, V4 on branch `v4-place-headers` (2026-11-19); V5 not started. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
+Status: V1 done on branch `v1-tokens`, V2 on branch `v2-shared-partials`, V3 on branch `v3-trip-tabs`, V4 on branch `v4-place-headers`, V5 on branch `v5-nav-dashboard` (2026-11-19). Complete. Hand to Claude Code **one phase per branch/PR, in order** (V1 → V5; "V" because the trip-page UX plan already uses U1–U7).
 Read with `CLAUDE.md`. Each phase lists its **Ask James** decisions; stop and ask before the phase that needs them.
 Every phase that changes something a user sees updates its Help guide in the same PR (`apps/pages/help/`, bump
 `updated`). Mockups (current vs proposed, numbered notes):
@@ -171,7 +171,7 @@ site-wide change to secondary text.
 
 ## V5 — Navigation and dashboard (branch `v5-nav-dashboard`)
 
-**Ask James before starting:** (1) "Home" or "Dashboard" for the signed-in start page — one name everywhere;
+**Answered 2026-11-19:** Home; Needs you = open to-dos on upcoming trips, trips to rate, submissions sent back (90 days); Recent activity dropped; Rewards stays inside the Travel profile. **Asked:** (1) "Home" or "Dashboard" for the signed-in start page — one name everywhere;
 (2) what "Needs you" lists (suggested: outstanding booking tasks across upcoming trips, highest priority first;
 trips waiting for a post-trip rating from R17; your submissions with changes requested); (3) whether Rewards keeps a
 place in the sidebar or stays inside the Travel profile.
