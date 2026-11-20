@@ -159,7 +159,8 @@ class Media(TimeStampedModel):
 
     def __str__(self):
         filename = os.path.basename(self.file.name)
-        return f"{filename} by {self.uploaded_by.username}"
+        # No uploader: a site picture (a country's flag) or one whose uploader deleted their account (R13, SET_NULL).
+        return f"{filename} by {self.uploaded_by.username}" if self.uploaded_by_id else filename
 
     @property
     def file_size_mb(self):

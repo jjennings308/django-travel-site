@@ -277,7 +277,7 @@ def _attention(now, sla_hours):
             "items": [
                 {
                     "text": m.title or m.file.name.rsplit("/", 1)[-1],
-                    "meta": f"by @{m.uploaded_by.username}",
+                    "meta": f"by @{m.uploaded_by.username}" if m.uploaded_by_id else "no uploader",
                     "url": _admin_url(m),
                 }
                 for m in heic.select_related("uploaded_by")[:LIST_LIMIT]
