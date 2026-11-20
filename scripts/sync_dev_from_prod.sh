@@ -41,22 +41,24 @@ chmod 600 "$PROD_DUMP"
 TABLES=$(sbl_dump_tables "$PROD_DUMP")
 [ "${TABLES:-0}" -gt 50 ] || { rm -f "$PROD_DUMP"; fail "production dump looks wrong ($TABLES tables); dev left unchanged"; }
 
-# 2. Back up dev.
+# 2. Back up dev. Every dev step connects the way the site does, with .env's host, port, user and password, so
+#    it works with a native Postgres (dev since 2026-11-19, port 5433) or a container on a mapped port alike.
 DEV_USER="$(envval POSTGRES_USER)"; DEV_DB="$(envval POSTGRES_DB)"
-docker exec postgres pg_dump -U "$DEV_USER" -Fc "$DEV_DB" > "$DEV_DUMP" 2>>"$LOG" \
-  || { rm -f "$DEV_DUMP"; fail "could not back up dev (is the postgres container running?); dev left unchanged"; }
+export PGHOST="$(envval POSTGRES_HOST)" PGPORT="$(envval POSTGRES_PORT)" PGUSER="$DEV_USER" PGPASSWORD="$(envval POSTGRES_PASSWORD)"
+pg_dump -Fc "$DEV_DB" > "$DEV_DUMP" 2>>"$LOG" \
+  || { rm -f "$DEV_DUMP"; fail "could not back up dev (is Postgres running on $PGHOST:$PGPORT?); dev left unchanged"; }
 chmod 600 "$DEV_DUMP"
 
 # 3. Restore production into dev. Empty dev's schema first: --clean only drops
 #    what is in the dump, and tables from dev-only migrations (e.g. push_devices
 #    -> users) block those drops. Step 4's migrate puts the dev-only tables back.
-#    The only expected restore message is Postgres 17's transaction_timeout
-#    setting, unknown to dev's Postgres 16.
-docker exec postgres psql -U "$DEV_USER" -d "$DEV_DB" -v ON_ERROR_STOP=1 -q \
+#    The role must own the dev database (it then owns schema public). The only
+#    expected restore message is Postgres 17's transaction_timeout setting,
+#    unknown to an older dev Postgres.
+psql -d "$DEV_DB" -v ON_ERROR_STOP=1 -q \
   -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' >>"$LOG" 2>&1 \
   || fail "could not empty dev before restore (dev backup: $DEV_DUMP)"
-ERRORS=$(PGPASSWORD="$(envval POSTGRES_PASSWORD)" pg_restore -h "$(envval POSTGRES_HOST)" -p "$(envval POSTGRES_PORT)" \
-  -U "$DEV_USER" -d "$DEV_DB" --no-owner --no-privileges "$PROD_DUMP" 2>&1 \
+ERRORS=$(pg_restore -d "$DEV_DB" --no-owner --no-privileges "$PROD_DUMP" 2>&1 \
   | grep -v -e 'transaction_timeout' -e '^$' -e 'errors ignored on restore: 1$')
 [ -z "$ERRORS" ] || { printf '%s\n' "$ERRORS" >> "$LOG"; fail "restore reported errors (dev backup: $DEV_DUMP)"; }
 
